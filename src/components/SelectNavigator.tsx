@@ -1,0 +1,114 @@
+import { CaretUpDown } from "@phosphor-icons/react";
+import classNames from "classnames";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
+
+type LinkDisplay = {
+  label: string;
+  href: string;
+};
+
+interface SelectNavigatorProps {
+  current: LinkDisplay;
+  options?: LinkDisplay[];
+}
+
+export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
+  const [showOptions, setShowOptions] = useState<boolean>(false);
+  const params = useParams();
+  const containerRef = useRef(null);
+  const optionsRef = useRef(null);
+  const showOptionsRef = useRef(showOptions); // Create a ref to hold the showOptions state
+
+  const optionsPosition = useMemo(() => {
+    if (!containerRef.current) return {};
+    const inputRect = containerRef.current.getBoundingClientRect();
+    return {
+      top: inputRect.top + inputRect.height,
+      left: inputRect.left,
+    };
+  }, [containerRef.current]);
+
+  useEffect(() => {
+    showOptionsRef.current = showOptions; // Always keep it updated with the latest state
+  }, [showOptions]);
+
+  // Use useEffect to add an event listener to the document
+  useEffect(() => {
+    function handleOutsideClick(event) {
+      if (optionsRef.current && !optionsRef.current.contains(event.target)) {
+        if (showOptionsRef.current) {
+          setShowOptions(false);
+        } else {
+        }
+      }
+    }
+    // Attach the click event listener
+    document.addEventListener("mousedown", handleOutsideClick);
+    // Clean up the listener when the component is unmounted
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
+
+  return (
+    <div className="relative overflow-visible">
+      <div className="flex flex-row items-center gap-x-2 cursor-pointer">
+        <Link
+          href={current?.href}
+          ref={containerRef}
+          className={classNames("bg-base-100")}
+        >
+          {current.label}
+        </Link>
+        <button
+          onClick={() => {
+            setShowOptions(!showOptions);
+          }}
+        >
+          <CaretUpDown weight="bold" size={20} className="text-gray-400" />
+        </button>
+      </div>
+      {/* Options */}
+      {options?.length > 0 && (
+        <motion.div
+          ref={optionsRef}
+          initial={{
+            opacity: 0,
+            height: 0,
+          }}
+          animate={{
+            opacity: showOptions ? 1 : 0,
+            height: showOptions ? "auto" : 0,
+          }}
+          className={classNames(
+            `fixed top-[${optionsPosition?.top}px] left-[${optionsPosition?.left}px]`,
+            "mt-2 w-fit bg-[#111]/70 backdrop-blur-sm rounded-2xl p-2 z-[100]",
+            "shadow-lg shadow-black/30",
+            "max-h-96 overflow-auto"
+          )}
+        >
+          <div className="flex flex-col h-full">
+            {options?.map((optionValue: LinkDisplay, index) => {
+              return (
+                <Link
+                  key={index}
+                  href={optionValue.href}
+                  onClick={() => setShowOptions(false)}
+                  className={classNames(
+                    "flex flex-row items-center gap-x-2 cursor-pointer",
+                    "transition-all hover:bg-white/20 rounded-md p-2"
+                  )}
+                >
+                  <p className="text-sm text-white">{optionValue.label}</p>
+                </Link>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+};
