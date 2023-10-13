@@ -34,9 +34,9 @@ extract_keyword_prompts = PromptModel("extract_keyword").get_prompts()
  
 # Or use powerful generation utils of PromptModel
 @client.register
-def test():
-    response = PromptModel("choose_service").generate({})
-    print(response)
+def summary():
+    response = PromptModel("summary").generate({})
+    return response
 `;
 
 export default function Home() {
