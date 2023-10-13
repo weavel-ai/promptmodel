@@ -1,0 +1,14 @@
+fastapi
+supabase
+openai
+uvicorn[standard]
+termcolor
+tiktoken
+numpy
+python-dotenv
+Requests
+markdown
+APScheduler
+pytz
+pydantic
+python-multipart
