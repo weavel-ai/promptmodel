@@ -4,6 +4,7 @@ import { Drawer } from "@/components/Drawer";
 // import { useModuleVersion } from "@/hooks/useModuleVersion";
 import { useModuleVersion } from "@/hooks/dev/useModuleVersion";
 import { useModule } from "@/hooks/dev/useModule";
+import { useModuleVersionDetails } from "@/hooks/dev/useModuleVersionDetails";
 import { Prompt, useModuleVersionStore } from "@/stores/moduleVersionStore";
 import classNames from "classnames";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -14,7 +15,6 @@ import ReactFlow, {
   Position,
 } from "reactflow";
 import { motion } from "framer-motion";
-import { useModuleVersionDetails } from "@/hooks/useModuleVersionDetails";
 import { CaretDown, GitBranch, Play, XCircle } from "@phosphor-icons/react";
 import {
   DiffEditor,
@@ -33,6 +33,7 @@ import { StatusIndicator } from "@/components/StatusIndicator";
 import { useSupabaseClient } from "@/apis/base";
 import { toast } from "react-toastify";
 import ReactJson from "react-json-view";
+import { useRunLog } from "@/hooks/dev/useRunLog";
 
 export default function Page() {
   const params = useParams();
@@ -54,7 +55,6 @@ export default function Page() {
   } = useModuleVersionStore();
   const monaco = useMonaco();
   const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
-  const [editorContentChanged, setEditorContentChanged] = useState(false);
   const [modifiedPrompts, setModifiedPrompts] = useState<Prompt[]>([]);
 
   const { promptListData } = useModuleVersionDetails(selectedVersionUuid);
@@ -172,7 +172,7 @@ export default function Page() {
           id: item.uuid.toString(),
           type: "moduleVersion",
           data: {
-            label: item.candidate_version,
+            label: item.candidate_version ?? item.uuid.slice(0, 3),
             uuid: item.uuid,
             status: status,
           },
@@ -254,7 +254,7 @@ export default function Page() {
             };
           })
         : promptListData,
-      model: moduleVersionData.model,
+      model: isNew ? "gpt-3.5-turbo" : moduleVersionData.model,
       fromUuid: isNew ? moduleVersionData.uuid : null,
       uuid: isNew ? null : moduleVersionData.uuid,
       onNewData: (data) => {
@@ -280,18 +280,20 @@ export default function Page() {
             });
             break;
         }
+        if (data?.llm_module_version_uuid) {
+          setNewVersionUuidCache(data?.llm_module_version_uuid);
+        }
         if (data?.inputs) {
-          updateRunLogs(moduleVersionData.uuid, {
+          updateRunLogs(isNew ? newVersionUuidCache : moduleVersionData, {
             inputs: data?.inputs,
           });
         }
         if (data?.raw_output) {
           cacheRawOutput += data?.raw_output;
-          updateRunLogs(moduleVersionData.uuid, {
+          updateRunLogs(isNew ? newVersionUuidCache : moduleVersionData.uuid, {
             raw_output: cacheRawOutput,
           });
         }
-        // console.log(data);
         if (data?.parsed_outputs) {
           const parsedOutputs = data?.parsed_outputs;
           console.log(parsedOutputs);
@@ -302,8 +304,7 @@ export default function Page() {
               cacheParsedOutputs[key] = parsedOutputs[key];
             }
           }
-          console.log(cacheParsedOutputs);
-          updateRunLogs(moduleVersionData.uuid, {
+          updateRunLogs(isNew ? newVersionUuidCache : moduleVersionData.uuid, {
             parsed_outputs: cacheParsedOutputs,
           });
         }
@@ -478,9 +479,12 @@ export default function Page() {
           </button>
           {versionListData?.map((version) => {
             return (
-              <div className="flex flex-row" key={version.candidate_version}>
+              <div
+                className="flex flex-row"
+                key={version.candidate_version ?? version.uuid.slice(0, 3)}
+              >
                 <p className="text-base-content font-semibold text-2xl">
-                  V{version.candidate_version}
+                  V{version.candidate_version ?? version.uuid.slice(0, 3)}
                 </p>
               </div>
             );
@@ -646,7 +650,9 @@ const PromptInputComponent = ({ prompt, setPrompts }) => {
 const RunLogComponent = ({ versionUuid }: { versionUuid?: string }) => {
   const [showRaw, setShowRaw] = useState(true);
   const { runLogs } = useModuleVersionStore();
-  const runLog = useMemo(() => {
+  const { runLogData, refetchRunLogData } = useRunLog(versionUuid);
+  const versionRunLog = useMemo(() => {
+    console.log(runLogs);
     if (versionUuid) {
       return runLogs[versionUuid];
     } else {
@@ -692,7 +698,7 @@ const RunLogComponent = ({ versionUuid }: { versionUuid?: string }) => {
             <tr className="align-top">
               <td className="align-top">
                 <ReactJson
-                  src={runLog?.inputs}
+                  src={versionRunLog?.inputs}
                   name={false}
                   displayDataTypes={false}
                   displayObjectSize={false}
@@ -702,10 +708,10 @@ const RunLogComponent = ({ versionUuid }: { versionUuid?: string }) => {
               </td>
               <td className="align-top">
                 {showRaw ? (
-                  runLog?.raw_output
+                  versionRunLog?.raw_output
                 ) : (
                   <ReactJson
-                    src={runLog?.parsed_outputs}
+                    src={versionRunLog?.parsed_outputs}
                     name={false}
                     displayDataTypes={false}
                     displayObjectSize={false}
@@ -741,7 +747,7 @@ function ModuleVersionNode({ data }) {
       onClick={() => setSelectedVersionUuid(data.uuid)}
     >
       <Handle type="target" position={Position.Top} />
-      <div className="flex flex-row justify-center items-center gap-x-1">
+      <div className="flex flex-col justify-center items-center gap-y-1">
         {data.status != "published" && data.status != "deployed" && (
           <StatusIndicator status={data.status} />
         )}
