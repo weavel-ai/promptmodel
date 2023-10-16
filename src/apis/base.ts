@@ -65,7 +65,7 @@ export const fetchStream = async ({
       try {
         const jsonObjects: object[] = parseMultipleJson(buffer);
         for (const jsonObject of jsonObjects) {
-          console.log(jsonObject);
+          // console.log(jsonObject);
           onNewData(jsonObject as Record<string, any>);
         }
       } catch (error) {

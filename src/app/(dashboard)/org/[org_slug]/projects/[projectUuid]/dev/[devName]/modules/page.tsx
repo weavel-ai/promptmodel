@@ -98,7 +98,6 @@ export default function Page() {
   useEffect(() => {
     if (!params?.projectUuid || !params?.devName) return;
     let devBranchStream;
-    console.log("subscribing");
     createSupabaseClient().then((client) => {
       devBranchStream = subscribeDevBranchStatus(
         client,
@@ -113,7 +112,6 @@ export default function Page() {
           }
         }
       );
-      console.log(devBranchStream);
     });
     return () => {
       devBranchStream?.unsubscribe();

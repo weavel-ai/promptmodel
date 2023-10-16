@@ -201,7 +201,7 @@ export default function Home() {
             </h3>
           </motion.div>
           <SummarizationPromptCode />
-          <PromptlabsCode />
+          <PromptmodelCode />
         </div>
         <div className="flex flex-col my-32 min-h-[36rem] z-10 items-start justify-start gap-y-4 pl-12 w-full h-fit relative">
           <motion.div
@@ -370,7 +370,7 @@ const SummarizationPromptCode = () => {
   );
 };
 
-const PromptlabsCode = () => {
+const PromptmodelCode = () => {
   return (
     <div
       style={{ perspective: "1000px" }}
