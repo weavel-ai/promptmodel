@@ -329,205 +329,155 @@ async def get_run_logs(
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc 
+    
+@router.post("/change_version_status")
+async def change_version_status(
+    project_uuid:str, dev_name:str, llm_module_version_uuid:str, status:str
+):
+    try:
+        # Find local server websocket
+        dev_branch = (
+            supabase.table("dev_branch")
+            .select("cli_access_key")
+            .eq("name", dev_name)
+            .eq("project_uuid", project_uuid)
+            .execute()
+            .data
+        )
+        if len(dev_branch) == 0:
+            raise ValueError("There is no dev_branch")
+        
+        cli_access_key = dev_branch[0]["cli_access_key"]
+        response = await websocket_manager.request(
+            cli_access_key, 
+            LocalTask.CHANGE_VERSION_STATUS, 
+            {
+                "llm_module_version_uuid": llm_module_version_uuid,
+                "status": status
+            }
+        )
+        if not response:
+            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
+        return JSONResponse(response, status_code=HTTP_200_OK)
+        
+    except ValueError as ve:
+        logger.error(ve)
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST) from ve
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc 
 
 @router.post("/push_version")
 async def push_version(
-    project_uuid: str, version_config: VersionConfig
+    project_uuid:str, dev_name:str, llm_module_version_uuid:str
 ):
-    """Push version to Server DB from local DB  
-    Input:  
-        - project_uuid : project uuid
-        - version_config  
-            - llm_module_name: str  
-            - llm_module_uuid: str  
-            - from_uuid: str  
-            - run_logs: List[RunLog]  
-                - inputs: Dict[str, Any]  
-                - raw_output: str  
-                - parsed_outputs: Dict[str, Any]  
-            - prompts: List[PromptConfig]  
-                - role: str  
-                - step: str  
-                - content: str  
+    """Push 1 version to Server DB from local DB  
     """
     try:
-        # check llm_module exists
-        llm_module = (
-            supabase.table("llm_module")
-            .select("uuid")
+        # Find local server websocket
+        dev_branch = (
+            supabase.table("dev_branch")
+            .select("cli_access_key")
+            .eq("name", dev_name)
             .eq("project_uuid", project_uuid)
-            .eq("name", version_config.llm_module_name)
             .execute()
             .data
         )
-        llm_module_uuid = llm_module[0]["uuid"]
-        if len(llm_module) == 0:
-            # add llm_module first 
-            new_llm_module = (
+        if len(dev_branch) == 0:
+            raise ValueError("There is no dev_branch")
+        
+        cli_access_key = dev_branch[0]["cli_access_key"]
+        
+        response = await websocket_manager.request(
+            cli_access_key, 
+            LocalTask.GET_VERSION_TO_SAVE, 
+            {"llm_module_version_uuid": llm_module_version_uuid}
+        )
+        if not response:
+            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # save llm_module_versions to server DB
+        
+        # if there is llm_module, save
+        llm_modules = response["llm_modules"]
+        if llm_modules:
+            (
                 supabase.table("llm_module")
-                .insert(
-                    {
-                        "name": version_config.llm_module_name,
-                        "uuid": version_config.llm_module_uuid,
-                        "project_uuid": project_uuid
-                    }
-                )
+                .insert(llm_modules)
                 .execute()
-                .data
             )
-            # llm_module_uuid = new_llm_module[0]['uuid']
         
-        llm_module_uuid  = version_config.llm_module_uuid
-        
-        # insert llm_module_version
-        # Candidate 간의 버전 관리는 local에서 이미 이루어진 채로 도달
-        candidate_versions = (
-            supabase.table("llm_module_version")
-            .select("version")
-            .eq("llm_module_uuid", llm_module_uuid)
-            .order("created_at", desc=True)
-            .execute()
-            .data
-        )
-        if len(candidate_versions) == 0:
-            latest_version = 0
-        else:
-            latest_version = candidate_versions[0]["version"]
-    
-        llm_module_version = (
-            supabase.table("llm_module_version")
-            .insert(
-                {
-                    "llm_module_uuid": llm_module_uuid,
-                    "is_working" : True,
-                    "version": latest_version + 1,
-                    "from_uuid" : version_config.from_uuid
-                    }
-            )
-            .execute()
-            .data
-        )
-        
-        # add prompts, run_log
-        llm_module_version_uuid = llm_module_version[0]['uuid']
-        prompts = version_config.prompts
-        prompts_dict_list = [p.model_dump() for p in prompts]
-        # add "version_uuid" for each prompt
-        for p in prompts_dict_list:
-            p["version_uuid"] = llm_module_version_uuid
+        version = response["version"]
         (
-            supabase.table("prompt")
-            .insert(prompts_dict_list)
-            .execute()
-        )
-        
-        run_logs = version_config.run_logs
-        run_logs_dict_list = [r.model_dump() for r in run_logs]
-        # add "version_uuid" for each run_log
-        for r in run_logs_dict_list:
-            r["version_uuid"] = llm_module_version_uuid
-            r["is_deployment"] = False
-        (
-            supabase.table("run_log")
-            .insert(run_logs_dict_list)
+            supabase.table("llm_module_version")
+            .insert(version)
             .execute()
         )
         
         return JSONResponse({}, status_code=HTTP_200_OK)
+        
+    except ValueError as ve:
+        logger.error(ve)
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST) from ve
     except Exception as exc:
         logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc 
+    
     
 
 @router.post("/push_versions")
-async def push_versioss(
-    project_uuid: str, version_config_list: List[VersionConfig]
+async def push_versions(
+    project_uuid:str, dev_name:str
 ):
     """Push version to Server DB from local DB  
     """
     try:
-        # check llm_module exists
-        exist_llm_modules = (
-            supabase.table("llm_module")
-            .select("uuid")
+        # Find local server websocket
+        dev_branch = (
+            supabase.table("dev_branch")
+            .select("cli_access_key")
+            .eq("name", dev_name)
             .eq("project_uuid", project_uuid)
-            .in_("name", [version_config.llm_module_name for version_config in version_config_list])
             .execute()
             .data
         )
-        exist_llm_module_uuids = [llm_module["uuid"] for llm_module in exist_llm_modules]
+        if len(dev_branch) == 0:
+            raise ValueError("There is no dev_branch")
         
-        # insert new llm_modules
-        non_exist_llm_modules = [
-            version_config 
-            for version_config in version_config_list 
-            if version_config.llm_module_uuid not in exist_llm_module_uuids
-        ]
-        non_exist_llm_modules = [
-            {
-                "name": version_config.llm_module_name,
-                "uuid": version_config.llm_module_uuid,
-                "project_uuid": project_uuid
-            } for version_config in non_exist_llm_modules
-        ]
+        cli_access_key = dev_branch[0]["cli_access_key"]
         
+        response = await websocket_manager.request(
+            cli_access_key, 
+            LocalTask.GET_VERSIONS_TO_SAVE, 
+            {}
+        )
+        if not response:
+            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # save llm_module_versions to server DB
+        
+        # if there is llm_module, save
+        llm_modules = response["llm_modules"]
+        if len(llm_modules) > 0:
+            (
+                supabase.table("llm_module")
+                .insert(llm_modules)
+                .execute()
+            )
+        
+        versions = response["versions"]
         (
-            supabase.table("llm_module")
-            .insert(non_exist_llm_modules)
+            supabase.table("llm_module_version")
+            .insert(versions)
             .execute()
         )
         
-        # insert llm_module_version
-        # Candidate 간의 버전 관리는 local에서 이미 이루어진 채로 도달
-        # Add version id
-        
-        # find latest version of each llm_module
-        latest_versions = {}
-        llm_module_uuid_list = [version_config.llm_module_uuid for version_config in version_config_list]
-        for llm_module_uuid in llm_module_uuid_list:
-            last_version = (
-                supabase.table("llm_module_version")
-                .select("version")
-                .eq("llm_module_uuid", llm_module_uuid)
-                .order("created_at", desc=True)
-                .execute()
-            )
-            if len(last_version) == 0:
-                latest_versions[llm_module_uuid] = 0
-            else:
-                latest_versions[llm_module_uuid] = last_version[0]["version"]
-                
-        # Add version ID
-        llm_version_list = [
-            {
-                "llm_module_uuid": version_config.llm_module_uuid,
-                "from_uuid" : version_config.from_uuid
-            } for version_config in version_config_list
-        ]
-        for llm_version in llm_version_list:
-            llm_version["version"] = latest_versions[llm_version["llm_module_uuid"]] + 1
-            latest_versions[llm_version["llm_module_uuid"]] += 1
-        
-        supabase.table("llm_module_version").insert(llm_version_list).execute().data
-
-        # Inserting all_prompts
-        all_prompts = [
-            {**p.model_dump(), "version_uuid": version_config.llm_module_uuid}
-            for version_config in version_config_list
-            for p in version_config.prompts
-        ]
-        supabase.table("prompt").insert(all_prompts).execute()
-
-        # Inserting all_run_logs
-        all_run_logs = [
-            {**r.model_dump(), "version_uuid": version_config.llm_module_uuid, "is_deployment": False}
-            for version_config in version_config_list
-            for r in version_config.run_logs
-        ]
-        supabase.table("run_log").insert(all_run_logs).execute()
-        
         return JSONResponse({}, status_code=HTTP_200_OK)
+        
+    except ValueError as ve:
+        logger.error(ve)
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST) from ve
     except Exception as exc:
         logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc 
     
