@@ -5,7 +5,11 @@ import { Drawer } from "@/components/Drawer";
 import { useModuleVersion } from "@/hooks/dev/useModuleVersion";
 import { useModule } from "@/hooks/dev/useModule";
 import { useModuleVersionDetails } from "@/hooks/dev/useModuleVersionDetails";
-import { Prompt, useModuleVersionStore } from "@/stores/moduleVersionStore";
+import {
+  Prompt,
+  RunLog,
+  useModuleVersionStore,
+} from "@/stores/moduleVersionStore";
 import classNames from "classnames";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
@@ -33,7 +37,8 @@ import { StatusIndicator } from "@/components/StatusIndicator";
 import { useSupabaseClient } from "@/apis/base";
 import { toast } from "react-toastify";
 import ReactJson from "react-json-view";
-import { useRunLog } from "@/hooks/dev/useRunLog";
+import { useRunLogs } from "@/hooks/dev/useRunLog";
+import { v4 as uuidv4 } from "uuid";
 
 export default function Page() {
   const params = useParams();
@@ -47,6 +52,7 @@ export default function Page() {
     newVersionUuidCache,
     newPromptCache,
     selectedVersionUuid,
+    addRunTask,
     updateRunLogs,
     updatePrompts,
     setSelectedVersionUuid,
@@ -56,8 +62,8 @@ export default function Page() {
   const monaco = useMonaco();
   const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
   const [modifiedPrompts, setModifiedPrompts] = useState<Prompt[]>([]);
-
   const { promptListData } = useModuleVersionDetails(selectedVersionUuid);
+  const { refetchRunLogData } = useRunLogs(selectedVersionUuid);
 
   const moduleVersionData = useMemo(() => {
     return versionListData?.find(
@@ -213,9 +219,11 @@ export default function Page() {
   }
 
   async function handleClickRun(isNew: boolean) {
+    addRunTask(isNew ? "new" : moduleVersionData.uuid);
     const toastId = toast.loading("Running...");
-
     let prompts: Prompt[];
+    let newVersionUuid: string;
+
     if (isNew) {
       prompts = promptListData?.map((prompt, idx) => {
         return {
@@ -234,6 +242,7 @@ export default function Page() {
     let cacheRawOutput = "";
     const cacheParsedOutputs = {};
 
+    const uuid = uuidv4();
     await streamLLMModuleRun({
       projectUuid: params?.projectUuid as string,
       devName: params?.devName as string,
@@ -260,16 +269,17 @@ export default function Page() {
       onNewData: (data) => {
         switch (data?.status) {
           case "completed":
+            updatePrompts(moduleVersionData.uuid, prompts);
+            if (isNew) {
+              refetchVersionListData();
+            }
+            refetchRunLogData();
             toast.update(toastId, {
               render: "Completed",
               type: "success",
               autoClose: 2000,
               isLoading: false,
             });
-            updatePrompts(moduleVersionData.uuid, prompts);
-            if (isNew) {
-              refetchVersionListData();
-            }
             break;
           case "failed":
             toast.update(toastId, {
@@ -284,19 +294,18 @@ export default function Page() {
           setNewVersionUuidCache(data?.llm_module_version_uuid);
         }
         if (data?.inputs) {
-          updateRunLogs(isNew ? newVersionUuidCache : moduleVersionData, {
+          updateRunLogs(isNew ? "new" : moduleVersionData?.uuid, uuid, {
             inputs: data?.inputs,
           });
         }
         if (data?.raw_output) {
           cacheRawOutput += data?.raw_output;
-          updateRunLogs(isNew ? newVersionUuidCache : moduleVersionData.uuid, {
+          updateRunLogs(isNew ? "new" : moduleVersionData?.uuid, uuid, {
             raw_output: cacheRawOutput,
           });
         }
         if (data?.parsed_outputs) {
           const parsedOutputs = data?.parsed_outputs;
-          console.log(parsedOutputs);
           for (const key in parsedOutputs) {
             if (key in cacheParsedOutputs) {
               cacheParsedOutputs[key] += parsedOutputs[key];
@@ -304,7 +313,7 @@ export default function Page() {
               cacheParsedOutputs[key] = parsedOutputs[key];
             }
           }
-          updateRunLogs(isNew ? newVersionUuidCache : moduleVersionData.uuid, {
+          updateRunLogs(isNew ? "new" : moduleVersionData?.uuid, uuid, {
             parsed_outputs: cacheParsedOutputs,
           });
         }
@@ -334,162 +343,167 @@ export default function Page() {
           "mr-4"
         )}
       >
-        <div className="w-full h-full bg-transparent flex flex-row justify-end items-start">
-          <div
-            className={classNames(
-              "w-full h-full bg-transparent p-4 flex flex-col justify-start",
-              createVariantOpen && "pr-0"
-            )}
-          >
-            <div className="flex flex-row justify-between items-center gap-x-8">
-              <div className="flex flex-row w-full justify-between items-center mb-2">
-                {moduleVersionData?.candidate_version ? (
-                  <div className="flex flex-row justify-start items-center gap-x-3">
-                    <p className="text-base-content font-bold text-lg">
-                      Prompt V{moduleVersionData?.candidate_version}
-                    </p>
+        {selectedVersionUuid && (
+          <div className="w-full h-full bg-transparent flex flex-row justify-end items-start">
+            <div
+              className={classNames(
+                "w-full h-full bg-transparent p-4 flex flex-col justify-start",
+                createVariantOpen && "pr-0"
+              )}
+            >
+              <div className="flex flex-row justify-between items-center gap-x-8">
+                <div className="flex flex-row w-full justify-between items-center mb-2">
+                  {moduleVersionData?.candidate_version ? (
+                    <div className="flex flex-row justify-start items-center gap-x-3">
+                      <p className="text-base-content font-bold text-lg">
+                        Prompt V{moduleVersionData?.candidate_version}
+                      </p>
 
-                    {moduleVersionData?.is_published ? (
-                      <div className="flex flex-row gap-x-2 items-center">
-                        <StatusIndicator status="published" />
-                        <p className="text-base-content font-medium text-sm">
-                          Published
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-row gap-x-2 items-center">
-                        <StatusIndicator status="deployed" />
-                        <p className="text-base-content font-medium text-sm">
-                          Deployed
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-row justify-start items-center gap-x-3">
-                    <p className="text-base-content font-bold text-lg">
-                      Prompt V{moduleVersionData?.uuid.slice(0, 6)}
-                    </p>
-                    <div className="flex flex-row gap-x-2 items-center">
-                      <StatusIndicator status={moduleVersionData?.status} />
-                      <p>{moduleVersionData?.status}</p>
+                      {moduleVersionData?.is_published ? (
+                        <div className="flex flex-row gap-x-2 items-center">
+                          <StatusIndicator status="published" />
+                          <p className="text-base-content font-medium text-sm">
+                            Published
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-row gap-x-2 items-center">
+                          <StatusIndicator status="deployed" />
+                          <p className="text-base-content font-medium text-sm">
+                            Deployed
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
-                {createVariantOpen ? (
-                  <button
-                    className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20"
-                    onClick={() => handleClickRun(false)}
-                  >
-                    <p className="text-base-content">Run</p>
-                    <Play
-                      className="text-base-content"
-                      size={20}
-                      weight="fill"
-                    />
-                  </button>
-                ) : (
-                  <div className="flex flex-row gap-x-2">
+                  ) : (
+                    <div className="flex flex-row justify-start items-center gap-x-3">
+                      <p className="text-base-content font-bold text-lg">
+                        Prompt V{moduleVersionData?.uuid.slice(0, 6)}
+                      </p>
+                      <div className="flex flex-row gap-x-2 items-center">
+                        <StatusIndicator status={moduleVersionData?.status} />
+                        <p>{moduleVersionData?.status}</p>
+                      </div>
+                    </div>
+                  )}
+                  {createVariantOpen ? (
                     <button
-                      className="flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
-                      onClick={handleClickCreateVariant}
+                      className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20"
+                      onClick={() => handleClickRun(false)}
                     >
-                      <GitBranch
-                        className="text-secondary"
+                      <p className="text-base-content">Run</p>
+                      <Play
+                        className="text-base-content"
                         size={20}
                         weight="fill"
                       />
-                      <p className="text-base-content">Create Variant</p>
                     </button>
-                    <button
-                      className="flex flex-col gap-y-2 pt-1 items-center btn btn-sm normal-case font-normal bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
-                      onClick={() => {
-                        setSelectedVersionUuid(null);
-                      }}
-                    >
-                      <div className="flex flex-col">
-                        <XCircle size={22} />
-                        <p className="text-base-content text-xs">Esc</p>
-                      </div>
-                    </button>
-                  </div>
-                )}
-              </div>
-              {createVariantOpen && (
-                <div className="flex flex-row w-full justify-between items-center mb-2">
-                  <div className="flex flex-col items-start justify-center">
-                    <p className="text-base-content font-medium text-lg">
-                      New Prompt
-                    </p>
-                    <p className="text-base-content text-sm">
-                      From <u>Prompt V{moduleVersionData?.candidate_version}</u>
-                    </p>
-                  </div>
-                  <button
-                    className={classNames(
-                      "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
-                      "disabled:bg-neutral-content"
-                    )}
-                    onClick={() => handleClickRun(true)}
-                    disabled={!isNewVersionReady}
-                  >
-                    <p className="text-base-100">Run</p>
-                    <Play className="text-base-100" size={20} weight="fill" />
-                  </button>
-                </div>
-              )}
-            </div>
-            <motion.div className="bg-base-200 h-full w-full p-4 rounded-box overflow-auto">
-              <div className="flex flex-col h-full gap-y-2 justify-start items-start">
-                {promptListData?.map((prompt) =>
-                  createVariantOpen ? (
-                    <PromptInputComponent
-                      prompt={prompt}
-                      setPrompts={setModifiedPrompts}
-                    />
                   ) : (
-                    <PromptComponent prompt={prompt} />
-                  )
+                    <div className="flex flex-row gap-x-2">
+                      <button
+                        className="flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
+                        onClick={handleClickCreateVariant}
+                      >
+                        <GitBranch
+                          className="text-secondary"
+                          size={20}
+                          weight="fill"
+                        />
+                        <p className="text-base-content">Create Variant</p>
+                      </button>
+                      <button
+                        className="flex flex-col gap-y-2 pt-1 items-center btn btn-sm normal-case font-normal bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
+                        onClick={() => {
+                          setSelectedVersionUuid(null);
+                        }}
+                      >
+                        <div className="flex flex-col">
+                          <XCircle size={22} />
+                          <p className="text-base-content text-xs">Esc</p>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {createVariantOpen && (
+                  <div className="flex flex-row w-full justify-between items-center mb-2">
+                    <div className="flex flex-col items-start justify-center">
+                      <p className="text-base-content font-medium text-lg">
+                        New Prompt
+                      </p>
+                      <p className="text-base-content text-sm">
+                        From{" "}
+                        <u>Prompt V{moduleVersionData?.candidate_version}</u>
+                      </p>
+                    </div>
+                    <button
+                      className={classNames(
+                        "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
+                        "disabled:bg-neutral-content"
+                      )}
+                      onClick={() => handleClickRun(true)}
+                      disabled={!isNewVersionReady}
+                    >
+                      <p className="text-base-100">Run</p>
+                      <Play className="text-base-100" size={20} weight="fill" />
+                    </button>
+                  </div>
                 )}
               </div>
-            </motion.div>
-            <div className="flex flex-row justify-between items-start mt-4 gap-x-4">
-              <RunLogComponent versionUuid={selectedVersionUuid} />
-              {createVariantOpen && <RunLogComponent versionUuid={null} />}
+              <motion.div className="bg-base-200 h-full w-full p-4 rounded-box overflow-auto">
+                <div className="flex flex-col h-full gap-y-2 justify-start items-start">
+                  {promptListData?.map((prompt) =>
+                    createVariantOpen ? (
+                      <PromptInputComponent
+                        prompt={prompt}
+                        setPrompts={setModifiedPrompts}
+                      />
+                    ) : (
+                      <PromptComponent prompt={prompt} />
+                    )
+                  )}
+                </div>
+              </motion.div>
+              <div className="flex flex-row justify-between items-start mt-4 gap-x-4">
+                <RunLogSection versionUuid={selectedVersionUuid} />
+                {createVariantOpen && <RunLogSection versionUuid="new" />}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </Drawer>
       <Drawer
         open={createVariantOpen && selectedVersionUuid != null}
         direction="left"
         classNames="w-[5vw] ml-4 relative"
       >
-        <div className="w-full h-full bg-transparent flex flex-col justify-center items-start gap-y-3">
-          <button
-            className="absolute top-6 -left-2 flex flex-col gap-y-2 pt-1 items-center btn btn-sm normal-case font-normal bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
-            onClick={() => {
-              setCreateVariantOpen(false);
-            }}
-          >
-            <div className="flex flex-col">
-              <XCircle size={22} />
-              <p className="text-base-content text-xs">Esc</p>
-            </div>
-          </button>
-          {versionListData?.map((version) => {
-            return (
-              <div
-                className="flex flex-row"
-                key={version.candidate_version ?? version.uuid.slice(0, 3)}
-              >
-                <p className="text-base-content font-semibold text-2xl">
-                  V{version.candidate_version ?? version.uuid.slice(0, 3)}
-                </p>
+        {createVariantOpen && selectedVersionUuid != null && (
+          <div className="w-full h-full bg-transparent flex flex-col justify-center items-start gap-y-3">
+            <button
+              className="absolute top-6 -left-2 flex flex-col gap-y-2 pt-1 items-center btn btn-sm normal-case font-normal bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
+              onClick={() => {
+                setCreateVariantOpen(false);
+              }}
+            >
+              <div className="flex flex-col">
+                <XCircle size={22} />
+                <p className="text-base-content text-xs">Esc</p>
               </div>
-            );
-          })}
-        </div>
+            </button>
+            {versionListData?.map((version) => {
+              return (
+                <div
+                  className="flex flex-row"
+                  key={version.candidate_version ?? version.uuid.slice(0, 3)}
+                >
+                  <p className="text-base-content font-semibold text-2xl">
+                    V{version.candidate_version ?? version.uuid.slice(0, 3)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Drawer>
     </div>
   );
@@ -647,18 +661,46 @@ const PromptInputComponent = ({ prompt, setPrompts }) => {
   );
 };
 
-const RunLogComponent = ({ versionUuid }: { versionUuid?: string }) => {
+const RunLogSection = ({ versionUuid }: { versionUuid: string | "new" }) => {
   const [showRaw, setShowRaw] = useState(true);
-  const { runLogs } = useModuleVersionStore();
-  const { runLogData, refetchRunLogData } = useRunLog(versionUuid);
-  const versionRunLog = useMemo(() => {
-    console.log(runLogs);
-    if (versionUuid) {
-      return runLogs[versionUuid];
-    } else {
-      return null;
+  const { runLogData } = useRunLogs(versionUuid);
+  const { runTasksCount, runLogs } = useModuleVersionStore();
+  const [runLogList, setRunLogList] = useState<RunLog[]>([]);
+
+  useEffect(() => {
+    if (runTasksCount == null || runLogData == undefined || runLogData == null)
+      return;
+
+    let updatedRunLogList = [];
+
+    if (runLogData?.length > 0) {
+      updatedRunLogList = [
+        ...runLogData.map((log) => {
+          let parsedInputs, parsedOutputs;
+          try {
+            parsedInputs = JSON.parse(log.inputs);
+          } catch (e) {
+            parsedInputs = log.inputs;
+          }
+          try {
+            parsedOutputs = JSON.parse(log.parsed_outputs);
+          } catch (e) {
+            parsedOutputs = log.parsed_outputs;
+          }
+          return {
+            inputs: parsedInputs,
+            raw_output: log.raw_output,
+            parsed_outputs: parsedOutputs,
+          };
+        }),
+      ];
     }
-  }, [runLogs, versionUuid]);
+    if (runLogs[versionUuid]) {
+      updatedRunLogList.unshift(...Object.values(runLogs[versionUuid]));
+    }
+
+    setRunLogList(updatedRunLogList);
+  }, [runLogData, runLogs[versionUuid]]);
 
   return (
     <div className="w-full h-fit max-h-[40vh] rounded-box items-center bg-base-200 p-4 flex flex-col gap-y-2 justify-start">
@@ -695,36 +737,59 @@ const RunLogComponent = ({ versionUuid }: { versionUuid?: string }) => {
       <div className="w-full h-fit bg-base-100 rounded overflow-y-auto">
         <table className="w-full table table-fixed">
           <tbody className="">
-            <tr className="align-top">
-              <td className="align-top">
-                <ReactJson
-                  src={versionRunLog?.inputs}
-                  name={false}
-                  displayDataTypes={false}
-                  displayObjectSize={false}
-                  enableClipboard={false}
-                  theme="google"
-                />
-              </td>
-              <td className="align-top">
-                {showRaw ? (
-                  versionRunLog?.raw_output
-                ) : (
-                  <ReactJson
-                    src={versionRunLog?.parsed_outputs}
-                    name={false}
-                    displayDataTypes={false}
-                    displayObjectSize={false}
-                    enableClipboard={false}
-                    theme="google"
-                  />
-                )}
-              </td>
-            </tr>
+            {runLogList?.map((log) => (
+              <RunLogComponent showRaw={showRaw} runLogData={log} />
+            ))}
           </tbody>
         </table>
       </div>
     </div>
+  );
+};
+
+const RunLogComponent = ({
+  showRaw,
+  runLogData,
+}: {
+  showRaw: boolean;
+  runLogData?: RunLog;
+}) => {
+  return (
+    <tr className="align-top">
+      <td className="align-top">
+        {runLogData?.inputs == null ? (
+          <p>None</p>
+        ) : typeof runLogData?.inputs == "string" ? (
+          <p>{runLogData?.inputs?.toString()}</p>
+        ) : (
+          <ReactJson
+            src={runLogData?.inputs as Record<string, any>}
+            name={false}
+            displayDataTypes={false}
+            displayObjectSize={false}
+            enableClipboard={false}
+            theme="google"
+          />
+        )}
+      </td>
+      <td className="align-top">
+        {showRaw ? (
+          <p>{runLogData?.raw_output}</p>
+        ) : typeof runLogData?.parsed_outputs == "string" ||
+          runLogData?.parsed_outputs == null ? (
+          <p>{runLogData?.parsed_outputs?.toString()}</p>
+        ) : (
+          <ReactJson
+            src={runLogData?.parsed_outputs as Record<string, any>}
+            name={false}
+            displayDataTypes={false}
+            displayObjectSize={false}
+            enableClipboard={false}
+            theme="google"
+          />
+        )}
+      </td>
+    </tr>
   );
 };
 

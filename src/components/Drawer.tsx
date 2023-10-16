@@ -1,6 +1,5 @@
 import EZDrawer from "react-modern-drawer";
 import "react-modern-drawer/dist/index.css";
-import classNames from "classnames";
 
 interface DrawerProps {
   open: boolean;

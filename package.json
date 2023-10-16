@@ -1,5 +1,5 @@
 {
-  "name": "fastllm",
+  "name": "promptmodel",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -34,6 +34,7 @@
     "reactflow": "^11.9.2",
     "tailwind-scrollbar-hide": "^1.1.7",
     "tsconfig": "link:../../packages/tsconfig",
+    "uuid": "^9.0.0",
     "zustand": "^4.4.2"
   },
   "devDependencies": {

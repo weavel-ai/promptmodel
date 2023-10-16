@@ -14,8 +14,6 @@ export const useChangeLog = () => {
     enabled: projectUuid != undefined && projectUuid != null,
   });
 
-  console.log(changeLogListData);
-
   return {
     changeLogListData,
   };

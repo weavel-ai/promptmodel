@@ -35,7 +35,6 @@ export function subscribeDevBranchStatus(
   devName: string,
   onUpdate: (data: any) => void
 ): RealtimeChannel {
-  console.log(projectUuid);
   const devBranchStream = supabaseClient
     .channel("any")
     .on(
@@ -49,7 +48,7 @@ export function subscribeDevBranchStatus(
         filter: `project_uuid=eq.${projectUuid}`,
       },
       (payload) => {
-        console.log("Change received!", payload);
+        // console.log("Change received!", payload);
         if (payload.new["name"] == devName) {
           onUpdate(payload.new);
         }
@@ -112,7 +111,7 @@ export async function fetchRunLogs(
       llm_module_version_uuid: moduleVersionUuid,
     },
   });
-  return res.data;
+  return res.data.run_logs;
 }
 
 export async function streamLLMModuleRun({
