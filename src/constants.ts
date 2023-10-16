@@ -16,3 +16,4 @@ export class Routes {
   // static PAST_EXAMS: string = "/past-exams"
   // static CREATE_ANSWER: string = "/create"
 }
+
