@@ -19,7 +19,13 @@ import ReactFlow, {
   Position,
 } from "reactflow";
 import { motion } from "framer-motion";
-import { CaretDown, GitBranch, Play, XCircle } from "@phosphor-icons/react";
+import {
+  CaretDown,
+  GitBranch,
+  Play,
+  Trash,
+  XCircle,
+} from "@phosphor-icons/react";
 import {
   DiffEditor,
   Editor,
@@ -39,6 +45,8 @@ import { toast } from "react-toastify";
 import ReactJson from "react-json-view";
 import { useRunLogs } from "@/hooks/dev/useRunLog";
 import { v4 as uuidv4 } from "uuid";
+import { PlusSquare } from "@phosphor-icons/react/dist/ssr";
+import { ModalPortal } from "@/components/ModalPortal";
 
 export default function Page() {
   const params = useParams();
@@ -72,8 +80,15 @@ export default function Page() {
   }, [selectedVersionUuid, versionListData]);
 
   const originalPrompts = useMemo(() => {
+    if (!modifiedPrompts) {
+      setModifiedPrompts(promptListData);
+    }
     return promptListData?.map((prompt) => prompt.content);
   }, [promptListData]);
+
+  useEffect(() => {
+    setModifiedPrompts(promptListData);
+  }, [selectedVersionUuid]);
 
   const isNewVersionReady = useMemo(() => {
     if (!createVariantOpen) return false;
@@ -218,6 +233,7 @@ export default function Page() {
     setCreateVariantOpen(true);
   }
 
+  // Run LLM call
   async function handleClickRun(isNew: boolean) {
     addRunTask(isNew ? "new" : moduleVersionData.uuid);
     const toastId = toast.loading("Running...");
@@ -225,16 +241,7 @@ export default function Page() {
     let newVersionUuid: string;
 
     if (isNew) {
-      prompts = promptListData?.map((prompt, idx) => {
-        return {
-          role: prompt.role as string,
-          step: prompt.step as number,
-          content: monaco.editor
-            ?.getDiffEditors()
-            [idx]?.getModel()
-            ?.modified?.getValue(),
-        };
-      });
+      prompts = modifiedPrompts;
     } else {
       prompts = promptListData;
     }
@@ -251,18 +258,7 @@ export default function Page() {
         (module) => module.uuid === params?.moduleUuid
       ).name,
       sampleName: null,
-      prompts: isNew
-        ? promptListData?.map((prompt, idx) => {
-            return {
-              role: prompt.role as string,
-              step: prompt.step as number,
-              content: monaco.editor
-                ?.getDiffEditors()
-                [idx]?.getModel()
-                ?.modified?.getValue(),
-            };
-          })
-        : promptListData,
+      prompts: prompts,
       model: isNew ? "gpt-3.5-turbo" : moduleVersionData.model,
       fromUuid: isNew ? moduleVersionData.uuid : null,
       uuid: isNew ? null : moduleVersionData.uuid,
@@ -351,6 +347,7 @@ export default function Page() {
                 createVariantOpen && "pr-0"
               )}
             >
+              {/* Header */}
               <div className="flex flex-row justify-between items-center gap-x-8">
                 <div className="flex flex-row w-full justify-between items-center mb-2">
                   {moduleVersionData?.candidate_version ? (
@@ -450,17 +447,37 @@ export default function Page() {
                   </div>
                 )}
               </div>
-              <motion.div className="bg-base-200 h-full w-full p-4 rounded-box overflow-auto">
-                <div className="flex flex-col h-full gap-y-2 justify-start items-start">
+              {/* Prompt editor */}
+              <motion.div className="bg-base-200 flex-grow w-full p-4 rounded-box overflow-auto">
+                <div className="flex flex-col h-full gap-y-2 justify-start items-end">
                   {promptListData?.map((prompt) =>
                     createVariantOpen ? (
-                      <PromptInputComponent
+                      <PromptDiffComponent
                         prompt={prompt}
                         setPrompts={setModifiedPrompts}
                       />
                     ) : (
                       <PromptComponent prompt={prompt} />
                     )
+                  )}
+                  {createVariantOpen &&
+                    modifiedPrompts
+                      ?.slice(promptListData?.length)
+                      .map((prompt) => (
+                        <div className="w-1/2">
+                          <PromptComponent
+                            prompt={prompt}
+                            setPrompts={setModifiedPrompts}
+                          />
+                        </div>
+                      ))}
+                  {createVariantOpen && (
+                    <div className="w-1/2 flex justify-center items-center">
+                      <NewPromptButton
+                        prompts={modifiedPrompts}
+                        setPrompts={setModifiedPrompts}
+                      />
+                    </div>
                   )}
                 </div>
               </motion.div>
@@ -509,7 +526,90 @@ export default function Page() {
   );
 }
 
-const PromptComponent = ({ prompt }) => {
+const NewPromptButton = ({ prompts, setPrompts }) => {
+  const buttonRef = useRef(null);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const isEmpty = prompts?.length === 0;
+
+  // Use useEffect to add an event listener to the document
+  useEffect(() => {
+    function handleOutsideClick(event) {
+      if (buttonRef.current && !buttonRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    // Attach the click event listener
+    document.addEventListener("mousedown", handleOutsideClick);
+    // Clean up the listener when the component is unmounted
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
+
+  return (
+    <button
+      ref={buttonRef}
+      className="relative rounded-md transition-all hover:bg-base-content/10"
+      onClick={() => {
+        setIsOpen(!isOpen);
+      }}
+    >
+      <PlusSquare size={32} weight="fill" className="text-base-content" />
+      {isOpen && (
+        <motion.div
+          initial={{
+            opacity: 0,
+            width: 0,
+            bottom: !isEmpty ? -10 : "auto",
+            top: isEmpty ? -5 : "auto",
+            left: 0,
+          }}
+          animate={{
+            opacity: isOpen ? 1 : 0,
+            width: isOpen ? "auto" : 0,
+            left: "110%",
+            bottom: !isEmpty ? 0 : "auto",
+            top: isEmpty ? 5 : "auto",
+          }}
+          className={classNames(
+            `absolute z-[99999]`,
+            "w-fit bg-base-content/10 backdrop-blur-sm rounded-xl",
+            "shadow-md shadow-base-content/10",
+            "btn-group btn-group-vertical"
+          )}
+        >
+          {["system", "user", "assistant"].map((role: string) => (
+            <button
+              className="hover:bg-base-content hover:text-base-100 rounded-xl px-2 py-1"
+              onClick={() =>
+                setPrompts((prevPrompts) => {
+                  const newPrompts = [...prevPrompts];
+                  newPrompts.push({
+                    role: role,
+                    step: newPrompts.length + 1,
+                    content: "",
+                  });
+                  return newPrompts;
+                })
+              }
+            >
+              {role.charAt(0).toUpperCase() + role.slice(1)}
+            </button>
+          ))}
+        </motion.div>
+      )}
+    </button>
+  );
+};
+
+const PromptComponent = ({
+  prompt,
+  setPrompts,
+}: {
+  prompt: Prompt;
+  setPrompts?: (prompts) => void;
+}) => {
   const [open, setOpen] = useState(true);
   const [height, setHeight] = useState(30);
   const editorRef = useRef(null);
@@ -545,19 +645,54 @@ const PromptComponent = ({ prompt }) => {
         <p className="text-base-content font-semibold">
           #{prompt.step}. {prompt.role}
         </p>
-        <CaretDown
-          className={classNames(
-            "text-base-content transition-transform",
-            open && "transform rotate-180"
-          )}
-        />
+        <div className="flex flex-row gap-x-1 items-center">
+          <button
+            className="p-2 group"
+            onClick={() => {
+              setPrompts((prevPrompts) => {
+                const newPrompts = [...prevPrompts];
+                newPrompts.splice(prompt.step - 1, 1);
+                return newPrompts;
+              });
+            }}
+          >
+            <Trash
+              size={24}
+              className="text-base-content transition-all group-hover:text-red-400 hover:font-bold"
+            />
+          </button>
+          <CaretDown
+            size={24}
+            className={classNames(
+              "text-base-content transition-transform shrink-0",
+              open && "transform rotate-180"
+            )}
+          />
+        </div>
       </div>
       {open && (
         <Editor
           value={prompt.content}
+          onChange={(value) => {
+            if (setPrompts) {
+              setPrompts((prevPrompts) => {
+                const newPrompts = [...prevPrompts];
+                if (newPrompts.length < prompt.step) {
+                  newPrompts.push({
+                    role: prompt.role,
+                    step: prompt.step,
+                    content: value,
+                  });
+                } else {
+                  newPrompts[prompt.step - 1].content = value;
+                }
+                return newPrompts;
+              });
+            }
+          }}
           theme="vs-dark"
           options={{
-            readOnly: true,
+            readOnly: setPrompts == undefined,
             scrollBeyondLastLine: false,
             wordWrap: "on",
             scrollbar: {
@@ -573,7 +708,7 @@ const PromptComponent = ({ prompt }) => {
   );
 };
 
-const PromptInputComponent = ({ prompt, setPrompts }) => {
+const PromptDiffComponent = ({ prompt, setPrompts }) => {
   const [open, setOpen] = useState(true);
   const [text, setText] = useState(prompt.content);
   const [height, setHeight] = useState(30);
