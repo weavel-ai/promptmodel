@@ -39,6 +39,7 @@ import { toast } from "react-toastify";
 import ReactJson from "react-json-view";
 import { useRunLogs } from "@/hooks/dev/useRunLog";
 import { v4 as uuidv4 } from "uuid";
+import { ModelSelector } from "@/components/ModelSelector";
 
 export default function Page() {
   const params = useParams();
@@ -48,6 +49,7 @@ export default function Page() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [createVariantOpen, setCreateVariantOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo");
   const {
     newVersionUuidCache,
     newPromptCache,
@@ -263,7 +265,7 @@ export default function Page() {
             };
           })
         : promptListData,
-      model: isNew ? "gpt-3.5-turbo" : moduleVersionData.model,
+      model: isNew ? selectedModel : moduleVersionData.model,
       fromUuid: isNew ? moduleVersionData.uuid : null,
       uuid: isNew ? null : moduleVersionData.uuid,
       onNewData: (data) => {
@@ -436,6 +438,10 @@ export default function Page() {
                         <u>Prompt V{moduleVersionData?.candidate_version}</u>
                       </p>
                     </div>
+                    <ModelSelector
+                      modelName={selectedModel}
+                      setModel={setSelectedModel}
+                    />
                     <button
                       className={classNames(
                         "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
