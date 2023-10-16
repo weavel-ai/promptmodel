@@ -1,7 +1,7 @@
 "use client";
 
 import { useSupabaseClient } from "@/apis/base";
-import { fetchDevBranch } from "@/apis/dev";
+import { fetchDevBranch, subscribeDevBranchStatus } from "@/apis/dev";
 import { Warning } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, usePathname, useRouter } from "next/navigation";
@@ -14,12 +14,15 @@ enum BranchStatus {
   LOADING,
 }
 
+const MAX_REFETCH_COUNT = 20;
+
 export default function Page() {
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
   const { createSupabaseClient } = useSupabaseClient();
   const [status, setStatus] = useState<BranchStatus>(BranchStatus.LOADING);
+  const [refetchCount, setRefetchCount] = useState<number>(0);
 
   const { data } = useQuery({
     queryKey: ["devBranch", params?.devName as string],
@@ -29,6 +32,9 @@ export default function Page() {
         params?.projectUuid as string,
         params?.devName as string
       ),
+    onSettled: (data) => {
+      setRefetchCount(refetchCount + 1);
+    },
     onSuccess: (data) => {
       if (data && data?.length > 0) {
         if (data[0].online) {
@@ -41,6 +47,10 @@ export default function Page() {
         setStatus(BranchStatus.NOT_FOUND);
       }
     },
+    refetchInterval:
+      status == BranchStatus.OFFLINE || refetchCount < MAX_REFETCH_COUNT
+        ? 1000
+        : false,
   });
 
   if (status == BranchStatus.NOT_FOUND) {
