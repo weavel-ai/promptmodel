@@ -209,6 +209,36 @@ async def list_versions(
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc 
 
+@router.get("/list_samples")
+async def list_samples(
+    project_uuid:str, dev_name:str,
+):
+    try:
+        # Find local server websocket
+        dev_branch = (
+            supabase.table("dev_branch")
+            .select("cli_access_key")
+            .eq("name", dev_name)
+            .eq("project_uuid", project_uuid)
+            .execute()
+            .data
+        )
+        if len(dev_branch) == 0:
+            raise ValueError("There is no dev_branch")
+        
+        cli_access_key = dev_branch[0]["cli_access_key"]
+        response = await websocket_manager.request(cli_access_key, LocalTask.LIST_SAMPLES, {})
+        if not response:
+            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
+        return JSONResponse(response, status_code=HTTP_200_OK)
+        
+    except ValueError as ve:
+        logger.error(ve)
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST) from ve
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc 
+
 @router.get("/get_prompts")
 async def get_prompts(
     project_uuid:str, dev_name:str, llm_module_version_uuid:str
