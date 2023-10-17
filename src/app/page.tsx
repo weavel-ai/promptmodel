@@ -237,7 +237,7 @@ export default function Home() {
           {!isMobile && <SummarizationPromptCode />}
           {
             <div className={classNames(isMobile && "h-fit")}>
-              <PromptlabsCode isMobile={isMobile} />
+              <PromptmodelCode isMobile={isMobile} />
             </div>
           }
           <motion.div
@@ -482,7 +482,7 @@ const SummarizationPromptCode = () => {
   );
 };
 
-const PromptlabsCode = ({ isMobile }) => {
+const PromptmodelCode = ({isMobile}) => {
   return (
     <div
       style={{ perspective: "1000px" }}

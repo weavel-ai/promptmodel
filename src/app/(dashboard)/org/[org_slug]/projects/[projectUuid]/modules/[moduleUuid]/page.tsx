@@ -244,7 +244,7 @@ const PromptComponent = ({ prompt }) => {
         )}
         onClick={() => setOpen(!open)}
       >
-        <p className="text-base-content font-semibold">
+        <p className="text-base-content font-medium">
           #{prompt.step}. {prompt.role}
         </p>
         <CaretDown

@@ -5,9 +5,12 @@ import { useDevBranch } from "@/hooks/useDevBranch";
 import { useProject } from "@/hooks/useProject";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useEffect } from "react";
 
 export default function Page() {
+  const params = useParams();
   const { projectData } = useProject();
   const { devBranchListData } = useDevBranch();
   const { changeLogListData } = useChangeLog();
@@ -43,7 +46,10 @@ export default function Page() {
             </p>
             {/* TODO */}
             <div className="w-full h-fit">
-              <div className="w-full flex flex-col gap-y-2">
+              <Link
+                href={`/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${devBranchListData?.[0]?.name}`}
+                className="w-full flex flex-col gap-y-2"
+              >
                 {devBranchListData?.map((branch) => {
                   return (
                     <div
@@ -61,7 +67,7 @@ export default function Page() {
                     </div>
                   );
                 })}
-              </div>
+              </Link>
             </div>
           </div>
           <div className="w-full h-fit flex flex-col">
