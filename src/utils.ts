@@ -1,3 +1,7 @@
+export function cloneDeep(obj: any): any {
+  return JSON.parse(JSON.stringify(obj));
+}
+
 export function parseMultipleJson(response: string): Record<string, any>[] {
   const jsonObjects: Record<string, any>[] = [];
   let braceCount = 0;

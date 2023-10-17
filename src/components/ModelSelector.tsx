@@ -86,18 +86,13 @@ export const ModelSelector = (props: ModelSelectorProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const [inputValue, setInputValue] = useState<string>();
+  const [modalPosition, setModalPosition] = useState({
+    top: 0,
+    left: 0,
+  });
   const selectorRef = useRef(null);
   const optionsRef = useRef(null);
   const isOpenRef = useRef(isOpen); // Create a ref to hold the isOpen state
-
-  const modalPosition = useMemo(() => {
-    if (!selectorRef.current) return {};
-    const selectorRect = selectorRef.current?.getBoundingClientRect();
-    return {
-      top: selectorRect.top + selectorRect.height,
-      left: selectorRect.left,
-    };
-  }, [selectorRef.current]);
 
   const filteredOptions = useMemo(() => {
     if (!inputValue) return SUPPORTED_MODELS;
@@ -116,7 +111,7 @@ export const ModelSelector = (props: ModelSelectorProps) => {
       if (optionsRef.current && !optionsRef.current.contains(event.target)) {
         if (isOpenRef.current) {
           setIsOpen(false);
-        } else {
+          console.log("outside click");
         }
       }
     }
@@ -132,16 +127,25 @@ export const ModelSelector = (props: ModelSelectorProps) => {
     return SUPPORTED_MODELS.find((model) => model.name === props.modelName);
   }, [props.modelName]);
 
+  function handleClickOpen() {
+    if (!isOpen) {
+      const selectorRect = selectorRef.current?.getBoundingClientRect();
+      setModalPosition({
+        top: selectorRect.top + selectorRect.height,
+        left: selectorRect.left,
+      });
+      setIsOpen(true);
+    }
+  }
+
   return (
     <div
       ref={selectorRef}
       className={classNames(
         "flex flex-row justify-between items-center p-2 rounded-md bg-base-content/10 text-base-content cursor-pointer",
-        "transition-all hover:bg-base-content/20 max-w-[10rem]"
+        "transition-all hover:bg-base-content/20 max-w-[11rem]"
       )}
-      onClick={() => {
-        if (!isOpen) setIsOpen(true);
-      }}
+      onClick={handleClickOpen}
     >
       <ReactSVG
         src={PROVIDER_LOGO_PATHS[selectedModel.provider]}

@@ -48,6 +48,7 @@ import { v4 as uuidv4 } from "uuid";
 import { PlusSquare } from "@phosphor-icons/react/dist/ssr";
 import { ModalPortal } from "@/components/ModalPortal";
 import { ModelSelector } from "@/components/ModelSelector";
+import { cloneDeep } from "@/utils";
 
 export default function Page() {
   const params = useParams();
@@ -75,6 +76,10 @@ export default function Page() {
   const { promptListData } = useModuleVersionDetails(selectedVersionUuid);
   const { refetchRunLogData } = useRunLogs(selectedVersionUuid);
 
+  useEffect(() => {
+    setSelectedVersionUuid(null);
+  }, []);
+
   const moduleVersionData = useMemo(() => {
     return versionListData?.find(
       (version) => version.uuid === selectedVersionUuid
@@ -82,15 +87,21 @@ export default function Page() {
   }, [selectedVersionUuid, versionListData]);
 
   const originalPrompts = useMemo(() => {
-    if (!modifiedPrompts) {
-      setModifiedPrompts(promptListData);
+    if (!modifiedPrompts && promptListData?.length > 0) {
+      setModifiedPrompts(cloneDeep(promptListData));
     }
     return promptListData?.map((prompt) => prompt.content);
   }, [promptListData]);
 
   useEffect(() => {
-    setModifiedPrompts(promptListData);
-  }, [selectedVersionUuid]);
+    if (promptListData?.length > 0) {
+      setModifiedPrompts(cloneDeep(promptListData));
+    }
+  }, [selectedVersionUuid, promptListData]);
+
+  useEffect(() => {
+    console.log(modifiedPrompts);
+  }, [modifiedPrompts]);
 
   const isNewVersionReady = useMemo(() => {
     if (!createVariantOpen) return false;
@@ -237,7 +248,7 @@ export default function Page() {
 
   // Run LLM call
   async function handleClickRun(isNew: boolean) {
-    addRunTask(isNew ? "new" : moduleVersionData.uuid);
+    // addRunTask(isNew ? "new" : moduleVersionData.uuid);
     const toastId = toast.loading("Running...");
     let prompts: Prompt[];
     let newVersionUuid: string;
@@ -262,14 +273,18 @@ export default function Page() {
       sampleName: null,
       prompts: prompts,
       model: isNew ? selectedModel : moduleVersionData.model,
-      fromUuid: isNew ? moduleVersionData.uuid : null,
-      uuid: isNew ? null : moduleVersionData.uuid,
+      fromUuid: isNew ? moduleVersionData?.uuid ?? null : null,
+      uuid: isNew ? null : moduleVersionData?.uuid,
       onNewData: (data) => {
+        console.log(data);
         switch (data?.status) {
           case "completed":
-            updatePrompts(moduleVersionData.uuid, prompts);
+            // updatePrompts(moduleVersionData.uuid, prompts);
             if (isNew) {
               refetchVersionListData();
+              if (!moduleVersionData?.uuid) {
+                setSelectedVersionUuid(newVersionUuidCache);
+              }
             }
             refetchRunLogData();
             toast.update(toastId, {
@@ -333,6 +348,51 @@ export default function Page() {
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
       </ReactFlow>
+      {/* Input for initial version (when versionListData is empty) */}
+      <Drawer
+        open={versionListData?.length == 0}
+        direction="right"
+        classNames="!w-[100vw] px-4 flex flex-col justify-start items-center pb-4"
+        duration={200}
+      >
+        <div className="flex flex-col justify-start w-full max-w-4xl h-full">
+          <div className="flex flex-row justify-between items-center mb-2">
+            <p className="text-2xl font-bold">Prompt V1</p>
+            <div className="flex flex-row w-fit justify-end items-center gap-x-2">
+              <ModelSelector
+                modelName={selectedModel}
+                setModel={setSelectedModel}
+              />
+              <button
+                className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20"
+                onClick={() => handleClickRun(true)}
+                disabled={
+                  !(modifiedPrompts?.length > 0) ||
+                  modifiedPrompts?.every((prompt) => prompt.content === "")
+                }
+              >
+                <p className="text-base-content">Run</p>
+                <Play className="text-base-content" size={20} weight="fill" />
+              </button>
+            </div>
+          </div>
+          <div className="bg-base-200 flex-grow w-full p-4 rounded-box overflow-auto mb-4">
+            <div className="flex flex-col h-full gap-y-2 justify-start items-center">
+              {modifiedPrompts?.map((prompt) => (
+                <PromptComponent
+                  prompt={prompt}
+                  setPrompts={setModifiedPrompts}
+                />
+              ))}
+              <NewPromptButton
+                prompts={modifiedPrompts}
+                setPrompts={setModifiedPrompts}
+              />
+            </div>
+          </div>
+          <RunLogSection versionUuid="new" />
+        </div>
+      </Drawer>
       <Drawer
         open={selectedVersionUuid != null}
         direction="right"
@@ -435,28 +495,34 @@ export default function Page() {
                         <u>Prompt V{moduleVersionData?.candidate_version}</u>
                       </p>
                     </div>
-                    <ModelSelector
-                      modelName={selectedModel}
-                      setModel={setSelectedModel}
-                    />
-                    <button
-                      className={classNames(
-                        "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
-                        "disabled:bg-neutral-content"
-                      )}
-                      onClick={() => handleClickRun(true)}
-                      disabled={!isNewVersionReady}
-                    >
-                      <p className="text-base-100">Run</p>
-                      <Play className="text-base-100" size={20} weight="fill" />
-                    </button>
+                    <div className="flex flex-row justify-end gap-x-3 items-center">
+                      <ModelSelector
+                        modelName={selectedModel}
+                        setModel={setSelectedModel}
+                      />
+                      <button
+                        className={classNames(
+                          "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
+                          "disabled:bg-neutral-content"
+                        )}
+                        onClick={() => handleClickRun(true)}
+                        disabled={!isNewVersionReady}
+                      >
+                        <p className="text-base-100">Run</p>
+                        <Play
+                          className="text-base-100"
+                          size={20}
+                          weight="fill"
+                        />
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
               {/* Prompt editor */}
               <motion.div className="bg-base-200 flex-grow w-full p-4 rounded-box overflow-auto">
                 <div className="flex flex-col h-full gap-y-2 justify-start items-end">
-                  {promptListData?.map((prompt) =>
+                  {promptListData?.map((prompt, idx) =>
                     createVariantOpen ? (
                       <PromptDiffComponent
                         prompt={prompt}
@@ -536,7 +602,7 @@ const NewPromptButton = ({ prompts, setPrompts }) => {
   const buttonRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
 
-  const isEmpty = prompts?.length === 0;
+  const isEmpty = !(prompts?.length > 0);
 
   // Use useEffect to add an event listener to the document
   useEffect(() => {
@@ -554,14 +620,20 @@ const NewPromptButton = ({ prompts, setPrompts }) => {
   }, []);
 
   return (
-    <button
+    <motion.button
       ref={buttonRef}
-      className="relative rounded-md transition-all hover:bg-base-content/10"
+      className="relative group"
       onClick={() => {
-        setIsOpen(!isOpen);
+        setIsOpen(true);
       }}
+      onMouseEnter={() => setIsOpen(true)}
+      onMouseLeave={() => setIsOpen(false)}
     >
-      <PlusSquare size={32} weight="fill" className="text-base-content" />
+      <PlusSquare
+        size={36}
+        weight="fill"
+        className="text-base-content hover:text-base-content/80 hover:scale-110 active:scale-95 transition-all m-1"
+      />
       {isOpen && (
         <motion.div
           initial={{
@@ -574,20 +646,20 @@ const NewPromptButton = ({ prompts, setPrompts }) => {
           animate={{
             opacity: isOpen ? 1 : 0,
             width: isOpen ? "auto" : 0,
-            left: "110%",
+            left: "100%",
             bottom: !isEmpty ? 0 : "auto",
             top: isEmpty ? 5 : "auto",
           }}
           className={classNames(
             `absolute z-[99999]`,
-            "w-fit bg-base-content/10 backdrop-blur-sm rounded-xl",
+            "w-fit bg-base-content/10 backdrop-blur-sm rounded-lg",
             "shadow-md shadow-base-content/10",
             "btn-group btn-group-vertical"
           )}
         >
           {["system", "user", "assistant"].map((role: string) => (
             <button
-              className="hover:bg-base-content hover:text-base-100 rounded-xl px-2 py-1"
+              className="text-sm text-start hover:bg-base-content hover:text-base-100 rounded-lg px-3 py-2"
               onClick={() =>
                 setPrompts((prevPrompts) => {
                   const newPrompts = [...prevPrompts];
@@ -605,7 +677,7 @@ const NewPromptButton = ({ prompts, setPrompts }) => {
           ))}
         </motion.div>
       )}
-    </button>
+    </motion.button>
   );
 };
 
@@ -648,7 +720,7 @@ const PromptComponent = ({
         )}
         onClick={() => setOpen(!open)}
       >
-        <p className="text-base-content font-semibold">
+        <p className="text-base-content font-medium">
           #{prompt.step}. {prompt.role}
         </p>
         <div className="flex flex-row gap-x-1 items-center">
@@ -656,9 +728,13 @@ const PromptComponent = ({
             className="p-2 group"
             onClick={() => {
               setPrompts((prevPrompts) => {
-                const newPrompts = [...prevPrompts];
-                newPrompts.splice(prompt.step - 1, 1);
-                return newPrompts;
+                const newPrompts = prevPrompts.filter(
+                  (p) => p.step !== prompt.step
+                );
+                return newPrompts.map((p, index) => ({
+                  ...p,
+                  step: index + 1,
+                }));
               });
             }}
           >
@@ -716,7 +792,6 @@ const PromptComponent = ({
 
 const PromptDiffComponent = ({ prompt, setPrompts }) => {
   const [open, setOpen] = useState(true);
-  const [text, setText] = useState(prompt.content);
   const [height, setHeight] = useState(30);
   const originalEditorRef = useRef(null);
   const modifiedEditorRef = useRef(null);
@@ -784,7 +859,7 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
         <DiffEditor
           className="gap-x-8"
           original={prompt.content}
-          modified={text}
+          modified={prompt.content}
           theme="vs-dark"
           loading={<div className="loading loading-xs loading-dots" />}
           onMount={handleEditorDidMount}
@@ -915,7 +990,7 @@ const RunLogComponent = ({
       </td>
       <td className="align-top">
         {showRaw ? (
-          <p>{runLogData?.raw_output}</p>
+          <p className="whitespace-break-spaces">{runLogData?.raw_output}</p>
         ) : typeof runLogData?.parsed_outputs == "string" ||
           runLogData?.parsed_outputs == null ? (
           <p>{runLogData?.parsed_outputs?.toString()}</p>
