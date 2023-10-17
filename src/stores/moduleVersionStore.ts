@@ -21,6 +21,7 @@ type Actions = {
   setSelectedVersionUuid: (version: string) => void;
   updateRunLogs: (version: string, uuid: string, runLog: RunLog) => void;
   updatePrompts: (version: string, prompts: Prompt[]) => void;
+  removeRunLog: (version: string, uuid: string) => void;
   addRunTask: (version: string | "new") => void;
   removeRunTask: (version: string | "new") => void;
   setNewVersionUuidCache: (uuid: string) => void;
@@ -51,8 +52,12 @@ export const useModuleVersionStore = create<Store & Actions>((set) => ({
   },
   removeRunLog: (version, uuid) => {
     set((state) => {
-      const { [uuid]: _, ...rest } = state.runLogs;
-      return { runLogs: rest };
+      // Remove uuid from runLogs
+      const runLogs = { ...state.runLogs };
+      delete runLogs[version][uuid];
+      return {
+        runLogs,
+      };
     });
   },
   updatePrompts: (version, prompts) => {

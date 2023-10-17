@@ -47,8 +47,10 @@ import { useRunLogs } from "@/hooks/dev/useRunLog";
 import { v4 as uuidv4 } from "uuid";
 import { PlusSquare } from "@phosphor-icons/react/dist/ssr";
 import { ModalPortal } from "@/components/ModalPortal";
-import { ModelSelector } from "@/components/ModelSelector";
+import { ModelDisplay, ModelSelector } from "@/components/ModelSelector";
 import { cloneDeep } from "@/utils";
+import { SampleSelector } from "@/components/SampleSelector";
+import { EMPTY_INPUTS_LABEL, useSamples } from "@/hooks/dev/useSample";
 
 export default function Page() {
   const params = useParams();
@@ -59,6 +61,7 @@ export default function Page() {
   const [edges, setEdges] = useState([]);
   const [createVariantOpen, setCreateVariantOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo");
+  const [selectedSample, setSelectedSample] = useState<string>();
   const {
     newVersionUuidCache,
     newPromptCache,
@@ -66,6 +69,7 @@ export default function Page() {
     addRunTask,
     updateRunLogs,
     updatePrompts,
+    removeRunLog,
     setSelectedVersionUuid,
     setNewVersionUuidCache,
     setNewPromptCache,
@@ -75,6 +79,7 @@ export default function Page() {
   const [modifiedPrompts, setModifiedPrompts] = useState<Prompt[]>([]);
   const { promptListData } = useModuleVersionDetails(selectedVersionUuid);
   const { refetchRunLogData } = useRunLogs(selectedVersionUuid);
+  const { refetchSampleList } = useSamples();
 
   useEffect(() => {
     setSelectedVersionUuid(null);
@@ -145,6 +150,7 @@ export default function Page() {
           if (data?.sync == false) {
             const toastId = toast.loading("Syncing...");
             await refetchVersionListData();
+            await refetchSampleList();
             toast.dismiss(toastId);
           }
         }
@@ -270,13 +276,12 @@ export default function Page() {
       moduleName: moduleListData?.find(
         (module) => module.uuid === params?.moduleUuid
       ).name,
-      sampleName: null,
+      sampleName: selectedSample == EMPTY_INPUTS_LABEL ? null : selectedSample,
       prompts: prompts,
       model: isNew ? selectedModel : moduleVersionData.model,
       fromUuid: isNew ? moduleVersionData?.uuid ?? null : null,
       uuid: isNew ? null : moduleVersionData?.uuid,
-      onNewData: (data) => {
-        console.log(data);
+      onNewData: async (data) => {
         switch (data?.status) {
           case "completed":
             // updatePrompts(moduleVersionData.uuid, prompts);
@@ -286,7 +291,8 @@ export default function Page() {
                 setSelectedVersionUuid(newVersionUuidCache);
               }
             }
-            refetchRunLogData();
+            await refetchRunLogData();
+            removeRunLog(isNew ? "new" : moduleVersionData?.uuid, uuid);
             toast.update(toastId, {
               render: "Completed",
               type: "success",
@@ -295,8 +301,10 @@ export default function Page() {
             });
             break;
           case "failed":
+            await refetchRunLogData();
+            removeRunLog(isNew ? "new" : moduleVersionData?.uuid, uuid);
             toast.update(toastId, {
-              render: `${data?.log}`,
+              render: data?.log,
               type: "error",
               autoClose: 2000,
               isLoading: false,
@@ -359,6 +367,10 @@ export default function Page() {
           <div className="flex flex-row justify-between items-center mb-2">
             <p className="text-2xl font-bold">Prompt V1</p>
             <div className="flex flex-row w-fit justify-end items-center gap-x-2">
+              <SampleSelector
+                sampleName={selectedSample}
+                setSample={setSelectedSample}
+              />
               <ModelSelector
                 modelName={selectedModel}
                 setModel={setSelectedModel}
@@ -368,7 +380,8 @@ export default function Page() {
                 onClick={() => handleClickRun(true)}
                 disabled={
                   !(modifiedPrompts?.length > 0) ||
-                  modifiedPrompts?.every((prompt) => prompt.content === "")
+                  modifiedPrompts?.every((prompt) => prompt.content === "") ||
+                  !selectedSample
                 }
               >
                 <p className="text-base-content">Run</p>
@@ -446,19 +459,22 @@ export default function Page() {
                     </div>
                   )}
                   {createVariantOpen ? (
-                    <button
-                      className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20"
-                      onClick={() => handleClickRun(false)}
-                    >
-                      <p className="text-base-content">Run</p>
-                      <Play
-                        className="text-base-content"
-                        size={20}
-                        weight="fill"
-                      />
-                    </button>
+                    <div className="flex flex-row gap-x-3">
+                      <ModelDisplay modelName={moduleVersionData?.model} />
+                      <button
+                        className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20"
+                        onClick={() => handleClickRun(false)}
+                      >
+                        <p className="text-base-content">Run</p>
+                        <Play
+                          className="text-base-content"
+                          size={20}
+                          weight="fill"
+                        />
+                      </button>
+                    </div>
                   ) : (
-                    <div className="flex flex-row gap-x-2">
+                    <div className="flex flex-row gap-x-3">
                       <button
                         className="flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
                         onClick={handleClickCreateVariant}
@@ -496,6 +512,10 @@ export default function Page() {
                       </p>
                     </div>
                     <div className="flex flex-row justify-end gap-x-3 items-center">
+                      <SampleSelector
+                        sampleName={selectedSample}
+                        setSample={setSelectedSample}
+                      />
                       <ModelSelector
                         modelName={selectedModel}
                         setModel={setSelectedModel}

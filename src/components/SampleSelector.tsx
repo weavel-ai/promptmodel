@@ -1,105 +1,17 @@
+import { useSamples } from "@/hooks/dev/useSample";
+import { CaretDown } from "@phosphor-icons/react";
 import classNames from "classnames";
-import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ModalPortal } from "./ModalPortal";
-import { CaretDown } from "@phosphor-icons/react";
 import { motion } from "framer-motion";
-import { ReactSVG } from "react-svg";
 
-interface ModelSelectorProps {
-  modelName: string;
-  setModel: (name: string) => void;
+interface SampleSelectorProps {
+  sampleName: string;
+  setSample: (name: string) => void;
 }
 
-type Model = {
-  name: string;
-  provider: string;
-  description?: string;
-};
-
-const SUPPORTED_MODELS: Model[] = [
-  {
-    name: "gpt-3.5-turbo",
-    provider: "OpenAI",
-  },
-  {
-    name: "gpt-3.5-turbo-16k",
-    provider: "OpenAI",
-  },
-  {
-    name: "gpt-3.5-turbo-16k-0613",
-    provider: "OpenAI",
-  },
-  {
-    name: "gpt-4",
-    provider: "OpenAI",
-  },
-  {
-    name: "gpt-4-0613",
-    provider: "OpenAI",
-  },
-  {
-    name: "claude-instant-1",
-    provider: "Anthropic",
-  },
-  {
-    name: "claude-instant-1.2",
-    provider: "Anthropic",
-  },
-  {
-    name: "claude-2",
-    provider: "Anthropic",
-  },
-  {
-    name: "command",
-    provider: "Cohere",
-  },
-  {
-    name: "command-light",
-    provider: "Cohere",
-  },
-  {
-    name: "command-medium",
-    provider: "Cohere",
-  },
-  {
-    name: "command-medium-beta",
-    provider: "Cohere",
-  },
-  {
-    name: "command-xlarge-beta",
-    provider: "Cohere",
-  },
-  {
-    name: "command-nightly",
-    provider: "Cohere",
-  },
-];
-
-const PROVIDER_LOGO_PATHS: Record<string, string> = {
-  OpenAI: "/logos/openai-logo.svg",
-  Anthropic: "/logos/anthropic-logo.svg",
-  Cohere: "/logos/cohere-logo.svg",
-};
-
-export const ModelDisplay = ({ modelName }) => {
-  const model = useMemo(
-    () => SUPPORTED_MODELS.find((model) => model.name === modelName),
-    [modelName]
-  );
-
-  return (
-    <div className="p-2 flex flex-row gap-x-2 items-center justify-between bg-base-content/10 rounded-md max-w-[11rem]">
-      <ReactSVG
-        src={PROVIDER_LOGO_PATHS[model?.provider]}
-        className="text-base-content w-5 h-5 flex-none"
-      />
-      <p className="truncate text-sm flex-grow">{model?.name}</p>
-    </div>
-  );
-};
-
-export const ModelSelector = (props: ModelSelectorProps) => {
+export const SampleSelector = (props: SampleSelectorProps) => {
+  const { sampleList } = useSamples();
   const [isOpen, setIsOpen] = useState(false);
 
   const [inputValue, setInputValue] = useState<string>();
@@ -112,11 +24,12 @@ export const ModelSelector = (props: ModelSelectorProps) => {
   const isOpenRef = useRef(isOpen); // Create a ref to hold the isOpen state
 
   const filteredOptions = useMemo(() => {
-    if (!inputValue) return SUPPORTED_MODELS;
-    return SUPPORTED_MODELS.filter((model: Model) =>
-      model.name.includes(inputValue?.toLowerCase())
+    if (!sampleList) return [];
+    if (!inputValue) return sampleList;
+    return sampleList.filter((sample: any) =>
+      sample.name?.includes(inputValue?.toLowerCase())
     );
-  }, [inputValue]);
+  }, [inputValue, sampleList]);
 
   useEffect(() => {
     isOpenRef.current = isOpen; // Always keep it updated with the latest state
@@ -132,7 +45,6 @@ export const ModelSelector = (props: ModelSelectorProps) => {
       ) {
         if (isOpenRef.current) {
           setIsOpen(false);
-          console.log("outside click");
         }
       }
     }
@@ -144,9 +56,9 @@ export const ModelSelector = (props: ModelSelectorProps) => {
     };
   }, []);
 
-  const selectedModel = useMemo(() => {
-    return SUPPORTED_MODELS.find((model) => model.name === props.modelName);
-  }, [props.modelName]);
+  const selectedSample = useMemo(() => {
+    return sampleList?.find((sample) => sample.name === props.sampleName);
+  }, [props.sampleName, sampleList]);
 
   function handleClickOpen() {
     if (!isOpen) {
@@ -168,11 +80,9 @@ export const ModelSelector = (props: ModelSelectorProps) => {
       )}
       onClick={handleClickOpen}
     >
-      <ReactSVG
-        src={PROVIDER_LOGO_PATHS[selectedModel.provider]}
-        className="text-base-content w-5 h-5 flex-none"
-      />
-      <p className="truncate text-sm flex-grow mx-2">{selectedModel.name}</p>
+      <p className="truncate text-sm flex-grow mx-2">
+        {selectedSample?.name ?? "No inputs"}
+      </p>
       <CaretDown size={20} className="flex-none" />
       {/* Options */}
       {isOpen && (
@@ -199,7 +109,7 @@ export const ModelSelector = (props: ModelSelectorProps) => {
           >
             <input
               type="text"
-              placeholder="Search models..."
+              placeholder="Search input samples..."
               autoFocus
               className={classNames(
                 "input rounded-t-xl rounded-b-none focus:outline-none bg-base-100 w-full text-neutral-content"
@@ -213,27 +123,23 @@ export const ModelSelector = (props: ModelSelectorProps) => {
               <div className="flex flex-col w-full h-full bg-base-100/70 backdrop-blur-sm">
                 {filteredOptions?.length === 0 && (
                   <div className="flex flex-col items-center justify-center flex-grow py-8">
-                    <p className="text-base-content">No models found.</p>
+                    <p className="text-base-content">No samples found.</p>
                   </div>
                 )}
-                {filteredOptions?.map((modelOption: Model, index) => {
+                {filteredOptions?.map((sampleOption: any, index) => {
                   return (
                     <div
                       key={index}
                       className={classNames(
                         "flex flex-row items-center gap-x-2 cursor-pointer text-base-content text-sm",
-                        "transition-all hover:bg-white/20 rounded-md p-2"
+                        "transition-all hover:bg-white/20 rounded-md py-2 px-4"
                       )}
                       onClick={() => {
-                        props.setModel(modelOption.name);
+                        props.setSample(sampleOption.name);
                         setIsOpen(false);
                       }}
                     >
-                      <ReactSVG
-                        src={PROVIDER_LOGO_PATHS[modelOption.provider]}
-                        className="text-base-content !w-5 !h-5 flex-shrink-0"
-                      />
-                      <p>{modelOption.name}</p>
+                      <p>{sampleOption.name}</p>
                     </div>
                   );
                 })}
