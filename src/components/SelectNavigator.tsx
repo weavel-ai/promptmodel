@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { ModalPortal } from "./ModalPortal";
 
 type LinkDisplay = {
   label: string;
@@ -72,42 +73,48 @@ export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
         </button>
       </div>
       {/* Options */}
-      {options?.length > 0 && (
-        <motion.div
-          ref={optionsRef}
-          initial={{
-            opacity: 0,
-            height: 0,
-          }}
-          animate={{
-            opacity: showOptions ? 1 : 0,
-            height: showOptions ? "auto" : 0,
-          }}
-          className={classNames(
-            `fixed top-[${optionsPosition?.top}px] left-[${optionsPosition?.left}px]`,
-            "mt-2 w-fit bg-[#111]/70 backdrop-blur-sm rounded-2xl p-2 z-[100]",
-            "shadow-lg shadow-black/30",
-            "max-h-96 overflow-auto"
-          )}
-        >
-          <div className="flex flex-col h-full">
-            {options?.map((optionValue: LinkDisplay, index) => {
-              return (
-                <Link
-                  key={index}
-                  href={optionValue.href}
-                  onClick={() => setShowOptions(false)}
-                  className={classNames(
-                    "flex flex-row items-center gap-x-2 cursor-pointer",
-                    "transition-all hover:bg-white/20 rounded-md p-2"
-                  )}
-                >
-                  <p className="text-sm text-white">{optionValue.label}</p>
-                </Link>
-              );
-            })}
-          </div>
-        </motion.div>
+      {options?.length > 0 && showOptions && (
+        <ModalPortal>
+          <motion.div
+            ref={optionsRef}
+            initial={{
+              opacity: 0,
+              height: 0,
+              top: optionsPosition?.top + 16,
+              left: optionsPosition?.left,
+            }}
+            animate={{
+              opacity: showOptions ? 1 : 0,
+              height: showOptions ? "auto" : 0,
+              top: optionsPosition?.top + 4,
+              left: optionsPosition?.left,
+            }}
+            className={classNames(
+              `fixed z-[99999]`,
+              "mt-2 w-fit bg-[#111]/70 backdrop-blur-sm rounded-2xl p-2",
+              "shadow-lg shadow-black/30",
+              "max-h-96 overflow-auto"
+            )}
+          >
+            <div className="flex flex-col h-full">
+              {options?.map((optionValue: LinkDisplay, index) => {
+                return (
+                  <Link
+                    key={index}
+                    href={optionValue.href}
+                    onClick={() => setShowOptions(false)}
+                    className={classNames(
+                      "flex flex-row items-center gap-x-2 cursor-pointer",
+                      "transition-all hover:bg-white/20 rounded-md p-2"
+                    )}
+                  >
+                    <p className="text-sm text-white">{optionValue.label}</p>
+                  </Link>
+                );
+              })}
+            </div>
+          </motion.div>
+        </ModalPortal>
       )}
     </div>
   );

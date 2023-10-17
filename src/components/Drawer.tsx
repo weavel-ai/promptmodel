@@ -7,6 +7,7 @@ interface DrawerProps {
   children: React.ReactNode;
   onClose?: () => void;
   classNames?: string;
+  duration?: number;
 }
 
 export const Drawer = ({
@@ -15,6 +16,7 @@ export const Drawer = ({
   children,
   onClose,
   classNames,
+  duration,
 }: DrawerProps) => {
   return (
     <EZDrawer
@@ -31,6 +33,7 @@ export const Drawer = ({
         marginTop: "3rem",
         height: "calc(100% - 3rem)",
       }}
+      duration={duration}
     >
       {children}
     </EZDrawer>
