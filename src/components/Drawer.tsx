@@ -8,6 +8,7 @@ interface DrawerProps {
   onClose?: () => void;
   classNames?: string;
   duration?: number;
+  style?: React.CSSProperties;
 }
 
 export const Drawer = ({
@@ -17,6 +18,7 @@ export const Drawer = ({
   onClose,
   classNames,
   duration,
+  style,
 }: DrawerProps) => {
   return (
     <EZDrawer
@@ -32,6 +34,7 @@ export const Drawer = ({
         boxShadow: "none",
         marginTop: "3rem",
         height: "calc(100% - 3rem)",
+        ...style,
       }}
       duration={duration}
     >

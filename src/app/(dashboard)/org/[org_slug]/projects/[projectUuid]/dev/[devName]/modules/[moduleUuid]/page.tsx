@@ -1,5 +1,7 @@
 "use client";
 
+import * as d3 from "d3";
+import { hierarchy, tree, stratify } from "d3-hierarchy";
 import { Drawer } from "@/components/Drawer";
 // import { useModuleVersion } from "@/hooks/useModuleVersion";
 import { useModuleVersion } from "@/hooks/dev/useModuleVersion";
@@ -99,7 +101,7 @@ export default function Page() {
   }, [promptListData]);
 
   useEffect(() => {
-    if (promptListData?.length > 0) {
+    if (promptListData) {
       setModifiedPrompts(cloneDeep(promptListData));
     }
   }, [selectedVersionUuid, promptListData]);
@@ -166,87 +168,60 @@ export default function Page() {
 
   // Build nodes
   useEffect(() => {
-    if (!versionListData || versionListData?.length === 0) return;
-    const generatedNodes = [];
+    if (!versionListData || versionListData.length === 0) return;
     const generatedEdges = [];
 
-    const findMaxNodesAtLevel = (data) => {
-      const levelMap: Record<any, number> = {};
+    const root = stratify()
+      .id((d: any) => d.uuid)
+      .parentId((d: any) => d.from_uuid)(versionListData);
 
-      const countNodes = (items, level) => {
-        for (const item of items) {
-          if (!levelMap[level]) {
-            levelMap[level] = 0;
-          }
-          levelMap[level]++;
-
-          const children = getChildren(item.uuid);
-          if (children && children.length > 0) {
-            countNodes(children, level + 1);
-          }
-        }
-      };
-
-      countNodes(data, 0);
-      return Math.max(...Object.values(levelMap));
-    };
-
-    const maxNodes = findMaxNodesAtLevel(versionListData);
-
-    const buildNodes = (data, level) => {
-      const nodesAtThisLevel = data.length;
-      const spaceBetween = 1000 / (maxNodes + 1); // you can adjust the 1000 value based on your preferred width
-
-      for (let i = 0; i < nodesAtThisLevel; i++) {
-        const item = data[i];
-        const xPosition = (i + 1) * spaceBetween;
-        let status: string;
-        if (item.is_published) {
-          status = "published";
-        } else if (item.candidate_version) {
-          status = "deployed";
-        } else {
-          status = item.status;
-        }
-        generatedNodes.push({
-          id: item.uuid.toString(),
-          type: "moduleVersion",
-          data: {
-            label: item.candidate_version ?? item.uuid.slice(0, 3),
-            uuid: item.uuid,
-            status: status,
-          },
-          position: { x: xPosition, y: level * 150 }, // adjusted y position for better spacing
-        });
-
-        if (item.from_uuid) {
-          generatedEdges.push({
-            id: `e${item.uuid}-${item.from_uuid}`,
-            source: item.from_uuid,
-            target: item.uuid,
-          });
-        }
-
-        const children = getChildren(item.uuid);
-        if (children && children.length > 0) {
-          buildNodes(children, level + 1);
-        }
-      }
-    };
-
-    buildNodes(
-      versionListData.filter((v) => !v.from_uuid),
-      0
+    // Calculate the maximum number of nodes at any depth.
+    const maxNodesAtDepth = Math.max(
+      ...root.descendants().map((d: any) => d.depth)
     );
+    const requiredWidth = maxNodesAtDepth * 360;
+
+    // Use the smaller of window width and required width.
+    const layoutWidth = Math.min(window.innerWidth, requiredWidth);
+    const layout = tree().size([layoutWidth, root.height * 150]);
+
+    const nodes = layout(root).descendants();
+
+    const generatedNodes = nodes.map((node: any) => {
+      const item = node.data;
+
+      let status;
+      if (item.is_published) {
+        status = "published";
+      } else if (item.candidate_version) {
+        status = "deployed";
+      } else {
+        status = item.status;
+      }
+
+      if (item.from_uuid) {
+        generatedEdges.push({
+          id: `e${item.uuid}-${item.from_uuid}`,
+          source: item.from_uuid,
+          target: item.uuid,
+        });
+      }
+
+      return {
+        id: item.uuid,
+        type: "moduleVersion",
+        data: {
+          label: item.candidate_version ?? item.uuid.slice(0, 3),
+          uuid: item.uuid,
+          status: status,
+        },
+        position: { x: node.x, y: node.depth * 150 },
+      };
+    });
 
     setNodes(generatedNodes);
     setEdges(generatedEdges);
   }, [versionListData]);
-
-  useEffect(() => {
-    if (!selectedVersionUuid) return;
-    setCreateVariantOpen(false);
-  }, [selectedVersionUuid]);
 
   function handleClickCreateVariant() {
     setCreateVariantOpen(true);
@@ -254,7 +229,6 @@ export default function Page() {
 
   // Run LLM call
   async function handleClickRun(isNew: boolean) {
-    // addRunTask(isNew ? "new" : moduleVersionData.uuid);
     const toastId = toast.loading("Running...");
     let prompts: Prompt[];
     let newVersionUuid: string;
@@ -409,8 +383,9 @@ export default function Page() {
       <Drawer
         open={selectedVersionUuid != null}
         direction="right"
+        style={{ width: "calc(100vw - 5rem)" }}
         classNames={classNames(
-          createVariantOpen ? "!w-[90vw] backdrop-blur-md" : "!w-[45vw]",
+          createVariantOpen ? "backdrop-blur-md" : "!w-[45vw]",
           "mr-4"
         )}
       >
@@ -584,12 +559,12 @@ export default function Page() {
       <Drawer
         open={createVariantOpen && selectedVersionUuid != null}
         direction="left"
-        classNames="w-[5vw] ml-4 relative"
+        classNames="!w-[5rem] pl-2 relative"
       >
         {createVariantOpen && selectedVersionUuid != null && (
           <div className="w-full h-full bg-transparent flex flex-col justify-center items-start gap-y-3">
             <button
-              className="absolute top-6 -left-2 flex flex-col gap-y-2 pt-1 items-center btn btn-sm normal-case font-normal bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
+              className="absolute top-6 left-2 flex flex-col gap-y-2 pt-1 items-center btn btn-sm normal-case font-normal bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
               onClick={() => {
                 setCreateVariantOpen(false);
               }}
@@ -600,12 +575,28 @@ export default function Page() {
               </div>
             </button>
             {versionListData?.map((version) => {
+              let status;
+              if (version.is_published) {
+                status = "published";
+              } else if (version.candidate_version) {
+                status = "deployed";
+              } else {
+                status = version.status;
+              }
+
               return (
                 <div
-                  className="flex flex-row"
+                  className={classNames(
+                    "flex flex-row items-center gap-x-2 rounded-full p-2 backdrop-blur-sm hover:bg-base-content/10 transition-all cursor-pointer",
+                    "active:scale-90"
+                  )}
                   key={version.candidate_version ?? version.uuid.slice(0, 3)}
+                  onClick={() => {
+                    setSelectedVersionUuid(version.uuid);
+                  }}
                 >
-                  <p className="text-base-content font-semibold text-2xl">
+                  <StatusIndicator status={status} />
+                  <p className="text-base-content font-semibold text-xl">
                     V{version.candidate_version ?? version.uuid.slice(0, 3)}
                   </p>
                 </div>

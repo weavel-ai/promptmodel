@@ -105,7 +105,7 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
       )}
     >
       {
-        <div className="flex flex-row justify-between items-center max-w-[1540px] w-full gap-x-4">
+        <div className="flex flex-row justify-between items-center w-full gap-x-4">
           {/* Development Page Navbar */}
           <div className="flex flex-row justify-start items-center w-full gap-x-2">
             <Link
