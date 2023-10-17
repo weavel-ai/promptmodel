@@ -27,6 +27,8 @@ from utils.dependency import get_websocket_token
 from utils.logger import logger
 from base.database import supabase
 from base.websocket_connection import websocket_manager
+from litellm import ModelResponse
+from litellm.utils import completion_cost
 router = APIRouter()
 
 
@@ -408,6 +410,38 @@ async def connect_cli_dev(
             ).eq("id", dev_branch_data['id']).execute()
             # return true, connected
             return Response(status_code=HTTP_200_OK)
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+    
+    
+@router.post("/log_deployment_run")
+async def log_deployment_run(
+    version_uuid: str,
+    inputs: dict,
+    raw_response: ModelResponse,
+    parsed_outputs: dict,
+    project: dict=Depends(get_project)
+):
+    try:
+        # save log
+        # TODO: add function call
+        (
+            supabase.table("run_log")
+            .insert(
+                {
+                    "inputs" : inputs,
+                    "raw_output" : raw_response.choices[0]["message"]['content'],
+                    "parsed_outputs" : parsed_outputs,
+                    "input_register_name": None,
+                    "is_deployment" : True,
+                    "version_uuid" : version_uuid,
+                    "token_usage": raw_response.usage,
+                    "latency" : raw_response.response_ms,
+                    "cost": completion_cost(raw_response)
+                }
+            )
+        )
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
