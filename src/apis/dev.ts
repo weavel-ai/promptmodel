@@ -1,6 +1,5 @@
 import { fetchStream, railwayDevClient } from "./base";
 import { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
-import { data } from "autoprefixer";
 
 export async function fetchDevBranch(
   supabaseClient: SupabaseClient,
@@ -97,6 +96,16 @@ export async function fetchPrompts(
     },
   });
   return res.data.prompts;
+}
+
+export async function fetchSamples(projectUuid: string, devName: string) {
+  const res = await railwayDevClient.get("/list_samples", {
+    params: {
+      project_uuid: projectUuid,
+      dev_name: devName,
+    },
+  });
+  return res.data.samples;
 }
 
 export async function fetchRunLogs(
