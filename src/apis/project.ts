@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { railwayWebClient } from "./base";
 
 export async function fetchProjects(
   supabaseClient: SupabaseClient,
@@ -36,11 +37,14 @@ export async function createProject(
   if (description) {
     data["description"] = description;
   }
-  const res = await supabaseClient
-    .from("project")
-    .insert(data)
-    .select("uuid")
-    .single();
+  const res = await railwayWebClient.post(
+    "/project",
+    {
+      data,
+    },
+    {}
+  );
+
   return res.data;
 }
 
