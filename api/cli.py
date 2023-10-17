@@ -27,7 +27,6 @@ from utils.dependency import get_websocket_token
 from utils.logger import logger
 from base.database import supabase
 from base.websocket_connection import websocket_manager
-from litellm import ModelResponse
 from litellm.utils import completion_cost
 router = APIRouter()
 
@@ -418,9 +417,9 @@ async def connect_cli_dev(
 @router.post("/log_deployment_run")
 async def log_deployment_run(
     version_uuid: str,
-    inputs: dict,
-    raw_response: ModelResponse,
-    parsed_outputs: dict,
+    inputs: Dict[str, Any],
+    raw_response: Dict[str, Any],
+    parsed_outputs: Dict[str, Any],
     project: dict=Depends(get_project)
 ):
     try:
@@ -431,13 +430,13 @@ async def log_deployment_run(
             .insert(
                 {
                     "inputs" : inputs,
-                    "raw_output" : raw_response.choices[0]["message"]['content'],
+                    "raw_output" : raw_response['choices'][0]["message"]['content'],
                     "parsed_outputs" : parsed_outputs,
                     "input_register_name": None,
                     "is_deployment" : True,
                     "version_uuid" : version_uuid,
-                    "token_usage": raw_response.usage,
-                    "latency" : raw_response.response_ms,
+                    "token_usage": raw_response['usage'],
+                    "latency" : raw_response['response_ms'],
                     "cost": completion_cost(raw_response)
                 }
             )
