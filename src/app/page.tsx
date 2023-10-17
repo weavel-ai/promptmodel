@@ -68,12 +68,18 @@ export default function Home() {
       >
         <div
           className={classNames(
-            "flex flex-col items-start justify-center pl-12",
-            "h-screen max-w-screen w-full relative z-10"
+            "flex flex-col items-start",
+            "h-screen max-w-screen w-full relative z-10",
+            !isMobile && "pl-12 justify-center",
+            isMobile && "px-4 pt-32"
           )}
         >
           <motion.h1
-            className="text-5xl font-extrabold text-base-content backdrop-blur-md rounded-box"
+            className={classNames(
+              !isMobile &&
+                "text-5xl font-extrabold text-base-content backdrop-blur-md rounded-box",
+              isMobile && "text-4xl font-bold text-base-content text-left"
+            )}
             initial={{ opacity: 0, translateY: 40 }}
             viewport={{ once: true }}
             whileInView={{
@@ -81,55 +87,15 @@ export default function Home() {
               translateY: 0,
             }}
           >
-            Prompt versioning on the cloud
+            Prompt versioning{isMobile ? <br /> : " "}on the cloud
           </motion.h1>
-          <motion.div
-            className="flex flex-col gap-y-4 items-start my-10"
-            initial={{ opacity: 0, translateY: 40 }}
-            viewport={{ once: true }}
-            whileInView={{
-              opacity: 1,
-              translateY: 0,
-            }}
-            transition={{ delay: 0.2 }}
-          >
-            <p className="text-2xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70 backdrop-blur-md rounded-box">
-              Build
-              <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-b from-base-content/50 to-base-content">
-                &nbsp;chains & pipelines&nbsp;
-              </span>
-              with various prompt configurations.
-            </p>
-            <p className="text-2xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70 backdrop-blur-md rounded-box">
-              Run tests, experiment and evaluate your prompts.
-            </p>
-            <p className="text-2xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70 backdrop-blur-md rounded-box">
-              Setup once with our SDK and automate your prompt development.
-            </p>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, scale: 0 }}
-            viewport={{ once: true }}
-            whileInView={{
-              opacity: 1,
-              scale: 1,
-              rotate: 0,
-            }}
-            transition={{ delay: 0.4, type: "spring", stiffness: 100 }}
-          >
-            <Link
-              href="/signup"
-              className={classNames(
-                "btn bg-gradient-to-br from-violet-500 from-20% to-primary text-white h-16 rounded-lg w-56 normal-case text-xl",
-                "transition-all hover:shadow-2xl shadow-secondary"
-              )}
-            >
-              Start Building
-            </Link>
-          </motion.div>
           <div
             style={{ perspective: "1000px" }}
-            className="overflow-visible absolute mt-20 right-12 -z-10"
+            className={classNames(
+              "overflow-visible ",
+              isMobile && "",
+              !isMobile && "absolute mt-20 right-12 -z-10"
+            )}
           >
             {/* <motion.div
               initial={{ opacity: 0, rotateX: 80 }}
@@ -169,23 +135,111 @@ export default function Home() {
                 src="/image2-removebg.png"
                 draggable={false}
                 alt="experiments"
-                width={700}
-                height={540}
+                width={isMobile ? 400 : 700}
+                height={isMobile ? 250 : 540}
+                className={classNames(isMobile && "ms-4")}
               />
             </motion.div>
           </div>
-        </div>
-        <div className="flex flex-col my-32 min-h-[36rem] z-10 items-end justify-start gap-y-4 pr-12 w-full h-fit relative">
           <motion.div
-            className="px-2 mb-6"
+            className={classNames(
+              "flex flex-col items-start my-10",
+              isMobile && "gap-y-2",
+              !isMobile && "gap-y-4"
+            )}
+            initial={{ opacity: 0, translateY: 40 }}
+            viewport={{ once: true }}
+            whileInView={{
+              opacity: 1,
+              translateY: 0,
+            }}
+            transition={{ delay: 0.2 }}
+          >
+            <p
+              className={classNames(
+                "text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70 backdrop-blur-md rounded-box",
+                isMobile && "text-xl font-semibold p-1",
+                !isMobile && "text-2xl font-medium"
+              )}
+            >
+              Build
+              <span className="font-bold text-transparent bg-clip-text bg-gradient-to-b from-base-content/50 to-base-content">
+                &nbsp;chains & pipelines&nbsp;
+              </span>
+              with various prompt configurations.
+            </p>
+            <p
+              className={classNames(
+                "text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70 backdrop-blur-md rounded-box",
+                isMobile && "text-xl font-semibold p-1",
+                !isMobile && "text-2xl font-medium"
+              )}
+            >
+              Run tests, experiment and evaluate your prompts.
+            </p>
+            <p
+              className={classNames(
+                "text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70 backdrop-blur-md rounded-box",
+                isMobile && "text-xl font-semibold p-1",
+                !isMobile && "text-2xl font-medium"
+              )}
+            >
+              Setup once with our SDK and automate your prompt development.
+            </p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0 }}
+            viewport={{ once: true }}
+            whileInView={{
+              opacity: 1,
+              scale: 1,
+              rotate: 0,
+            }}
+            transition={{ delay: 0.4, type: "spring", stiffness: 100 }}
+          >
+            <Link
+              href="/signup"
+              className={classNames(
+                "btn bg-gradient-to-br from-violet-500 from-20% to-primary text-white h-16 rounded-lg w-56 normal-case text-xl",
+                "transition-all hover:shadow-2xl shadow-secondary"
+              )}
+            >
+              Start Building
+            </Link>
+          </motion.div>
+        </div>
+        <div
+          className={classNames(
+            "flex flex-col my-32 min-h-[36rem] z-10 gap-y-4 justify-start w-full h-fit relative",
+            isMobile && "px-6 items-center",
+            !isMobile && "items-end pr-12"
+          )}
+        >
+          <motion.div
+            className={classNames(
+              isMobile && "self-end",
+              !isMobile && "px-2 mb-6"
+            )}
             initial={{ opacity: 0, translateY: 40 }}
             viewport={{ once: true }}
             whileInView={{ opacity: 1, translateY: 0 }}
           >
-            <h1 className="text-5xl font-extrabold text-base-content">
-              Free your code from prompts
+            <h1
+              className={classNames(
+                "text-base-content",
+                isMobile && "text-4xl font-bold self-end text-end",
+                !isMobile && "text-5xl font-extrabold"
+              )}
+            >
+              Free your code{isMobile ? <br /> : " "}from prompts
             </h1>
           </motion.div>
+          {!isMobile && <SummarizationPromptCode />}
+          {
+            <div className={classNames(isMobile && "h-fit")}>
+              <PromptmodelCode isMobile={isMobile} />
+            </div>
+          }
           <motion.div
             className="backdrop-blur-md rounded-box"
             viewport={{ once: true }}
@@ -196,69 +250,51 @@ export default function Home() {
             }}
             transition={{ delay: 0.2, type: "false" }}
           >
-            <h3 className="text-3xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70">
+            <h3
+              className={classNames(
+                "text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70",
+                isMobile && "text-2xl font-medium text-right",
+                !isMobile && "text-3xl font-medium"
+              )}
+            >
               Update prompts without changing your code.
             </h3>
           </motion.div>
-          <SummarizationPromptCode />
-          <PromptmodelCode />
         </div>
-        <div className="flex flex-col my-32 min-h-[36rem] z-10 items-start justify-start gap-y-4 pl-12 w-full h-fit relative">
+        <div
+          className={classNames(
+            "flex flex-col my-32 min-h-[36rem] z-10 items-start justify-start gap-y-4  w-full h-fit relative",
+            isMobile && "px-4",
+            !isMobile && "pl-12"
+          )}
+        >
           <motion.div
-            className="backdrop-blur-md rounded-box bg-base-100/60 px-2 mb-6"
+            className={classNames(
+              "px-2",
+              isMobile && "",
+              !isMobile && "backdrop-blur-md rounded-box bg-base-100/60"
+            )}
             viewport={{ once: true }}
             initial={{ opacity: 0, translateY: 40 }}
             whileInView={{ opacity: 1, translateY: 0 }}
           >
-            <h1 className="text-5xl font-extrabold text-base-content">
-              Experiment. Evaluate. Publish.
+            <h1
+              className={classNames(
+                "text-base-content",
+                isMobile && "text-4xl font-extrabold",
+                !isMobile && "text-5xl font-extrabold"
+              )}
+            >
+              Experiment. Evaluate.{isMobile ? <br /> : " "}Publish.
             </h1>
-          </motion.div>
-          <motion.div
-            className="backdrop-blur-md rounded-box bg-base-100/60"
-            initial={{ opacity: 0, translateY: 40 }}
-            viewport={{ once: true }}
-            whileInView={{
-              opacity: 1,
-              translateY: 0,
-            }}
-            transition={{ delay: 0.2, type: "false" }}
-          >
-            <h3 className="text-3xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70">
-              Scale your prompt development workflow.
-            </h3>
-          </motion.div>
-          <motion.div
-            className="backdrop-blur-md rounded-box bg-base-100/60"
-            initial={{ opacity: 0, translateY: 40 }}
-            viewport={{ once: true }}
-            whileInView={{
-              opacity: 1,
-              translateY: 0,
-            }}
-            transition={{ delay: 0.2, type: "false" }}
-          >
-            <h3 className="text-2xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70">
-              Run experiments and compare various prompt configurations.
-            </h3>
-          </motion.div>
-          <motion.div
-            className="backdrop-blur-md rounded-box bg-base-100/60"
-            initial={{ opacity: 0, translateY: 40 }}
-            viewport={{ once: true }}
-            whileInView={{
-              opacity: 1,
-              translateY: 0,
-            }}
-            transition={{ delay: 0.2, type: "false" }}
-          >
-            <h3 className="text-2xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70">
-              Publish the best configuration in a blink.
-            </h3>
           </motion.div>
           <div
             style={{ perspective: "1000px" }}
-            className="overflow-visible absolute right-12 top-20 -z-10"
+            className={classNames(
+              "overflow-visible ",
+              isMobile && "ml-8 my-8",
+              !isMobile && "absolute right-12 top-20 -z-10"
+            )}
           >
             <motion.div
               initial={{ opacity: 0, translateY: 60 }}
@@ -282,17 +318,85 @@ export default function Home() {
               />
             </motion.div>
           </div>
+          <motion.div
+            className="backdrop-blur-md rounded-box bg-base-100/60"
+            initial={{ opacity: 0, translateY: 40 }}
+            viewport={{ once: true }}
+            whileInView={{
+              opacity: 1,
+              translateY: 0,
+            }}
+            transition={{ delay: 0.2, type: "false" }}
+          >
+            <h3
+              className={classNames(
+                "text-transparent",
+                "bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70",
+                isMobile && "text-xl font-bold ps-1",
+                !isMobile && "text-3xl font-medium"
+              )}
+            >
+              Scale your prompt{isMobile ? <br /> : " "}development workflow.
+            </h3>
+          </motion.div>
+          <motion.div
+            className="backdrop-blur-md rounded-box bg-base-100/60"
+            initial={{ opacity: 0, translateY: 40 }}
+            viewport={{ once: true }}
+            whileInView={{
+              opacity: 1,
+              translateY: 0,
+            }}
+            transition={{ delay: 0.2, type: "false" }}
+          >
+            <h3
+              className={classNames(
+                "text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70",
+                isMobile && "text-xl font-bold ps-1",
+                !isMobile && "text-2xl font-medium"
+              )}
+            >
+              Run experiments and compare various prompt configurations.
+            </h3>
+          </motion.div>
+          <motion.div
+            className="backdrop-blur-md rounded-box bg-base-100/60"
+            initial={{ opacity: 0, translateY: 40 }}
+            viewport={{ once: true }}
+            whileInView={{
+              opacity: 1,
+              translateY: 0,
+            }}
+            transition={{ delay: 0.2, type: "false" }}
+          >
+            <h3
+              className={classNames(
+                "text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70",
+                isMobile && "text-xl font-bold ps-1",
+                !isMobile && "text-2xl font-medium"
+              )}
+            >
+              Publish the best configuration{isMobile ? <br /> : " "}in a blink.
+            </h3>
+          </motion.div>
         </div>
       </div>
       <div
         className={classNames(
-          "flex flex-col items-center justify-center pl-12",
-          "min-h-[50vh] max-w-screen w-full relative z-10",
-          "bg-base-200"
+          "flex flex-col items-center justify-center",
+          "max-w-screen w-full relative z-10",
+          "bg-base-200",
+          "text-center",
+          isMobile && "min-h-[40vh]",
+          !isMobile && "min-h-[50vh] pl-12"
         )}
       >
         <motion.h1
-          className="text-5xl font-extrabold text-base-content mb-10"
+          className={classNames(
+            "text-base-content",
+            isMobile && "text-3xl font-extrabold mb-5",
+            !isMobile && "text-5xl font-extrabold mb-10"
+          )}
           initial={{ opacity: 0, translateY: 40 }}
           viewport={{ once: true }}
           whileInView={{
@@ -311,8 +415,14 @@ export default function Home() {
           }}
           transition={{ delay: 0.2, type: "false" }}
         >
-          <h3 className="text-2xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70 mb-8">
-            Join our growing community.
+          <h3
+            className={classNames(
+              "font-medium text-transparent bg-clip-text bg-gradient-to-b from-secondary-content/60 from-20% to-secondary-content/70",
+              isMobile && "text-xl mb-4",
+              !isMobile && "text-2xl mb-8"
+            )}
+          >
+            Join our closed beta.
           </h3>
         </motion.div>
         <motion.div
@@ -329,8 +439,10 @@ export default function Home() {
           <Link
             href="/signup"
             className={classNames(
-              "mt-4 btn bg-gradient-to-br from-violet-500 from-20% to-primary text-white h-16 rounded-lg w-56 normal-case text-xl",
-              "transition-all hover:shadow-2xl shadow-secondary"
+              "mt-4 btn bg-gradient-to-br from-violet-500 from-20% to-primary text-white rounded-lg normal-case text-xl",
+              "transition-all hover:shadow-2xl shadow-secondary",
+              isMobile && "h-12 w-42",
+              !isMobile && "h-16 w-56"
             )}
           >
             Start Building
@@ -370,11 +482,15 @@ const SummarizationPromptCode = () => {
   );
 };
 
-const PromptmodelCode = () => {
+const PromptmodelCode = ({isMobile}) => {
   return (
     <div
       style={{ perspective: "1000px" }}
-      className="overflow-visible absolute right-16 bottom-0 -z-10 scale-50 sm:scale-100"
+      className={classNames(
+        "overflow-visible ",
+        isMobile && "scale-50",
+        !isMobile && "absolute right-16 bottom-0 -z-10 scale-50 sm:scale-100"
+      )}
     >
       <motion.div
         className="mockup-code bg-base-300/50 hover:shadow-2xl transition-shadow duration-300"
@@ -384,9 +500,9 @@ const PromptmodelCode = () => {
         whileHover={{ translateY: -10 }}
         whileInView={{
           opacity: 1,
-          rotateX: 5,
-          rotateY: -15,
-          rotateZ: 3,
+          rotateX: isMobile ? 5 : 5,
+          rotateY: isMobile ? 15 : -15,
+          rotateZ: isMobile ? -1 : 3,
           transformOrigin: "center",
         }}
         transition={{ duration: 0.7 }}
