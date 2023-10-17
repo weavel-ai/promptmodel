@@ -1,5 +1,7 @@
 "use client";
 
+import * as d3 from "d3";
+import { hierarchy, tree, stratify } from "d3-hierarchy";
 import { Drawer } from "@/components/Drawer";
 // import { useModuleVersion } from "@/hooks/useModuleVersion";
 import { useModuleVersion } from "@/hooks/dev/useModuleVersion";
@@ -166,87 +168,58 @@ export default function Page() {
 
   // Build nodes
   useEffect(() => {
-    if (!versionListData || versionListData?.length === 0) return;
-    const generatedNodes = [];
+    if (!versionListData || versionListData.length === 0) return;
     const generatedEdges = [];
 
-    const findMaxNodesAtLevel = (data) => {
-      const levelMap: Record<any, number> = {};
+    const root = stratify()
+      .id((d) => d.uuid)
+      .parentId((d) => d.from_uuid)(versionListData);
 
-      const countNodes = (items, level) => {
-        for (const item of items) {
-          if (!levelMap[level]) {
-            levelMap[level] = 0;
-          }
-          levelMap[level]++;
+    // Calculate the maximum number of nodes at any depth.
+    const maxNodesAtDepth = Math.max(...root.descendants().map((d) => d.depth));
+    const requiredWidth = maxNodesAtDepth * 360;
 
-          const children = getChildren(item.uuid);
-          if (children && children.length > 0) {
-            countNodes(children, level + 1);
-          }
-        }
-      };
+    // Use the smaller of window width and required width.
+    const layoutWidth = Math.min(window.innerWidth, requiredWidth);
+    const layout = tree().size([layoutWidth, root.height * 150]);
 
-      countNodes(data, 0);
-      return Math.max(...Object.values(levelMap));
-    };
+    const nodes = layout(root).descendants();
 
-    const maxNodes = findMaxNodesAtLevel(versionListData);
+    const generatedNodes = nodes.map((node) => {
+      const item = node.data;
 
-    const buildNodes = (data, level) => {
-      const nodesAtThisLevel = data.length;
-      const spaceBetween = 1000 / (maxNodes + 1); // you can adjust the 1000 value based on your preferred width
-
-      for (let i = 0; i < nodesAtThisLevel; i++) {
-        const item = data[i];
-        const xPosition = (i + 1) * spaceBetween;
-        let status: string;
-        if (item.is_published) {
-          status = "published";
-        } else if (item.candidate_version) {
-          status = "deployed";
-        } else {
-          status = item.status;
-        }
-        generatedNodes.push({
-          id: item.uuid.toString(),
-          type: "moduleVersion",
-          data: {
-            label: item.candidate_version ?? item.uuid.slice(0, 3),
-            uuid: item.uuid,
-            status: status,
-          },
-          position: { x: xPosition, y: level * 150 }, // adjusted y position for better spacing
-        });
-
-        if (item.from_uuid) {
-          generatedEdges.push({
-            id: `e${item.uuid}-${item.from_uuid}`,
-            source: item.from_uuid,
-            target: item.uuid,
-          });
-        }
-
-        const children = getChildren(item.uuid);
-        if (children && children.length > 0) {
-          buildNodes(children, level + 1);
-        }
+      let status;
+      if (item.is_published) {
+        status = "published";
+      } else if (item.candidate_version) {
+        status = "deployed";
+      } else {
+        status = item.status;
       }
-    };
 
-    buildNodes(
-      versionListData.filter((v) => !v.from_uuid),
-      0
-    );
+      if (item.from_uuid) {
+        generatedEdges.push({
+          id: `e${item.uuid}-${item.from_uuid}`,
+          source: item.from_uuid,
+          target: item.uuid,
+        });
+      }
+
+      return {
+        id: item.uuid,
+        type: "moduleVersion",
+        data: {
+          label: item.candidate_version ?? item.uuid.slice(0, 3),
+          uuid: item.uuid,
+          status: status,
+        },
+        position: { x: node.x, y: node.depth * 150 },
+      };
+    });
 
     setNodes(generatedNodes);
     setEdges(generatedEdges);
   }, [versionListData]);
-
-  // useEffect(() => {
-  //   if (!selectedVersionUuid) return;
-  //   setCreateVariantOpen(false);
-  // }, [selectedVersionUuid]);
 
   function handleClickCreateVariant() {
     setCreateVariantOpen(true);
@@ -254,7 +227,6 @@ export default function Page() {
 
   // Run LLM call
   async function handleClickRun(isNew: boolean) {
-    // addRunTask(isNew ? "new" : moduleVersionData.uuid);
     const toastId = toast.loading("Running...");
     let prompts: Prompt[];
     let newVersionUuid: string;
