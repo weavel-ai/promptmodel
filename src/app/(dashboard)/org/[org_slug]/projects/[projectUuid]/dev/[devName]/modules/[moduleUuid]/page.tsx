@@ -172,11 +172,13 @@ export default function Page() {
     const generatedEdges = [];
 
     const root = stratify()
-      .id((d) => d.uuid)
-      .parentId((d) => d.from_uuid)(versionListData);
+      .id((d: any) => d.uuid)
+      .parentId((d: any) => d.from_uuid)(versionListData);
 
     // Calculate the maximum number of nodes at any depth.
-    const maxNodesAtDepth = Math.max(...root.descendants().map((d) => d.depth));
+    const maxNodesAtDepth = Math.max(
+      ...root.descendants().map((d: any) => d.depth)
+    );
     const requiredWidth = maxNodesAtDepth * 360;
 
     // Use the smaller of window width and required width.
@@ -185,7 +187,7 @@ export default function Page() {
 
     const nodes = layout(root).descendants();
 
-    const generatedNodes = nodes.map((node) => {
+    const generatedNodes = nodes.map((node: any) => {
       const item = node.data;
 
       let status;
