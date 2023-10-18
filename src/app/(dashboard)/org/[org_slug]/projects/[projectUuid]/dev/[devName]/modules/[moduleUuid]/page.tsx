@@ -1058,12 +1058,12 @@ function ModuleVersionNode({ data }) {
       className={classNames(
         "p-4 rounded-full flex justify-center items-center",
         "w-20 h-20 visible cursor-pointer",
-        "transition-all hover:bg-base-300",
+        "transition-all",
         selectedVersionUuid == data.uuid
           ? "border-neutral-content border-2"
           : "border-none",
-        data.status == "published" && "bg-secondary/80",
-        data.status == "deployed" && "bg-blue-500/60",
+        data.status == "published" && "bg-secondary/80 hover:bg-secondary/50",
+        data.status == "deployed" && "bg-blue-500/60 hover:bg-blue-500/30",
         data.status != "published" && data.status != "deployed" && "bg-base-200"
       )}
       onClick={() => setSelectedVersionUuid(data.uuid)}

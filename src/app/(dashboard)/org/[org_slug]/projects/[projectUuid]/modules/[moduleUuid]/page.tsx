@@ -25,6 +25,7 @@ import { RunLog } from "@/apis/runlog";
 import { Editor } from "@monaco-editor/react";
 import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
+import { hierarchy, tree, stratify } from "d3-hierarchy";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -52,6 +53,7 @@ export default function Page() {
   });
 
   // Build nodes
+  /*
   useEffect(() => {
     if (!versionListData || versionListData?.length === 0) return;
     const generatedNodes = [];
@@ -118,6 +120,57 @@ export default function Page() {
       versionListData.filter((v) => !v.from_uuid),
       0
     );
+
+    setNodes(generatedNodes);
+    setEdges(generatedEdges);
+  }, [versionListData]);
+  */
+  useEffect(() => {
+    if (!versionListData || versionListData.length === 0) return;
+    const generatedEdges = [];
+
+    const root = stratify()
+      .id((d: any) => d.uuid)
+      .parentId((d: any) => d.from_uuid)(versionListData);
+
+    // Calculate the maximum number of nodes at any depth.
+    const maxNodesAtDepth = Math.max(
+      ...root.descendants().map((d: any) => d.depth)
+    );
+    const requiredWidth = maxNodesAtDepth * 360;
+
+    // Use the smaller of window width and required width.
+    const layoutWidth = Math.min(window.innerWidth, requiredWidth);
+    const layout = tree().size([layoutWidth, root.height * 150]);
+
+    const nodes = layout(root).descendants();
+
+    const generatedNodes = nodes.map((node: any) => {
+      const item = node.data;
+
+      console.log(item);
+
+      if (item.from_uuid) {
+        generatedEdges.push({
+          id: `e${item.uuid}-${item.from_uuid}`,
+          source: item.from_uuid,
+          target: item.uuid,
+        });
+      }
+
+      return {
+        id: item.uuid.toString(),
+        type: "moduleVersion",
+        data: {
+          label: item.version,
+          uuid: item.uuid,
+          isPublished: item.is_published,
+        },
+        position: { x: node.x, y: node.depth * 150 },
+      };
+    });
+
+    console.log(generatedNodes);
 
     setNodes(generatedNodes);
     setEdges(generatedEdges);
@@ -340,11 +393,13 @@ function ModuleVersionNode({ data }) {
       className={classNames(
         "bg-base-200 p-4 rounded-full flex justify-center items-center",
         "w-20 h-20 visible cursor-pointer",
-        "transition-colors hover:bg-base-300",
+        "transition-colors",
         selectedVersionUuid == data.uuid
           ? "border-neutral-content border-2"
           : "border-none",
-        data.isPublished && "bg-secondary"
+        data.isPublished
+          ? "bg-secondary/80 hover:bg-secondary/50"
+          : "bg-blue-500/60 hover:bg-blue-500/30"
       )}
       onClick={() => setSelectedVersionUuid(data.uuid)}
     >
