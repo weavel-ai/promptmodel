@@ -23,6 +23,7 @@ class LocalTask(str, Enum):
     CHANGE_VERSION_STATUS = "CHANGE_VERSION_STATUS"
     GET_VERSION_TO_SAVE = "GET_VERSION_TO_SAVE"
     GET_VERSIONS_TO_SAVE = "GET_VERSIONS_TO_SAVE"
+    UPDATE_CANDIDATE_VERSION_ID = "UPDATE_CANDIDATE_VERSION_ID"
 
 class ServerTask(str, Enum):
     UPDATE_RESULT_RUN = "UPDATE_RESULT_RUN"
@@ -94,6 +95,32 @@ class ConnectionManager:
             )
         except Exception as error:
             logger.error(f"Error updating online status for token {token}: {error}")
+            
+    async def send_message(
+        self,
+        token: str,
+        type: LocalTask,
+        message: Dict = {},
+    ):
+        """Send a message to the local."""
+        ws = self.connected_locals.get(token)
+        if ws:
+            try:
+                message["type"] = type.value
+                await ws.send_text(json.dumps(message))
+                logger.success(
+                    f"""Sent message to local.
+  - Token: {token}
+  - Message: {message}"""
+                )
+            except Exception as error:
+                logger.error(
+                    f"""Error sending message to local: {error}
+  - Token: {token}
+  - Message: {message}"""
+                )
+        else:
+            raise ValueError(f"No active local dev server found for token {token}")
 
     async def request(self, token: str, type: LocalTask, message: Dict = {}):
         """
