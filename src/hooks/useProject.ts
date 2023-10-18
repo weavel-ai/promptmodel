@@ -11,7 +11,7 @@ export const useProject = () => {
   const { organization } = useOrganization();
   const { createSupabaseClient } = useSupabaseClient();
 
-  const { data: projectListData } = useQuery({
+  const { data: projectListData, refetch: refetchProjectListData } = useQuery({
     queryKey: ["projectListData", { orgId: organization?.id }],
     queryFn: async () =>
       await fetchProjects(await createSupabaseClient(), organization?.id),
@@ -21,13 +21,17 @@ export const useProject = () => {
   const { data: projectData } = useQuery({
     queryKey: ["projectData", { projectUuid: params?.projectUuid }],
     queryFn: async () =>
-      await fetchProject(await createSupabaseClient(), params?.projectUuid as string),
+      await fetchProject(
+        await createSupabaseClient(),
+        params?.projectUuid as string
+      ),
     enabled: params?.projectUuid != undefined && params?.projectUuid != null,
   });
 
   return {
     projectData,
     projectListData,
+    refetchProjectListData,
     projectUuid: params?.projectUuid as string,
   };
 };

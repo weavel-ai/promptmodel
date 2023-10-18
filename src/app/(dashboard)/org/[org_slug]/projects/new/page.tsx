@@ -4,6 +4,7 @@ import { useSupabaseClient } from "@/apis/base";
 import { createProject } from "@/apis/project";
 import { InputField } from "@/components/InputField";
 import { useOrgData } from "@/hooks/useOrgData";
+import { useProject } from "@/hooks/useProject";
 import { X } from "@phosphor-icons/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,6 +15,7 @@ export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
   const { orgId } = useOrgData();
+  const { refetchProjectListData } = useProject();
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -22,12 +24,7 @@ export default function Page() {
     if (loading) return;
     setLoading(true);
     const toastId = toast.loading("Creating project...");
-    const data = await createProject(
-      await createSupabaseClient(),
-      orgId,
-      name,
-      description
-    );
+    const data = await createProject(orgId, name, description);
     if (!data) {
       toast.update(toastId, {
         render: "Failed to create project.",
@@ -38,6 +35,7 @@ export default function Page() {
       setLoading(false);
       return;
     }
+    await refetchProjectListData();
     router.push(`${pathname.split("/").slice(0, -1).join("/")}/${data.uuid}`);
     setLoading(false);
     toast.update(toastId, {
