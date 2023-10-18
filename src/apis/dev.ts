@@ -185,37 +185,23 @@ export async function streamLLMModuleRun({
   });
 }
 
-export async function deployVersion({
+export async function deployCandidates({
   projectUuid,
-  moduleName,
-  moduleUuid,
-  fromUuid,
-  runLogs,
-  prompts,
+  devName,
+  moduleUuid = null,
 }: {
   projectUuid: string;
-  moduleName: string;
-  moduleUuid: string;
-  fromUuid: string | null;
-  runLogs: {
-    inputs?: Record<string, any>;
-    raw_output?: string;
-    parsed_outputs?: Record<string, any>;
-  }[];
-  prompts: { role: string; step: number; content: string }[];
+  devName: string;
+  moduleUuid?: string | null;
 }) {
   const res = await railwayDevClient.post(
-    "/push_version",
-    {
-      llm_module_uuid: moduleUuid,
-      module_name: moduleName,
-      from_uuid: fromUuid,
-      run_logs: runLogs,
-      prompts: prompts,
-    },
+    "/push_versions",
+    {},
     {
       params: {
         project_uuid: projectUuid,
+        dev_name: devName,
+        moduleUuid: moduleUuid,
       },
     }
   );

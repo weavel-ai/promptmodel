@@ -1,5 +1,6 @@
 "use client";
 
+import { useOrgData } from "@/hooks/useOrgData";
 import {
   GearSix,
   Info,
@@ -8,14 +9,13 @@ import {
   Table,
 } from "@phosphor-icons/react";
 import classNames from "classnames";
-import { m } from "framer-motion";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 
 export const ProjectVerticalNavbar = () => {
   const pathname = usePathname();
 
-  if (pathname.includes("modules/") || pathname.includes("dev/")) return null;
+  if (pathname.includes("dev/")) return null;
 
   return (
     <div
@@ -67,10 +67,15 @@ const VerticalNavbarItem = ({
   external?: boolean;
 }) => {
   const pathname = usePathname();
+  const params = useParams();
+  const { orgData } = useOrgData();
 
   return (
     <Link
-      href={href ?? `${pathname.split("/").slice(0, -1).join("/")}${subPath}`}
+      href={
+        href ??
+        `/org/${orgData?.slug}/projects/${params?.projectUuid}${subPath}`
+      }
       target={external && "_blank"}
       className={classNames(
         "flex flex-col w-12 gap-y-1 justify-center items-center",
