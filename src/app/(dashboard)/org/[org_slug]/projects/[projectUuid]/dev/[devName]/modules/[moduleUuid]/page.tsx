@@ -38,7 +38,11 @@ import {
 import { editor } from "monaco-editor/esm/vs/editor/editor.api";
 import "reactflow/dist/style.css";
 import { useHotkeys } from "react-hotkeys-hook";
-import { streamLLMModuleRun, subscribeDevBranchStatus } from "@/apis/dev";
+import {
+  streamLLMModuleRun,
+  subscribeDevBranchStatus,
+  updateVersionStatus,
+} from "@/apis/dev";
 import { useParams } from "next/navigation";
 import { SelectField } from "@/components/SelectField";
 import { StatusIndicator } from "@/components/StatusIndicator";
@@ -53,12 +57,14 @@ import { ModelDisplay, ModelSelector } from "@/components/ModelSelector";
 import { cloneDeep } from "@/utils";
 import { SampleSelector } from "@/components/SampleSelector";
 import { EMPTY_INPUTS_LABEL, useSamples } from "@/hooks/dev/useSample";
+import { StatusSelector } from "@/components/select/StatusSelector";
 
 export default function Page() {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
   const { moduleListData } = useModule();
-  const { versionListData, refetchVersionListData } = useModuleVersion();
+  const { versionListData, setVersionListData, refetchVersionListData } =
+    useModuleVersion();
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [createVariantOpen, setCreateVariantOpen] = useState(false);
@@ -68,7 +74,6 @@ export default function Page() {
     newVersionUuidCache,
     newPromptCache,
     selectedVersionUuid,
-    addRunTask,
     updateRunLogs,
     updatePrompts,
     removeRunLog,
@@ -316,6 +321,29 @@ export default function Page() {
     });
   }
 
+  async function handleUpdateVersionStatus(
+    status: "broken" | "working" | "candidate"
+  ) {
+    updateVersionStatus(
+      params?.projectUuid as string,
+      params?.devName as string,
+      moduleVersionData?.uuid,
+      status
+    );
+    setVersionListData(
+      versionListData.map((version) => {
+        if (version.uuid === moduleVersionData?.uuid) {
+          return {
+            ...version,
+            status: status,
+          };
+        } else {
+          return version;
+        }
+      })
+    );
+  }
+
   return (
     <div className="w-full h-full">
       <ReactFlow
@@ -428,8 +456,10 @@ export default function Page() {
                         Prompt V{moduleVersionData?.uuid.slice(0, 6)}
                       </p>
                       <div className="flex flex-row gap-x-2 items-center">
-                        <StatusIndicator status={moduleVersionData?.status} />
-                        <p>{moduleVersionData?.status}</p>
+                        <StatusSelector
+                          status={moduleVersionData?.status}
+                          setStatus={handleUpdateVersionStatus}
+                        />
                       </div>
                     </div>
                   )}
