@@ -15,6 +15,7 @@ type Store = {
   runTasksCount: Record<string | "new", number>;
   newVersionUuidCache: string | null;
   newPromptCache: Prompt[];
+  moduleVersionLists: Record<string, any>;
 };
 
 type Actions = {
@@ -26,6 +27,7 @@ type Actions = {
   removeRunTask: (version: string | "new") => void;
   setNewVersionUuidCache: (uuid: string) => void;
   setNewPromptCache: (prompts: Prompt[]) => void;
+  updateModuleVersionLists: (moduleUuid: string, versionList: any) => void;
 };
 
 export const useModuleVersionStore = create<Store & Actions>((set) => ({
@@ -35,6 +37,7 @@ export const useModuleVersionStore = create<Store & Actions>((set) => ({
   runTasksCount: {},
   newVersionUuidCache: null,
   newPromptCache: [],
+  moduleVersionLists: {},
   setSelectedVersionUuid: (uuid) => set({ selectedVersionUuid: uuid }),
   updateRunLogs: (version, uuid, runLog) => {
     set((state) => ({
@@ -86,4 +89,11 @@ export const useModuleVersionStore = create<Store & Actions>((set) => ({
   },
   setNewVersionUuidCache: (uuid) => set({ newVersionUuidCache: uuid }),
   setNewPromptCache: (prompts) => set({ newPromptCache: prompts }),
+  updateModuleVersionLists: (moduleUuid, versionList) =>
+    set((state) => ({
+      moduleVersionLists: {
+        ...state.moduleVersionLists,
+        [moduleUuid]: versionList,
+      },
+    })),
 }));

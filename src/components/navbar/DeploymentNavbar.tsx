@@ -93,7 +93,9 @@ export const DeploymentNavbar = (props: NavbarProps) => {
       className={classNames(
         pathname.match(/.*\/org\/[^/]+$/) ||
           pathname.match(/.*\/org\/[^/]+\/settings/) ||
-          pathname.match(/.*\/org\/[^/]+\/projects\/new/)
+          pathname.match(/.*\/org\/[^/]+\/projects\/new/) ||
+          pathname == "/signup" ||
+          pathname == "/signin"
           ? "max-w-6xl w-full self-center"
           : "w-screen px-6",
         "flex justify-center h-12 py-2 transition-all",
@@ -105,7 +107,6 @@ export const DeploymentNavbar = (props: NavbarProps) => {
         // Navigation bar content for desktop view
         <div
           className={classNames(
-            
             "flex flex-row justify-between items-center w-full gap-x-4"
           )}
         >

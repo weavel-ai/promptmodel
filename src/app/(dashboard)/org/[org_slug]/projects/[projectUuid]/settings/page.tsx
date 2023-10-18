@@ -2,7 +2,7 @@
 
 import { useProject } from "@/hooks/useProject";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { dracula } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { nightOwl } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Clipboard } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
 
@@ -28,16 +28,18 @@ export default function Page() {
         <div className="w-full h-full pe-16 flex flex-col gap-y-1">
           <p className="text-lg font-semibold">API Key</p>
           <div className="relative">
-            <SyntaxHighlighter language="javascript" style={dracula}>
-              {`API_KEY=${projectData?.api_key}`}
+            <SyntaxHighlighter language="javascript" style={nightOwl}>
+              {`PROMPTMODEL_API_KEY=${projectData?.api_key}`}
             </SyntaxHighlighter>
-            <div className="absolute right-8 bottom-0 top-0 h-full flex justify-center items-center">
-              <button
-                className="bg-transparent hover:bg-gray-700 text-gray-400 rounded-sm p-1"
-                onClick={handleClickCopy}
-              >
-                <Clipboard size={20} />
-              </button>
+            <div className="absolute right-4 bottom-0 top-0 h-full flex justify-center items-center">
+              <div className="py-1 tooltip tooltip-secondary" data-tip="Copy">
+                <button
+                  className="bg-transparent hover:bg-neutral-content/30 text-neutral-content rounded-md p-2"
+                  onClick={handleClickCopy}
+                >
+                  <Clipboard size={20} />
+                </button>
+              </div>
             </div>
           </div>
         </div>

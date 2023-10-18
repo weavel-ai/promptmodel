@@ -2,11 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { fetchModuleVersions, updateDevBranchSync } from "@/apis/dev";
 import { useSupabaseClient } from "@/apis/base";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useModuleVersionStore } from "@/stores/moduleVersionStore";
 
 export const useModuleVersion = () => {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
+  const { moduleVersionLists, updateModuleVersionLists } =
+    useModuleVersionStore();
 
   const { data: fetchedVersionListData, refetch: refetchVersionListData } =
     useQuery({
@@ -38,18 +41,23 @@ export const useModuleVersion = () => {
       ),
     });
 
-  const [versionListData, setVersionListData] = useState(
-    fetchedVersionListData
-  );
-
   useEffect(() => {
-    setVersionListData(fetchedVersionListData);
+    updateModuleVersionLists(
+      params?.moduleUuid as string,
+      fetchedVersionListData
+    );
   }, [fetchedVersionListData]);
+
+  const versionListData = useMemo(() => {
+    if (!params?.moduleUuid) return [];
+    return moduleVersionLists[params?.moduleUuid as string];
+  }, [params, moduleVersionLists]);
 
   return {
     moduleUuid: params?.moduleUuid as string,
     versionListData,
-    setVersionListData,
+    moduleVersionLists,
+    fetchedVersionListData,
     refetchVersionListData,
   };
 };

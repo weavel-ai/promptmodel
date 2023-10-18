@@ -8,13 +8,16 @@ import classNames from "classnames";
 import { Michroma } from "next/font/google";
 import { useParams, usePathname } from "next/navigation";
 import { SelectNavigator } from "../SelectNavigator";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GlobeHemisphereWest, Rocket } from "@phosphor-icons/react";
-import { deployVersion } from "@/apis/dev";
+import { deployCandidates } from "@/apis/dev";
 import { useModuleVersion } from "@/hooks/dev/useModuleVersion";
 import { useModuleVersionStore } from "@/stores/moduleVersionStore";
 import { toast } from "react-toastify";
+import { motion } from "framer-motion";
 import Link from "next/link";
+import { ModalPortal } from "../ModalPortal";
+import { version } from "os";
 
 const michroma = Michroma({
   weight: ["400"],
@@ -32,8 +35,6 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
   const { orgData, refetchOrgData } = useOrgData();
   const { projectUuid, projectListData } = useProject();
   const { moduleListData } = useModule();
-  const { versionListData } = useModuleVersion();
-  const { runLogs, prompts } = useModuleVersionStore();
 
   const projectName = useMemo(
     () =>
@@ -41,55 +42,6 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
         ?.name,
     [projectListData]
   );
-
-  const moduleName = useMemo(
-    () =>
-      moduleListData?.find((module) => module.uuid == params?.moduleUuid)?.name,
-    [moduleListData]
-  );
-
-  const candidateVersionList = useMemo(() => {
-    if (versionListData == null) return [];
-    return versionListData?.filter(
-      (version) =>
-        version.candidate_version == null && version.status == "candidate"
-    );
-  }, [versionListData]);
-
-  async function handleClickDeploy() {
-    //TODO
-    const toastId = toast.loading("Deploying candidates...");
-    try {
-      for (const version of candidateVersionList) {
-        await deployVersion({
-          projectUuid: projectUuid,
-          moduleName: moduleName,
-          moduleUuid: params?.moduleUuid as string,
-          fromUuid: version.from_uuid,
-          runLogs: [runLogs[version.uuid]],
-          prompts: prompts[version.uuid],
-        });
-        toast.update(toastId, {
-          progress:
-            (candidateVersionList.indexOf(version) + 1) /
-            candidateVersionList.length,
-        });
-      }
-      toast.update(toastId, {
-        render: "Deployed candidates successfully!",
-        type: "success",
-        autoClose: 2000,
-        progress: 1,
-      });
-    } catch (e) {
-      toast.update(toastId, {
-        render: `Failed to deploy candidates: ${e}`,
-        type: "error",
-        autoClose: 2000,
-        progress: 1,
-      });
-    }
-  }
 
   return (
     <div
@@ -150,21 +102,161 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
               <GlobeHemisphereWest size={24} />
               {params?.devName}
             </div>
-            <button
-              onClick={handleClickDeploy}
-              className={classNames(
-                "min-w-fit h-fit flex flex-row px-3 py-2 items-center gap-x-2",
-                "bg-secondary-content rounded-lg font-medium btn btn-sm normal-case hover:bg-base-content/70",
-                "disabled:bg-neutral-content"
-              )}
-              disabled={candidateVersionList?.length == 0}
-            >
-              <Rocket className="text-base-100" size={24} />
-              <p className="text-base-100 text-sm">Deploy Candidates</p>
-            </button>
+            <DeployCandidatesButton />
           </div>
         </div>
       }
     </div>
+  );
+};
+
+const DeployCandidatesButton = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const params = useParams();
+  const { projectUuid, projectListData } = useProject();
+  const { moduleListData, refetchModuleListData } = useModule();
+  const { versionListData, refetchVersionListData } = useModuleVersion();
+
+  const deployAll = useMemo(() => {
+    if (params?.moduleUuid) return false;
+    return true;
+  }, [params?.moduleUuid]);
+
+  const candidateVersionList = useMemo(() => {
+    if (versionListData == null) return [];
+    return versionListData?.filter(
+      (version) =>
+        version.candidate_version == null && version.status == "candidate"
+    );
+  }, [versionListData]);
+
+  const moduleName = useMemo(
+    () =>
+      moduleListData?.find((module) => module.uuid == params?.moduleUuid)?.name,
+    [moduleListData, deployAll]
+  );
+
+  const disabled = useMemo(() => {
+    if (deployAll) {
+      return false;
+    } else {
+      return candidateVersionList?.length == 0;
+    }
+  }, [candidateVersionList, deployAll, versionListData]);
+
+  async function handleClickDeploy() {
+    const toastId = toast.loading(
+      deployAll
+        ? "Deploying all local candidates..."
+        : `Deploying candidates for ${moduleName}...`
+    );
+    try {
+      await deployCandidates({
+        projectUuid: projectUuid,
+        devName: params?.devName as string,
+        moduleUuid: deployAll ? null : (params?.moduleUuid as string),
+      });
+      toast.update(toastId, {
+        render: "Successfully deployed candidates!",
+        type: "success",
+        isLoading: false,
+        autoClose: 2000,
+      });
+      if (deployAll) {
+        refetchModuleListData();
+      } else {
+        refetchVersionListData();
+      }
+    } catch (e) {
+      toast.update(toastId, {
+        render: `Failed to deploy candidates: ${e}`,
+        type: "error",
+        isLoading: false,
+        autoClose: 2000,
+      });
+    }
+  }
+  return (
+    <button
+      onClick={() => setIsOpen(true)}
+      className={classNames(
+        "min-w-fit h-fit flex flex-row px-3 py-2 items-center gap-x-2 group",
+        "bg-secondary-content rounded-lg font-medium btn btn-sm normal-case hover:bg-secondary-content",
+        "disabled:bg-neutral-content"
+      )}
+      disabled={disabled}
+    >
+      {/* <motion.div whileHover={{ scale: 1.1, rotateY: 45 }}> */}
+      <Rocket
+        className={classNames(
+          "text-base-100 transition-all",
+          "group-hover:text-red-500 group-hover:rotate-45 group-hover:animate-pulse"
+        )}
+        size={24}
+      />
+      {/* </motion.div> */}
+      <p className="text-base-100 text-sm">
+        {deployAll ? "Deploy All" : "Deploy Candidates"}
+      </p>
+      {isOpen && (
+        <ModalPortal>
+          <div className="fixed inset-0 backdrop-blur-sm w-full h-full flex justify-center items-center">
+            <motion.div
+              className="flex flex-col p-8 bg-base-200 rounded-xl min-w-[16rem] max-w-2xl w-fit gap-y-4"
+              initial={{
+                opacity: 0,
+                scale: 0.5,
+              }}
+              animate={{
+                opacity: 1,
+                scale: 1,
+              }}
+            >
+              <p className="text-2xl font-bold text-base-content self-start">
+                Confirm deployment
+              </p>
+              {deployAll ? (
+                <p className="text-base-content self-start">
+                  All local candidate versions and created Promptmodels will be
+                  deployed to production.
+                </p>
+              ) : (
+                <p className="text-base-content self-start">
+                  <span className="text-xl font-semibold text-secondary">
+                    {candidateVersionList?.length}
+                  </span>
+                  &nbsp;candidate versions for PromptModel
+                  <span className="text-secondary font-medium">
+                    &nbsp;{moduleName}&nbsp;
+                  </span>
+                  will be deployed to production.
+                </p>
+              )}
+              <div className="flex flex-row justify-end items-center gap-x-4 mt-4">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpen(false);
+                  }}
+                  className="btn bg-neutral/50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClickDeploy();
+                    setIsOpen(false);
+                  }}
+                  className="btn bg-base-content text-primary hover:bg-secondary hover:text-secondary-content"
+                >
+                  Deploy 🚀
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </ModalPortal>
+      )}
+    </button>
   );
 };

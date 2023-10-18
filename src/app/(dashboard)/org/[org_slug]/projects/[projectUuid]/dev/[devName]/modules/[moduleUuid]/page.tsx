@@ -63,17 +63,22 @@ export default function Page() {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
   const { moduleListData } = useModule();
-  const { versionListData, setVersionListData, refetchVersionListData } =
-    useModuleVersion();
+  const {
+    // versionListData,
+    refetchVersionListData,
+  } = useModuleVersion();
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [createVariantOpen, setCreateVariantOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo");
   const [selectedSample, setSelectedSample] = useState<string>();
+  const { versionListData } = useModuleVersion();
   const {
     newVersionUuidCache,
     newPromptCache,
     selectedVersionUuid,
+    moduleVersionLists,
+    updateModuleVersionLists,
     updateRunLogs,
     updatePrompts,
     removeRunLog,
@@ -82,15 +87,12 @@ export default function Page() {
     setNewPromptCache,
   } = useModuleVersionStore();
   const monaco = useMonaco();
-  const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
   const [modifiedPrompts, setModifiedPrompts] = useState<Prompt[]>([]);
   const { promptListData } = useModuleVersionDetails(selectedVersionUuid);
   const { refetchRunLogData } = useRunLogs(selectedVersionUuid);
   const { refetchSampleList } = useSamples();
 
-  useEffect(() => {
-    setSelectedVersionUuid(null);
-  }, []);
+  const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
 
   const moduleVersionData = useMemo(() => {
     return versionListData?.find(
@@ -106,14 +108,14 @@ export default function Page() {
   }, [promptListData]);
 
   useEffect(() => {
+    setSelectedVersionUuid(null);
+  }, []);
+
+  useEffect(() => {
     if (promptListData) {
       setModifiedPrompts(cloneDeep(promptListData));
     }
   }, [selectedVersionUuid, promptListData]);
-
-  useEffect(() => {
-    console.log(modifiedPrompts);
-  }, [modifiedPrompts]);
 
   const isNewVersionReady = useMemo(() => {
     if (!createVariantOpen) return false;
@@ -184,11 +186,11 @@ export default function Page() {
     const maxNodesAtDepth = Math.max(
       ...root.descendants().map((d: any) => d.depth)
     );
-    const requiredWidth = maxNodesAtDepth * 360;
+    const requiredWidth = maxNodesAtDepth * 320;
 
     // Use the smaller of window width and required width.
     const layoutWidth = Math.min(window.innerWidth, requiredWidth);
-    const layout = tree().size([layoutWidth, root.height * 150]);
+    const layout = tree().size([layoutWidth, root.height * 160]);
 
     const nodes = layout(root).descendants();
 
@@ -324,14 +326,15 @@ export default function Page() {
   async function handleUpdateVersionStatus(
     status: "broken" | "working" | "candidate"
   ) {
-    updateVersionStatus(
+    await updateVersionStatus(
       params?.projectUuid as string,
       params?.devName as string,
       moduleVersionData?.uuid,
       status
     );
-    setVersionListData(
-      versionListData.map((version) => {
+    updateModuleVersionLists(
+      params?.moduleUuid as string,
+      versionListData?.map((version) => {
         if (version.uuid === moduleVersionData?.uuid) {
           return {
             ...version,
@@ -361,6 +364,7 @@ export default function Page() {
       {/* Input for initial version (when versionListData is empty) */}
       <Drawer
         open={versionListData?.length == 0}
+        // open={versionListData?.length == 0}
         direction="right"
         classNames="!w-[100vw] px-4 flex flex-col justify-start items-center pb-4"
         duration={200}
