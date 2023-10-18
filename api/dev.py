@@ -29,7 +29,9 @@ class PromptConfig(BaseModel):
 class RunConfig(BaseModel):
     llm_module_uuid: str
     llm_module_name: str
-    sample_name: Optional[str] = None
+    parsing_type: Optional[str] # "colon" | "square_bracket" | "double_square_bracket"
+    output_keys: Optional[List[str]]
+    sample_name: Optional[str]
     prompts: List[PromptConfig]
     from_uuid: Optional[str]
     uuid: Optional[str]
@@ -63,6 +65,8 @@ async def run_llm_module(project_uuid: str, dev_name: str, run_config: RunConfig
         <li><b>run_config:</b></li>
         <ul>
             <li>llm_module_name: llm_module name</li>
+            <li>parsing_type: "colon" | "square_bracket" | "double_square_bracket" | None (Optional)</li>
+            <li>output_keys: List[str] | None (Optional)</li>
             <li>model: model name</li>
             <li>sample_name : sample name (Optional)  </li>
             <li>prompts : list of prompts (type, step, content)  </li>
@@ -413,13 +417,36 @@ async def push_version(project_uuid: str, dev_name: str, llm_module_version_uuid
 
         # save llm_module_versions to server DB
 
-        # if there is llm_module, save
+        # if there are llm_modules (which is only in local), save
         llm_modules = response["llm_modules"]
         if llm_modules:
             (supabase.table("llm_module").insert(llm_modules).execute())
 
         version = response["version"]
-        (supabase.table("llm_module_version").insert(version).execute())
+        # get last version(ID)
+        last_version = (
+            supabase.table("llm_module_version")
+            .select("version")
+            .eq("llm_module_uuid", version["llm_module_uuid"])
+            .order("version", desc=True)
+            .execute()
+        )
+        if len(last_version) == 0:
+            version["version"] = 1
+        else:
+            version["version"] = last_version[0]["version"] + 1
+            
+        supabase.table("llm_module_version").insert(version).execute()
+
+        
+        prompts = response["prompts"]
+        supabase.table("prompt").insert(prompts).execute()
+        
+        new_candidates = {
+            version['uuid'] : version['version']
+        }
+        
+        await websocket_manager.send_message(cli_access_key, LocalTask.UPDATE_CANDIDATE_VERSION_ID, {"new_candidates": new_candidates})
 
         return JSONResponse({}, status_code=HTTP_200_OK)
 
@@ -456,15 +483,48 @@ async def push_versions(project_uuid: str, dev_name: str):
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
 
         # save llm_module_versions to server DB
-
-        # if there is llm_module, save
+        
+        # if there are llm_modules (which is only in local), save them
         llm_modules = response["llm_modules"]
         if len(llm_modules) > 0:
-            (supabase.table("llm_module").insert(llm_modules).execute())
-
-        versions = response["versions"]
-        (supabase.table("llm_module_version").insert(versions).execute())
-
+            supabase.table("llm_module").insert(llm_modules).execute()
+        
+        new_versions = response["versions"]
+        # get last version(ID) for each llm_modules
+        version_llm_module_uuid_list = list(set([version["llm_module_uuid"] for version in new_versions]))
+        previous_version_list = (
+            supabase.table("llm_module_version")
+            .select("version, llm_module_uuid")
+            .in_("llm_module_uuid", version_llm_module_uuid_list)
+            .execute()
+        )
+        last_versions = {}
+        for previous_version in previous_version_list:
+            if previous_version["llm_module_uuid"] not in last_versions:
+                last_versions[previous_version["llm_module_uuid"]] = previous_version["version"]
+            else:
+                last_versions[previous_version["llm_module_uuid"]] = max(last_versions[previous_version["llm_module_uuid"]], previous_version["version"])
+        
+        # allocate version(ID) for new versions
+        # sort by created_at ascending
+        new_candidates = {}
+        new_versions = sorted(new_versions, key=lambda x: x["created_at"])
+        for new_version in new_versions:
+            new_version['version'] = last_versions[new_version["llm_module_uuid"]] + 1
+            last_versions[new_version["llm_module_uuid"]] += 1
+            new_candidates[new_version['uuid']] = new_version['version']
+        
+        supabase.table("llm_module_version").insert(new_versions).execute()
+        
+        prompts = response["prompts"]
+        supabase.table("prompt").insert(prompts).execute()
+        
+        await websocket_manager.send_message(
+            cli_access_key,
+            LocalTask.UPDATE_CANDIDATE_VERSION_ID,
+            {"new_candidates": new_candidates}
+        )
+        
         return JSONResponse({}, status_code=HTTP_200_OK)
 
     except ValueError as ve:

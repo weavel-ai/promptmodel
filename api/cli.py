@@ -211,7 +211,7 @@ async def pull_project(
         # get versions
         llm_module_versions = (
             supabase.table("llm_module_version")
-            .select("uuid, created_at, version, from_uuid, llm_module_uuid, model, is_published, is_ab_test")
+            .select("uuid, created_at, version, from_uuid, llm_module_uuid, model, is_published, is_ab_test, parsing_type, output_keys")
             .in_("llm_module_uuid", [x["uuid"] for x in llm_modules])
             .execute()
             .data
@@ -308,7 +308,7 @@ async def check_update(
         # get published, ab_test llm_versions
         deployed_llm_module_versions = (
             supabase.table("deployed_llm_module_version")
-            .select("uuid, from_uuid, llm_module_uuid, model, is_published, is_ab_test, ratio")
+            .select("uuid, from_uuid, llm_module_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys")
             .in_("llm_module_uuid", [x["uuid"] for x in llm_modules])
             .execute()
             .data
