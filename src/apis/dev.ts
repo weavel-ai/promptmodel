@@ -83,6 +83,26 @@ export async function fetchModuleVersions(
   return res.data.llm_module_versions;
 }
 
+export async function updateVersionStatus(
+  projectUuid: string,
+  devName: string,
+  versionUuid: string,
+  status: "broken" | "working" | "candidate"
+) {
+  await railwayDevClient.post(
+    "/change_version_status",
+    {},
+    {
+      params: {
+        project_uuid: projectUuid,
+        dev_name: devName,
+        llm_module_version_uuid: versionUuid,
+        status: status,
+      },
+    }
+  );
+}
+
 export async function fetchPrompts(
   projectUuid: string,
   devName: string,
