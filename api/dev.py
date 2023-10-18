@@ -27,6 +27,9 @@ class PromptConfig(BaseModel):
 class RunConfig(BaseModel):
     llm_module_uuid: str
     llm_module_name: str
+    parsing_type: Optional[str] # "colon" | "square_bracket" | "double_square_bracket"
+    output_keys: Optional[List[str]]
+    model: str
     sample_name: Optional[str]
     prompts: List[PromptConfig]
     from_uuid: Optional[str]
@@ -60,6 +63,8 @@ async def run_llm_module(
         <li><b>run_config:</b></li>
         <ul>
             <li>llm_module_name: llm_module name</li>
+            <li>parsing_type: "colon" | "square_bracket" | "double_square_bracket" | None (Optional)</li>
+            <li>output_keys: List[str] | None (Optional)</li>
             <li>model: model name</li>
             <li>sample_name : sample name (Optional)  </li>
             <li>prompts : list of prompts (type, step, content)  </li>
