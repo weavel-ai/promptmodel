@@ -51,25 +51,25 @@ export const fetchStream = async ({
     }
   );
   const reader = response.body?.getReader();
+  console.log(response);
 
   if (reader) {
     const decoder = new TextDecoder("utf-8");
 
     while (true) {
       const { value, done } = await reader.read();
-      if (done) {
-        console.log("Stream complete.");
-        break;
-      }
       const buffer = decoder.decode(value);
       try {
         const jsonObjects: object[] = parseMultipleJson(buffer);
         for (const jsonObject of jsonObjects) {
-          // console.log(jsonObject);
           onNewData(jsonObject as Record<string, any>);
         }
       } catch (error) {
         console.error("Error parsing JSON:", error);
+      }
+      if (done) {
+        console.log("Stream complete.");
+        break;
       }
     }
   }

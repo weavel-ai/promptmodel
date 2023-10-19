@@ -3,6 +3,12 @@ export function cloneDeep(obj: any): any {
 }
 
 export function parseMultipleJson(response: string): Record<string, any>[] {
+  try {
+    const singleJsonObject = JSON.parse(response);
+    return [singleJsonObject];
+  } catch (error) {
+    // Continue with existing logic if parsing as a single JSON object fails
+  }
   const jsonObjects: Record<string, any>[] = [];
   let braceCount = 0;
   let startIndex: number | null = null;

@@ -95,9 +95,13 @@ export default function Page() {
   const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
 
   const moduleVersionData = useMemo(() => {
-    return versionListData?.find(
+    const data = versionListData?.find(
       (version) => version.uuid === selectedVersionUuid
     );
+    if (data?.model) {
+      setSelectedModel(data?.model);
+    }
+    return data;
   }, [selectedVersionUuid, versionListData]);
 
   const originalPrompts = useMemo(() => {
@@ -123,16 +127,18 @@ export default function Page() {
     //   ?.getDiffEditors()
     //   ?.map((editor) => editor?.getModel()?.modified?.getValue());
 
-    if (newVersionUuidCache?.length > 0) {
-      return newPromptCache?.some(
-        (prompt, idx) => prompt.content !== modifiedPrompts[idx].content
-      );
-    } else {
-      return !originalPrompts?.every(
-        (val, idx) => val.content === modifiedPrompts[idx].content
-      );
-    }
-  }, [newVersionUuidCache, newPromptCache, modifiedPrompts]);
+    // if (newVersionUuidCache?.length > 0) {
+    //   return newPromptCache?.some(
+    //     (prompt, idx) => prompt.content !== modifiedPrompts[idx].content
+    //   );
+    // } else {
+
+    return (
+      !originalPrompts?.every(
+        (val, idx) => val === modifiedPrompts[idx]?.content
+      ) || selectedModel != moduleVersionData?.model
+    );
+  }, [selectedModel, originalPrompts, modifiedPrompts]);
 
   const getChildren = (parentId: string) => {
     return versionListData.filter((item) => item.from_uuid === parentId);
@@ -287,7 +293,7 @@ export default function Page() {
             toast.update(toastId, {
               render: data?.log,
               type: "error",
-              autoClose: 2000,
+              autoClose: 4000,
               isLoading: false,
             });
             break;
