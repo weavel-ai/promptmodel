@@ -45,5 +45,10 @@ def get_api_key(
     api_key: str = Security(api_key_header),
 ):
     """Authenticate and return API key."""
-    api_key = api_key.replace("Bearer ", "")  # Strip "Bearer " from the header value
-    return api_key
+    try:
+        api_key = api_key.replace("Bearer ", "")  # Strip "Bearer " from the header value
+        return api_key
+    except:
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
+        )
