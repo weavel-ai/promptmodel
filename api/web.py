@@ -3,7 +3,7 @@ import secrets
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from pydantic import BaseModel
 
-from fastapi import APIRouter, Response, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from starlette.status import (
     HTTP_200_OK,
@@ -16,6 +16,7 @@ from utils.logger import logger
 from base.database import supabase
 
 router = APIRouter()
+
 
 class Project(BaseModel):
     name: str
@@ -41,6 +42,8 @@ async def create_project(project: Project):
         )
     except Exception as exc:
         logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=exc) from exc
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
+        ) from exc
 
-    return Response(content=str(project_res["id"]), status_code=HTTP_200_OK)
+    return JSONResponse(project_res, status_code=HTTP_200_OK)
