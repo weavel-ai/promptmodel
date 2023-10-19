@@ -57,7 +57,11 @@ export const useModuleVersionStore = create<Store & Actions>((set) => ({
     set((state) => {
       // Remove uuid from runLogs
       const runLogs = { ...state.runLogs };
-      delete runLogs[version][uuid];
+      if (runLogs[version]) {
+        if (runLogs[version][uuid]) {
+          delete runLogs[version][uuid];
+        }
+      }
       return {
         runLogs,
       };

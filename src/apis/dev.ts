@@ -47,7 +47,6 @@ export function subscribeDevBranchStatus(
         filter: `project_uuid=eq.${projectUuid}`,
       },
       (payload) => {
-        // console.log("Change received!", payload);
         if (payload.new["name"] == devName) {
           onUpdate(payload.new);
         }
