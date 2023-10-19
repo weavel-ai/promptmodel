@@ -211,7 +211,8 @@ async def pull_project(
         # get versions
         llm_module_versions = (
             supabase.table("llm_module_version")
-            .select("uuid, created_at, version, from_uuid, llm_module_uuid, model, is_published, is_ab_test, parsing_type, output_keys")
+            # .select("uuid, created_at, version, from_uuid, llm_module_uuid, model, is_published, is_ab_test, parsing_type, output_keys")
+            .select("uuid, created_at, version, from_uuid, llm_module_uuid, model, is_published, is_ab_test")
             .in_("llm_module_uuid", [x["uuid"] for x in llm_modules])
             .execute()
             .data

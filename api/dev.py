@@ -29,9 +29,6 @@ class PromptConfig(BaseModel):
 class RunConfig(BaseModel):
     llm_module_uuid: str
     llm_module_name: str
-    parsing_type: Optional[
-        str
-    ] = None  # "colon" | "square_bracket" | "double_square_bracket"
     output_keys: Optional[List[str]] = None
     model: str
     sample_name: Optional[str] = None
@@ -68,7 +65,6 @@ async def run_llm_module(project_uuid: str, dev_name: str, run_config: RunConfig
         <li><b>run_config:</b></li>
         <ul>
             <li>llm_module_name: llm_module name</li>
-            <li>parsing_type: "colon" | "square_bracket" | "double_square_bracket" | None (Optional)</li>
             <li>output_keys: List[str] | None (Optional)</li>
             <li>model: model name</li>
             <li>sample_name : sample name (Optional)  </li>
