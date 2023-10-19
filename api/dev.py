@@ -510,7 +510,7 @@ async def push_versions(
                 lambda version: (
                     (
                         version.update(
-                            {"llm_module_uuid": version["llm_module_uuid"]["uuid"]}
+                            {"llm_module_uuid": version["llm_module_uuid"]}
                         ),
                         version,
                     )[1]
@@ -553,7 +553,7 @@ async def push_versions(
             map(
                 lambda prompt: (
                     (
-                        prompt.update({"version_uuid": prompt["version_uuid"]["uuid"]}),
+                        prompt.update({"version_uuid": prompt["version_uuid"]}),
                         prompt,
                     )[1]
                 ),
