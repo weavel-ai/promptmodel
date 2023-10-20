@@ -14,7 +14,7 @@ export const SampleSelector = (props: SampleSelectorProps) => {
   const { sampleList } = useSamples();
   const [isOpen, setIsOpen] = useState(false);
 
-  const [inputValue, setInputValue] = useState<string>(EMPTY_INPUTS_LABEL);
+  const [inputValue, setInputValue] = useState<string>(null);
   const [modalPosition, setModalPosition] = useState({
     top: 0,
     left: 0,

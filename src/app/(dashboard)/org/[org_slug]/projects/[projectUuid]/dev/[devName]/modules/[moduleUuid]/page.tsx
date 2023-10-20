@@ -71,7 +71,8 @@ export default function Page() {
   const [edges, setEdges] = useState([]);
   const [createVariantOpen, setCreateVariantOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo");
-  const [selectedSample, setSelectedSample] = useState<string>();
+  const [selectedSample, setSelectedSample] =
+    useState<string>(EMPTY_INPUTS_LABEL);
   const { versionListData } = useModuleVersion();
   const {
     newVersionUuidCache,
