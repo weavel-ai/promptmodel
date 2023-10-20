@@ -163,7 +163,7 @@ async def get_changelog(
 
         res = (
             supabase.table("project_changelog")
-            .select("previous_version, changelogs, level")
+            .select("previous_version, logs, level")
             .eq("project_uuid", project_uuid)
             .gte("id", current_version_id)
             .in_("level", levels)
