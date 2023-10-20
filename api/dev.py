@@ -482,7 +482,7 @@ async def push_version(project_uuid: str, dev_name: str, llm_module_version_uuid
             supabase.table("project_changelog")
             .insert(
                 {
-                    "changelog" : changelogs,
+                    "changelogs" : changelogs,
                     "project_uuid" : project_uuid,
                     "level" : changelog_level,
                     "previous_version" : current_project_version
@@ -642,7 +642,7 @@ async def push_versions(
             supabase.table("project_changelog")
             .insert(
                 {
-                    "changelog" : changelogs,
+                    "changelogs" : changelogs,
                     "project_uuid" : project_uuid,
                     "level" : changelog_level,
                     "previous_version" : current_project_version
