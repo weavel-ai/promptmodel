@@ -27,7 +27,7 @@ export default function Home() {
     if (isSignedIn) {
       router.push("/org/redirect");
     } else {
-      router.push("https://www.promptmodel.run");
+      router.push("https://app.promptmodel.run/signin");
     }
   }, [isLoaded, isSignedIn]);
 
