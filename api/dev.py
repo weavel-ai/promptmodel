@@ -618,17 +618,7 @@ async def push_versions(
             last_versions[new_version["llm_module_uuid"]] += 1
             new_candidates[new_version["uuid"]] = new_version["version"]
         (supabase.table("llm_module_version").insert(new_versions).execute())
-        prompts = list(
-            map(
-                lambda prompt: (
-                    (
-                        prompt.update({"version_uuid": prompt["version_uuid"]}),
-                        prompt,
-                    )[1]
-                ),
-                response["prompts"],
-            )
-        )
+        prompts = response["prompts"]
         (supabase.table("prompt").insert(prompts).execute())
 
         print(f"new candidates: {new_candidates}")
