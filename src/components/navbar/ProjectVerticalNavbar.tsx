@@ -43,7 +43,7 @@ export const ProjectVerticalNavbar = () => {
       <div className="flex flex-col h-fit justify-end pb-8">
         <VerticalNavbarItem
           label="Docs"
-          href="https://promptmodel-docs.vercel.app/docs"
+          href="https://www.promptmodel.run/docs/intro"
           external
         >
           <Notebook weight="fill" className="text-base-content" size={20} />

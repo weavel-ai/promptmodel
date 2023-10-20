@@ -125,7 +125,7 @@ export const DeploymentNavbar = (props: NavbarProps) => {
             {pathname == "/" ? (
               <div className="px-6 pt-1 group justify-center">
                 <Link
-                  href="https://promptmodel-docs.vercel.app/docs"
+                  href="https://www.promptmodel.run/docs/intro"
                   target="_blank"
                   className={classNames("relative")}
                 >

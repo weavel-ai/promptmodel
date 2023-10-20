@@ -399,7 +399,7 @@ function ModuleVersionNode({ data }) {
           : "border-none",
         data.isPublished
           ? "bg-secondary/80 hover:bg-secondary/50"
-          : "bg-blue-500/60 hover:bg-blue-500/30"
+          : "bg-base-200 hover:bg-blue-500/30"
       )}
       onClick={() => setSelectedVersionUuid(data.uuid)}
     >
