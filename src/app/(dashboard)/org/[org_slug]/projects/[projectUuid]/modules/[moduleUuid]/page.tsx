@@ -26,6 +26,7 @@ import { Editor } from "@monaco-editor/react";
 import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
 import { hierarchy, tree, stratify } from "d3-hierarchy";
+import { useQueryClient } from "@tanstack/react-query";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -39,92 +40,18 @@ export default function Page() {
     useModuleVersionStore();
   const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
 
+  const queryClient = useQueryClient();
+
   const { promptListData, moduleVersionData } =
     useModuleVersionDetails(selectedVersionUuid);
 
   const { runLogData } = useRunLog(selectedVersionUuid);
-
-  const getChildren = (parentId: string) => {
-    return versionListData.filter((item) => item.from_uuid === parentId);
-  };
 
   useHotkeys("esc", () => {
     setSelectedVersionUuid(null);
   });
 
   // Build nodes
-  /*
-  useEffect(() => {
-    if (!versionListData || versionListData?.length === 0) return;
-    const generatedNodes = [];
-    const generatedEdges = [];
-
-    const findMaxNodesAtLevel = (data) => {
-      const levelMap: Record<any, number> = {};
-
-      const countNodes = (items, level) => {
-        for (const item of items) {
-          if (!levelMap[level]) {
-            levelMap[level] = 0;
-          }
-          levelMap[level]++;
-
-          const children = getChildren(item.uuid);
-          if (children && children.length > 0) {
-            countNodes(children, level + 1);
-          }
-        }
-      };
-
-      countNodes(data, 0);
-      return Math.max(...Object.values(levelMap));
-    };
-
-    const maxNodes = findMaxNodesAtLevel(versionListData);
-
-    const buildNodes = (data, level) => {
-      const nodesAtThisLevel = data.length;
-      const spaceBetween = 1000 / (maxNodes + 1); // you can adjust the 1000 value based on your preferred width
-
-      for (let i = 0; i < nodesAtThisLevel; i++) {
-        const item = data[i];
-        const xPosition = (i + 1) * spaceBetween;
-
-        generatedNodes.push({
-          id: item.uuid.toString(),
-          type: "moduleVersion",
-          data: {
-            label: item.version,
-            uuid: item.uuid,
-            isPublished: item.is_published,
-          },
-          position: { x: xPosition, y: level * 150 }, // adjusted y position for better spacing
-        });
-
-        if (item.from_uuid) {
-          generatedEdges.push({
-            id: `e${item.uuid}-${item.from_uuid}`,
-            source: item.from_uuid,
-            target: item.uuid,
-          });
-        }
-
-        const children = getChildren(item.uuid);
-        if (children && children.length > 0) {
-          buildNodes(children, level + 1);
-        }
-      }
-    };
-
-    buildNodes(
-      versionListData.filter((v) => !v.from_uuid),
-      0
-    );
-
-    setNodes(generatedNodes);
-    setEdges(generatedEdges);
-  }, [versionListData]);
-  */
   useEffect(() => {
     if (!versionListData || versionListData.length === 0) return;
     const generatedEdges = [];
@@ -148,8 +75,6 @@ export default function Page() {
     const generatedNodes = nodes.map((node: any) => {
       const item = node.data;
 
-      console.log(item);
-
       if (item.from_uuid) {
         generatedEdges.push({
           id: `e${item.uuid}-${item.from_uuid}`,
@@ -170,20 +95,29 @@ export default function Page() {
       };
     });
 
-    console.log(generatedNodes);
-
     setNodes(generatedNodes);
     setEdges(generatedEdges);
   }, [versionListData]);
 
   async function handleClickPublish() {
     const toastId = toast.loading("Publishing...");
+
+    const previousPublishedUuid = versionListData?.find(
+      (v) => v.is_published
+    )?.uuid;
+
     await updatePublishedModuleVersion(
       await createSupabaseClient(),
       selectedVersionUuid,
-      versionListData?.find((v) => v.is_published)?.uuid
+      previousPublishedUuid
     );
     await refetchVersionListData();
+    queryClient.invalidateQueries({
+      predicate: (query: any) =>
+        query.queryKey[0] === "moduleVersionData" &&
+        (query.queryKey[1]?.uuid === selectedVersionUuid ||
+          query.queryKey[1]?.uuid == previousPublishedUuid),
+    });
     toast.update(toastId, {
       render: "Published successfully!",
       type: "success",
