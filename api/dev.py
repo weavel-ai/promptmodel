@@ -392,6 +392,8 @@ async def change_version_status(
 async def push_version(project_uuid: str, dev_name: str, llm_module_version_uuid: str):
     """Push 1 version to Server DB from local DB"""
     try:
+        changelogs = []
+        changelog_level = 2
         # Find local server websocket
         dev_branch = (
             supabase.table("dev_branch")
@@ -420,6 +422,14 @@ async def push_version(project_uuid: str, dev_name: str, llm_module_version_uuid
         llm_modules = response["llm_modules"]
         if llm_modules:
             (supabase.table("llm_module").insert(llm_modules).execute())
+            changelogs.append(
+                {
+                    "subject": "llm_module",
+                    "identifiers": [llm_module["uuid"] for llm_module in llm_modules],
+                    "action" : "ADD"
+                }
+            )
+            changelog_level = 1
 
         version = response["version"]
         # get last version(ID)
@@ -447,6 +457,39 @@ async def push_version(project_uuid: str, dev_name: str, llm_module_version_uuid
             LocalTask.UPDATE_CANDIDATE_VERSION_ID,
             {"new_candidates": new_candidates},
         )
+        
+        # make project_changelog level 2, subject = llm_module_version
+        changelogs.append(
+            {
+                "subject": "llm_module_version",
+                "identifiers": [version["uuid"]],
+                "action" : "ADD"
+            }
+        )
+        
+        # update project_version
+        current_project_version : str = supabase.table("project").select("version").eq("uuid", project_uuid).single().execute().data["version"]
+        current_version_levels = current_project_version.split(".")
+        if changelog_level == 1:
+            new_project_version_levels = [str(int(current_version_levels[0]) + 1), "0", "0"]
+        elif changelog_level == 2:
+            new_project_version_levels = [current_version_levels[0], str(int(current_version_levels[1]) + 1), "0"]
+        new_project_version = ".".join(new_project_version_levels)
+        supabase.table("project").update({"version" : new_project_version}).eq("uuid", project_uuid).execute()
+        
+        # insert project_changelog
+        (
+            supabase.table("project_changelog")
+            .insert(
+                {
+                    "logs" : changelogs,
+                    "project_uuid" : project_uuid,
+                    "level" : changelog_level,
+                    "previous_version" : current_project_version
+                }
+            )
+            .execute()
+        )
 
         return JSONResponse({}, status_code=HTTP_200_OK)
 
@@ -470,6 +513,8 @@ async def push_versions(
     - module_uuid: Optional(str) if module_uuid is given, push only one module
     """
     try:
+        changelogs = []
+        changelog_level = 2
         # Find local server websocket
         dev_branch = (
             supabase.table("dev_branch")
@@ -500,6 +545,15 @@ async def push_versions(
         llm_modules = response["llm_modules"]
         if len(llm_modules) > 0:
             (supabase.table("llm_module").insert(llm_modules).execute())
+            # make changelog level 1, subject = llm_module
+            changelogs.append(
+                {
+                    "subject": "llm_module",
+                    "identifiers": [llm_module["uuid"] for llm_module in llm_modules],
+                    "action" : "ADD"
+                }
+            )
+            changelog_level = 1
 
         new_versions = list(
             map(
@@ -564,6 +618,41 @@ async def push_versions(
             LocalTask.UPDATE_CANDIDATE_VERSION_ID,
             {"new_candidates": new_candidates},
         )
+        
+        # make project_changelog level 2, subject = llm_module_version
+        changelogs.append(
+            {
+                "subject": "llm_module_version",
+                "identifiers": [version["uuid"] for version in new_versions],
+                "action" : "ADD"
+            }
+        )
+        # update project_version
+        current_project_version : str = supabase.table("project").select("version").eq("uuid", project_uuid).single().execute().data["version"]
+        current_version_levels = current_project_version.split(".")
+        if changelog_level == 1:
+            new_project_version_levels = [str(int(current_version_levels[0]) + 1), "0", "0"]
+        elif changelog_level == 2:
+            new_project_version_levels = [current_version_levels[0], str(int(current_version_levels[1]) + 1), "0"]
+        new_project_version = ".".join(new_project_version_levels)
+        supabase.table("project").update({"version" : new_project_version}).eq("uuid", project_uuid).execute()
+        
+        # insert project_changelog
+        (
+            supabase.table("project_changelog")
+            .insert(
+                {
+                    "logs" : changelogs,
+                    "project_uuid" : project_uuid,
+                    "level" : changelog_level,
+                    "previous_version" : current_project_version
+                }
+            )
+            .execute()
+        )
+        
+        
+        
         return JSONResponse({}, status_code=HTTP_200_OK)
 
     except ValueError as ve:
