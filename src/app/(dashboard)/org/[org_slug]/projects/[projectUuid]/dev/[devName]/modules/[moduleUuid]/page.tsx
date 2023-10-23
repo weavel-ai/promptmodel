@@ -119,6 +119,8 @@ export default function Page() {
   useEffect(() => {
     if (promptListData) {
       setModifiedPrompts(cloneDeep(promptListData));
+    } else {
+      setModifiedPrompts([]);
     }
   }, [selectedVersionUuid, promptListData]);
 
