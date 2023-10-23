@@ -59,7 +59,7 @@ class ConnectionManager:
             try:
                 message = await websocket.receive_text()
                 data = json.loads(message)
-                logger.debug("Received data : ", data)
+                logger.debug(f"Received data : {data}")
                 correlation_id = data.get("correlation_id")
                 # print("Received", data)
 
