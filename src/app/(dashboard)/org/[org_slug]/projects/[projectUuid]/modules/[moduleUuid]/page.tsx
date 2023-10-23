@@ -199,10 +199,22 @@ export default function Page() {
                 ))}
               </div>
             </motion.div>
-            <div className="min-h-[120px] relative">
+            <div className="min-h-[120px] relative backdrop-blur-md">
               <div
-                className="absolute left-3 right-3 h-2 cursor-s-resize"
-                {...registMouseDownDrag((deltaX, deltaY) => {
+                className={classNames(
+                  "absolute left-0 right-0 h-[0.4rem] cursor-move bg-base-content/80 rounded-full",
+                  "transition-colors hover:bg-blue-500/70 active:bg-blue-500/70"
+                )}
+                {...registerMouseDownDrag((deltaX, deltaY) => {
+                  console.log(lowerBoxHeight, deltaY);
+                  if (
+                    lowerBoxHeight - deltaY >
+                    window.innerHeight - 104 - 220
+                  ) {
+                    console.log("here");
+                    return;
+                  }
+                  if (lowerBoxHeight - deltaY < 100) return;
                   setLowerBoxHeight(lowerBoxHeight - deltaY);
                 }, true)}
               />
@@ -372,7 +384,7 @@ function ModuleVersionNode({ data }) {
   );
 }
 
-function registMouseDownDrag(
+function registerMouseDownDrag(
   onDragChange: (deltaX: number, deltaY: number) => void,
   stopPropagation?: boolean
 ) {
