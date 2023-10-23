@@ -47,6 +47,9 @@ export default function Page() {
 
   const { runLogData } = useRunLog(selectedVersionUuid);
 
+  const [upperBoxHeight, setUpperBoxHeight] = useState(200);
+  const [lowerBoxHeight, setLowerBoxHeight] = useState(100);
+
   useHotkeys("esc", () => {
     setSelectedVersionUuid(null);
   });
@@ -188,16 +191,29 @@ export default function Page() {
               </button>
             </div>
           </div>
-          <motion.div className="bg-base-200 h-full w-full p-4 rounded-box overflow-auto mb-4">
-            <div className="flex flex-col gap-y-2 justify-start items-start">
-              {promptListData?.map((prompt) => (
-                <PromptComponent prompt={prompt} />
-              ))}
+          <div className="h-full flex flex-col justify-between">
+            <motion.div className="bg-base-200 w-full p-4 rounded-box overflow-auto flex-grow">
+              <div className="max-h-full flex flex-col gap-y-2 justify-start items-start">
+                {promptListData?.map((prompt) => (
+                  <PromptComponent prompt={prompt} />
+                ))}
+              </div>
+            </motion.div>
+            <div className="min-h-[120px] relative">
+              <div
+                className="absolute left-3 right-3 h-2 cursor-s-resize"
+                {...registMouseDownDrag((deltaX, deltaY) => {
+                  setLowerBoxHeight(lowerBoxHeight - deltaY);
+                }, true)}
+              />
+              <div className="flex flex-col flex-auto gap-y-1 mt-4">
+                <p className="text-xl font-bold mb-1">Run Logs</p>
+                <RunLogComponent
+                  runLogData={runLogData}
+                  height={lowerBoxHeight}
+                />
+              </div>
             </div>
-          </motion.div>
-          <div className="flex flex-col gap-y-1">
-            <p className="text-xl font-bold mb-1">Run Logs</p>
-            <RunLogComponent runLogData={runLogData} />
           </div>
         </div>
       </Drawer>
@@ -206,7 +222,7 @@ export default function Page() {
 }
 
 const PromptComponent = ({ prompt }) => {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [height, setHeight] = useState(30);
   const editorRef = useRef(null);
 
@@ -255,6 +271,7 @@ const PromptComponent = ({ prompt }) => {
           }}
           loading={<div className="loading loading-xs loading-dots" />}
           onMount={handleEditorDidMount}
+          className="overflow-auto"
           height={height}
         />
       )}
@@ -262,11 +279,20 @@ const PromptComponent = ({ prompt }) => {
   );
 };
 
-const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
+const RunLogComponent = ({
+  runLogData,
+  height,
+}: {
+  runLogData: RunLog[];
+  height: number;
+}) => {
   const [rawOutput, setrawOutput] = useState(true);
 
   return (
-    <div className="w-full h-fit max-h-[25vh] rounded-box items-center bg-base-200 p-4 flex flex-col gap-y-2 justify-start">
+    <div
+      className="w-full min-h-1/4 rounded-box items-center bg-base-200 p-4 flex flex-col flex-grow gap-y-2 justify-start"
+      style={{ height: height }}
+    >
       <div className="w-full h-fit flex flex-row">
         <div className="w-full">
           <p className="text-lg font-medium ps-1">Input</p>
@@ -344,4 +370,28 @@ function ModuleVersionNode({ data }) {
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
+}
+
+function registMouseDownDrag(
+  onDragChange: (deltaX: number, deltaY: number) => void,
+  stopPropagation?: boolean
+) {
+  return {
+    onMouseDown: (clickEvent: React.MouseEvent<Element, MouseEvent>) => {
+      if (stopPropagation) clickEvent.stopPropagation();
+
+      const mouseMoveHandler = (moveEvent: MouseEvent) => {
+        const deltaX = moveEvent.screenX - clickEvent.screenX;
+        const deltaY = moveEvent.screenY - clickEvent.screenY;
+        onDragChange(deltaX, deltaY);
+      };
+
+      const mouseUpHandler = () => {
+        document.removeEventListener("mousemove", mouseMoveHandler);
+      };
+
+      document.addEventListener("mousemove", mouseMoveHandler);
+      document.addEventListener("mouseup", mouseUpHandler, { once: true });
+    },
+  };
 }
