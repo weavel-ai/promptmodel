@@ -17,6 +17,10 @@ def get_project(
     project = (
         supabase.table("project").select("*").eq("api_key", api_key).execute()
     ).data
+    
+    logger.debug(f"api key: {api_key}")
+    logger.debug(f"project: {project}")
+    
     if not project:
         raise HTTPException(
             status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
