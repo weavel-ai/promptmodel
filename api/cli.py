@@ -442,6 +442,7 @@ async def log_deployment_run(
                     "cost": completion_cost(raw_response)
                 }
             )
+            .execute()
         )
     except Exception as exc:
         logger.error(exc)
