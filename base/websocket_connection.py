@@ -59,7 +59,7 @@ class ConnectionManager:
             try:
                 message = await websocket.receive_text()
                 data = json.loads(message)
-                # logger.debug(data)
+                logger.debug("Received data : ", data)
                 correlation_id = data.get("correlation_id")
                 # print("Received", data)
 
@@ -219,7 +219,7 @@ class ConnectionManager:
                     .execute()
                 ).data
                 
-                if len(dev_branch) != 0:
+                if len(dev_branch) == 0:
                     logger.error(f"Dev branch not found for token {token}")
                     return
                 

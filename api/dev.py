@@ -600,13 +600,11 @@ async def push_versions(
         last_versions = {}
         for previous_version in previous_version_list:
             if previous_version["llm_module_uuid"] not in last_versions:
-                last_versions[previous_version["llm_module_uuid"]] = previous_version[
-                    "version"
-                ]
+                last_versions[previous_version["llm_module_uuid"]] = int(previous_version["version"])
             else:
                 last_versions[previous_version["llm_module_uuid"]] = max(
                     last_versions[previous_version["llm_module_uuid"]],
-                    previous_version["version"],
+                    int(previous_version["version"]),
                 )
 
         # allocate version(ID) for new versions
@@ -614,14 +612,19 @@ async def push_versions(
         new_candidates = {}
         new_versions = sorted(new_versions, key=lambda x: x["created_at"])
         for new_version in new_versions:
-            new_version["version"] = last_versions[new_version["llm_module_uuid"]] + 1
-            last_versions[new_version["llm_module_uuid"]] += 1
-            new_candidates[new_version["uuid"]] = new_version["version"]
+            if new_version["llm_module_uuid"] in last_versions:
+                new_version["version"] = last_versions[new_version["llm_module_uuid"]] + 1
+                last_versions[new_version["llm_module_uuid"]] += 1
+            else:
+                new_version["version"] = 1
+                last_versions[new_version["llm_module_uuid"]] = 1
+            new_candidates[new_version["uuid"]] = int(new_version["version"])
+            
         (supabase.table("llm_module_version").insert(new_versions).execute())
         prompts = response["prompts"]
         (supabase.table("prompt").insert(prompts).execute())
 
-        print(f"new candidates: {new_candidates}")
+        # print(f"new candidates: {new_candidates}")
         await websocket_manager.send_message(
             cli_access_key,
             LocalTask.UPDATE_CANDIDATE_VERSION_ID,
