@@ -27,6 +27,7 @@ import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
 import { hierarchy, tree, stratify } from "d3-hierarchy";
 import { useQueryClient } from "@tanstack/react-query";
+import { useProject } from "@/hooks/useProject";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -38,6 +39,7 @@ export default function Page() {
   const [edges, setEdges] = useState(initialEdges);
   const { selectedVersionUuid, setSelectedVersionUuid } =
     useModuleVersionStore();
+  const { projectData } = useProject();
   const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
 
   const queryClient = useQueryClient();
@@ -109,7 +111,9 @@ export default function Page() {
     await updatePublishedModuleVersion(
       await createSupabaseClient(),
       selectedVersionUuid,
-      previousPublishedUuid
+      previousPublishedUuid,
+      projectData?.version,
+      projectData?.uuid
     );
     await refetchVersionListData();
     queryClient.invalidateQueries({

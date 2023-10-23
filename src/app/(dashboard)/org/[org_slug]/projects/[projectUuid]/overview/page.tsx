@@ -46,15 +46,13 @@ export default function Page() {
             </p>
             {/* TODO */}
             <div className="w-full h-fit">
-              <Link
-                href={`/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${devBranchListData?.[0]?.name}`}
-                className="w-full flex flex-col gap-y-2"
-              >
+              <div className="w-full flex flex-col">
                 {devBranchListData?.map((branch) => {
                   return (
-                    <div
+                    <Link
                       key={branch.name}
-                      className="w-full flex flex-row gap-x-48"
+                      href={`/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${devBranchListData?.[0]?.name}`}
+                      className="w-full flex flex-row items-center gap-x-48 transition-all hover:bg-base-300/50 rounded-lg py-1"
                     >
                       <div className="bg-[#222334] px-2 py-1 w-2/6 h-fit text-center rounded">
                         {branch.name}
@@ -64,10 +62,10 @@ export default function Page() {
                           Last updated {dayjs(branch.created_at).fromNow()}
                         </p>
                       </div>
-                    </div>
+                    </Link>
                   );
                 })}
-              </Link>
+              </div>
             </div>
           </div>
           <div className="w-full h-fit flex flex-col">

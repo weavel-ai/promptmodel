@@ -26,7 +26,9 @@ export async function fetchModuleVersion(
 export async function updatePublishedModuleVersion(
   supabaseClient: SupabaseClient,
   uuid: string,
-  previousPublishedVersionUuid: string | null
+  previousPublishedVersionUuid: string | null,
+  projectVersion: string,
+  projectUuid: string
 ) {
   if (previousPublishedVersionUuid) {
     await supabaseClient
@@ -39,6 +41,21 @@ export async function updatePublishedModuleVersion(
     .update({ is_published: true })
     .eq("uuid", uuid)
     .single();
+
+  // Update project version
+  const projectVersionLevel3: number = parseInt(projectVersion.split(".")[2]);
+  const newProjectVersion =
+    projectVersion.split(".").slice(0, 2).join(".") +
+    "." +
+    (projectVersionLevel3 + 1).toString();
+
+  await supabaseClient
+    .from("project")
+    .update({
+      version: newProjectVersion,
+    })
+    .eq("uuid", projectUuid);
+
   return res.data;
 }
 
