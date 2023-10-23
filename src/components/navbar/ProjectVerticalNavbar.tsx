@@ -2,6 +2,7 @@
 
 import { useOrgData } from "@/hooks/useOrgData";
 import {
+  DiscordLogo,
   GearSix,
   Info,
   Notebook,
@@ -40,13 +41,20 @@ export const ProjectVerticalNavbar = () => {
           <GearSix weight="fill" className="text-base-content" size={20} />
         </VerticalNavbarItem>
       </div>
-      <div className="flex flex-col h-fit justify-end pb-8">
+      <div className="flex flex-col h-fit justify-end pb-8 gap-y-5">
         <VerticalNavbarItem
           label="Docs"
           href="https://www.promptmodel.run/docs/intro"
           external
         >
           <Notebook weight="fill" className="text-base-content" size={20} />
+        </VerticalNavbarItem>
+        <VerticalNavbarItem
+          label="Discord"
+          href="https://discord.gg/JrwzhSUW"
+          external
+        >
+          <DiscordLogo weight="fill" className="text-base-content" size={20} />
         </VerticalNavbarItem>
       </div>
     </div>
