@@ -215,7 +215,7 @@ export default function Page() {
                 setHeight={setLowerBoxHeight}
               />
               <div
-                className="flex flex-col items-start gap-y-1 mt-4 bottom-0"
+                className="flex flex-col items-start gap-y-1 !my-4"
                 style={{
                   height: lowerBoxHeight,
                 }}
@@ -290,12 +290,12 @@ const PromptComponent = ({ prompt }) => {
 };
 
 const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
-  const [rawOutput, setRawOutput] = useState(true);
+  const [showRaw, setShowRaw] = useState(true);
 
   return (
     <div
       className="w-full min-h-1/4 rounded-box items-center bg-base-200 p-4 flex flex-col flex-grow-1 gap-y-2 justify-start"
-      style={{ height: "calc(100% - 1.75rem)" }}
+      style={{ height: "calc(100% - 2rem)" }}
     >
       <div className="w-full max-h-full bg-base-200 rounded overflow-auto">
         <table className="w-full table table-fixed table-pin-cols">
@@ -310,20 +310,20 @@ const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
                   <button
                     className={classNames(
                       "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                      rawOutput && "bg-base-300",
-                      !rawOutput && "bg-base-300/40"
+                      showRaw && "bg-base-300",
+                      !showRaw && "bg-base-300/40"
                     )}
-                    onClick={() => setRawOutput(true)}
+                    onClick={() => setShowRaw(true)}
                   >
                     Raw
                   </button>
                   <button
                     className={classNames(
                       "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                      !rawOutput && "bg-base-300",
-                      rawOutput && "bg-base-300/40"
+                      !showRaw && "bg-base-300",
+                      showRaw && "bg-base-300/40"
                     )}
-                    onClick={() => setRawOutput(false)}
+                    onClick={() => setShowRaw(false)}
                   >
                     Parsed
                   </button>
@@ -337,7 +337,7 @@ const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
                 <tr>
                   <td>{JSON.stringify(runlog.inputs)}</td>
                   <td>
-                    {rawOutput
+                    {showRaw
                       ? runlog.raw_output
                       : JSON.stringify(runlog.parsed_outputs)}
                   </td>
