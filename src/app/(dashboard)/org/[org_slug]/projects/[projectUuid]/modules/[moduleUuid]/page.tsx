@@ -28,6 +28,8 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { hierarchy, tree, stratify } from "d3-hierarchy";
 import { useQueryClient } from "@tanstack/react-query";
 import { ResizableSeparator } from "@/components/ResizableSeparator";
+import { useProject } from "@/hooks/useProject";
+import ReactJson from "react-json-view";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -39,6 +41,7 @@ export default function Page() {
   const [edges, setEdges] = useState(initialEdges);
   const { selectedVersionUuid, setSelectedVersionUuid } =
     useModuleVersionStore();
+  const { projectData } = useProject();
   const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
 
   const queryClient = useQueryClient();
@@ -112,7 +115,9 @@ export default function Page() {
     await updatePublishedModuleVersion(
       await createSupabaseClient(),
       selectedVersionUuid,
-      previousPublishedUuid
+      previousPublishedUuid,
+      projectData?.version,
+      projectData?.uuid
     );
     await refetchVersionListData();
     queryClient.invalidateQueries({
@@ -332,14 +337,43 @@ const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
             </tr>
           </thead>
           <tbody className="bg-base-100">
-            {runLogData?.map((runlog) => {
+            {runLogData?.map((runLog) => {
               return (
                 <tr>
-                  <td>{JSON.stringify(runlog.inputs)}</td>
-                  <td>
-                    {showRaw
-                      ? runlog.raw_output
-                      : JSON.stringify(runlog.parsed_outputs)}
+                  <td className="align-top">
+                    {runLog?.inputs == null ? (
+                      <p>None</p>
+                    ) : typeof runLog?.inputs == "string" ? (
+                      <p>{runLog?.inputs?.toString()}</p>
+                    ) : (
+                      <ReactJson
+                        src={runLog?.inputs as Record<string, any>}
+                        name={false}
+                        displayDataTypes={false}
+                        displayObjectSize={false}
+                        enableClipboard={false}
+                        theme="google"
+                      />
+                    )}
+                  </td>
+                  <td className="align-top">
+                    {showRaw ? (
+                      <p className="whitespace-break-spaces">
+                        {runLog?.raw_output}
+                      </p>
+                    ) : typeof runLog?.parsed_outputs == "string" ||
+                      runLog?.parsed_outputs == null ? (
+                      <p>{runLog?.parsed_outputs?.toString()}</p>
+                    ) : (
+                      <ReactJson
+                        src={runLog?.parsed_outputs as Record<string, any>}
+                        name={false}
+                        displayDataTypes={false}
+                        displayObjectSize={false}
+                        enableClipboard={false}
+                        theme="google"
+                      />
+                    )}
                   </td>
                 </tr>
               );

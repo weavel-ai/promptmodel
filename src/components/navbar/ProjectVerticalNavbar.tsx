@@ -2,6 +2,7 @@
 
 import { useOrgData } from "@/hooks/useOrgData";
 import {
+  DiscordLogo,
   GearSix,
   Info,
   Notebook,
@@ -30,7 +31,7 @@ export const ProjectVerticalNavbar = () => {
         <VerticalNavbarItem label="Overview" subPath="/overview">
           <Info weight="fill" className="text-base-content" size={20} />
         </VerticalNavbarItem>
-        <VerticalNavbarItem label="LLM Modules" subPath="/modules">
+        <VerticalNavbarItem label="Promptmodels" subPath="/modules">
           <SquaresFour weight="fill" className="text-base-content" size={20} />
         </VerticalNavbarItem>
         <VerticalNavbarItem label="Runs" subPath="/runs">
@@ -40,13 +41,20 @@ export const ProjectVerticalNavbar = () => {
           <GearSix weight="fill" className="text-base-content" size={20} />
         </VerticalNavbarItem>
       </div>
-      <div className="flex flex-col h-fit justify-end pb-8">
+      <div className="flex flex-col h-fit justify-end pb-8 gap-y-5">
         <VerticalNavbarItem
           label="Docs"
           href="https://www.promptmodel.run/docs/intro"
           external
         >
           <Notebook weight="fill" className="text-base-content" size={20} />
+        </VerticalNavbarItem>
+        <VerticalNavbarItem
+          label="Discord"
+          href="https://discord.gg/JrwzhSUW"
+          external
+        >
+          <DiscordLogo weight="fill" className="text-base-content" size={20} />
         </VerticalNavbarItem>
       </div>
     </div>
@@ -78,7 +86,7 @@ const VerticalNavbarItem = ({
       }
       target={external && "_blank"}
       className={classNames(
-        "flex flex-col w-12 gap-y-1 justify-center items-center",
+        "flex flex-col w-12 gap-y-1 justify-center items-center overflow-ellipsis",
         "transition-all group"
       )}
     >
@@ -95,7 +103,7 @@ const VerticalNavbarItem = ({
       </div>
       <p
         className={classNames(
-          "w-fit text-center text-xs",
+          "w-fit text-center text-xs text-ellipsis ",
           "transition-colors",
           pathname.includes(subPath) && "text-secondary"
         )}

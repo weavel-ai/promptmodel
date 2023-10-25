@@ -200,9 +200,9 @@ const DeployCandidatesButton = () => {
       </p>
       {isOpen && (
         <ModalPortal>
-          <div className="fixed inset-0 backdrop-blur-sm w-full h-full flex justify-center items-center">
+          <div className="fixed inset-0 backdrop-blur-sm w-full h-full flex justify-center items-center z-[999999]">
             <motion.div
-              className="flex flex-col p-8 bg-base-200 rounded-xl min-w-[16rem] max-w-2xl w-fit gap-y-4"
+              className="flex flex-col p-8 bg-base-200 rounded-xl min-w-[16rem] max-w-2xl w-fit gap-y-4 shadow-2xl shadow-secondary/30"
               initial={{
                 opacity: 0,
                 scale: 0.5,

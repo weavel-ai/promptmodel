@@ -121,6 +121,8 @@ export default function Page() {
   useEffect(() => {
     if (promptListData) {
       setModifiedPrompts(cloneDeep(promptListData));
+    } else {
+      setModifiedPrompts([]);
     }
   }, [selectedVersionUuid, promptListData]);
 
@@ -493,6 +495,7 @@ export default function Page() {
                     </div>
                   ) : (
                     <div className="flex flex-row gap-x-3">
+                      <ModelDisplay modelName={moduleVersionData?.model} />
                       <button
                         className="flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
                         onClick={handleClickCreateVariant}

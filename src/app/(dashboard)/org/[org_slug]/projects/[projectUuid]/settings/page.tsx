@@ -5,12 +5,18 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { nightOwl } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Clipboard } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
+import { useMemo } from "react";
 
 export default function Page() {
   const { projectData } = useProject();
 
+  const api_key_text = useMemo(
+    () => `PROMPTMODEL_API_KEY=${projectData?.api_key}`,
+    [projectData?.api_key]
+  );
+
   const handleClickCopy = () => {
-    navigator.clipboard.writeText(`API_KEY=${projectData?.api_key}`);
+    navigator.clipboard.writeText(api_key_text);
     toast.success("Copied to clipboard.", {
       autoClose: 2000,
     });
@@ -29,7 +35,7 @@ export default function Page() {
           <p className="text-lg font-semibold">API Key</p>
           <div className="relative">
             <SyntaxHighlighter language="javascript" style={nightOwl}>
-              {`PROMPTMODEL_API_KEY=${projectData?.api_key}`}
+              {api_key_text}
             </SyntaxHighlighter>
             <div className="absolute right-4 bottom-0 top-0 h-full flex justify-center items-center">
               <div className="py-1 tooltip tooltip-secondary" data-tip="Copy">
