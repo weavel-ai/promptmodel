@@ -19,33 +19,64 @@ import { updatePublishedModuleVersion } from "@/apis/moduleVersion";
 import { useSupabaseClient } from "@/apis/base";
 import "reactflow/dist/style.css";
 import { useRunLog } from "@/hooks/useRunLog";
-import { Json } from "@/supabase.types";
-import { isArray } from "util";
 import { RunLog } from "@/apis/runlog";
 import { Editor } from "@monaco-editor/react";
 import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
-import { hierarchy, tree, stratify } from "d3-hierarchy";
+import { tree, stratify } from "d3-hierarchy";
 import { useQueryClient } from "@tanstack/react-query";
 import { ResizableSeparator } from "@/components/ResizableSeparator";
 import { useProject } from "@/hooks/useProject";
 import ReactJson from "react-json-view";
+import { SelectTab } from "@/components/SelectTab";
 
 const initialNodes = [];
 const initialEdges = [];
 
+enum Tab {
+  Analytics = "Analytics",
+  Versions = "Versions",
+}
+
+const TABS = [Tab.Analytics, Tab.Versions];
+
 export default function Page() {
+  const [tab, setTab] = useState(Tab.Analytics);
+
+  return (
+    <div className="w-full h-full">
+      <div className="fixed top-16 left-24 z-50">
+        <SelectTab
+          tabs={TABS}
+          selectedTab={tab}
+          onSelect={(newTab) => setTab(newTab as Tab)}
+        />
+      </div>
+      {tab == Tab.Analytics && <AnalyticsPage />}
+      {tab == Tab.Versions && <VersionsPage />}
+    </div>
+  );
+}
+
+// Analytics Tab Page
+const AnalyticsPage = () => {
+  const { createSupabaseClient } = useSupabaseClient();
+  return <div></div>;
+};
+
+// Versions Tab Page
+const VersionsPage = () => {
   const { createSupabaseClient } = useSupabaseClient();
   const { versionListData, refetchVersionListData } = useModuleVersion();
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
+
   const { selectedVersionUuid, setSelectedVersionUuid } =
     useModuleVersionStore();
   const { projectData } = useProject();
   const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
 
   const queryClient = useQueryClient();
-
   const { promptListData, moduleVersionData } =
     useModuleVersionDetails(selectedVersionUuid);
 
@@ -135,7 +166,7 @@ export default function Page() {
   }
 
   return (
-    <div className="w-full h-full">
+    <>
       <ReactFlow
         nodeTypes={nodeTypes}
         nodes={nodes}
@@ -232,9 +263,9 @@ export default function Page() {
           </div>
         </div>
       </Drawer>
-    </div>
+    </>
   );
-}
+};
 
 const PromptComponent = ({ prompt }) => {
   const [open, setOpen] = useState(false);
