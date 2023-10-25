@@ -27,6 +27,7 @@ import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
 import { hierarchy, tree, stratify } from "d3-hierarchy";
 import { useQueryClient } from "@tanstack/react-query";
+import { ResizableSeparator } from "@/components/ResizableSeparator";
 import { useProject } from "@/hooks/useProject";
 import ReactJson from "react-json-view";
 
@@ -49,6 +50,8 @@ export default function Page() {
     useModuleVersionDetails(selectedVersionUuid);
 
   const { runLogData } = useRunLog(selectedVersionUuid);
+
+  const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
   useHotkeys("esc", () => {
     setSelectedVersionUuid(null);
@@ -193,16 +196,39 @@ export default function Page() {
               </button>
             </div>
           </div>
-          <motion.div className="bg-base-200 h-full w-full p-4 rounded-box overflow-auto mb-4">
-            <div className="flex flex-col gap-y-2 justify-start items-start">
-              {promptListData?.map((prompt) => (
-                <PromptComponent prompt={prompt} />
-              ))}
+          <div
+            className="flex flex-col justify-between"
+            style={{
+              height: window.innerHeight - 120,
+            }}
+          >
+            <motion.div
+              className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow-0"
+              style={{
+                height: window.innerHeight - lowerBoxHeight - 120,
+              }}
+            >
+              <div className="flex flex-col gap-y-2 justify-start items-start">
+                {promptListData?.map((prompt) => (
+                  <PromptComponent prompt={prompt} />
+                ))}
+              </div>
+            </motion.div>
+            <div className="min-h-[120px] relative backdrop-blur-md">
+              <ResizableSeparator
+                height={lowerBoxHeight}
+                setHeight={setLowerBoxHeight}
+              />
+              <div
+                className="flex flex-col items-start gap-y-1 !my-4"
+                style={{
+                  height: lowerBoxHeight,
+                }}
+              >
+                <p className="text-xl font-bold mb-1">Run Logs</p>
+                <RunLogComponent runLogData={runLogData} />
+              </div>
             </div>
-          </motion.div>
-          <div className="flex flex-col gap-y-1">
-            <p className="text-xl font-bold mb-1">Run Logs</p>
-            <RunLogComponent runLogData={runLogData} />
           </div>
         </div>
       </Drawer>
@@ -211,7 +237,7 @@ export default function Page() {
 }
 
 const PromptComponent = ({ prompt }) => {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [height, setHeight] = useState(30);
   const editorRef = useRef(null);
 
@@ -260,6 +286,7 @@ const PromptComponent = ({ prompt }) => {
           }}
           loading={<div className="loading loading-xs loading-dots" />}
           onMount={handleEditorDidMount}
+          className="overflow-auto"
           height={height}
         />
       )}
@@ -271,40 +298,45 @@ const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
   const [showRaw, setShowRaw] = useState(true);
 
   return (
-    <div className="w-full h-fit max-h-[25vh] rounded-box items-center bg-base-200 p-4 flex flex-col gap-y-2 justify-start">
-      <div className="w-full h-fit flex flex-row">
-        <div className="w-full">
-          <p className="text-lg font-medium ps-1">Input</p>
-        </div>
-        <div className="w-full flex flex-row gap-x-6 items-center">
-          <p className="text-lg font-medium ps-1">Output</p>
-          <div className="join">
-            <button
-              className={classNames(
-                "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                showRaw && "bg-base-300",
-                !showRaw && "bg-base-300/40"
-              )}
-              onClick={() => setShowRaw(true)}
-            >
-              Raw
-            </button>
-            <button
-              className={classNames(
-                "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                !showRaw && "bg-base-300",
-                showRaw && "bg-base-300/40"
-              )}
-              onClick={() => setShowRaw(false)}
-            >
-              Parsed
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="w-full h-fit bg-base-100 rounded overflow-y-auto">
-        <table className="w-full table table-fixed">
-          <tbody className="">
+    <div
+      className="w-full min-h-1/4 rounded-box items-center bg-base-200 p-4 flex flex-col flex-grow-1 gap-y-2 justify-start"
+      style={{ height: "calc(100% - 2rem)" }}
+    >
+      <div className="w-full max-h-full bg-base-200 rounded overflow-auto">
+        <table className="w-full table table-fixed table-pin-cols">
+          <thead className="sticky top-0 z-10 bg-base-100 w-full">
+            <tr className="text-base-content">
+              <td>
+                <p className="text-lg font-medium ps-1">Input</p>
+              </td>
+              <td className="flex flex-row gap-x-6 items-center">
+                <p className="text-lg font-medium ps-1">Output</p>
+                <div className="join">
+                  <button
+                    className={classNames(
+                      "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
+                      showRaw && "bg-base-300",
+                      !showRaw && "bg-base-300/40"
+                    )}
+                    onClick={() => setShowRaw(true)}
+                  >
+                    Raw
+                  </button>
+                  <button
+                    className={classNames(
+                      "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
+                      !showRaw && "bg-base-300",
+                      showRaw && "bg-base-300/40"
+                    )}
+                    onClick={() => setShowRaw(false)}
+                  >
+                    Parsed
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </thead>
+          <tbody className="bg-base-100">
             {runLogData?.map((runLog) => {
               return (
                 <tr>

@@ -58,6 +58,7 @@ import { cloneDeep } from "@/utils";
 import { SampleSelector } from "@/components/SampleSelector";
 import { EMPTY_INPUTS_LABEL, useSamples } from "@/hooks/dev/useSample";
 import { StatusSelector } from "@/components/select/StatusSelector";
+import { ResizableSeparator } from "@/components/ResizableSeparator";
 
 export default function Page() {
   const params = useParams();
@@ -92,6 +93,7 @@ export default function Page() {
   const { promptListData } = useModuleVersionDetails(selectedVersionUuid);
   const { refetchRunLogData } = useRunLogs(selectedVersionUuid);
   const { refetchSampleList } = useSamples();
+  const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
   const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
 
@@ -559,8 +561,8 @@ export default function Page() {
                 )}
               </div>
               {/* Prompt editor */}
-              <motion.div className="bg-base-200 flex-grow w-full p-4 rounded-box overflow-auto">
-                <div className="flex flex-col h-full gap-y-2 justify-start items-end">
+              <motion.div className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow-0">
+                <div className="flex flex-col gap-y-2 justify-start items-end">
                   {promptListData?.map((prompt, idx) =>
                     createVariantOpen ? (
                       <PromptDiffComponent
@@ -592,9 +594,18 @@ export default function Page() {
                   )}
                 </div>
               </motion.div>
-              <div className="flex flex-row justify-between items-start mt-4 gap-x-4">
-                <RunLogSection versionUuid={selectedVersionUuid} />
-                {createVariantOpen && <RunLogSection versionUuid="new" />}
+              <div className="relative backdrop-blur-md">
+                <ResizableSeparator
+                  height={lowerBoxHeight}
+                  setHeight={setLowerBoxHeight}
+                />
+                <div
+                  className="flex flex-row justify-between items-start mt-4 gap-x-4"
+                  style={{ height: lowerBoxHeight }}
+                >
+                  <RunLogSection versionUuid={selectedVersionUuid} />
+                  {createVariantOpen && <RunLogSection versionUuid="new" />}
+                </div>
               </div>
             </div>
           </div>
@@ -974,8 +985,52 @@ const RunLogSection = ({ versionUuid }: { versionUuid: string | "new" }) => {
   }, [runLogData, runLogs[versionUuid]]);
 
   return (
-    <div className="w-full h-fit max-h-[40vh] rounded-box items-center bg-base-200 p-4 flex flex-col gap-y-2 justify-start">
-      <div className="w-full h-fit flex flex-row">
+    <div
+      className="w-full h-fit rounded-box items-center bg-base-200 p-4 flex flex-col gap-y-2 justify-start"
+      style={{ height: "calc(100% - 2rem)" }}
+    >
+      <div className="w-full max-h-full bg-base-200 rounded overflow-auto">
+        <table className="w-full table table-fixed table-pin-cols">
+          <thead className="sticky top-0 z-10 bg-base-100 w-full">
+            <tr className="text-base-content">
+              <td>
+                <p className="text-lg font-medium ps-1">Input</p>
+              </td>
+              <td className="flex flex-row gap-x-6 items-center">
+                <p className="text-lg font-medium ps-1">Output</p>
+                <div className="join">
+                  <button
+                    className={classNames(
+                      "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
+                      showRaw && "bg-base-300",
+                      !showRaw && "bg-base-300/40"
+                    )}
+                    onClick={() => setShowRaw(true)}
+                  >
+                    Raw
+                  </button>
+                  <button
+                    className={classNames(
+                      "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
+                      !showRaw && "bg-base-300",
+                      showRaw && "bg-base-300/40"
+                    )}
+                    onClick={() => setShowRaw(false)}
+                  >
+                    Parsed
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </thead>
+          <tbody className="bg-base-100">
+            {runLogList?.map((log) => (
+              <RunLogComponent showRaw={showRaw} runLogData={log} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* <div className="w-full h-fit flex flex-row">
         <div className="w-full">
           <p className="text-lg font-medium ps-1">Input</p>
         </div>
@@ -1013,7 +1068,7 @@ const RunLogSection = ({ versionUuid }: { versionUuid: string | "new" }) => {
             ))}
           </tbody>
         </table>
-      </div>
+      </div> */}
     </div>
   );
 };
