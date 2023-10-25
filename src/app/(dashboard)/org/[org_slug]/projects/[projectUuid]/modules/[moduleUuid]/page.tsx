@@ -28,6 +28,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { hierarchy, tree, stratify } from "d3-hierarchy";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProject } from "@/hooks/useProject";
+import ReactJson from "react-json-view";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -267,7 +268,7 @@ const PromptComponent = ({ prompt }) => {
 };
 
 const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
-  const [rawOutput, setrawOutput] = useState(true);
+  const [showRaw, setShowRaw] = useState(true);
 
   return (
     <div className="w-full h-fit max-h-[25vh] rounded-box items-center bg-base-200 p-4 flex flex-col gap-y-2 justify-start">
@@ -281,20 +282,20 @@ const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
             <button
               className={classNames(
                 "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                rawOutput && "bg-base-300",
-                !rawOutput && "bg-base-300/40"
+                showRaw && "bg-base-300",
+                !showRaw && "bg-base-300/40"
               )}
-              onClick={() => setrawOutput(true)}
+              onClick={() => setShowRaw(true)}
             >
               Raw
             </button>
             <button
               className={classNames(
                 "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                !rawOutput && "bg-base-300",
-                rawOutput && "bg-base-300/40"
+                !showRaw && "bg-base-300",
+                showRaw && "bg-base-300/40"
               )}
-              onClick={() => setrawOutput(false)}
+              onClick={() => setShowRaw(false)}
             >
               Parsed
             </button>
@@ -304,14 +305,43 @@ const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
       <div className="w-full h-fit bg-base-100 rounded overflow-y-auto">
         <table className="w-full table table-fixed">
           <tbody className="">
-            {runLogData?.map((runlog) => {
+            {runLogData?.map((runLog) => {
               return (
                 <tr>
-                  <td>{JSON.stringify(runlog.inputs)}</td>
-                  <td>
-                    {rawOutput
-                      ? runlog.raw_output
-                      : JSON.stringify(runlog.parsed_outputs)}
+                  <td className="align-top">
+                    {runLog?.inputs == null ? (
+                      <p>None</p>
+                    ) : typeof runLog?.inputs == "string" ? (
+                      <p>{runLog?.inputs?.toString()}</p>
+                    ) : (
+                      <ReactJson
+                        src={runLog?.inputs as Record<string, any>}
+                        name={false}
+                        displayDataTypes={false}
+                        displayObjectSize={false}
+                        enableClipboard={false}
+                        theme="google"
+                      />
+                    )}
+                  </td>
+                  <td className="align-top">
+                    {showRaw ? (
+                      <p className="whitespace-break-spaces">
+                        {runLog?.raw_output}
+                      </p>
+                    ) : typeof runLog?.parsed_outputs == "string" ||
+                      runLog?.parsed_outputs == null ? (
+                      <p>{runLog?.parsed_outputs?.toString()}</p>
+                    ) : (
+                      <ReactJson
+                        src={runLog?.parsed_outputs as Record<string, any>}
+                        name={false}
+                        displayDataTypes={false}
+                        displayObjectSize={false}
+                        enableClipboard={false}
+                        theme="google"
+                      />
+                    )}
                   </td>
                 </tr>
               );

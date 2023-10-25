@@ -31,7 +31,7 @@ export const ProjectVerticalNavbar = () => {
         <VerticalNavbarItem label="Overview" subPath="/overview">
           <Info weight="fill" className="text-base-content" size={20} />
         </VerticalNavbarItem>
-        <VerticalNavbarItem label="LLM Modules" subPath="/modules">
+        <VerticalNavbarItem label="Promptmodels" subPath="/modules">
           <SquaresFour weight="fill" className="text-base-content" size={20} />
         </VerticalNavbarItem>
         <VerticalNavbarItem label="Runs" subPath="/runs">
@@ -86,7 +86,7 @@ const VerticalNavbarItem = ({
       }
       target={external && "_blank"}
       className={classNames(
-        "flex flex-col w-12 gap-y-1 justify-center items-center",
+        "flex flex-col w-12 gap-y-1 justify-center items-center overflow-ellipsis",
         "transition-all group"
       )}
     >
@@ -103,7 +103,7 @@ const VerticalNavbarItem = ({
       </div>
       <p
         className={classNames(
-          "w-fit text-center text-xs",
+          "w-fit text-center text-xs text-ellipsis ",
           "transition-colors",
           pathname.includes(subPath) && "text-secondary"
         )}
