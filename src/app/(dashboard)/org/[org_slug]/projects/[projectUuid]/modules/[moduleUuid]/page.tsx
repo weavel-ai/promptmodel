@@ -27,6 +27,7 @@ import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
 import { hierarchy, tree, stratify } from "d3-hierarchy";
 import { useQueryClient } from "@tanstack/react-query";
+import { ResizableSeparator } from "@/components/ResizableSeparator";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -47,8 +48,7 @@ export default function Page() {
 
   const { runLogData } = useRunLog(selectedVersionUuid);
 
-  const [upperBoxHeight, setUpperBoxHeight] = useState(200);
-  const [lowerBoxHeight, setLowerBoxHeight] = useState(100);
+  const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
   useHotkeys("esc", () => {
     setSelectedVersionUuid(null);
@@ -191,39 +191,37 @@ export default function Page() {
               </button>
             </div>
           </div>
-          <div className="h-full flex flex-col justify-between">
-            <motion.div className="bg-base-200 w-full p-4 rounded-box overflow-auto flex-grow">
-              <div className="max-h-full flex flex-col gap-y-2 justify-start items-start">
+          <div
+            className="flex flex-col justify-between"
+            style={{
+              height: window.innerHeight - 120,
+            }}
+          >
+            <motion.div
+              className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow-0"
+              style={{
+                height: window.innerHeight - lowerBoxHeight - 120,
+              }}
+            >
+              <div className="flex flex-col gap-y-2 justify-start items-start">
                 {promptListData?.map((prompt) => (
                   <PromptComponent prompt={prompt} />
                 ))}
               </div>
             </motion.div>
             <div className="min-h-[120px] relative backdrop-blur-md">
-              <div
-                className={classNames(
-                  "absolute left-0 right-0 h-[0.4rem] cursor-move bg-base-content/80 rounded-full",
-                  "transition-colors hover:bg-blue-500/70 active:bg-blue-500/70"
-                )}
-                {...registerMouseDownDrag((deltaX, deltaY) => {
-                  console.log(lowerBoxHeight, deltaY);
-                  if (
-                    lowerBoxHeight - deltaY >
-                    window.innerHeight - 104 - 220
-                  ) {
-                    console.log("here");
-                    return;
-                  }
-                  if (lowerBoxHeight - deltaY < 100) return;
-                  setLowerBoxHeight(lowerBoxHeight - deltaY);
-                }, true)}
+              <ResizableSeparator
+                height={lowerBoxHeight}
+                setHeight={setLowerBoxHeight}
               />
-              <div className="flex flex-col flex-auto gap-y-1 mt-4">
+              <div
+                className="flex flex-col items-start gap-y-1 mt-4 bottom-0"
+                style={{
+                  height: lowerBoxHeight,
+                }}
+              >
                 <p className="text-xl font-bold mb-1">Run Logs</p>
-                <RunLogComponent
-                  runLogData={runLogData}
-                  height={lowerBoxHeight}
-                />
+                <RunLogComponent runLogData={runLogData} />
               </div>
             </div>
           </div>
@@ -291,53 +289,49 @@ const PromptComponent = ({ prompt }) => {
   );
 };
 
-const RunLogComponent = ({
-  runLogData,
-  height,
-}: {
-  runLogData: RunLog[];
-  height: number;
-}) => {
-  const [rawOutput, setrawOutput] = useState(true);
+const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
+  const [rawOutput, setRawOutput] = useState(true);
 
   return (
     <div
-      className="w-full min-h-1/4 rounded-box items-center bg-base-200 p-4 flex flex-col flex-grow gap-y-2 justify-start"
-      style={{ height: height }}
+      className="w-full min-h-1/4 rounded-box items-center bg-base-200 p-4 flex flex-col flex-grow-1 gap-y-2 justify-start"
+      style={{ height: "calc(100% - 1.75rem)" }}
     >
-      <div className="w-full h-fit flex flex-row">
-        <div className="w-full">
-          <p className="text-lg font-medium ps-1">Input</p>
-        </div>
-        <div className="w-full flex flex-row gap-x-6 items-center">
-          <p className="text-lg font-medium ps-1">Output</p>
-          <div className="join">
-            <button
-              className={classNames(
-                "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                rawOutput && "bg-base-300",
-                !rawOutput && "bg-base-300/40"
-              )}
-              onClick={() => setrawOutput(true)}
-            >
-              Raw
-            </button>
-            <button
-              className={classNames(
-                "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                !rawOutput && "bg-base-300",
-                rawOutput && "bg-base-300/40"
-              )}
-              onClick={() => setrawOutput(false)}
-            >
-              Parsed
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="w-full h-fit bg-base-100 rounded overflow-y-auto">
-        <table className="w-full table table-fixed">
-          <tbody className="">
+      <div className="w-full max-h-full bg-base-200 rounded overflow-auto">
+        <table className="w-full table table-fixed table-pin-cols">
+          <thead className="sticky top-0 z-10 bg-base-100 w-full">
+            <tr className="text-base-content">
+              <td>
+                <p className="text-lg font-medium ps-1">Input</p>
+              </td>
+              <td className="flex flex-row gap-x-6 items-center">
+                <p className="text-lg font-medium ps-1">Output</p>
+                <div className="join">
+                  <button
+                    className={classNames(
+                      "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
+                      rawOutput && "bg-base-300",
+                      !rawOutput && "bg-base-300/40"
+                    )}
+                    onClick={() => setRawOutput(true)}
+                  >
+                    Raw
+                  </button>
+                  <button
+                    className={classNames(
+                      "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
+                      !rawOutput && "bg-base-300",
+                      rawOutput && "bg-base-300/40"
+                    )}
+                    onClick={() => setRawOutput(false)}
+                  >
+                    Parsed
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </thead>
+          <tbody className="bg-base-100">
             {runLogData?.map((runlog) => {
               return (
                 <tr>
@@ -382,28 +376,4 @@ function ModuleVersionNode({ data }) {
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
-}
-
-function registerMouseDownDrag(
-  onDragChange: (deltaX: number, deltaY: number) => void,
-  stopPropagation?: boolean
-) {
-  return {
-    onMouseDown: (clickEvent: React.MouseEvent<Element, MouseEvent>) => {
-      if (stopPropagation) clickEvent.stopPropagation();
-
-      const mouseMoveHandler = (moveEvent: MouseEvent) => {
-        const deltaX = moveEvent.screenX - clickEvent.screenX;
-        const deltaY = moveEvent.screenY - clickEvent.screenY;
-        onDragChange(deltaX, deltaY);
-      };
-
-      const mouseUpHandler = () => {
-        document.removeEventListener("mousemove", mouseMoveHandler);
-      };
-
-      document.addEventListener("mousemove", mouseMoveHandler);
-      document.addEventListener("mouseup", mouseUpHandler, { once: true });
-    },
-  };
 }
