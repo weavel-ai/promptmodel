@@ -211,8 +211,8 @@ async def pull_project(
         # get versions
         llm_module_versions = (
             supabase.table("llm_module_version")
-            # .select("uuid, created_at, version, from_uuid, llm_module_uuid, model, is_published, is_ab_test, parsing_type, output_keys")
-            .select("uuid, created_at, version, from_uuid, llm_module_uuid, model, is_published, is_ab_test")
+            .select("uuid, created_at, version, from_uuid, llm_module_uuid, model, is_published, is_ab_test, parsing_type, output_keys")
+            # .select("uuid, created_at, version, from_uuid, llm_module_uuid, model, is_published, is_ab_test")
             .in_("llm_module_uuid", [x["uuid"] for x in llm_modules])
             .execute()
             .data
@@ -309,8 +309,8 @@ async def check_update(
         # get published, ab_test llm_versions
         deployed_llm_module_versions = (
             supabase.table("deployed_llm_module_version")
-            # .select("uuid, from_uuid, llm_module_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys")
-            .select("uuid, from_uuid, llm_module_uuid, model, is_published, is_ab_test, ratio")
+            .select("uuid, from_uuid, llm_module_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys")
+            #.select("uuid, from_uuid, llm_module_uuid, model, is_published, is_ab_test, ratio")
             .in_("llm_module_uuid", [x["uuid"] for x in llm_modules])
             .execute()
             .data
@@ -420,8 +420,9 @@ async def connect_cli_dev(
 async def log_deployment_run(
     version_uuid: str,
     inputs: Dict[str, Any],
-    raw_response: Dict[str, Any],
+    api_response: Dict[str, Any],
     parsed_outputs: Dict[str, Any],
+    metadata: Dict[str, Any],
     project: dict=Depends(get_project)
 ):
     try:
@@ -432,14 +433,15 @@ async def log_deployment_run(
             .insert(
                 {
                     "inputs" : inputs,
-                    "raw_output" : raw_response['choices'][0]["message"]['content'],
+                    "raw_output" : api_response['choices'][0]["message"]['content'],
                     "parsed_outputs" : parsed_outputs,
                     "input_register_name": None,
                     "is_deployment" : True,
                     "version_uuid" : version_uuid,
-                    "token_usage": raw_response['usage'],
-                    "latency" : raw_response['response_ms'],
-                    "cost": completion_cost(raw_response)
+                    "token_usage": api_response['usage'],
+                    "latency" : api_response['response_ms'],
+                    "cost": completion_cost(api_response),
+                    "metadata": metadata,
                 }
             )
             .execute()
