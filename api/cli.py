@@ -422,6 +422,7 @@ async def log_deployment_run(
     inputs: Dict[str, Any],
     raw_response: Dict[str, Any],
     parsed_outputs: Dict[str, Any],
+    metadata: Dict[str, Any],
     project: dict=Depends(get_project)
 ):
     try:
@@ -439,7 +440,8 @@ async def log_deployment_run(
                     "version_uuid" : version_uuid,
                     "token_usage": raw_response['usage'],
                     "latency" : raw_response['response_ms'],
-                    "cost": completion_cost(raw_response)
+                    "cost": completion_cost(raw_response),
+                    "metadata": metadata,
                 }
             )
             .execute()
