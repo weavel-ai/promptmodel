@@ -420,7 +420,7 @@ async def connect_cli_dev(
 async def log_deployment_run(
     version_uuid: str,
     inputs: Dict[str, Any],
-    raw_response: Dict[str, Any],
+    api_response: Dict[str, Any],
     parsed_outputs: Dict[str, Any],
     metadata: Dict[str, Any],
     project: dict=Depends(get_project)
@@ -433,14 +433,14 @@ async def log_deployment_run(
             .insert(
                 {
                     "inputs" : inputs,
-                    "raw_output" : raw_response['choices'][0]["message"]['content'],
+                    "raw_output" : api_response['choices'][0]["message"]['content'],
                     "parsed_outputs" : parsed_outputs,
                     "input_register_name": None,
                     "is_deployment" : True,
                     "version_uuid" : version_uuid,
-                    "token_usage": raw_response['usage'],
-                    "latency" : raw_response['response_ms'],
-                    "cost": completion_cost(raw_response),
+                    "token_usage": api_response['usage'],
+                    "latency" : api_response['response_ms'],
+                    "cost": completion_cost(api_response),
                     "metadata": metadata,
                 }
             )
