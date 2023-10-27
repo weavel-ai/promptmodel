@@ -6,7 +6,9 @@ export async function fetchRunLogs(
 ) {
   const res = await supabaseClient
     .from("run_log")
-    .select("created_at, inputs, raw_output, parsed_outputs")
+    .select(
+      "created_at, inputs, raw_output, parsed_outputs, latency, cost, token_usage"
+    )
     .eq("version_uuid", versionUuid);
   return res.data;
 }
