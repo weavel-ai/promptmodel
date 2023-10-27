@@ -19,6 +19,7 @@ export const useModule = () => {
   });
 
   return {
+    moduleUuid: params?.moduleUuid as string,
     moduleListData,
   };
 };

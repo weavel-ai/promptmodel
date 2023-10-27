@@ -29,6 +29,12 @@ import { ResizableSeparator } from "@/components/ResizableSeparator";
 import { useProject } from "@/hooks/useProject";
 import ReactJson from "react-json-view";
 import { SelectTab } from "@/components/SelectTab";
+import { useDailyRunLogMetrics } from "@/hooks/analytics";
+import { CustomAreaChart } from "@/components/charts/CustomAreaChart";
+import { DatePickerWithRange } from "@/components/ui/DatePickerWithRange";
+import { DateRange } from "react-day-picker";
+import { subDays } from "date-fns";
+import dayjs from "dayjs";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -60,8 +66,73 @@ export default function Page() {
 
 // Analytics Tab Page
 const AnalyticsPage = () => {
-  const { createSupabaseClient } = useSupabaseClient();
-  return <div></div>;
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(Date.now(), 7),
+    to: new Date(),
+  });
+  const { dailyRunLogMetrics } = useDailyRunLogMetrics(
+    dayjs(dateRange?.from)?.toISOString(),
+    dayjs(dateRange?.to)?.toISOString()
+  );
+
+  const totalCost = dailyRunLogMetrics?.reduce(
+    (acc, curr) => acc + curr.total_cost,
+    0
+  );
+
+  const avgLatency = dailyRunLogMetrics?.reduce(
+    (acc, curr) => acc + curr.avg_latency,
+    0
+  );
+
+  const totalRuns = dailyRunLogMetrics?.reduce(
+    (acc, curr) => acc + curr.total_runs,
+    0
+  );
+
+  const totalTokens = dailyRunLogMetrics?.reduce(
+    (acc, curr) => acc + curr.total_token_usage.total_tokens,
+    0
+  );
+
+  return (
+    <div className="pt-28 pl-24 flex flex-wrap gap-4 items-center justify-center">
+      <div className="absolute right-10 top-14">
+        <DatePickerWithRange
+          dateRange={dateRange}
+          setDateRange={setDateRange}
+        />
+      </div>
+      <CustomAreaChart
+        data={dailyRunLogMetrics}
+        dataKey="total_cost"
+        xAxisDataKey="day"
+        title="Total Costs"
+        mainData={`$${totalCost}`}
+      />
+      <CustomAreaChart
+        data={dailyRunLogMetrics}
+        dataKey="avg_latency"
+        xAxisDataKey="day"
+        title="Average Latency"
+        mainData={`${avgLatency?.toFixed(2)}s`}
+      />
+      <CustomAreaChart
+        data={dailyRunLogMetrics}
+        dataKey="total_runs"
+        xAxisDataKey="day"
+        title="Total Runs"
+        mainData={totalRuns}
+      />
+      <CustomAreaChart
+        data={dailyRunLogMetrics}
+        dataKey="total_token_usage.total_tokens"
+        xAxisDataKey="day"
+        title="Token usage"
+        mainData={totalTokens}
+      />
+    </div>
+  );
 };
 
 // Versions Tab Page

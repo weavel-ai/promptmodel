@@ -24,7 +24,7 @@ export const SelectTab = ({ tabs, selectedTab, onSelect }: SelectTabProps) => {
       ))}
       {/* Animated white box to color the selected tab */}
       <motion.div
-        className={`absolute top-0 left-0 h-full bg-base-content/80 rounded-full -z-10`}
+        className={`absolute top-0 left-0 h-full bg-base-content/90 rounded-full -z-10`}
         style={{
           width: `calc(100% / ${tabs.length})`,
         }}
