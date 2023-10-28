@@ -8,7 +8,7 @@ import classNames from "classnames";
 import { Michroma } from "next/font/google";
 import { useParams, usePathname } from "next/navigation";
 import { SelectNavigator } from "../SelectNavigator";
-import { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { GlobeHemisphereWest, Rocket } from "@phosphor-icons/react";
 import { deployCandidates } from "@/apis/dev";
 import { useModuleVersion } from "@/hooks/dev/useModuleVersion";
@@ -17,7 +17,6 @@ import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ModalPortal } from "../ModalPortal";
-import { version } from "os";
 
 const michroma = Michroma({
   weight: ["400"],

@@ -35,6 +35,8 @@ import { DatePickerWithRange } from "@/components/ui/DatePickerWithRange";
 import { DateRange } from "react-day-picker";
 import { subDays } from "date-fns";
 import dayjs from "dayjs";
+import { ParserTypeSelector } from "@/components/select/ParserTypeSelector";
+import { Badge } from "@/components/ui/badge";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -310,6 +312,35 @@ const VersionsPage = () => {
                 height: window.innerHeight - lowerBoxHeight - 120,
               }}
             >
+              <div className="flex flex-row justify-start gap-x-4 items-start mb-2">
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Output parser type</span>
+                  </label>
+                  <ParserTypeSelector
+                    parser={moduleVersionData?.parsing_type}
+                  />
+                </div>
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Output keys</span>
+                  </label>
+                  {moduleVersionData?.output_keys && (
+                    <div className="w-full flex flex-row items-center">
+                      {moduleVersionData?.output_keys?.map((key) => (
+                        <Badge className="text-sm" variant="default">
+                          {key}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  {!moduleVersionData?.output_keys && (
+                    <Badge className="text-sm" variant="muted">
+                      No output keys
+                    </Badge>
+                  )}
+                </div>
+              </div>
               <div className="flex flex-col gap-y-2 justify-start items-start">
                 {promptListData?.map((prompt) => (
                   <PromptComponent prompt={prompt} />

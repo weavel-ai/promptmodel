@@ -1,7 +1,7 @@
 "use client";
 
 import classNames from "classnames";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ModalPortal } from "./ModalPortal";
 
@@ -14,8 +14,8 @@ interface SelectFieldProps {
 export const SelectField = ({ value, setValue, options }: SelectFieldProps) => {
   const [showOptions, setShowOptions] = useState<boolean>(false);
 
-  const inputRef = useRef(null);
-  const optionsRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const optionsRef = useRef<HTMLDivElement | null>(null);
   const showOptionsRef = useRef(showOptions); // Create a ref to hold the showOptions state
 
   const optionsPosition = useMemo(() => {
@@ -69,7 +69,7 @@ export const SelectField = ({ value, setValue, options }: SelectFieldProps) => {
         {value}
       </p>
       {/* Options */}
-      {options?.length > 0 && (
+      {options && options?.length > 0 && (
         <ModalPortal>
           <motion.div
             ref={optionsRef}
