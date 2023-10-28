@@ -59,6 +59,10 @@ import { SampleSelector } from "@/components/SampleSelector";
 import { EMPTY_INPUTS_LABEL, useSamples } from "@/hooks/dev/useSample";
 import { StatusSelector } from "@/components/select/StatusSelector";
 import { ResizableSeparator } from "@/components/ResizableSeparator";
+import { ParserTypeSelector } from "@/components/select/ParserTypeSelector";
+import { TagsInput } from "react-tag-input-component";
+import { Badge } from "@/components/ui/badge";
+import { ParsingType } from "@/types/ParsingType";
 
 export default function Page() {
   const params = useParams();
@@ -74,6 +78,8 @@ export default function Page() {
   const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo");
   const [selectedSample, setSelectedSample] =
     useState<string>(EMPTY_INPUTS_LABEL);
+  const [outputKeys, setOutputKeys] = useState<string[]>([]);
+  const [parser, selectParser] = useState<ParsingType | null>(null);
   const { versionListData } = useModuleVersion();
   const {
     newVersionUuidCache,
@@ -273,16 +279,11 @@ export default function Page() {
       model: isNew ? selectedModel : moduleVersionData.model,
       fromUuid: isNew ? moduleVersionData?.uuid ?? null : null,
       uuid: isNew ? null : moduleVersionData?.uuid,
+      parsingType: parser,
+      outputKeys: outputKeys,
       onNewData: async (data) => {
         switch (data?.status) {
           case "completed":
-            // updatePrompts(moduleVersionData.uuid, prompts);
-            if (isNew) {
-              refetchVersionListData();
-              if (!moduleVersionData?.uuid) {
-                setSelectedVersionUuid(newVersionUuidCache);
-              }
-            }
             await refetchRunLogData();
             removeRunLog(isNew ? "new" : moduleVersionData?.uuid, uuid);
             toast.update(toastId, {
@@ -332,6 +333,12 @@ export default function Page() {
         }
       },
     });
+    if (isNew) {
+      refetchVersionListData();
+      if (!moduleVersionData?.uuid) {
+        setSelectedVersionUuid(newVersionUuidCache);
+      }
+    }
   }
 
   async function handleUpdateVersionStatus(
@@ -406,7 +413,7 @@ export default function Page() {
               </button>
             </div>
           </div>
-          <div className="bg-base-200 flex-grow w-full p-4 rounded-box overflow-auto mb-4">
+          <div className="bg-base-200 flex-grow w-full p-4 rounded-t-box overflow-auto">
             <div className="flex flex-col h-full gap-y-2 justify-start items-center">
               {modifiedPrompts?.map((prompt) => (
                 <PromptComponent
@@ -420,7 +427,18 @@ export default function Page() {
               />
             </div>
           </div>
-          <RunLogSection versionUuid="new" />
+          <div className="relative">
+            <ResizableSeparator
+              height={lowerBoxHeight}
+              setHeight={setLowerBoxHeight}
+            />
+            <div
+              className="mt-4 backdrop-blur-sm"
+              style={{ height: lowerBoxHeight }}
+            >
+              <RunLogSection versionUuid="new" />
+            </div>
+          </div>
         </div>
       </Drawer>
       <Drawer
@@ -442,7 +460,7 @@ export default function Page() {
             >
               {/* Header */}
               <div className="flex flex-row justify-between items-center gap-x-8">
-                <div className="flex flex-row w-full justify-between items-center mb-2">
+                <div className="flex flex-row w-full justify-between items-center gap-x-3 mb-2 mr-2">
                   {moduleVersionData?.candidate_version ? (
                     <div className="flex flex-row justify-start items-center gap-x-3">
                       <p className="text-base-content font-bold text-lg">
@@ -562,6 +580,105 @@ export default function Page() {
               </div>
               {/* Prompt editor */}
               <motion.div className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow-0">
+                {createVariantOpen ? (
+                  <div className="flex flex-row justify-between items-center mb-2">
+                    <div className="flex flex-row w-1/2 justify-start gap-x-4 items-start mb-2">
+                      <div className="flex flex-col items-start justify-start">
+                        <label className="label text-xs font-medium">
+                          <span className="label-text">Output parser type</span>
+                        </label>
+                        <ParserTypeSelector
+                          parser={moduleVersionData?.parsing_type}
+                        />
+                      </div>
+                      <div className="flex flex-col items-start justify-start">
+                        <label className="label text-xs font-medium">
+                          <span className="label-text">Output keys</span>
+                        </label>
+                        {moduleVersionData?.output_keys && (
+                          <div className="w-full flex flex-row items-center">
+                            {moduleVersionData?.output_keys?.map((key) => (
+                              <Badge className="text-sm" variant="default">
+                                {key}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        {!moduleVersionData?.output_keys && (
+                          <Badge className="text-sm" variant="muted">
+                            No output keys
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-row w-1/2 justify-start gap-x-4 items-start mb-2">
+                      <div className="flex flex-col items-start justify-start">
+                        <label className="label text-xs font-medium">
+                          <span className="label-text">Output parser type</span>
+                        </label>
+                        <ParserTypeSelector
+                          parser={parser}
+                          selectParser={selectParser}
+                        />
+                      </div>
+                      <div className="flex flex-col items-start justify-start">
+                        <label className="label text-xs font-medium">
+                          <span className="label-text">Output keys</span>
+                        </label>
+                        {parser && (
+                          <div className="w-full bg-base-content/10 rounded-lg text-sm">
+                            <TagsInput
+                              value={outputKeys}
+                              name="Output Keys"
+                              classNames={{
+                                input:
+                                  "text-sm m-0 flex-grow bg-transparent disabled",
+                                tag: "!bg-secondary text-secondary-content text-sm",
+                              }}
+                              placeHolder="Type and press enter"
+                              onChange={setOutputKeys}
+                            />
+                          </div>
+                        )}
+                        {(parser == null || parser == undefined) && (
+                          <Badge className="text-sm" variant="muted">
+                            No output keys
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-row justify-start gap-x-4 items-start mb-2">
+                    <div className="flex flex-col items-start justify-start">
+                      <label className="label text-xs font-medium">
+                        <span className="label-text">Output parser type</span>
+                      </label>
+                      <ParserTypeSelector
+                        parser={moduleVersionData?.parsing_type}
+                      />
+                    </div>
+                    <div className="flex flex-col items-start justify-start">
+                      <label className="label text-xs font-medium">
+                        <span className="label-text">Output keys</span>
+                      </label>
+                      {moduleVersionData?.output_keys && (
+                        <div className="w-full flex flex-row items-center">
+                          {moduleVersionData?.output_keys?.map((key) => (
+                            <Badge className="text-sm" variant="default">
+                              {key}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      {!moduleVersionData?.output_keys && (
+                        <Badge className="text-sm" variant="muted">
+                          No output keys
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-col gap-y-2 justify-start items-end">
                   {promptListData?.map((prompt, idx) =>
                     createVariantOpen ? (

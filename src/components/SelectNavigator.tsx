@@ -2,7 +2,7 @@ import { CaretUpDown } from "@phosphor-icons/react";
 import classNames from "classnames";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ModalPortal } from "./ModalPortal";
 
@@ -19,8 +19,8 @@ interface SelectNavigatorProps {
 export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
   const [showOptions, setShowOptions] = useState<boolean>(false);
   const params = useParams();
-  const containerRef = useRef(null);
-  const optionsRef = useRef(null);
+  const containerRef = useRef<HTMLAnchorElement | null>(null);
+  const optionsRef = useRef<HTMLDivElement | null>(null);
   const showOptionsRef = useRef(showOptions); // Create a ref to hold the showOptions state
 
   const optionsPosition = useMemo(() => {
@@ -73,7 +73,7 @@ export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
         </button>
       </div>
       {/* Options */}
-      {options?.length > 0 && showOptions && (
+      {options && options?.length > 0 && showOptions && optionsPosition?.top && (
         <ModalPortal>
           <motion.div
             ref={optionsRef}

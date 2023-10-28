@@ -83,3 +83,11 @@
     @apply text-base-content;
   }
 }
+
+.rti--container {
+  --rti-bg: hsla(var(--base-content), 0.1) !important;
+  --rti-border: var(--border) !important;
+  --rti-main: var(--primary) !important;
+  --rti-tag: var(--card) !important;
+  /* --rti-tag-remove: var(--destructive) !important; */
+}

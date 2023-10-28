@@ -152,6 +152,8 @@ export async function streamLLMModuleRun({
   model,
   fromUuid,
   uuid,
+  parsingType,
+  outputKeys,
   onNewData,
 }: {
   projectUuid: string;
@@ -163,6 +165,8 @@ export async function streamLLMModuleRun({
   model: string;
   fromUuid?: string | null;
   uuid?: string | null;
+  parsingType?: string | null;
+  outputKeys?: string[] | null;
   onNewData?: (data: Record<string, any>) => void;
 }) {
   await fetchStream({
@@ -179,6 +183,8 @@ export async function streamLLMModuleRun({
       from_uuid: fromUuid,
       uuid: uuid,
       model: model,
+      parsing_type: parsingType,
+      output_keys: outputKeys,
     },
     onNewData: onNewData,
   });

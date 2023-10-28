@@ -1,7 +1,7 @@
 import { EMPTY_INPUTS_LABEL, useSamples } from "@/hooks/dev/useSample";
 import { CaretDown } from "@phosphor-icons/react";
 import classNames from "classnames";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ModalPortal } from "./ModalPortal";
 import { motion } from "framer-motion";
 
@@ -14,7 +14,7 @@ export const SampleSelector = (props: SampleSelectorProps) => {
   const { sampleList } = useSamples();
   const [isOpen, setIsOpen] = useState(false);
 
-  const [inputValue, setInputValue] = useState<string>(null);
+  const [inputValue, setInputValue] = useState<string | null>(null);
   const [modalPosition, setModalPosition] = useState({
     top: 0,
     left: 0,
