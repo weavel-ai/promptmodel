@@ -19,33 +19,135 @@ import { updatePublishedModuleVersion } from "@/apis/moduleVersion";
 import { useSupabaseClient } from "@/apis/base";
 import "reactflow/dist/style.css";
 import { useRunLog } from "@/hooks/useRunLog";
-import { Json } from "@/supabase.types";
-import { isArray } from "util";
 import { RunLog } from "@/apis/runlog";
 import { Editor } from "@monaco-editor/react";
 import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
-import { hierarchy, tree, stratify } from "d3-hierarchy";
+import { tree, stratify } from "d3-hierarchy";
 import { useQueryClient } from "@tanstack/react-query";
 import { ResizableSeparator } from "@/components/ResizableSeparator";
 import { useProject } from "@/hooks/useProject";
 import ReactJson from "react-json-view";
+import { SelectTab } from "@/components/SelectTab";
+import { useDailyRunLogMetrics } from "@/hooks/analytics";
+import { CustomAreaChart } from "@/components/charts/CustomAreaChart";
+import { DatePickerWithRange } from "@/components/ui/DatePickerWithRange";
+import { DateRange } from "react-day-picker";
+import { subDays } from "date-fns";
+import dayjs from "dayjs";
 
 const initialNodes = [];
 const initialEdges = [];
 
+enum Tab {
+  Analytics = "Analytics",
+  Versions = "Versions",
+}
+
+const TABS = [Tab.Analytics, Tab.Versions];
+
 export default function Page() {
+  const [tab, setTab] = useState(Tab.Analytics);
+
+  return (
+    <div className="w-full h-full">
+      <div className="fixed top-16 left-24 z-50">
+        <SelectTab
+          tabs={TABS}
+          selectedTab={tab}
+          onSelect={(newTab) => setTab(newTab as Tab)}
+        />
+      </div>
+      {tab == Tab.Analytics && <AnalyticsPage />}
+      {tab == Tab.Versions && <VersionsPage />}
+    </div>
+  );
+}
+
+// Analytics Tab Page
+const AnalyticsPage = () => {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(Date.now(), 7),
+    to: new Date(),
+  });
+  const { dailyRunLogMetrics } = useDailyRunLogMetrics(
+    dayjs(dateRange?.from)?.toISOString(),
+    dayjs(dateRange?.to)?.toISOString()
+  );
+
+  const totalCost = dailyRunLogMetrics?.reduce(
+    (acc, curr) => acc + curr.total_cost,
+    0
+  );
+
+  const avgLatency = dailyRunLogMetrics?.reduce(
+    (acc, curr) => acc + curr.avg_latency,
+    0
+  );
+
+  const totalRuns = dailyRunLogMetrics?.reduce(
+    (acc, curr) => acc + curr.total_runs,
+    0
+  );
+
+  const totalTokens = dailyRunLogMetrics?.reduce(
+    (acc, curr) => acc + curr.total_token_usage.total_tokens,
+    0
+  );
+
+  return (
+    <div className="pt-28 pl-24 flex flex-wrap gap-4 items-center justify-center">
+      <div className="absolute right-10 top-14">
+        <DatePickerWithRange
+          dateRange={dateRange}
+          setDateRange={setDateRange}
+        />
+      </div>
+      <CustomAreaChart
+        data={dailyRunLogMetrics}
+        dataKey="total_cost"
+        xAxisDataKey="day"
+        title="Total Costs"
+        mainData={`$${totalCost}`}
+      />
+      <CustomAreaChart
+        data={dailyRunLogMetrics}
+        dataKey="avg_latency"
+        xAxisDataKey="day"
+        title="Average Latency"
+        mainData={`${avgLatency?.toFixed(2)}s`}
+      />
+      <CustomAreaChart
+        data={dailyRunLogMetrics}
+        dataKey="total_runs"
+        xAxisDataKey="day"
+        title="Total Runs"
+        mainData={totalRuns}
+      />
+      <CustomAreaChart
+        data={dailyRunLogMetrics}
+        dataKey="total_token_usage.total_tokens"
+        xAxisDataKey="day"
+        title="Token usage"
+        mainData={totalTokens}
+      />
+    </div>
+  );
+};
+
+// Versions Tab Page
+const VersionsPage = () => {
   const { createSupabaseClient } = useSupabaseClient();
   const { versionListData, refetchVersionListData } = useModuleVersion();
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
+
   const { selectedVersionUuid, setSelectedVersionUuid } =
     useModuleVersionStore();
   const { projectData } = useProject();
   const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
 
   const queryClient = useQueryClient();
-
   const { promptListData, moduleVersionData } =
     useModuleVersionDetails(selectedVersionUuid);
 
@@ -135,7 +237,7 @@ export default function Page() {
   }
 
   return (
-    <div className="w-full h-full">
+    <>
       <ReactFlow
         nodeTypes={nodeTypes}
         nodes={nodes}
@@ -232,9 +334,9 @@ export default function Page() {
           </div>
         </div>
       </Drawer>
-    </div>
+    </>
   );
-}
+};
 
 const PromptComponent = ({ prompt }) => {
   const [open, setOpen] = useState(false);

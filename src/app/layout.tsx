@@ -1,4 +1,4 @@
-import "./globals.css";
+import "../styles/globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import classNames from "classnames";
@@ -37,7 +37,7 @@ export default function RootLayout({
     >
       <html
         lang="en"
-        className="w-screen h-screen bg-base-100"
+        className="w-screen h-screen bg-base-100 dark"
         data-theme="dark"
       >
         <body

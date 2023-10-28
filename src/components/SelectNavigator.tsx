@@ -91,8 +91,8 @@ export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
             }}
             className={classNames(
               `fixed z-[99999]`,
-              "mt-2 w-fit bg-[#111]/70 backdrop-blur-sm rounded-2xl p-2",
-              "shadow-lg shadow-black/30",
+              "mt-2 w-fit bg-popover/50 text-popover-content backdrop-blur-sm rounded-2xl p-2",
+              "shadow-lg shadow-popover/30",
               "max-h-96 overflow-auto"
             )}
           >
@@ -105,10 +105,12 @@ export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
                     onClick={() => setShowOptions(false)}
                     className={classNames(
                       "flex flex-row items-center gap-x-2 cursor-pointer",
-                      "transition-all hover:bg-white/20 rounded-md p-2"
+                      "transition-all hover:bg-popover-content/20 rounded-md p-2"
                     )}
                   >
-                    <p className="text-sm text-white">{optionValue.label}</p>
+                    <p className="text-sm text-popover-content">
+                      {optionValue.label}
+                    </p>
                   </Link>
                 );
               })}
