@@ -455,7 +455,7 @@ export default function Page() {
             <div
               className={classNames(
                 "w-full h-full bg-transparent p-4 flex flex-col justify-start",
-                createVariantOpen && "pr-0"
+                createVariantOpen && "pr-0 ps-12"
               )}
             >
               {/* Header */}
@@ -746,34 +746,36 @@ export default function Page() {
                 <p className="text-base-content text-xs">Esc</p>
               </div>
             </button>
-            {versionListData?.map((version) => {
-              let status;
-              if (version.is_published) {
-                status = "published";
-              } else if (version.candidate_version) {
-                status = "deployed";
-              } else {
-                status = version.status;
-              }
+            <div className="h-full overflow-auto mt-20">
+              {versionListData?.map((version) => {
+                let status;
+                if (version.is_published) {
+                  status = "published";
+                } else if (version.candidate_version) {
+                  status = "deployed";
+                } else {
+                  status = version.status;
+                }
 
-              return (
-                <div
-                  className={classNames(
-                    "flex flex-row items-center gap-x-2 rounded-full p-2 backdrop-blur-sm hover:bg-base-content/10 transition-all cursor-pointer",
-                    "active:scale-90"
-                  )}
-                  key={version.candidate_version ?? version.uuid.slice(0, 3)}
-                  onClick={() => {
-                    setSelectedVersionUuid(version.uuid);
-                  }}
-                >
-                  <StatusIndicator status={status} />
-                  <p className="text-base-content font-semibold text-xl">
-                    V{version.candidate_version ?? version.uuid.slice(0, 3)}
-                  </p>
-                </div>
-              );
-            })}
+                return (
+                  <div
+                    className={classNames(
+                      "flex flex-row items-center gap-x-2 rounded-full p-2 backdrop-blur-sm hover:bg-base-content/10 transition-all cursor-pointer",
+                      "active:scale-90"
+                    )}
+                    key={version.candidate_version ?? version.uuid.slice(0, 3)}
+                    onClick={() => {
+                      setSelectedVersionUuid(version.uuid);
+                    }}
+                  >
+                    <StatusIndicator status={status} />
+                    <p className="text-base-content font-semibold text-lg">
+                      V{version.candidate_version ?? version.uuid.slice(0, 3)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </Drawer>
@@ -963,6 +965,9 @@ const PromptComponent = ({
             scrollbar: {
               alwaysConsumeMouseWheel: false,
             },
+            minimap: {
+              enabled: false,
+            },
           }}
           loading={<div className="loading loading-xs loading-dots" />}
           onMount={handleEditorDidMount}
@@ -1052,6 +1057,9 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
             wordWrap: "on",
             scrollbar: {
               alwaysConsumeMouseWheel: false,
+            },
+            minimap: {
+              enabled: false,
             },
           }}
         />
