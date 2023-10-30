@@ -446,6 +446,8 @@ async def push_version(project_uuid: str, dev_name: str, llm_module_version_uuid
         )
         if len(last_version) == 0:
             version["version"] = 1
+            version["is_published"] = True
+            version["ratio"] = 1.0
         else:
             version["version"] = last_version[0]["version"] + 1
 
@@ -618,6 +620,8 @@ async def push_versions(
             else:
                 new_version["version"] = 1
                 last_versions[new_version["llm_module_uuid"]] = 1
+                new_version["is_published"] = True
+                new_version["ratio"] = 1.0
             new_candidates[new_version["uuid"]] = int(new_version["version"])
             
         (supabase.table("llm_module_version").insert(new_versions).execute())
