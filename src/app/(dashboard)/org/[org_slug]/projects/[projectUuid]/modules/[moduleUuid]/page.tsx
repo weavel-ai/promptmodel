@@ -436,14 +436,14 @@ const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
       style={{ height: "calc(100% - 2rem)" }}
     >
       <div className="w-full max-h-full bg-base-200 rounded overflow-auto">
-        <table className="w-full table table-fixed table-pin-cols">
+        <table className="w-full table table-auto table-pin-cols">
           <thead className="sticky top-0 z-10 bg-base-100 w-full">
             <tr className="text-base-content">
               <td>
-                <p className="text-lg font-medium ps-1">Input</p>
+                <p className="text-lg font-medium pe-36">Input</p>
               </td>
-              <td className="flex flex-row gap-x-6 items-center">
-                <p className="text-lg font-medium ps-1">Output</p>
+              <td className="flex flex-row gap-x-6 items-center pe-8">
+                <p className="text-lg font-medium">Output</p>
                 <div className="join">
                   <button
                     className={classNames(
@@ -466,6 +466,15 @@ const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
                     Parsed
                   </button>
                 </div>
+              </td>
+              <td>
+                <p className="text-lg font-medium pe-4">Latency</p>
+              </td>
+              <td>
+                <p className="text-lg font-medium pe-4">Cost</p>
+              </td>
+              <td>
+                <p className="text-lg font-medium pe-4">Tokens</p>
               </td>
             </tr>
           </thead>
@@ -508,6 +517,9 @@ const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
                       />
                     )}
                   </td>
+                  <td>{runLog.latency}</td>
+                  <td>{runLog.cost}</td>
+                  <td>{runLog.token_usage.total_tokens}</td>
                 </tr>
               );
             })}
