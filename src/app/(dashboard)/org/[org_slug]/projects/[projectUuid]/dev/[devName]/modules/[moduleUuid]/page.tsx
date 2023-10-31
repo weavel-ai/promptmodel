@@ -110,6 +110,14 @@ export default function Page() {
     if (data?.model) {
       setSelectedModel(data?.model);
     }
+    if (data?.parsing_type != null) {
+      selectParser(data?.parsing_type);
+      setOutputKeys(data?.output_keys);
+    } else {
+      selectParser(null);
+      setOutputKeys([]);
+    }
+    //console.log(data);
     return data;
   }, [selectedVersionUuid, versionListData]);
 
@@ -143,13 +151,27 @@ export default function Page() {
     //     (prompt, idx) => prompt.content !== modifiedPrompts[idx].content
     //   );
     // } else {
+    console.log(
+      !originalPrompts?.every(
+        (val, idx) => val === modifiedPrompts[idx]?.content
+      )
+    );
+    //console.log(selectedModel != moduleVersionData?.model);
+    //console.log(moduleVersionData?.parsing_type != parser);
+    //console.log(moduleVersionData?.output_keys != outputKeys);
+    //console.log(moduleVersionData?.output_keys);
+    //console.log(outputKeys);
 
     return (
       !originalPrompts?.every(
         (val, idx) => val === modifiedPrompts[idx]?.content
-      ) || selectedModel != moduleVersionData?.model
+      ) ||
+      selectedModel != moduleVersionData?.model ||
+      moduleVersionData?.parsing_type != parser ||
+      (moduleVersionData?.parsing_type != null &&
+        moduleVersionData?.output_keys != outputKeys)
     );
-  }, [selectedModel, originalPrompts, modifiedPrompts]);
+  }, [selectedModel, originalPrompts, modifiedPrompts, parser, outputKeys]);
 
   const getChildren = (parentId: string) => {
     return versionListData.filter((item) => item.from_uuid === parentId);
@@ -581,9 +603,9 @@ export default function Page() {
               {/* Prompt editor */}
               <motion.div className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow-0">
                 {createVariantOpen ? (
-                  <div className="flex flex-row justify-between items-center mb-2">
+                  <div className="flex flex-row justify-between items-start mb-2">
                     <div className="flex flex-row w-1/2 justify-start gap-x-4 items-start mb-2">
-                      <div className="flex flex-col items-start justify-start">
+                      <div className="min-w-fit flex flex-col items-start justify-start">
                         <label className="label text-xs font-medium">
                           <span className="label-text">Output parser type</span>
                         </label>
@@ -591,14 +613,14 @@ export default function Page() {
                           parser={moduleVersionData?.parsing_type}
                         />
                       </div>
-                      <div className="flex flex-col items-start justify-start">
+                      <div className="w-auto flex flex-col items-start justify-start">
                         <label className="label text-xs font-medium">
                           <span className="label-text">Output keys</span>
                         </label>
                         {moduleVersionData?.output_keys && (
-                          <div className="w-full flex flex-row items-center">
+                          <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
                             {moduleVersionData?.output_keys?.map((key) => (
-                              <Badge className="text-sm" variant="default">
+                              <Badge className="text-sm" variant="secondary">
                                 {key}
                               </Badge>
                             ))}
@@ -650,7 +672,7 @@ export default function Page() {
                   </div>
                 ) : (
                   <div className="flex flex-row justify-start gap-x-4 items-start mb-2">
-                    <div className="flex flex-col items-start justify-start">
+                    <div className="min-w-fit flex flex-col items-start justify-start">
                       <label className="label text-xs font-medium">
                         <span className="label-text">Output parser type</span>
                       </label>
@@ -658,14 +680,14 @@ export default function Page() {
                         parser={moduleVersionData?.parsing_type}
                       />
                     </div>
-                    <div className="flex flex-col items-start justify-start">
+                    <div className="w-auto flex flex-col items-start justify-start">
                       <label className="label text-xs font-medium">
                         <span className="label-text">Output keys</span>
                       </label>
                       {moduleVersionData?.output_keys && (
-                        <div className="w-full flex flex-row items-center">
+                        <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
                           {moduleVersionData?.output_keys?.map((key) => (
-                            <Badge className="text-sm" variant="default">
+                            <Badge className="text-sm" variant="secondary">
                               {key}
                             </Badge>
                           ))}
@@ -916,7 +938,7 @@ const PromptComponent = ({
                 const newPrompts = prevPrompts.filter(
                   (p) => p.step !== prompt.step
                 );
-                return newPrompts.map((p, index) => ({
+                return newPrompts?.map((p, index) => ({
                   ...p,
                   step: index + 1,
                 }));

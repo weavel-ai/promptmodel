@@ -58,7 +58,7 @@ export const ParserTypeSelector = ({
                 >
                   None
                 </button>
-                {Object.values(ParsingType).map((parserType) => (
+                {Object.values(ParsingType)?.map((parserType) => (
                   <button
                     key={parserType}
                     className={classNames(
