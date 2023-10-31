@@ -416,6 +416,9 @@ const PromptComponent = ({ prompt }) => {
             scrollbar: {
               alwaysConsumeMouseWheel: false,
             },
+            minimap: {
+              enabled: false,
+            },
           }}
           loading={<div className="loading loading-xs loading-dots" />}
           onMount={handleEditorDidMount}
