@@ -1,6 +1,5 @@
 "use client";
 
-import * as d3 from "d3";
 import { hierarchy, tree, stratify } from "d3-hierarchy";
 import { Drawer } from "@/components/Drawer";
 // import { useModuleVersion } from "@/hooks/useModuleVersion";
@@ -23,6 +22,7 @@ import ReactFlow, {
 import { motion } from "framer-motion";
 import {
   CaretDown,
+  Command,
   GitBranch,
   Play,
   Trash,
@@ -44,7 +44,6 @@ import {
   updateVersionStatus,
 } from "@/apis/dev";
 import { useParams } from "next/navigation";
-import { SelectField } from "@/components/SelectField";
 import { StatusIndicator } from "@/components/StatusIndicator";
 import { useSupabaseClient } from "@/apis/base";
 import { toast } from "react-toastify";
@@ -63,6 +62,7 @@ import { ParserTypeSelector } from "@/components/select/ParserTypeSelector";
 import { TagsInput } from "react-tag-input-component";
 import { Badge } from "@/components/ui/badge";
 import { ParsingType } from "@/types/ParsingType";
+import { SlashCommandOptions } from "@/components/select/SlashCommandOptions";
 
 export default function Page() {
   const params = useParams();
@@ -83,16 +83,16 @@ export default function Page() {
   const { versionListData } = useModuleVersion();
   const {
     newVersionUuidCache,
-    newPromptCache,
     selectedVersionUuid,
-    moduleVersionLists,
+    focusedEditor,
+    showSlashOptions,
     updateModuleVersionLists,
     updateRunLogs,
     updatePrompts,
     removeRunLog,
     setSelectedVersionUuid,
     setNewVersionUuidCache,
-    setNewPromptCache,
+    setShowSlashOptions,
   } = useModuleVersionStore();
   const monaco = useMonaco();
   const [modifiedPrompts, setModifiedPrompts] = useState<Prompt[]>([]);
@@ -463,6 +463,37 @@ export default function Page() {
           </div>
         </div>
       </Drawer>
+      <SlashCommandOptions
+        open={Boolean(showSlashOptions)}
+        setOpen={setShowSlashOptions}
+        parsingType={parser}
+        onInsert={(outputFormatText: string, outputKey: string) => {
+          const position = focusedEditor.getPosition();
+          focusedEditor?.executeEdits("", [
+            {
+              range: {
+                startLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column,
+              },
+              text: outputFormatText, // The value you want to insert
+            },
+          ]);
+          setShowSlashOptions(false);
+          // Add output key
+          setOutputKeys([...outputKeys, outputKey]);
+          // Calculate new cursor position
+          const newColumnPosition = position.column + outputFormatText.length;
+          // Set cursor to the end of the inserted value
+          focusedEditor.setPosition({
+            lineNumber: position.lineNumber,
+            column: newColumnPosition,
+          });
+          // Focus the editor
+          focusedEditor.focus();
+        }}
+      />
       <Drawer
         open={selectedVersionUuid != null}
         direction="right"
@@ -568,8 +599,12 @@ export default function Page() {
                         New Prompt
                       </p>
                       <p className="text-base-content text-sm">
-                        From{" "}
-                        <u>Prompt V{moduleVersionData?.candidate_version}</u>
+                        From&nbsp;
+                        <u>
+                          Prompt V
+                          {moduleVersionData?.candidate_version ??
+                            moduleVersionData?.uuid?.slice(0, 6)}
+                        </u>
                       </p>
                     </div>
                     <div className="flex flex-row justify-end gap-x-3 items-center">
@@ -601,7 +636,7 @@ export default function Page() {
                 )}
               </div>
               {/* Prompt editor */}
-              <motion.div className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow-0">
+              <motion.div className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow">
                 {createVariantOpen ? (
                   <div className="flex flex-row justify-between items-start mb-2">
                     <div className="flex flex-row w-1/2 justify-start gap-x-4 items-start mb-2">
@@ -668,6 +703,15 @@ export default function Page() {
                           </Badge>
                         )}
                       </div>
+                      <div
+                        className="flex flex-row flex-grow justify-end items-center tooltip tooltip-bottom"
+                        data-tip="Press Cmd + / to insert output format to your prompt"
+                      >
+                        <kbd className="kbd text-base-content">
+                          <Command size={16} />
+                        </kbd>
+                        <kbd className="kbd text-base-content">/</kbd>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -733,7 +777,7 @@ export default function Page() {
                   )}
                 </div>
               </motion.div>
-              <div className="relative backdrop-blur-md">
+              <div className="relative backdrop-blur-md h-fit">
                 <ResizableSeparator
                   height={lowerBoxHeight}
                   setHeight={setLowerBoxHeight}
@@ -1005,6 +1049,7 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
   const [height, setHeight] = useState(30);
   const originalEditorRef = useRef(null);
   const modifiedEditorRef = useRef(null);
+  const { setFocusedEditor, setShowSlashOptions } = useModuleVersionStore();
 
   const handleEditorDidMount = (editor: MonacoDiffEditor, monaco: Monaco) => {
     originalEditorRef.current = editor.getOriginalEditor();
@@ -1014,6 +1059,15 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
     if (originalHeight) {
       setHeight(Math.min(originalHeight, maxHeight));
     }
+    modifiedEditorRef.current?.onKeyDown((e) => {
+      if (e.code === "Slash" && (e.ctrlKey || e.metaKey)) {
+        setShowSlashOptions(true);
+      }
+    });
+    modifiedEditorRef.current?.onDidFocusEditorWidget(() => {
+      setFocusedEditor(modifiedEditorRef.current);
+    });
+
     modifiedEditorRef.current.onDidChangeModelContent(() => {
       setPrompts((prevPrompts) => {
         const newPrompts = [...prevPrompts];
@@ -1177,45 +1231,6 @@ const RunLogSection = ({ versionUuid }: { versionUuid: string | "new" }) => {
           </tbody>
         </table>
       </div>
-      {/* <div className="w-full h-fit flex flex-row">
-        <div className="w-full">
-          <p className="text-lg font-medium ps-1">Input</p>
-        </div>
-        <div className="w-full flex flex-row gap-x-6 items-center">
-          <p className="text-lg font-medium ps-1">Output</p>
-          <div className="join">
-            <button
-              className={classNames(
-                "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                showRaw && "bg-base-300",
-                !showRaw && "bg-base-300/40"
-              )}
-              onClick={() => setShowRaw(true)}
-            >
-              Raw
-            </button>
-            <button
-              className={classNames(
-                "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                !showRaw && "bg-base-300",
-                showRaw && "bg-base-300/40"
-              )}
-              onClick={() => setShowRaw(false)}
-            >
-              Parsed
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="w-full h-fit bg-base-100 rounded overflow-y-auto">
-        <table className="w-full table table-fixed">
-          <tbody className="">
-            {runLogList?.map((log) => (
-              <RunLogComponent showRaw={showRaw} runLogData={log} />
-            ))}
-          </tbody>
-        </table>
-      </div> */}
     </div>
   );
 };

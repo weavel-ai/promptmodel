@@ -1,3 +1,4 @@
+import { editor } from "monaco-editor";
 import { create } from "zustand";
 
 export type RunLog = {
@@ -16,6 +17,8 @@ type Store = {
   newVersionUuidCache: string | null;
   newPromptCache: Prompt[];
   moduleVersionLists: Record<string, any>;
+  focusedEditor: editor.ICodeEditor | null;
+  showSlashOptions: boolean;
 };
 
 type Actions = {
@@ -28,6 +31,8 @@ type Actions = {
   setNewVersionUuidCache: (uuid: string) => void;
   setNewPromptCache: (prompts: Prompt[]) => void;
   updateModuleVersionLists: (moduleUuid: string, versionList: any) => void;
+  setFocusedEditor: (editor: editor.ICodeEditor | null) => void;
+  setShowSlashOptions: (show: boolean) => void;
 };
 
 export const useModuleVersionStore = create<Store & Actions>((set) => ({
@@ -38,6 +43,8 @@ export const useModuleVersionStore = create<Store & Actions>((set) => ({
   newVersionUuidCache: null,
   newPromptCache: [],
   moduleVersionLists: {},
+  focusedEditor: null,
+  showSlashOptions: false,
   setSelectedVersionUuid: (uuid) => set({ selectedVersionUuid: uuid }),
   updateRunLogs: (version, uuid, runLog) => {
     set((state) => ({
@@ -100,4 +107,6 @@ export const useModuleVersionStore = create<Store & Actions>((set) => ({
         [moduleUuid]: versionList,
       },
     })),
+  setFocusedEditor: (editor) => set({ focusedEditor: editor }),
+  setShowSlashOptions: (show) => set({ showSlashOptions: show }),
 }));
