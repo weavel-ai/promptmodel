@@ -82,6 +82,19 @@ export async function fetchModuleVersions(
   return res.data.llm_module_versions;
 }
 
+export async function fetchFunctions(
+  projectUuid: string,
+  devName: string
+): Promise<Record<string, any>[]> {
+  const res = await railwayDevClient.get("/list_functions", {
+    params: {
+      project_uuid: projectUuid,
+      dev_name: devName,
+    },
+  });
+  return res.data.functions;
+}
+
 export async function updateVersionStatus(
   projectUuid: string,
   devName: string,
@@ -154,6 +167,7 @@ export async function streamLLMModuleRun({
   uuid,
   parsingType,
   outputKeys,
+  functions,
   onNewData,
 }: {
   projectUuid: string;
@@ -167,6 +181,7 @@ export async function streamLLMModuleRun({
   uuid?: string | null;
   parsingType?: string | null;
   outputKeys?: string[] | null;
+  functions?: string[] | null;
   onNewData?: (data: Record<string, any>) => void;
 }) {
   await fetchStream({
@@ -185,6 +200,7 @@ export async function streamLLMModuleRun({
       model: model,
       parsing_type: parsingType,
       output_keys: outputKeys,
+      functions: functions,
     },
     onNewData: onNewData,
   });
