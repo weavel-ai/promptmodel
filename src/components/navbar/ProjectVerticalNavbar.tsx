@@ -31,7 +31,7 @@ export const ProjectVerticalNavbar = () => {
         <VerticalNavbarItem label="Overview" subPath="/overview">
           <Info weight="fill" className="text-base-content" size={20} />
         </VerticalNavbarItem>
-        <VerticalNavbarItem label="Promptmodels" subPath="/modules">
+        <VerticalNavbarItem label="Models" subPath="/modules">
           <SquaresFour weight="fill" className="text-base-content" size={20} />
         </VerticalNavbarItem>
         <VerticalNavbarItem label="Runs" subPath="/runs">
