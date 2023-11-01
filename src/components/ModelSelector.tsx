@@ -202,7 +202,7 @@ export const ModelSelector = (props: ModelSelectorProps) => {
               placeholder="Search models..."
               autoFocus
               className={classNames(
-                "input rounded-t-xl rounded-b-none focus:outline-none bg-base-100 w-full text-neutral-content"
+                "input text-sm rounded-t-xl rounded-b-none focus:outline-none bg-base-100 w-full text-neutral-content"
               )}
               value={inputValue} // Use value state
               onChange={(e) => {

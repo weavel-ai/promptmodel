@@ -61,6 +61,8 @@ import {
   PromptDiffEditor,
   PromptEditor,
 } from "@/components/editor/PromptEditor";
+import { FunctionSelector } from "@/components/select/FunctionSelector";
+import { useFunctions } from "@/hooks/dev/useFunctions";
 
 export default function Page() {
   const params = useParams();
@@ -77,6 +79,7 @@ export default function Page() {
   const [selectedSample, setSelectedSample] =
     useState<string>(EMPTY_INPUTS_LABEL);
   const [outputKeys, setOutputKeys] = useState<string[]>([]);
+  const [selectedFunctions, setSelectedFunctions] = useState<string[]>([]);
   const [parser, selectParser] = useState<ParsingType | null>(null);
   const { versionListData } = useModuleVersion();
   const {
@@ -97,6 +100,7 @@ export default function Page() {
   const { promptListData } = useModuleVersionDetails(selectedVersionUuid);
   const { refetchRunLogData } = useRunLogs(selectedVersionUuid);
   const { refetchSampleList } = useSamples();
+  const { refetchFunctionListData } = useFunctions();
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
   const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
@@ -140,25 +144,6 @@ export default function Page() {
 
   const isNewVersionReady = useMemo(() => {
     if (!createVariantOpen) return false;
-    // const modifiedValues = monaco?.editor
-    //   ?.getDiffEditors()
-    //   ?.map((editor) => editor?.getModel()?.modified?.getValue());
-
-    // if (newVersionUuidCache?.length > 0) {
-    //   return newPromptCache?.some(
-    //     (prompt, idx) => prompt.content !== modifiedPrompts[idx].content
-    //   );
-    // } else {
-    console.log(
-      !originalPrompts?.every(
-        (val, idx) => val === modifiedPrompts[idx]?.content
-      )
-    );
-    //console.log(selectedModel != moduleVersionData?.model);
-    //console.log(moduleVersionData?.parsing_type != parser);
-    //console.log(moduleVersionData?.output_keys != outputKeys);
-    //console.log(moduleVersionData?.output_keys);
-    //console.log(outputKeys);
 
     return (
       !originalPrompts?.every(
@@ -167,9 +152,17 @@ export default function Page() {
       selectedModel != moduleVersionData?.model ||
       moduleVersionData?.parsing_type != parser ||
       (moduleVersionData?.parsing_type != null &&
-        moduleVersionData?.output_keys != outputKeys)
+        moduleVersionData?.output_keys != outputKeys) ||
+      moduleVersionData?.functions != selectedFunctions
     );
-  }, [selectedModel, originalPrompts, modifiedPrompts, parser, outputKeys]);
+  }, [
+    selectedModel,
+    originalPrompts,
+    modifiedPrompts,
+    parser,
+    outputKeys,
+    selectedFunctions,
+  ]);
 
   const getChildren = (parentId: string) => {
     return versionListData.filter((item) => item.from_uuid === parentId);
@@ -197,6 +190,7 @@ export default function Page() {
             const toastId = toast.loading("Syncing...");
             await refetchVersionListData();
             await refetchSampleList();
+            await refetchFunctionListData();
             toast.dismiss(toastId);
           }
         }
@@ -321,6 +315,7 @@ export default function Page() {
       uuid: isNew ? null : moduleVersionData?.uuid,
       parsingType: parser,
       outputKeys: outputKeys,
+      functions: selectedFunctions,
       onNewData: async (data) => {
         switch (data?.status) {
           case "completed":
@@ -657,78 +652,121 @@ export default function Page() {
               <motion.div className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow">
                 {createVariantOpen ? (
                   <div className="flex flex-row justify-between items-start mb-2">
-                    <div className="flex flex-row w-1/2 justify-start gap-x-4 items-start mb-2">
-                      <div className="min-w-fit flex flex-col items-start justify-start">
-                        <label className="label text-xs font-medium">
-                          <span className="label-text">Output parser type</span>
-                        </label>
-                        <ParserTypeSelector
-                          parser={moduleVersionData?.parsing_type}
-                        />
+                    <div className="flex flex-col w-1/2 justify-start gap-y-2 items-start mb-2">
+                      <div className="flex flex-row justify-start gap-x-4 items-start">
+                        <div className="min-w-fit flex flex-col items-start justify-start">
+                          <label className="label text-xs font-medium">
+                            <span className="label-text">
+                              Output parser type
+                            </span>
+                          </label>
+                          <ParserTypeSelector
+                            parser={moduleVersionData?.parsing_type}
+                          />
+                        </div>
+                        <div className="w-auto flex flex-col items-start justify-start">
+                          <label className="label text-xs font-medium">
+                            <span className="label-text">Output keys</span>
+                          </label>
+                          {moduleVersionData?.output_keys && (
+                            <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
+                              {moduleVersionData?.output_keys?.map((key) => (
+                                <Badge className="text-sm" variant="secondary">
+                                  {key}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                          {!moduleVersionData?.output_keys && (
+                            <Badge className="text-sm" variant="muted">
+                              No output keys
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <div className="w-auto flex flex-col items-start justify-start">
                         <label className="label text-xs font-medium">
-                          <span className="label-text">Output keys</span>
+                          <span className="label-text">Functions</span>
                         </label>
-                        {moduleVersionData?.output_keys && (
+                        {moduleVersionData?.functions && (
                           <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
-                            {moduleVersionData?.output_keys?.map((key) => (
-                              <Badge className="text-sm" variant="secondary">
-                                {key}
-                              </Badge>
-                            ))}
+                            {moduleVersionData?.functions?.map(
+                              (functionName) => (
+                                <Badge
+                                  key={functionName}
+                                  className="text-sm"
+                                  variant="default"
+                                >
+                                  {functionName}
+                                </Badge>
+                              )
+                            )}
                           </div>
                         )}
-                        {!moduleVersionData?.output_keys && (
+                        {(!moduleVersionData?.functions ||
+                          moduleVersionData?.functions?.length == 0) && (
                           <Badge className="text-sm" variant="muted">
-                            No output keys
+                            No functions
                           </Badge>
                         )}
                       </div>
                     </div>
-                    <div className="flex flex-row w-1/2 justify-start gap-x-4 items-start mb-2">
+                    <div className="flex flex-col w-1/2 justify-start gap-y-2 items-start mb-2">
+                      <div className="flex flex-row justify-start gap-x-4 items-start">
+                        <div className="flex flex-col items-start justify-start">
+                          <label className="label text-xs font-medium">
+                            <span className="label-text">
+                              Output parser type
+                            </span>
+                          </label>
+                          <ParserTypeSelector
+                            parser={parser}
+                            selectParser={selectParser}
+                          />
+                        </div>
+                        <div className="flex flex-col items-start justify-start">
+                          <label className="label text-xs font-medium">
+                            <span className="label-text">Output keys</span>
+                          </label>
+                          {parser && (
+                            <div className="w-full bg-base-content/10 rounded-lg text-sm">
+                              <TagsInput
+                                value={outputKeys}
+                                name="Output Keys"
+                                classNames={{
+                                  input:
+                                    "text-sm m-0 flex-grow bg-transparent disabled",
+                                  tag: "!bg-secondary text-secondary-content text-sm",
+                                }}
+                                placeHolder="Type and press enter"
+                                onChange={setOutputKeys}
+                              />
+                            </div>
+                          )}
+                          {(parser == null || parser == undefined) && (
+                            <Badge className="text-sm" variant="muted">
+                              No output keys
+                            </Badge>
+                          )}
+                        </div>
+                        <div
+                          className="flex flex-row flex-grow justify-end items-center tooltip tooltip-bottom"
+                          data-tip="Press Cmd + / to insert output format to your prompt"
+                        >
+                          <kbd className="kbd text-base-content">
+                            <Command size={16} />
+                          </kbd>
+                          <kbd className="kbd text-base-content">/</kbd>
+                        </div>
+                      </div>
                       <div className="flex flex-col items-start justify-start">
                         <label className="label text-xs font-medium">
-                          <span className="label-text">Output parser type</span>
+                          <span className="label-text">Functions</span>
                         </label>
-                        <ParserTypeSelector
-                          parser={parser}
-                          selectParser={selectParser}
+                        <FunctionSelector
+                          selectedFunctions={selectedFunctions}
+                          setSelectedFunctions={setSelectedFunctions}
                         />
-                      </div>
-                      <div className="flex flex-col items-start justify-start">
-                        <label className="label text-xs font-medium">
-                          <span className="label-text">Output keys</span>
-                        </label>
-                        {parser && (
-                          <div className="w-full bg-base-content/10 rounded-lg text-sm">
-                            <TagsInput
-                              value={outputKeys}
-                              name="Output Keys"
-                              classNames={{
-                                input:
-                                  "text-sm m-0 flex-grow bg-transparent disabled",
-                                tag: "!bg-secondary text-secondary-content text-sm",
-                              }}
-                              placeHolder="Type and press enter"
-                              onChange={setOutputKeys}
-                            />
-                          </div>
-                        )}
-                        {(parser == null || parser == undefined) && (
-                          <Badge className="text-sm" variant="muted">
-                            No output keys
-                          </Badge>
-                        )}
-                      </div>
-                      <div
-                        className="flex flex-row flex-grow justify-end items-center tooltip tooltip-bottom"
-                        data-tip="Press Cmd + / to insert output format to your prompt"
-                      >
-                        <kbd className="kbd text-base-content">
-                          <Command size={16} />
-                        </kbd>
-                        <kbd className="kbd text-base-content">/</kbd>
                       </div>
                     </div>
                   </div>

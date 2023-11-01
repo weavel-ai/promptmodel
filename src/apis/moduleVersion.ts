@@ -18,7 +18,7 @@ export async function fetchModuleVersion(
   const res = await supabaseClient
     .from("llm_module_version")
     .select(
-      "version, from_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+      "version, from_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys, functions"
     )
     .eq("uuid", uuid)
     .single();

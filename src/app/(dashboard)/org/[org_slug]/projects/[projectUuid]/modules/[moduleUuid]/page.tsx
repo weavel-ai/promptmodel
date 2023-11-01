@@ -153,7 +153,7 @@ const AnalyticsPage = () => {
         data={dailyRunLogMetrics}
         dataKey="total_cost"
         xAxisDataKey="day"
-        title="Total Costs"
+        title="Total Cost"
         mainData={`$${totalCost}`}
       />
       <CustomAreaChart
@@ -215,45 +215,63 @@ const VersionsPage = () => {
   useEffect(() => {
     if (!versionListData || versionListData.length === 0) return;
     const generatedEdges = [];
+    // Before passing your data to stratify, preprocess it:
+    const dataWithSyntheticRoot = [
+      {
+        uuid: "synthetic-root",
+        from_uuid: null,
+      },
+      ...versionListData.map((item) => {
+        if (!item.from_uuid) {
+          return {
+            ...item,
+            from_uuid: "synthetic-root",
+          };
+        }
+        return item;
+      }),
+    ];
 
     const root = stratify()
       .id((d: any) => d.uuid)
-      .parentId((d: any) => d.from_uuid)(versionListData);
+      .parentId((d: any) => d.from_uuid)(dataWithSyntheticRoot);
 
     // Calculate the maximum number of nodes at any depth.
     const maxNodesAtDepth = Math.max(
       ...root.descendants().map((d: any) => d.depth)
     );
-    const requiredWidth = maxNodesAtDepth * 360;
+    const requiredWidth = maxNodesAtDepth * 320;
 
     // Use the smaller of window width and required width.
     const layoutWidth = Math.min(window.innerWidth, requiredWidth);
-    const layout = tree().size([layoutWidth, root.height * 150]);
+    const layout = tree().size([layoutWidth, root.height * 160]);
 
     const nodes = layout(root).descendants();
 
-    const generatedNodes = nodes.map((node: any) => {
-      const item = node.data;
+    const generatedNodes = nodes
+      .filter((node: any) => node.data.uuid !== "synthetic-root")
+      .map((node: any) => {
+        const item = node.data;
 
-      if (item.from_uuid) {
-        generatedEdges.push({
-          id: `e${item.uuid}-${item.from_uuid}`,
-          source: item.from_uuid,
-          target: item.uuid,
-        });
-      }
+        if (item.from_uuid && item.from_uuid !== "synthetic-root") {
+          generatedEdges.push({
+            id: `e${item.uuid}-${item.from_uuid}`,
+            source: item.from_uuid,
+            target: item.uuid,
+          });
+        }
 
-      return {
-        id: item.uuid.toString(),
-        type: "moduleVersion",
-        data: {
-          label: item.version,
-          uuid: item.uuid,
-          isPublished: item.is_published,
-        },
-        position: { x: node.x, y: node.depth * 150 },
-      };
-    });
+        return {
+          id: item.uuid.toString(),
+          type: "moduleVersion",
+          data: {
+            label: item.version,
+            uuid: item.uuid,
+            isPublished: item.is_published,
+          },
+          position: { x: node.x, y: node.depth * 150 },
+        };
+      });
 
     setNodes(generatedNodes);
     setEdges(generatedEdges);
@@ -366,7 +384,7 @@ const VersionsPage = () => {
                 height: window.innerHeight - lowerBoxHeight - 120,
               }}
             >
-              <div className="flex flex-row justify-start gap-x-4 items-start mb-2">
+              <div className="flex flex-wrap justify-start gap-x-4 items-start mb-2">
                 <div className="flex flex-col items-start justify-start">
                   <label className="label text-xs font-medium">
                     <span className="label-text">Output parser type</span>
@@ -380,9 +398,13 @@ const VersionsPage = () => {
                     <span className="label-text">Output keys</span>
                   </label>
                   {moduleVersionData?.output_keys && (
-                    <div className="w-full flex flex-row items-center">
+                    <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
                       {moduleVersionData?.output_keys?.map((key) => (
-                        <Badge className="text-sm" variant="default">
+                        <Badge
+                          key={key}
+                          className="text-sm"
+                          variant="secondary"
+                        >
                           {key}
                         </Badge>
                       ))}
@@ -391,6 +413,30 @@ const VersionsPage = () => {
                   {!moduleVersionData?.output_keys && (
                     <Badge className="text-sm" variant="muted">
                       No output keys
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Functions</span>
+                  </label>
+                  {moduleVersionData?.functions && (
+                    <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
+                      {moduleVersionData?.functions?.map((funcName) => (
+                        <Badge
+                          key={funcName}
+                          className="text-sm"
+                          variant="default"
+                        >
+                          {funcName}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  {(!moduleVersionData?.functions ||
+                    moduleVersionData?.functions?.length == 0) && (
+                    <Badge className="text-sm" variant="muted">
+                      No functions
                     </Badge>
                   )}
                 </div>
