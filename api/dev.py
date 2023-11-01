@@ -29,14 +29,15 @@ class PromptConfig(BaseModel):
 class RunConfig(BaseModel):
     llm_module_uuid: str
     llm_module_name: str
-    output_keys: Optional[List[str]] = None
-    model: str
-    sample_name: Optional[str] = None
     prompts: List[PromptConfig]
+    model: Optional[str] = "gpt-3.5-turbo"
     from_uuid: Optional[str] = None
     uuid: Optional[str] = None
-    parsing_type: Optional[str] = "double_square_bracket"
-    model: Optional[str] = "gpt-3.5-turbo"
+    sample_name: Optional[str] = None
+    parsing_type: Optional[str] = None
+    output_keys: Optional[List[str]] = None
+    functions: Optional[List[str]] = None
+
 
 
 class RunLog(BaseModel):
@@ -72,7 +73,7 @@ async def run_llm_module(project_uuid: str, dev_name: str, run_config: RunConfig
             <li>from_uuid : previous version uuid (Optional) </li>
             <li>uuid : current uuid (optional if run_previous)  </li>
             <li>parsing_type: parsing type (colon, square_bracket, double_square_bracket)  </li>
-            <li>model: model_name</li>
+            <li>functions : list of functions (Optional[List[str]])  </li>
         </ul>
     </ul>
 
@@ -83,6 +84,7 @@ async def run_llm_module(project_uuid: str, dev_name: str, run_config: RunConfig
         <li>raw_output: str  </li>
         <li>parsed_outputs: dict  </li>
         <li>status: str = completed | failed | running  </li>
+        <li>function_call: dict </li>
         </ul>
     </ul>
     """
