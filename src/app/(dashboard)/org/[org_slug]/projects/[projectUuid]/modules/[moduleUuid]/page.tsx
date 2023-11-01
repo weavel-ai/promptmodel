@@ -72,6 +72,7 @@ const AnalyticsPage = () => {
     from: subDays(Date.now(), 7),
     to: new Date(),
   });
+
   const { dailyRunLogMetrics } = useDailyRunLogMetrics(
     dayjs(dateRange?.from)?.toISOString(),
     dayjs(dateRange?.to)?.toISOString()
@@ -82,8 +83,8 @@ const AnalyticsPage = () => {
     0
   );
 
-  const avgLatency = dailyRunLogMetrics?.reduce(
-    (acc, curr) => acc + curr.avg_latency,
+  const totalLatency = dailyRunLogMetrics?.reduce(
+    (acc, curr) => acc + curr.avg_latency * curr.total_runs,
     0
   );
 
@@ -96,6 +97,42 @@ const AnalyticsPage = () => {
     (acc, curr) => acc + curr.total_token_usage.total_tokens,
     0
   );
+
+  const avgLatency = totalRuns != 0 ? totalLatency / totalRuns : 0;
+
+  function formatDate(inputDate: Date): string {
+    const year = inputDate.getFullYear();
+    const month = (inputDate.getMonth() + 1).toString().padStart(2, "0");
+    const day = inputDate.getDate().toString().padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
+
+  let date = new Date(dateRange?.from);
+  const existingDates = dailyRunLogMetrics?.map((metric) => metric.day);
+
+  while (date <= dateRange?.to) {
+    if (!existingDates?.includes(formatDate(date))) {
+      dailyRunLogMetrics?.push({
+        day: formatDate(date),
+        avg_latency: 0,
+        total_cost: 0,
+        total_runs: 0,
+        total_token_usage: {
+          total_tokens: 0,
+          prompt_tokens: 0,
+          completion_tokens: 0,
+        },
+      });
+    }
+    date.setDate(date.getDate() + 1);
+  }
+
+  dailyRunLogMetrics?.sort((a, b) => {
+    if (a.day < b.day) return -1;
+    if (a.day > b.day) return 1;
+    return 0;
+  });
 
   return (
     <div className="pt-28 pl-24 flex flex-wrap gap-4 items-center justify-center">
