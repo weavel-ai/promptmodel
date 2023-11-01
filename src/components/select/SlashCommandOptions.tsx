@@ -68,17 +68,6 @@ export const SlashCommandOptions = ({
     } else if (parsingType == ParsingType.HTML) {
       return `<${outputKey} type=<${type}>>\n${valuePlaceholder}\n</${outputKey}>`;
     }
-
-    // switch (parsingType) {
-    //   case ParsingType.COLON:
-    //     return `${outputKey}:\n${valuePlaceholder}`;
-    //   case ParsingType.SQUARE_BRACKET:
-    //     return `[${outputKey} type=<${type}>]\n${valuePlaceholder}\n[/${outputKey}]`;
-    //   case ParsingType.DOUBLE_SQUARE_BRACKET:
-    //     return `[[${outputKey} type=<${type}>]]\n${valuePlaceholder}\n[[/${outputKey}]]`;
-    //   case ParsingType.HTML:
-    //     return `<${outputKey} type=<${type}>>\n${valuePlaceholder}\n</${outputKey}>`;
-    // }
   }, [outputKey, type, parsingType]);
 
   useHotkeys(
@@ -113,7 +102,7 @@ export const SlashCommandOptions = ({
       <div className="w-full h-full flex justify-center items-center fixed inset-0 z-[99999]">
         <motion.div
           className={classNames(
-            "w-fit min-h-fit bg-popover/50 backdrop-blur-sm rounded-box shadow-lg flex flex-col p-4 pt-2"
+            "w-fit min-h-fit bg-popover/80 backdrop-blur-sm rounded-box shadow-lg flex flex-col p-4 pt-2"
           )}
           initial={{
             opacity: 0,

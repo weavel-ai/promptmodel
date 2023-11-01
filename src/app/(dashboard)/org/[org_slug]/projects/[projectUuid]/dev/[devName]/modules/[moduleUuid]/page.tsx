@@ -28,14 +28,9 @@ import {
   Trash,
   XCircle,
 } from "@phosphor-icons/react";
-import {
-  DiffEditor,
-  Editor,
-  Monaco,
-  MonacoDiffEditor,
-  useMonaco,
-} from "@monaco-editor/react";
+import { Monaco, MonacoDiffEditor, useMonaco } from "@monaco-editor/react";
 import { editor } from "monaco-editor/esm/vs/editor/editor.api";
+
 import "reactflow/dist/style.css";
 import { useHotkeys } from "react-hotkeys-hook";
 import {
@@ -51,7 +46,6 @@ import ReactJson from "react-json-view";
 import { useRunLogs } from "@/hooks/dev/useRunLog";
 import { v4 as uuidv4 } from "uuid";
 import { PlusSquare } from "@phosphor-icons/react/dist/ssr";
-import { ModalPortal } from "@/components/ModalPortal";
 import { ModelDisplay, ModelSelector } from "@/components/ModelSelector";
 import { cloneDeep } from "@/utils";
 import { SampleSelector } from "@/components/SampleSelector";
@@ -63,6 +57,10 @@ import { TagsInput } from "react-tag-input-component";
 import { Badge } from "@/components/ui/badge";
 import { ParsingType } from "@/types/ParsingType";
 import { SlashCommandOptions } from "@/components/select/SlashCommandOptions";
+import {
+  PromptDiffEditor,
+  PromptEditor,
+} from "@/components/editor/PromptEditor";
 
 export default function Page() {
   const params = useParams();
@@ -966,6 +964,8 @@ const PromptComponent = ({
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
     const contentHeight = editor.getContentHeight();
     editorRef.current = editor;
+    console.log(editor.getModel()?.getLanguageId());
+
     if (contentHeight) {
       setHeight(contentHeight);
     }
@@ -1024,7 +1024,7 @@ const PromptComponent = ({
         </div>
       </div>
       {open && (
-        <Editor
+        <PromptEditor
           value={prompt.content}
           onChange={(value) => {
             if (setPrompts) {
@@ -1043,17 +1043,8 @@ const PromptComponent = ({
               });
             }
           }}
-          theme="vs-dark"
           options={{
             readOnly: setPrompts == undefined,
-            scrollBeyondLastLine: false,
-            wordWrap: "on",
-            scrollbar: {
-              alwaysConsumeMouseWheel: false,
-            },
-            minimap: {
-              enabled: false,
-            },
           }}
           loading={<div className="loading loading-xs loading-dots" />}
           onMount={handleEditorDidMount}
@@ -1140,24 +1131,13 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
         />
       </div>
       {open && (
-        <DiffEditor
+        <PromptDiffEditor
           className="gap-x-8"
           original={prompt.content}
           modified={prompt.content}
-          theme="vs-dark"
           loading={<div className="loading loading-xs loading-dots" />}
           onMount={handleEditorDidMount}
           height={height}
-          options={{
-            scrollBeyondLastLine: false,
-            wordWrap: "on",
-            scrollbar: {
-              alwaysConsumeMouseWheel: false,
-            },
-            minimap: {
-              enabled: false,
-            },
-          }}
         />
       )}
     </motion.div>
