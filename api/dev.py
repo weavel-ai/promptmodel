@@ -29,14 +29,15 @@ class PromptConfig(BaseModel):
 class RunConfig(BaseModel):
     llm_module_uuid: str
     llm_module_name: str
-    output_keys: Optional[List[str]] = None
-    model: str
-    sample_name: Optional[str] = None
     prompts: List[PromptConfig]
+    model: Optional[str] = "gpt-3.5-turbo"
     from_uuid: Optional[str] = None
     uuid: Optional[str] = None
-    parsing_type: Optional[str] = "double_square_bracket"
-    model: Optional[str] = "gpt-3.5-turbo"
+    sample_name: Optional[str] = None
+    parsing_type: Optional[str] = None
+    output_keys: Optional[List[str]] = None
+    functions: Optional[List[str]] = []
+
 
 
 class RunLog(BaseModel):
@@ -72,7 +73,7 @@ async def run_llm_module(project_uuid: str, dev_name: str, run_config: RunConfig
             <li>from_uuid : previous version uuid (Optional) </li>
             <li>uuid : current uuid (optional if run_previous)  </li>
             <li>parsing_type: parsing type (colon, square_bracket, double_square_bracket)  </li>
-            <li>model: model_name</li>
+            <li>functions : list of functions (Optional[List[str]])  </li>
         </ul>
     </ul>
 
@@ -83,6 +84,7 @@ async def run_llm_module(project_uuid: str, dev_name: str, run_config: RunConfig
         <li>raw_output: str  </li>
         <li>parsed_outputs: dict  </li>
         <li>status: str = completed | failed | running  </li>
+        <li>function_call: dict </li>
         </ul>
     </ul>
     """
@@ -189,7 +191,10 @@ async def list_versions(project_uuid: str, dev_name: str, llm_module_uuid: str):
                 - llm_module_uuid
                 - status
                 - model
-                - candidate_version
+                - candidate_version : int
+                - parsint_type
+                - output_keys
+                - functions
     """
     # If the API key in header is valid, this function will execute.
     try:
@@ -243,6 +248,39 @@ async def list_samples(
         cli_access_key = dev_branch[0]["cli_access_key"]
         response = await websocket_manager.request(
             cli_access_key, LocalTask.LIST_SAMPLES, {}
+        )
+        if not response:
+            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
+        return JSONResponse(response, status_code=HTTP_200_OK)
+
+    except ValueError as ve:
+        logger.error(ve)
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST) from ve
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+    
+@router.get("/list_functions")
+async def list_functions(
+    project_uuid: str,
+    dev_name: str,
+):
+    try:
+        # Find local server websocket
+        dev_branch = (
+            supabase.table("dev_branch")
+            .select("cli_access_key")
+            .eq("name", dev_name)
+            .eq("project_uuid", project_uuid)
+            .execute()
+            .data
+        )
+        if len(dev_branch) == 0:
+            raise ValueError("There is no dev_branch")
+
+        cli_access_key = dev_branch[0]["cli_access_key"]
+        response = await websocket_manager.request(
+            cli_access_key, LocalTask.LIST_FUNCTIONS, {}
         )
         if not response:
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
