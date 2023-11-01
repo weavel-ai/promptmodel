@@ -217,9 +217,27 @@ export default function Page() {
     if (!versionListData || versionListData.length === 0) return;
     const generatedEdges = [];
 
+    // Before passing your data to stratify, preprocess it:
+    const dataWithSyntheticRoot = [
+      {
+        uuid: "synthetic-root",
+        from_uuid: null,
+      },
+      ...versionListData.map((item) => {
+        if (!item.from_uuid) {
+          return {
+            ...item,
+            from_uuid: "synthetic-root",
+          };
+        }
+        return item;
+      }),
+    ];
+
+    // Then, use this preprocessed data with stratify
     const root = stratify()
       .id((d: any) => d.uuid)
-      .parentId((d: any) => d.from_uuid)(versionListData);
+      .parentId((d: any) => d.from_uuid)(dataWithSyntheticRoot);
 
     // Calculate the maximum number of nodes at any depth.
     const maxNodesAtDepth = Math.max(
@@ -233,37 +251,39 @@ export default function Page() {
 
     const nodes = layout(root).descendants();
 
-    const generatedNodes = nodes.map((node: any) => {
-      const item = node.data;
+    const generatedNodes = nodes
+      .filter((node: any) => node.data.uuid !== "synthetic-root")
+      .map((node: any) => {
+        const item = node.data;
 
-      let status;
-      if (item.is_published) {
-        status = "published";
-      } else if (item.candidate_version) {
-        status = "deployed";
-      } else {
-        status = item.status;
-      }
+        let status;
+        if (item.is_published) {
+          status = "published";
+        } else if (item.candidate_version) {
+          status = "deployed";
+        } else {
+          status = item.status;
+        }
 
-      if (item.from_uuid) {
-        generatedEdges.push({
-          id: `e${item.uuid}-${item.from_uuid}`,
-          source: item.from_uuid,
-          target: item.uuid,
-        });
-      }
+        if (item.from_uuid && item.from_uuid !== "synthetic-root") {
+          generatedEdges.push({
+            id: `e${item.uuid}-${item.from_uuid}`,
+            source: item.from_uuid,
+            target: item.uuid,
+          });
+        }
 
-      return {
-        id: item.uuid,
-        type: "moduleVersion",
-        data: {
-          label: item.candidate_version ?? item.uuid.slice(0, 3),
-          uuid: item.uuid,
-          status: status,
-        },
-        position: { x: node.x, y: node.depth * 150 },
-      };
-    });
+        return {
+          id: item.uuid,
+          type: "moduleVersion",
+          data: {
+            label: item.candidate_version ?? item.uuid.slice(0, 3),
+            uuid: item.uuid,
+            status: status,
+          },
+          position: { x: node.x, y: node.depth * 150 },
+        };
+      });
 
     setNodes(generatedNodes);
     setEdges(generatedEdges);
