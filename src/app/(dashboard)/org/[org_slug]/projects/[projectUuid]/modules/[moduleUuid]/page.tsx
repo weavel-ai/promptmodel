@@ -20,7 +20,6 @@ import { useSupabaseClient } from "@/apis/base";
 import "reactflow/dist/style.css";
 import { useRunLog } from "@/hooks/useRunLog";
 import { RunLog } from "@/apis/runlog";
-import { Editor } from "@monaco-editor/react";
 import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
 import { tree, stratify } from "d3-hierarchy";
@@ -37,6 +36,7 @@ import { subDays } from "date-fns";
 import dayjs from "dayjs";
 import { ParserTypeSelector } from "@/components/select/ParserTypeSelector";
 import { Badge } from "@/components/ui/badge";
+import { PromptEditor } from "@/components/editor/PromptEditor";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -443,19 +443,10 @@ const PromptComponent = ({ prompt }) => {
         />
       </div>
       {open && (
-        <Editor
+        <PromptEditor
           value={prompt.content}
-          theme="vs-dark"
           options={{
             readOnly: true,
-            scrollBeyondLastLine: false,
-            wordWrap: "on",
-            scrollbar: {
-              alwaysConsumeMouseWheel: false,
-            },
-            minimap: {
-              enabled: false,
-            },
           }}
           loading={<div className="loading loading-xs loading-dots" />}
           onMount={handleEditorDidMount}
