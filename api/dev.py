@@ -36,7 +36,7 @@ class RunConfig(BaseModel):
     sample_name: Optional[str] = None
     parsing_type: Optional[str] = None
     output_keys: Optional[List[str]] = None
-    functions: Optional[List[str]] = None
+    functions: List[str] = []
 
 
 
@@ -73,7 +73,7 @@ async def run_llm_module(project_uuid: str, dev_name: str, run_config: RunConfig
             <li>from_uuid : previous version uuid (Optional) </li>
             <li>uuid : current uuid (optional if run_previous)  </li>
             <li>parsing_type: parsing type (colon, square_bracket, double_square_bracket)  </li>
-            <li>functions : list of functions (Optional[List[str]])  </li>
+            <li>functions : list of functions (List[str])  </li>
         </ul>
     </ul>
 
@@ -191,7 +191,10 @@ async def list_versions(project_uuid: str, dev_name: str, llm_module_uuid: str):
                 - llm_module_uuid
                 - status
                 - model
-                - candidate_version
+                - candidate_version : int
+                - parsint_type
+                - output_keys
+                - functions
     """
     # If the API key in header is valid, this function will execute.
     try:
