@@ -83,8 +83,8 @@ const AnalyticsPage = () => {
     0
   );
 
-  const avgLatency = dailyRunLogMetrics?.reduce(
-    (acc, curr) => acc + curr.avg_latency,
+  const totalLatency = dailyRunLogMetrics?.reduce(
+    (acc, curr) => acc + curr.avg_latency * curr.total_runs,
     0
   );
 
@@ -98,9 +98,11 @@ const AnalyticsPage = () => {
     0
   );
 
+  const avgLatency = totalRuns != 0 ? totalLatency / totalRuns : 0;
+
   function formatDate(inputDate: Date): string {
     const year = inputDate.getFullYear();
-    const month = (inputDate.getMonth() + 1).toString().padStart(2, "0"); // Month is 0-indexed
+    const month = (inputDate.getMonth() + 1).toString().padStart(2, "0");
     const day = inputDate.getDate().toString().padStart(2, "0");
 
     return `${year}-${month}-${day}`;
