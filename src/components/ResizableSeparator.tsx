@@ -8,7 +8,6 @@ export const ResizableSeparator = ({ height, setHeight }) => {
         "transition-colors hover:bg-blue-500/70 active:bg-blue-500/70 focus:bg-blue-500/70 active:select-none focus:select-none"
       )}
       {...registerMouseDownDrag((deltaX, deltaY) => {
-        console.log(height, deltaY);
         if (height - deltaY > window.innerHeight - 160) {
           return;
         }

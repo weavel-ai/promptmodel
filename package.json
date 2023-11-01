@@ -21,6 +21,7 @@
     "class-variance-authority": "^0.7.0",
     "classnames": "^2.3.2",
     "clsx": "^2.0.0",
+    "cmdk": "^0.2.0",
     "d3": "^7.8.5",
     "d3-hierarchy": "^3.1.2",
     "daisyui": "^3.8.1",
