@@ -11,21 +11,7 @@ import { toast } from "react-toastify";
 import { useHotkeys } from "react-hotkeys-hook";
 import { ParsingType } from "@/types/ParsingType";
 
-const TYPES: string[] = [
-  "str",
-  "int",
-  "float",
-  "bool",
-  "List[str]",
-  "List[int]",
-  "List[float]",
-  "List[bool]",
-  "Dict[str, str]",
-  "Dict[str, int]",
-  "Dict[str, float]",
-  "Dict[str, bool]",
-  "Dict[str, Any]",
-];
+const TYPES: string[] = ["str", "int", "float", "bool", "List", "Dict"];
 
 export const SlashCommandOptions = ({
   open,
@@ -54,19 +40,19 @@ export const SlashCommandOptions = ({
 
   const outputFormatText = useMemo(() => {
     let valuePlaceholder: string = "(value here)";
-    if (type.includes("List")) {
+    if (type == "List") {
       valuePlaceholder = "(list in jsonl format)";
-    } else if (type.includes("Dict")) {
+    } else if (type == "Dict") {
       valuePlaceholder = "(value in json format)";
     }
     if (parsingType === ParsingType.COLON) {
       return `${outputKey}:\n${valuePlaceholder}`;
     } else if (parsingType == ParsingType.SQUARE_BRACKET) {
-      return `[${outputKey} type=<${type}>]\n${valuePlaceholder}\n[/${outputKey}]`;
+      return `[${outputKey} type=${type}]\n${valuePlaceholder}\n[/${outputKey}]`;
     } else if (parsingType == ParsingType.DOUBLE_SQUARE_BRACKET) {
-      return `[[${outputKey} type=<${type}>]]\n${valuePlaceholder}\n[[/${outputKey}]]`;
+      return `[[${outputKey} type=${type}]]\n${valuePlaceholder}\n[[/${outputKey}]]`;
     } else if (parsingType == ParsingType.HTML) {
-      return `<${outputKey} type=<${type}>>\n${valuePlaceholder}\n</${outputKey}>`;
+      return `<${outputKey} type=${type}>\n${valuePlaceholder}\n</${outputKey}>`;
     }
   }, [outputKey, type, parsingType]);
 

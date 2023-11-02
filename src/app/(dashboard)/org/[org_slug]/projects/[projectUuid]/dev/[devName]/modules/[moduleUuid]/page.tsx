@@ -313,9 +313,9 @@ export default function Page() {
       model: isNew ? selectedModel : moduleVersionData.model,
       fromUuid: isNew ? moduleVersionData?.uuid ?? null : null,
       uuid: isNew ? null : moduleVersionData?.uuid,
-      parsingType: parser,
-      outputKeys: outputKeys,
-      functions: selectedFunctions,
+      parsingType: isNew ? parser : moduleVersionData?.parsing_type,
+      outputKeys: isNew ? outputKeys : moduleVersionData?.output_keys,
+      functions: isNew ? selectedFunctions : moduleVersionData?.functions,
       onNewData: async (data) => {
         switch (data?.status) {
           case "completed":
@@ -365,6 +365,15 @@ export default function Page() {
           updateRunLogs(isNew ? "new" : moduleVersionData?.uuid, uuid, {
             parsed_outputs: cacheParsedOutputs,
           });
+        }
+        if (data?.function_call) {
+          const functionCallData = data?.function_call;
+          functionCallData["initial_raw_output"] = cacheRawOutput;
+          updateRunLogs(isNew ? "new" : moduleVersionData?.uuid, uuid, {
+            raw_output: "",
+            function_call: data?.function_call,
+          });
+          cacheRawOutput = "";
         }
       },
     });
@@ -449,6 +458,63 @@ export default function Page() {
             </div>
           </div>
           <div className="bg-base-200 flex-grow w-full p-4 rounded-t-box overflow-auto">
+            <div className="flex flex-row justify-between gap-x-2 items-start mb-2">
+              <div className="flex flex-wrap justify-start gap-4 items-start">
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Output parser type</span>
+                  </label>
+                  <ParserTypeSelector
+                    parser={parser}
+                    selectParser={selectParser}
+                  />
+                </div>
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Output keys</span>
+                  </label>
+                  {parser && (
+                    <div className="w-full bg-base-content/10 rounded-lg text-sm">
+                      <TagsInput
+                        value={outputKeys}
+                        name="Output Keys"
+                        classNames={{
+                          input:
+                            "text-sm m-0 flex-grow bg-transparent disabled",
+                          tag: "!bg-secondary text-secondary-content text-sm",
+                        }}
+                        placeHolder="Type and press enter"
+                        onChange={setOutputKeys}
+                      />
+                    </div>
+                  )}
+                  {(parser == null || parser == undefined) && (
+                    <Badge className="text-sm" variant="muted">
+                      No output keys
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Functions</span>
+                  </label>
+                  <FunctionSelector
+                    selectedFunctions={selectedFunctions}
+                    setSelectedFunctions={setSelectedFunctions}
+                  />
+                </div>
+              </div>
+              <div
+                className="flex flex-row flex-grow justify-end items-center tooltip tooltip-bottom"
+                data-tip="Press Cmd + / to insert output format to your prompt"
+              >
+                <kbd className="kbd text-base-content">
+                  <Command size={16} />
+                </kbd>
+                <kbd className="kbd text-base-content">/</kbd>
+              </div>
+            </div>
+            <div className="divider" />
             <div className="flex flex-col h-full gap-y-2 justify-start items-center">
               {modifiedPrompts?.map((prompt) => (
                 <PromptComponent
@@ -866,8 +932,13 @@ export default function Page() {
                   className="flex flex-row justify-between items-start mt-4 gap-x-4"
                   style={{ height: lowerBoxHeight }}
                 >
-                  <RunLogSection versionUuid={selectedVersionUuid} />
-                  {createVariantOpen && <RunLogSection versionUuid="new" />}
+                  <RunLogSection
+                    versionUuid={selectedVersionUuid}
+                    className={classNames(createVariantOpen && "!w-1/2")}
+                  />
+                  {createVariantOpen && (
+                    <RunLogSection versionUuid="new" className="!w-1/2" />
+                  )}
                 </div>
               </div>
             </div>
@@ -1206,7 +1277,13 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
   );
 };
 
-const RunLogSection = ({ versionUuid }: { versionUuid: string | "new" }) => {
+const RunLogSection = ({
+  versionUuid,
+  className,
+}: {
+  versionUuid: string | "new";
+  className?: string;
+}) => {
   const [showRaw, setShowRaw] = useState(true);
   const { runLogData } = useRunLogs(versionUuid);
   const { runTasksCount, runLogs } = useModuleVersionStore();
@@ -1250,11 +1327,13 @@ const RunLogSection = ({ versionUuid }: { versionUuid: string | "new" }) => {
 
   return (
     <div
-      className="w-full h-fit rounded-box items-center bg-base-200 p-4 flex flex-col gap-y-2 justify-start"
-      style={{ height: "calc(100% - 2rem)" }}
+      className={classNames(
+        "w-full h-full rounded-box items-center bg-base-200 p-4 flex flex-col gap-y-2 justify-start",
+        className
+      )}
     >
-      <div className="w-full max-h-full bg-base-200 rounded overflow-auto">
-        <table className="w-full table  table-pin-cols">
+      <div className="w-full h-full bg-base-200 rounded overflow-auto">
+        <table className="w-full table table-pin-cols">
           <thead className="sticky top-0 z-10 bg-base-100 w-full">
             <tr className="text-base-content">
               <th className="w-fit">
