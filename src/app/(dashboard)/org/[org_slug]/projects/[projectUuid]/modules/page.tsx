@@ -3,10 +3,7 @@ import { useModule } from "@/hooks/useModule";
 import classNames from "classnames";
 import { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
-import ReactFlow, {
-  Background,
-  BackgroundVariant,
-} from "reactflow";
+import ReactFlow, { Background, BackgroundVariant } from "reactflow";
 
 import "reactflow/dist/style.css";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -71,6 +68,9 @@ export default function Page() {
 
   return (
     <div className="w-full h-full">
+      <p className="text-3xl font-semibold absolute top-16 left-24 z-10">
+        Promptmodels
+      </p>
       <ReactFlow
         nodeTypes={nodeTypes}
         nodes={nodes}

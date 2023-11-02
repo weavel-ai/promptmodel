@@ -13,14 +13,19 @@ import ReactFlow, {
 } from "reactflow";
 import { motion } from "framer-motion";
 import { useModuleVersionDetails } from "@/hooks/useModuleVersionDetails";
-import { CaretDown, RocketLaunch, XCircle } from "@phosphor-icons/react";
+import {
+  ArrowsOut,
+  CaretDown,
+  CornersOut,
+  RocketLaunch,
+  XCircle,
+} from "@phosphor-icons/react";
 import { toast } from "react-toastify";
 import { updatePublishedModuleVersion } from "@/apis/moduleVersion";
 import { useSupabaseClient } from "@/apis/base";
 import "reactflow/dist/style.css";
 import { useRunLog } from "@/hooks/useRunLog";
 import { RunLog } from "@/apis/runlog";
-import { Editor } from "@monaco-editor/react";
 import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
 import { tree, stratify } from "d3-hierarchy";
@@ -37,6 +42,8 @@ import { subDays } from "date-fns";
 import dayjs from "dayjs";
 import { ParserTypeSelector } from "@/components/select/ParserTypeSelector";
 import { Badge } from "@/components/ui/badge";
+import { PromptEditor } from "@/components/editor/PromptEditor";
+import { ModalPortal } from "@/components/ModalPortal";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -49,7 +56,7 @@ enum Tab {
 const TABS = [Tab.Analytics, Tab.Versions];
 
 export default function Page() {
-  const [tab, setTab] = useState(Tab.Analytics);
+  const [tab, setTab] = useState(Tab.Versions);
 
   return (
     <div className="w-full h-full">
@@ -194,8 +201,14 @@ const VersionsPage = () => {
 
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
   useHotkeys("esc", () => {
-    setSelectedVersionUuid(null);
+    if (isFullScreen) {
+      setIsFullScreen(false);
+    } else {
+      setSelectedVersionUuid(null);
+    }
   });
 
   // Build nodes
@@ -343,7 +356,11 @@ const VersionsPage = () => {
               )}
 
               <button
-                className="flex flex-col gap-y-2 pt-1 items-center btn btn-sm normal-case font-normal bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
+                className={classNames(
+                  "flex flex-col gap-y-2 pt-1 items-center",
+                  "btn btn-sm bg-transparent border-transparent h-10 hover:bg-neutral-content/20",
+                  "normal-case font-normal"
+                )}
                 onClick={() => {
                   setSelectedVersionUuid(null);
                 }}
@@ -430,20 +447,56 @@ const VersionsPage = () => {
                 ))}
               </div>
             </motion.div>
-            <div className="min-h-[120px] relative backdrop-blur-md">
+            <div className="min-h-[120px] backdrop-blur-md">
               <ResizableSeparator
                 height={lowerBoxHeight}
                 setHeight={setLowerBoxHeight}
               />
-              <div
-                className="flex flex-col items-start gap-y-1 !my-4"
-                style={{
-                  height: lowerBoxHeight,
-                }}
-              >
-                <p className="text-xl font-bold mb-1">Run Logs</p>
-                <RunLogComponent runLogData={runLogData} />
-              </div>
+              <motion.div>
+                <div
+                  className={classNames(
+                    "flex flex-col items-start gap-y-1 !my-4"
+                  )}
+                  style={{
+                    height: lowerBoxHeight,
+                  }}
+                >
+                  <div className="w-full flex flex-row justify-between">
+                    <p className="text-xl font-bold mb-1">Run Logs</p>
+                    <button
+                      className={classNames(
+                        "items-center",
+                        "btn btn-sm bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
+                      )}
+                      onClick={() => {
+                        setIsFullScreen(!isFullScreen);
+                      }}
+                    >
+                      <CornersOut size={24}></CornersOut>
+                    </button>
+                  </div>
+                  {isFullScreen && (
+                    <ModalPortal>
+                      <motion.div
+                        className="fixed z-[999999]"
+                        initial={{ bottom: 4, right: 4 }}
+                        animate={{ top: 4, left: 4, bottom: 4, right: 4 }}
+                      >
+                        <RunLogComponent
+                          runLogData={runLogData}
+                          isFullScreen={isFullScreen}
+                          setIsFullScreen={setIsFullScreen}
+                        />
+                      </motion.div>
+                    </ModalPortal>
+                  )}
+                  <RunLogComponent
+                    runLogData={runLogData}
+                    isFullScreen={isFullScreen}
+                    setIsFullScreen={setIsFullScreen}
+                  />
+                </div>
+              </motion.div>
             </div>
           </div>
         </div>
@@ -489,19 +542,10 @@ const PromptComponent = ({ prompt }) => {
         />
       </div>
       {open && (
-        <Editor
+        <PromptEditor
           value={prompt.content}
-          theme="vs-dark"
           options={{
             readOnly: true,
-            scrollBeyondLastLine: false,
-            wordWrap: "on",
-            scrollbar: {
-              alwaysConsumeMouseWheel: false,
-            },
-            minimap: {
-              enabled: false,
-            },
           }}
           loading={<div className="loading loading-xs loading-dots" />}
           onMount={handleEditorDidMount}
@@ -513,7 +557,7 @@ const PromptComponent = ({ prompt }) => {
   );
 };
 
-const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
+const RunLogComponent = ({ runLogData, isFullScreen, setIsFullScreen }) => {
   const [showRaw, setShowRaw] = useState(true);
 
   return (
@@ -521,10 +565,33 @@ const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
       className="w-full min-h-1/4 rounded-box items-center bg-base-200 p-4 flex flex-col flex-grow-1 gap-y-2 justify-start"
       style={{ height: "calc(100% - 2rem)" }}
     >
-      <div className="w-full max-h-full bg-base-200 rounded overflow-auto">
+      <div
+        className={classNames(
+          "w-full max-h-full bg-base-200 rounded overflow-auto",
+          isFullScreen && "px-4 py-2"
+        )}
+      >
+        {isFullScreen && (
+          <div className="w-full flex flex-row justify-between">
+            <p className="text-xl font-bold">Run Logs</p>
+            <button
+              className={classNames(
+                "items-center",
+                "btn btn-sm bg-transparent border-transparent h-10 hover:bg-neutral-content/20",
+                "flex flex-row gap-x-4"
+              )}
+              onClick={() => {
+                setIsFullScreen(!isFullScreen);
+              }}
+            >
+              <CornersOut size={24}></CornersOut>
+              <kbd className="kbd">Esc</kbd>
+            </button>
+          </div>
+        )}
         <table className="w-full table table-auto table-pin-cols">
           <thead className="sticky top-0 z-10 bg-base-100 w-full">
-            <tr className="text-base-content">
+            <tr className="text-base-content border-b-4 border-base-300">
               <td>
                 <p className="text-lg font-medium pe-36">Input</p>
               </td>
@@ -557,20 +624,20 @@ const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
                 <p className="text-lg font-medium pe-36">Function call</p>
               </td>
               <td>
-                <p className="text-lg font-medium pe-4">Latency</p>
+                <p className="text-lg font-medium pe-6">Latency</p>
               </td>
               <td>
-                <p className="text-lg font-medium pe-4">Cost</p>
+                <p className="text-lg font-medium pe-6">Cost</p>
               </td>
               <td>
-                <p className="text-lg font-medium pe-4">Tokens</p>
+                <p className="text-lg font-medium pe-6">Tokens</p>
               </td>
             </tr>
           </thead>
           <tbody className="bg-base-100">
             {runLogData?.map((runLog) => {
               return (
-                <tr>
+                <tr className="border-b-2 border-base-300">
                   <td className="align-top">
                     {runLog?.inputs == null ? (
                       <p>None</p>
@@ -622,9 +689,11 @@ const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
                       />
                     )}
                   </td>
-                  <td>{runLog.latency}</td>
-                  <td>{runLog.cost}</td>
-                  <td>{runLog.token_usage.total_tokens}</td>
+                  <td className="align-top">{runLog.latency}s</td>
+                  <td className="align-top">${runLog.cost}</td>
+                  <td className="align-top">
+                    {runLog.token_usage.total_tokens}
+                  </td>
                 </tr>
               );
             })}
