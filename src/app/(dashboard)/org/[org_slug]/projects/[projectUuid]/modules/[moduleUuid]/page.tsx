@@ -563,7 +563,7 @@ const RunLogComponent = ({ runLogData, isFullScreen, setIsFullScreen }) => {
   return (
     <div
       className="w-full min-h-1/4 rounded-box items-center bg-base-200 p-4 flex flex-col flex-grow-1 gap-y-2 justify-start"
-      style={{ height: "calc(100% - 2rem)" }}
+      // style={{ height: "calc(100% - 2rem)" }}
     >
       <div
         className={classNames(

@@ -8,18 +8,19 @@ export function registerCustomTheme(monaco: Monaco) {
     tokenizer: {
       root: [
         [/{[^}\s]+}/, "variable"],
+        [/\w+(?=\s*type=)/, "output-key"],
+        [/\w+(?=\s*\])/, "output-key"],
+        // [/\/(\w+)(?=\s*\])/, "output-key"],
         [/\[\[\//, "end-tag-start"],
         [/\[\//, "end-tag-start"],
         [/\<\//, "end-tag-start"],
         [/\[\[/, "start-tag-start"],
         [/\[/, "start-tag-start"],
         [/\</, "start-tag-start"],
-        [/(?<=\[\[)(.*?)(?=type=)/, "output-key"],
-        [/(?<=\[\[\/)(.*?)(?=\])/, "output-key"],
+        [/type=/, "type-tag"],
         [/\]\]/, "tag-end"],
         [/\]/, "tag-end"],
         [/\>/, "tag-end"],
-        [/type=\<([^>]+)\>/, "type-content"],
       ],
     },
   });
@@ -30,11 +31,13 @@ export function registerCustomTheme(monaco: Monaco) {
     inherit: true,
     rules: [
       { token: "variable", fontStyle: "bold", foreground: "5FBFF9" }, // light blue and bold
-      { token: "output-key", fontStyle: "bold", foreground: "5FBFF9" }, // light blue and bold
-      { token: "start-tag-start", foreground: "EE82EE" }, // violet
-      { token: "tag-end", foreground: "EE82EE" }, // violet
-      { token: "end-tag-start", foreground: "EE82EE" }, // violet
-      { token: "end-tag", foreground: "EE82EE" }, // violet
+      { token: "output-key", foreground: "EE82EE" }, // violet
+      // { token: "start-tag-start", foreground: "EE82EE" }, // violet
+      { token: "start-tag-start", foreground: "808080" }, // gray
+      { token: "tag-end", foreground: "808080" }, // gray
+      { token: "end-tag-start", foreground: "808080" }, // gray
+      { token: "end-tag", foreground: "808080" }, // gray
+      { token: "type-tag", foreground: "9bd9fc" }, // light blue
       { token: "type-content", foreground: "FFAD05" }, // vanilla
     ],
     colors: {
