@@ -5,6 +5,7 @@ export type RunLog = {
   inputs?: Record<string, any> | string;
   raw_output?: string;
   parsed_outputs?: Record<string, any> | string;
+  function_call?: Record<string, any> | string;
 };
 
 export type Prompt = { role: string; step: number; content: string };

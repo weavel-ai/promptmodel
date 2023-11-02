@@ -510,7 +510,7 @@ export default function Page() {
       <Drawer
         open={selectedVersionUuid != null}
         direction="right"
-        style={{ width: "calc(100vw - 5rem)" }}
+        style={{ width: createVariantOpen ? "calc(100vw - 5rem)" : "auto" }}
         classNames={classNames(
           createVariantOpen ? "backdrop-blur-md" : "!w-[45vw]",
           "mr-4"
@@ -771,7 +771,7 @@ export default function Page() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-row justify-start gap-x-4 items-start mb-2">
+                  <div className="flex flex-wrap justify-start gap-x-4 items-start mb-6">
                     <div className="min-w-fit flex flex-col items-start justify-start">
                       <label className="label text-xs font-medium">
                         <span className="label-text">Output parser type</span>
@@ -796,6 +796,30 @@ export default function Page() {
                       {!moduleVersionData?.output_keys && (
                         <Badge className="text-sm" variant="muted">
                           No output keys
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="w-auto flex flex-col items-start justify-start">
+                      <label className="label text-xs font-medium">
+                        <span className="label-text">Functions</span>
+                      </label>
+                      {moduleVersionData?.functions && (
+                        <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
+                          {moduleVersionData?.functions?.map((functionName) => (
+                            <Badge
+                              key={functionName}
+                              className="text-sm"
+                              variant="default"
+                            >
+                              {functionName}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      {(!moduleVersionData?.functions ||
+                        moduleVersionData?.functions?.length == 0) && (
+                        <Badge className="text-sm" variant="muted">
+                          No functions
                         </Badge>
                       )}
                     </div>
@@ -1212,6 +1236,7 @@ const RunLogSection = ({ versionUuid }: { versionUuid: string | "new" }) => {
             inputs: parsedInputs,
             raw_output: log.raw_output,
             parsed_outputs: parsedOutputs,
+            function_call: log.function_call,
           };
         }),
       ];
@@ -1229,13 +1254,13 @@ const RunLogSection = ({ versionUuid }: { versionUuid: string | "new" }) => {
       style={{ height: "calc(100% - 2rem)" }}
     >
       <div className="w-full max-h-full bg-base-200 rounded overflow-auto">
-        <table className="w-full table table-fixed table-pin-cols">
+        <table className="w-full table  table-pin-cols">
           <thead className="sticky top-0 z-10 bg-base-100 w-full">
             <tr className="text-base-content">
-              <td>
+              <th className="w-fit">
                 <p className="text-lg font-medium ps-1">Input</p>
-              </td>
-              <td className="flex flex-row gap-x-6 items-center">
+              </th>
+              <th className="flex flex-row gap-x-6 items-center">
                 <p className="text-lg font-medium ps-1">Output</p>
                 <div className="join">
                   <button
@@ -1259,7 +1284,10 @@ const RunLogSection = ({ versionUuid }: { versionUuid: string | "new" }) => {
                     Parsed
                   </button>
                 </div>
-              </td>
+              </th>
+              <th>
+                <p className="text-lg font-medium ps-1">Function call</p>
+              </th>
             </tr>
           </thead>
           <tbody className="bg-base-100">
@@ -1282,7 +1310,7 @@ const RunLogComponent = ({
 }) => {
   return (
     <tr className="align-top">
-      <td className="align-top">
+      <td className="align-top w-fit">
         {runLogData?.inputs == null ? (
           <p>None</p>
         ) : typeof runLogData?.inputs == "string" ? (
@@ -1298,7 +1326,7 @@ const RunLogComponent = ({
           />
         )}
       </td>
-      <td className="align-top">
+      <td className="align-top w-fit">
         {showRaw ? (
           <p className="whitespace-break-spaces">{runLogData?.raw_output}</p>
         ) : typeof runLogData?.parsed_outputs == "string" ||
@@ -1307,6 +1335,22 @@ const RunLogComponent = ({
         ) : (
           <ReactJson
             src={runLogData?.parsed_outputs as Record<string, any>}
+            name={false}
+            displayDataTypes={false}
+            displayObjectSize={false}
+            enableClipboard={false}
+            theme="google"
+          />
+        )}
+      </td>
+      <td className="align-top w-fit">
+        {runLogData?.function_call == null ? (
+          <p>None</p>
+        ) : typeof runLogData?.function_call == "string" ? (
+          <p>{runLogData?.function_call?.toString()}</p>
+        ) : (
+          <ReactJson
+            src={runLogData?.function_call as Record<string, any>}
             name={false}
             displayDataTypes={false}
             displayObjectSize={false}

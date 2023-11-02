@@ -115,11 +115,14 @@ export interface Database {
         Row: {
           created_at: string
           from_uuid: string | null
+          functions: string[]
           id: number
           is_ab_test: boolean | null
           is_published: boolean | null
           llm_module_uuid: string | null
           model: string | null
+          output_keys: string[] | null
+          parsing_type: string | null
           ratio: number | null
           uuid: string | null
           version: number
@@ -127,11 +130,14 @@ export interface Database {
         Insert: {
           created_at?: string
           from_uuid?: string | null
+          functions?: string[]
           id?: number
           is_ab_test?: boolean | null
           is_published?: boolean | null
           llm_module_uuid?: string | null
           model?: string | null
+          output_keys?: string[] | null
+          parsing_type?: string | null
           ratio?: number | null
           uuid?: string | null
           version?: number
@@ -139,11 +145,14 @@ export interface Database {
         Update: {
           created_at?: string
           from_uuid?: string | null
+          functions?: string[]
           id?: number
           is_ab_test?: boolean | null
           is_published?: boolean | null
           llm_module_uuid?: string | null
           model?: string | null
+          output_keys?: string[] | null
+          parsing_type?: string | null
           ratio?: number | null
           uuid?: string | null
           version?: number
@@ -166,6 +175,18 @@ export interface Database {
             columns: ["llm_module_uuid"]
             referencedRelation: "llm_module"
             referencedColumns: ["uuid"]
+          },
+          {
+            foreignKeyName: "llm_module_version_llm_module_uuid_fkey"
+            columns: ["llm_module_uuid"]
+            referencedRelation: "daily_run_log_metric"
+            referencedColumns: ["uuid"]
+          },
+          {
+            foreignKeyName: "llm_module_version_parsing_type_fkey"
+            columns: ["parsing_type"]
+            referencedRelation: "parsing_type"
+            referencedColumns: ["type"]
           }
         ]
       }
@@ -190,6 +211,21 @@ export interface Database {
           name?: string | null
           organization_id?: string | null
           slug?: string | null
+        }
+        Relationships: []
+      }
+      parsing_type: {
+        Row: {
+          id: number
+          type: string
+        }
+        Insert: {
+          id?: number
+          type: string
+        }
+        Update: {
+          id?: number
+          type?: string
         }
         Relationships: []
       }
@@ -241,26 +277,26 @@ export interface Database {
       }
       project_changelog: {
         Row: {
-          changelog: Json
           created_at: string
           id: number
           level: number
+          logs: Json[]
           previous_version: string
           project_uuid: string | null
         }
         Insert: {
-          changelog: Json
           created_at?: string
           id?: number
           level?: number
+          logs?: Json[]
           previous_version: string
           project_uuid?: string | null
         }
         Update: {
-          changelog?: Json
           created_at?: string
           id?: number
           level?: number
+          logs?: Json[]
           previous_version?: string
           project_uuid?: string | null
         }
@@ -315,33 +351,48 @@ export interface Database {
       }
       run_log: {
         Row: {
+          cost: number | null
           created_at: string
+          function_call: Json | null
           id: number
-          input_register_name: string
+          input_register_name: string | null
           inputs: Json
           is_deployment: boolean | null
+          latency: number | null
+          metadata: Json | null
           parsed_outputs: Json | null
           raw_output: string | null
+          token_usage: Json | null
           version_uuid: string | null
         }
         Insert: {
+          cost?: number | null
           created_at?: string
+          function_call?: Json | null
           id?: number
-          input_register_name: string
+          input_register_name?: string | null
           inputs?: Json
           is_deployment?: boolean | null
+          latency?: number | null
+          metadata?: Json | null
           parsed_outputs?: Json | null
           raw_output?: string | null
+          token_usage?: Json | null
           version_uuid?: string | null
         }
         Update: {
+          cost?: number | null
           created_at?: string
+          function_call?: Json | null
           id?: number
-          input_register_name?: string
+          input_register_name?: string | null
           inputs?: Json
           is_deployment?: boolean | null
+          latency?: number | null
+          metadata?: Json | null
           parsed_outputs?: Json | null
           raw_output?: string | null
+          token_usage?: Json | null
           version_uuid?: string | null
         }
         Relationships: [
@@ -456,6 +507,18 @@ export interface Database {
       }
     }
     Views: {
+      daily_run_log_metric: {
+        Row: {
+          avg_latency: number | null
+          day: string | null
+          name: string | null
+          total_cost: number | null
+          total_runs: number | null
+          total_token_usage: Json | null
+          uuid: string | null
+        }
+        Relationships: []
+      }
       deployed_llm_module_version: {
         Row: {
           created_at: string | null
@@ -465,6 +528,8 @@ export interface Database {
           is_published: boolean | null
           llm_module_uuid: string | null
           model: string | null
+          output_keys: string[] | null
+          parsing_type: string | null
           ratio: number | null
           uuid: string | null
           version: number | null
@@ -477,6 +542,8 @@ export interface Database {
           is_published?: boolean | null
           llm_module_uuid?: string | null
           model?: string | null
+          output_keys?: string[] | null
+          parsing_type?: string | null
           ratio?: number | null
           uuid?: string | null
           version?: number | null
@@ -489,6 +556,8 @@ export interface Database {
           is_published?: boolean | null
           llm_module_uuid?: string | null
           model?: string | null
+          output_keys?: string[] | null
+          parsing_type?: string | null
           ratio?: number | null
           uuid?: string | null
           version?: number | null
@@ -511,6 +580,18 @@ export interface Database {
             columns: ["llm_module_uuid"]
             referencedRelation: "llm_module"
             referencedColumns: ["uuid"]
+          },
+          {
+            foreignKeyName: "llm_module_version_llm_module_uuid_fkey"
+            columns: ["llm_module_uuid"]
+            referencedRelation: "daily_run_log_metric"
+            referencedColumns: ["uuid"]
+          },
+          {
+            foreignKeyName: "llm_module_version_parsing_type_fkey"
+            columns: ["parsing_type"]
+            referencedRelation: "parsing_type"
+            referencedColumns: ["type"]
           }
         ]
       }
