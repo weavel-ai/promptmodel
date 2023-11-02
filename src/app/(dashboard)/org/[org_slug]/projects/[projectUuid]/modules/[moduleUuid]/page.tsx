@@ -554,6 +554,9 @@ const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
                 </div>
               </td>
               <td>
+                <p className="text-lg font-medium pe-36">Function call</p>
+              </td>
+              <td>
                 <p className="text-lg font-medium pe-4">Latency</p>
               </td>
               <td>
@@ -595,6 +598,22 @@ const RunLogComponent = ({ runLogData }: { runLogData: RunLog[] }) => {
                     ) : (
                       <ReactJson
                         src={runLog?.parsed_outputs as Record<string, any>}
+                        name={false}
+                        displayDataTypes={false}
+                        displayObjectSize={false}
+                        enableClipboard={false}
+                        theme="google"
+                      />
+                    )}
+                  </td>
+                  <td className="align-top">
+                    {runLog?.function_call == null ? (
+                      <p>None</p>
+                    ) : typeof runLog?.function_call == "string" ? (
+                      <p>{runLog?.function_call?.toString()}</p>
+                    ) : (
+                      <ReactJson
+                        src={runLog?.function_call as Record<string, any>}
                         name={false}
                         displayDataTypes={false}
                         displayObjectSize={false}
