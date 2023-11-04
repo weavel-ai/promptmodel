@@ -41,7 +41,7 @@ client = Client()
 extract_keyword_prompts = PromptModel("extract_keyword").get_prompts()
 
 # Or use PromptModel's methods for LLM calls
-@client.include # This is required to display the promptmodel on the development dashboard
+@client.register # This is required to display the promptmodel on the development dashboard
 def test():
     response = PromptModel("choose_service").run({})
     print(response)`;
