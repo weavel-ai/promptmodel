@@ -40,10 +40,10 @@ client = Client()
 # You can simply fetch prompts
 extract_keyword_prompts = PromptModel("extract_keyword").get_prompts()
 
-# Or use powerful generation utils of PromptModel
-@client.register
+# Or use PromptModel's methods for LLM calls
+@client.include # This is required to display the promptmodel on the development dashboard
 def test():
-    response = PromptModel("choose_service").generate({})
+    response = PromptModel("choose_service").run({})
     print(response)`;
 
 export default function Page() {
