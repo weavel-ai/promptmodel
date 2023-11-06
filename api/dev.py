@@ -39,7 +39,6 @@ class RunConfig(BaseModel):
     functions: Optional[List[str]] = []
 
 
-
 class RunLog(BaseModel):
     inputs: Dict[str, Any]
     raw_output: str
@@ -103,17 +102,11 @@ async def run_llm_module(project_uuid: str, dev_name: str, run_config: RunConfig
             raise ValueError("There is no dev_branch")
         cli_access_key = dev_branch[0]["cli_access_key"]
 
-        async def _test():
-            dictionary = {"test": {"test1": "test2"}}
-            for i in range(10):
-                yield json.dumps(dictionary)
-
         try:
             return StreamingResponse(
                 websocket_manager.stream(
                     cli_access_key, LocalTask.RUN_LLM_MODULE, run_config.model_dump()
                 )
-                # _test()
             )
         except Exception as exc:
             logger.error(exc)
@@ -259,7 +252,8 @@ async def list_samples(
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-    
+
+
 @router.get("/list_functions")
 async def list_functions(
     project_uuid: str,
@@ -642,7 +636,9 @@ async def push_versions(
         last_versions = {}
         for previous_version in previous_version_list:
             if previous_version["llm_module_uuid"] not in last_versions:
-                last_versions[previous_version["llm_module_uuid"]] = int(previous_version["version"])
+                last_versions[previous_version["llm_module_uuid"]] = int(
+                    previous_version["version"]
+                )
             else:
                 last_versions[previous_version["llm_module_uuid"]] = max(
                     last_versions[previous_version["llm_module_uuid"]],
@@ -655,7 +651,9 @@ async def push_versions(
         new_versions = sorted(new_versions, key=lambda x: x["created_at"])
         for new_version in new_versions:
             if new_version["llm_module_uuid"] in last_versions:
-                new_version["version"] = last_versions[new_version["llm_module_uuid"]] + 1
+                new_version["version"] = (
+                    last_versions[new_version["llm_module_uuid"]] + 1
+                )
                 last_versions[new_version["llm_module_uuid"]] += 1
             else:
                 new_version["version"] = 1
@@ -663,7 +661,7 @@ async def push_versions(
                 new_version["is_published"] = True
                 new_version["ratio"] = 1.0
             new_candidates[new_version["uuid"]] = int(new_version["version"])
-            
+
         (supabase.table("llm_module_version").insert(new_versions).execute())
         prompts = response["prompts"]
         (supabase.table("prompt").insert(prompts).execute())
