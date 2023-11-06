@@ -13,3 +13,4 @@ pytz
 pydantic
 python-multipart
 litellm
+promptmodel
