@@ -78,10 +78,29 @@ async def list_projects(organization_id: str, user_id: str = Depends(get_cli_use
 async def check_dev_branch_name(name: str, user_id: str = Depends(get_cli_user_id)):
     """Check if dev branch name is available"""
     try:
+        # TODO: optimize these queries
+        # TODO: add project_id to input params
+        organization_id = (
+            supabase.table("user_organizations")
+            .select("organization_id")
+            .eq("user_id", user_id)
+            .execute()
+        ).data[0]["organization_id"]
+        
+        project_rows = (
+            supabase.table("project")
+            .select("uuid")
+            .eq("organization_id", organization_id)
+            .execute()
+            .data
+        )
+        project_uuid_list = [x["uuid"] for x in project_rows]
+        
         res = (
             supabase.table("dev_branch")
             .select("name")
             .eq("name", name)
+            .in_("project_uuid", project_uuid_list)
             .execute()
         )
         if res.data:
@@ -121,9 +140,9 @@ async def list_llm_modules(
             supabase.table("llm_module")
             .select("*")
             .eq("project_uuid", project_uuid)
+            .eq("dev_branch_uuid", None)
             .execute()
         )
-        print(res.data)
 
         llm_modules = [x['llm_module'] for x in res.data]
         return JSONResponse(llm_modules, status_code=HTTP_200_OK)
@@ -204,6 +223,7 @@ async def pull_project(
             supabase.table("llm_module")
             .select("uuid, created_at, name, project_uuid")
             .eq("project_uuid", project_uuid)
+            .eq("dev_branch_uuid", None)
             .execute()
             .data
         )
@@ -212,8 +232,8 @@ async def pull_project(
         llm_module_versions = (
             supabase.table("llm_module_version")
             .select("uuid, created_at, version, from_uuid, llm_module_uuid, model, is_published, is_ab_test, parsing_type, output_keys")
-            # .select("uuid, created_at, version, from_uuid, llm_module_uuid, model, is_published, is_ab_test")
             .in_("llm_module_uuid", [x["uuid"] for x in llm_modules])
+            .eq("dev_branch_uuid", None)
             .execute()
             .data
         )
@@ -238,6 +258,7 @@ async def pull_project(
             .select("created_at, version_uuid, inputs, raw_output, parsed_outputs, is_deployment")
             .in_("version_uuid", versions_uuid_list)
             .eq("is_deployment", "False")
+            .eq("dev_branch_uuid", None)
             .execute()
             .data
         )
@@ -302,6 +323,7 @@ async def check_update(
             supabase.table("llm_module")
             .select("uuid, name")
             .eq("project_uuid", project['uuid'])
+            .eq("dev_branch_uuid", None)
             .execute()
             .data
         )
