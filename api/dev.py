@@ -479,6 +479,7 @@ async def push_version(project_uuid: str, dev_name: str, llm_module_version_uuid
             supabase.table("llm_module_version")
             .select("version")
             .eq("llm_module_uuid", version["llm_module_uuid"])
+            .eq("dev_branch_uuid", None)
             .order("version", desc=True)
             .execute()
         )
@@ -635,6 +636,7 @@ async def push_versions(
             supabase.table("llm_module_version")
             .select("version, llm_module_uuid")
             .in_("llm_module_uuid", version_llm_module_uuid_list)
+            .eq("dev_branch_uuid", None)
             .execute()
         ).data
         last_versions = {}
