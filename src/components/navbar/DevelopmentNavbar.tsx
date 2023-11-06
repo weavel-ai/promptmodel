@@ -8,8 +8,8 @@ import classNames from "classnames";
 import { Michroma } from "next/font/google";
 import { useParams, usePathname } from "next/navigation";
 import { SelectNavigator } from "../SelectNavigator";
-import React, { useMemo, useState } from "react";
-import { GlobeHemisphereWest, Rocket } from "@phosphor-icons/react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Cloud, GlobeHemisphereWest, Rocket } from "@phosphor-icons/react";
 import { deployCandidates } from "@/apis/dev";
 import { useModuleVersion } from "@/hooks/dev/useModuleVersion";
 import { useModuleVersionStore } from "@/stores/moduleVersionStore";
@@ -17,6 +17,7 @@ import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ModalPortal } from "../ModalPortal";
+import { useDevBranch } from "@/hooks/useDevBranch";
 
 const michroma = Michroma({
   weight: ["400"],
@@ -33,6 +34,7 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
   const params = useParams();
   const { orgData, refetchOrgData } = useOrgData();
   const { projectUuid, projectListData } = useProject();
+  const { devBranchData } = useDevBranch();
   const { moduleListData } = useModule();
 
   const projectName = useMemo(
@@ -97,9 +99,23 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
             </div>
           </div>
           <div className="min-w-fit me-2 flex flex-row gap-x-2 items-center">
-            <div className="flex flex-row min-w-fit items-center gap-x-2 me-4 bg-[#2C2F41] px-3 py-1 border-[#2C2F41] rounded font-light justify-self-end self-center">
-              <GlobeHemisphereWest size={24} />
-              {params?.devName}
+            <div
+              className={classNames(
+                "flex flex-row min-w-fit items-center gap-x-2 me-4 bg-[#2C2F41] px-3 py-1 border-[#2C2F41] rounded font-light justify-self-end self-center",
+                "tooltip tooltip-bottom"
+              )}
+              data-tip={
+                devBranchData?.cloud
+                  ? "This development environment is saved on the cloud."
+                  : "This development environment is saved to your connected local instance."
+              }
+            >
+              {devBranchData?.cloud == true ? (
+                <Cloud size={24} weight="fill" />
+              ) : (
+                <GlobeHemisphereWest size={24} weight="fill" />
+              )}
+              {devBranchData?.name}
             </div>
             <DeployCandidatesButton />
           </div>

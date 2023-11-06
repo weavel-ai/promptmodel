@@ -8,7 +8,8 @@ export async function fetchModules(
   const res = await supabaseClient
     .from("llm_module")
     .select("uuid, name, created_at")
-    .eq("project_uuid", projectUuid);
+    .eq("project_uuid", projectUuid)
+    .filter("dev_branch_uuid", "is", null);
   return res.data;
 }
 

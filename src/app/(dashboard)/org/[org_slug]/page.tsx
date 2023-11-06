@@ -5,11 +5,20 @@ import { useProject } from "@/hooks/useProject";
 import { GearSix, Plus } from "@phosphor-icons/react";
 import classNames from "classnames";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Page() {
   const pathname = usePathname();
+  const router = useRouter();
   const { projectListData } = useProject();
+
+  useEffect(() => {
+    if (!projectListData) return;
+    if (projectListData.length === 0) {
+      router.push(`${pathname}/projects/new`);
+    }
+  }, [projectListData]);
 
   return (
     <div className="w-full h-full max-w-6xl">

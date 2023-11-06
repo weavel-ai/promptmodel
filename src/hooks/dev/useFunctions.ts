@@ -2,10 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { fetchFunctions, updateDevBranchSync } from "@/apis/dev";
 import { useSupabaseClient } from "@/apis/base";
+import { useDevBranch } from "../useDevBranch";
 
 export const useFunctions = () => {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
+  const { devBranchData } = useDevBranch();
 
   const { data: functionListData, refetch: refetchFunctionListData } = useQuery(
     {
@@ -30,7 +32,9 @@ export const useFunctions = () => {
           true
         );
       },
-      enabled: Boolean(params?.projectUuid && params?.devName),
+      enabled:
+        Boolean(params?.projectUuid && params?.devName) &&
+        devBranchData?.cloud == false,
     }
   );
 

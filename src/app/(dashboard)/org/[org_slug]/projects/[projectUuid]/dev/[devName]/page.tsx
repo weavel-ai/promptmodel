@@ -37,7 +37,7 @@ export default function Page() {
     },
     onSuccess: (data) => {
       if (data && data?.length > 0) {
-        if (data[0].online) {
+        if (data[0].online || data[0].cloud) {
           setStatus(BranchStatus.ONLINE);
           router.push(pathname + "/modules");
         } else {

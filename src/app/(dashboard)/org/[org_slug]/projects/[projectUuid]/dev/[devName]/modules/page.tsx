@@ -17,10 +17,13 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { coldarkDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { nightOwl } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { toast } from "react-toastify";
 import { useSupabaseClient } from "@/apis/base";
 import { subscribeDevBranchStatus, updateDevBranchSync } from "@/apis/dev";
+import { useDevBranch } from "@/hooks/useDevBranch";
+import { Plus } from "@phosphor-icons/react";
+import { CreateModelModal } from "@/components/modals/CreateModelModal";
 
 dayjs.extend(relativeTime);
 
@@ -43,7 +46,7 @@ extract_keyword_prompts = PromptModel("extract_keyword").get_prompts()
 # Or use PromptModel's methods for LLM calls
 @client.register # This is required to display the promptmodel on the development dashboard
 def test():
-    response = PromptModel("choose_service").run({})
+    response = PromptModel("gen_story").run()
     print(response)`;
 
 export default function Page() {
@@ -52,9 +55,15 @@ export default function Page() {
   const [edges, setEdges] = useState(initialEdges);
   const { createSupabaseClient } = useSupabaseClient();
   const { moduleListData, refetchModuleListData } = useModule();
+  const { devBranchData } = useDevBranch();
+  const [showCreateModel, setShowCreateModel] = useState(false);
 
-  const nodeTypes = useMemo(() => ({ module: ModuleNode }), []);
+  const nodeTypes = useMemo(
+    () => ({ module: ModuleNode, groupLabel: GroupNode }),
+    []
+  );
 
+  // Build nodes
   useEffect(() => {
     if (!moduleListData || moduleListData?.length == 0) return;
     const totalNodes = moduleListData.length;
@@ -67,36 +76,64 @@ export default function Page() {
     const numRows = Math.ceil(totalNodes / maxNodesPerRow);
     const totalHeight = numRows * NODE_HEIGHT + (numRows - 1) * NODE_PADDING;
     const topPadding = (windowHeight - totalHeight) / 2;
-    const newNodes = moduleListData.map((module, index) => {
-      // Set node position
-      const row = Math.floor(index / maxNodesPerRow);
-      const col = index % maxNodesPerRow;
-      const x =
-        (windowWidth -
-          NODE_WIDTH * maxNodesPerRow -
-          NODE_PADDING * (maxNodesPerRow - 1)) /
-          2 +
-        col * (NODE_WIDTH + NODE_PADDING);
-      const y = topPadding + row * (NODE_HEIGHT + NODE_PADDING);
-
-      return {
-        id: module.uuid,
-        type: "module",
-        position: { x: x, y: y },
-        dragging: true,
-        data: {
-          label: module.name,
-          name: module.name,
-          uuid: module.uuid,
-          created_at: module.created_at,
+    const newNodes: any[] = [
+      {
+        id: "Promptmodels",
+        type: "groupLabel",
+        position: {
+          x:
+            (windowWidth -
+              NODE_WIDTH * maxNodesPerRow -
+              NODE_PADDING * (maxNodesPerRow - 1)) /
+              2 -
+            28,
+          y: topPadding - 80,
         },
-      };
-    });
+        style: {
+          width:
+            NODE_WIDTH * maxNodesPerRow +
+            NODE_PADDING * (maxNodesPerRow - 1) +
+            56,
+          height: totalHeight + 30 + 80,
+        },
+        data: {
+          label: "PromptModels",
+        },
+      },
+    ];
+    newNodes.push(
+      ...moduleListData.map((module, index) => {
+        // Set node position
+        const row = Math.floor(index / maxNodesPerRow);
+        const col = index % maxNodesPerRow;
+        const x =
+          (windowWidth -
+            NODE_WIDTH * maxNodesPerRow -
+            NODE_PADDING * (maxNodesPerRow - 1)) /
+            2 +
+          col * (NODE_WIDTH + NODE_PADDING);
+        const y = topPadding + row * (NODE_HEIGHT + NODE_PADDING);
+
+        return {
+          id: module.uuid,
+          type: "module",
+          position: { x: x, y: y },
+          data: {
+            label: module.name,
+            name: module.name,
+            uuid: module.uuid,
+            created_at: module.created_at,
+          },
+        };
+      })
+    );
     setNodes(newNodes);
   }, [moduleListData]);
 
+  // Subscribe dev branch sync status
   useEffect(() => {
-    if (!params?.projectUuid || !params?.devName) return;
+    if (!params?.projectUuid || !params?.devName || !devBranchData) return;
+    if (devBranchData?.cloud) return;
     let devBranchStream;
     createSupabaseClient().then((client) => {
       devBranchStream = subscribeDevBranchStatus(
@@ -119,18 +156,36 @@ export default function Page() {
         client.removeChannel(devBranchStream);
       });
     };
-  }, []);
+  }, [devBranchData]);
 
   return (
     <div className="w-full h-full">
       <ReactFlow
+        nodesDraggable={false}
         nodeTypes={nodeTypes}
         nodes={nodes}
         edges={edges}
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-        <NoModulesDisplay show={!(moduleListData?.length > 0)} />
+        <NoModulesDisplay
+          show={!(moduleListData?.length > 0) && devBranchData != null}
+        />
+        <button
+          className={classNames(
+            "fixed top-16 right-6 flex flex-row gap-x-2 items-center backdrop-blur-sm z-50",
+            "btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
+          )}
+          onClick={() => setShowCreateModel(true)}
+        >
+          <Plus className="text-secondary" size={20} weight="fill" />
+          <p className="text-base-content">Create new</p>
+        </button>
+        <CreateModelModal
+          isOpen={showCreateModel}
+          setIsOpen={setShowCreateModel}
+          onCreated={refetchModuleListData}
+        />
       </ReactFlow>
     </div>
   );
@@ -155,8 +210,34 @@ function ModuleNode({ data }) {
   );
 }
 
+function GroupNode({ data }) {
+  return (
+    <div
+      className={classNames(
+        "bg-base-100/5 rounded-box flex flex-col gap-y-2 justify-start items-start w-full h-full",
+        "border-2 border-base-content/50 p-0 pointer-events-none"
+      )}
+    >
+      <p className="text-base-content font-bold text-2xl p-4">{data.label}</p>
+    </div>
+  );
+}
+
 function NoModulesDisplay({ show }: { show: boolean }) {
+  const { devBranchData } = useDevBranch();
+
   if (!show) return null;
+  if (devBranchData?.cloud == true) {
+    return (
+      <div className="fixed inset-0 m-auto w-fit h-fit z-50">
+        <p className="text-lg font-semibold text-center">
+          You don't have any PromptModels or ChatModels yet.
+          <br />
+          Create one to get started!
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="fixed inset-0 flex justify-center items-center z-50">
       <div className="bg-base-200 rounded-box w-fit min-w-[30rem] h-fit p-8 flex flex-col justify-between gap-y-7">
@@ -165,7 +246,7 @@ function NoModulesDisplay({ show }: { show: boolean }) {
         </p>
         <p className="text-base-content">
           The code below will generate two PromptModels: <i>extract_keyword</i>{" "}
-          and <i>choose_service</i>.
+          and <i>gen_story</i>.
           <br />
           Copy and modify the code to get started in a blink!
         </p>
@@ -175,7 +256,7 @@ function NoModulesDisplay({ show }: { show: boolean }) {
         >
           <SyntaxHighlighter
             language="python"
-            style={coldarkDark}
+            style={nightOwl}
             className="cursor-copy"
             onClick={() => {
               navigator.clipboard.writeText(SAMPLE_CODE);

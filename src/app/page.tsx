@@ -13,9 +13,9 @@ export default function Home() {
   useEffect(() => {
     // Update loadingtime every 1s. If loading time is more than 3s, stop the interval.
     const interval = setInterval(() => {
-      setLoadingTime((prev) => prev + 1);
-    }, 1000);
-    if (loadingTime > 2 || isSignedIn) {
+      setLoadingTime((prev) => prev + 0.5);
+    }, 500);
+    if (loadingTime > 1 || isSignedIn) {
       setisLoaded(true);
       clearInterval(interval);
     }
@@ -27,7 +27,7 @@ export default function Home() {
     if (isSignedIn) {
       router.push("/org/redirect");
     } else {
-      router.push("https://app.promptmodel.run/signin");
+      router.push("/signin");
     }
   }, [isLoaded, isSignedIn]);
 

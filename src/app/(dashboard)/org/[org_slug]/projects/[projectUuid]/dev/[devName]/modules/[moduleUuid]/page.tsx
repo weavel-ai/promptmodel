@@ -36,7 +36,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 import {
   streamLLMModuleRun,
   subscribeDevBranchStatus,
-  updateVersionStatus,
+  updateVersionStatus as updateLocalVersionStatus,
 } from "@/apis/dev";
 import { useParams } from "next/navigation";
 import { StatusIndicator } from "@/components/StatusIndicator";
@@ -63,25 +63,27 @@ import {
 } from "@/components/editor/PromptEditor";
 import { FunctionSelector } from "@/components/select/FunctionSelector";
 import { useFunctions } from "@/hooks/dev/useFunctions";
+import { useDevBranch } from "@/hooks/useDevBranch";
+import { updateVersionStatus } from "@/apis/devCloud";
 
 export default function Page() {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
   const { moduleListData } = useModule();
-  const {
-    // versionListData,
-    refetchVersionListData,
-  } = useModuleVersion();
+  const { versionListData, refetchVersionListData } = useModuleVersion();
+  const { devBranchData } = useDevBranch();
+
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [createVariantOpen, setCreateVariantOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo");
+  const [outputKeys, setOutputKeys] = useState<string[]>([]);
+  const [parser, selectParser] = useState<ParsingType | null>(null);
+  // Local dev environment
   const [selectedSample, setSelectedSample] =
     useState<string>(EMPTY_INPUTS_LABEL);
-  const [outputKeys, setOutputKeys] = useState<string[]>([]);
   const [selectedFunctions, setSelectedFunctions] = useState<string[]>([]);
-  const [parser, selectParser] = useState<ParsingType | null>(null);
-  const { versionListData } = useModuleVersion();
+
   const {
     newVersionUuidCache,
     selectedVersionUuid,
@@ -95,12 +97,14 @@ export default function Page() {
     setNewVersionUuidCache,
     setShowSlashOptions,
   } = useModuleVersionStore();
-  const monaco = useMonaco();
-  const [modifiedPrompts, setModifiedPrompts] = useState<Prompt[]>([]);
+
   const { promptListData } = useModuleVersionDetails(selectedVersionUuid);
   const { refetchRunLogData } = useRunLogs(selectedVersionUuid);
   const { refetchSampleList } = useSamples();
   const { refetchFunctionListData } = useFunctions();
+
+  const monaco = useMonaco();
+  const [modifiedPrompts, setModifiedPrompts] = useState<Prompt[]>([]);
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
   const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
@@ -164,10 +168,6 @@ export default function Page() {
     selectedFunctions,
   ]);
 
-  const getChildren = (parentId: string) => {
-    return versionListData.filter((item) => item.from_uuid === parentId);
-  };
-
   useHotkeys("esc", () => {
     if (createVariantOpen) {
       setCreateVariantOpen(false);
@@ -179,6 +179,7 @@ export default function Page() {
   // Subscribe to dev branch sync status
   useEffect(() => {
     setSelectedVersionUuid(null);
+    if (devBranchData?.cloud) return;
     let devBranchStream;
     createSupabaseClient().then((client) => {
       devBranchStream = subscribeDevBranchStatus(
@@ -388,12 +389,21 @@ export default function Page() {
   async function handleUpdateVersionStatus(
     status: "broken" | "working" | "candidate"
   ) {
-    await updateVersionStatus(
-      params?.projectUuid as string,
-      params?.devName as string,
-      moduleVersionData?.uuid,
-      status
-    );
+    if (devBranchData?.cloud) {
+      await updateVersionStatus(
+        await createSupabaseClient(),
+        devBranchData?.uuid,
+        moduleVersionData?.uuid,
+        status
+      );
+    } else {
+      await updateLocalVersionStatus(
+        params?.projectUuid as string,
+        params?.devName as string,
+        moduleVersionData?.uuid,
+        status
+      );
+    }
     updateModuleVersionLists(
       params?.moduleUuid as string,
       versionListData?.map((version) => {
