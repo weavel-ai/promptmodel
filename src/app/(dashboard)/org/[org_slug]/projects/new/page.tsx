@@ -9,6 +9,7 @@ import { X } from "@phosphor-icons/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "react-toastify";
+import ReactFlow, { Background, BackgroundVariant } from "reactflow";
 
 export default function Page() {
   const { createSupabaseClient } = useSupabaseClient();
@@ -47,33 +48,40 @@ export default function Page() {
   }
 
   return (
-    <div className="w-full h-full flex justify-center items-center">
-      <div className="bg-base-200 rounded-box w-fit min-w-[30rem] h-fit px-8 py-12 flex flex-col justify-between gap-y-7">
-        <p className="text-3xl font-bold text-base-content mb-3">New Project</p>
-        <InputField
-          className="w-full"
-          value={name}
-          onChange={setName}
-          label="Project Name"
-        />
-        <InputField
-          className="w-full input-lg"
-          value={description}
-          onChange={setDescription}
-          label="Description"
-        />
-        <button
-          className="btn btn-sm h-10 btn-primary px-6 w-fit mt-3 self-end text-base-content"
-          disabled={!name}
-          onClick={handleClickCreate}
-        >
-          {loading ? (
-            <div className="loading loading-spinner" />
-          ) : (
-            <p>Create Project</p>
-          )}
-        </button>
+    <ReactFlow>
+      <div className="w-full h-full flex justify-center items-center">
+        <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
+        <div className="z-50 bg-popover/5 shadow-2xl backdrop-blur-sm rounded-box w-fit min-w-[30rem] h-fit px-8 py-12 flex flex-col justify-between gap-y-7">
+          <p className="text-3xl font-bold text-base-content mb-3">
+            New Project
+          </p>
+          <InputField
+            className="w-full"
+            value={name}
+            setValue={setName}
+            label="Project Name"
+          />
+          <InputField
+            className="w-full"
+            inputClassName="textarea-lg w-full text-base"
+            textarea
+            value={description}
+            setValue={setDescription}
+            label="Description"
+          />
+          <button
+            className="btn btn-sm h-10 btn-primary px-6 w-fit mt-3 self-end text-base-content"
+            disabled={!name}
+            onClick={handleClickCreate}
+          >
+            {loading ? (
+              <div className="loading loading-spinner" />
+            ) : (
+              <p>Create Project</p>
+            )}
+          </button>
+        </div>
       </div>
-    </div>
+    </ReactFlow>
   );
 }

@@ -9,6 +9,8 @@ import "reactflow/dist/style.css";
 import relativeTime from "dayjs/plugin/relativeTime";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { PencilSimple } from "@phosphor-icons/react";
+import { CreateDevModal } from "@/components/modals/CreateDevModal";
 
 dayjs.extend(relativeTime);
 
@@ -23,9 +25,14 @@ export default function Page() {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
   const { moduleListData } = useModule();
+  const [showCreateDevModal, setShowCreateDevModal] = useState(false);
 
-  const nodeTypes = useMemo(() => ({ module: ModuleNode }), []);
+  const nodeTypes = useMemo(
+    () => ({ module: ModuleNode, groupLabel: GroupNode }),
+    []
+  );
 
+  // Build nodes
   useEffect(() => {
     if (!moduleListData || moduleListData?.length == 0) return;
     const totalNodes = moduleListData.length;
@@ -38,47 +45,85 @@ export default function Page() {
     const numRows = Math.ceil(totalNodes / maxNodesPerRow);
     const totalHeight = numRows * NODE_HEIGHT + (numRows - 1) * NODE_PADDING;
     const topPadding = (windowHeight - totalHeight) / 2;
-    const newNodes = moduleListData.map((module, index) => {
-      // Set node position
-      const row = Math.floor(index / maxNodesPerRow);
-      const col = index % maxNodesPerRow;
-      const x =
-        (windowWidth -
-          NODE_WIDTH * maxNodesPerRow -
-          NODE_PADDING * (maxNodesPerRow - 1)) /
-          2 +
-        col * (NODE_WIDTH + NODE_PADDING);
-      const y = topPadding + row * (NODE_HEIGHT + NODE_PADDING);
-
-      return {
-        id: module.uuid,
-        type: "module",
-        position: { x: x, y: y },
-        dragging: true,
-        data: {
-          label: module.name,
-          name: module.name,
-          uuid: module.uuid,
-          created_at: module.created_at,
+    const newNodes: any[] = [
+      {
+        id: "Promptmodels",
+        type: "groupLabel",
+        position: {
+          x:
+            (windowWidth -
+              NODE_WIDTH * maxNodesPerRow -
+              NODE_PADDING * (maxNodesPerRow - 1)) /
+              2 -
+            28,
+          y: topPadding - 80,
         },
-      };
-    });
+        style: {
+          width:
+            NODE_WIDTH * maxNodesPerRow +
+            NODE_PADDING * (maxNodesPerRow - 1) +
+            56,
+          height: totalHeight + 30 + 80,
+        },
+        data: {
+          label: "PromptModels",
+        },
+      },
+    ];
+    newNodes.push(
+      ...moduleListData.map((module, index) => {
+        // Set node position
+        const row = Math.floor(index / maxNodesPerRow);
+        const col = index % maxNodesPerRow;
+        const x =
+          (windowWidth -
+            NODE_WIDTH * maxNodesPerRow -
+            NODE_PADDING * (maxNodesPerRow - 1)) /
+            2 +
+          col * (NODE_WIDTH + NODE_PADDING);
+        const y = topPadding + row * (NODE_HEIGHT + NODE_PADDING);
+
+        return {
+          id: module.uuid,
+          type: "module",
+          position: { x: x, y: y },
+          data: {
+            label: module.name,
+            name: module.name,
+            uuid: module.uuid,
+            created_at: module.created_at,
+          },
+        };
+      })
+    );
     setNodes(newNodes);
   }, [moduleListData]);
 
   return (
     <div className="w-full h-full">
-      <p className="text-3xl font-semibold absolute top-16 left-24 z-10">
-        Promptmodels
-      </p>
       <ReactFlow
+        nodesDraggable={false}
         nodeTypes={nodeTypes}
         nodes={nodes}
         edges={edges}
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+        <button
+          className={classNames(
+            "fixed top-16 right-10 flex flex-row gap-x-2 items-center backdrop-blur-sm z-50",
+            "btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
+          )}
+          onClick={() => setShowCreateDevModal(true)}
+        >
+          <PencilSimple className="text-secondary" size={20} weight="fill" />
+          <p className="text-base-content">Develop</p>
+        </button>
       </ReactFlow>
+      <CreateDevModal
+        isOpen={showCreateDevModal}
+        setIsOpen={setShowCreateDevModal}
+      />
     </div>
   );
 }
@@ -99,5 +144,18 @@ function ModuleNode({ data }) {
         {dayjs(data.created_at).fromNow()}
       </p>
     </Link>
+  );
+}
+
+function GroupNode({ data }) {
+  return (
+    <div
+      className={classNames(
+        "bg-base-100/5 rounded-box flex flex-col gap-y-2 justify-start items-start w-full h-full",
+        "border-2 border-base-content/50 p-0 pointer-events-none"
+      )}
+    >
+      <p className="text-base-content font-bold text-2xl p-4">{data.label}</p>
+    </div>
   );
 }

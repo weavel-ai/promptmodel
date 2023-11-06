@@ -1,13 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { fetchModuleVersions, updateDevBranchSync } from "@/apis/dev";
+import {
+  fetchModuleVersions as fetchLocalModuleVersions,
+  updateDevBranchSync,
+} from "@/apis/dev";
 import { useSupabaseClient } from "@/apis/base";
 import { useEffect, useMemo, useState } from "react";
 import { useModuleVersionStore } from "@/stores/moduleVersionStore";
+import { useDevBranch } from "../useDevBranch";
+import { fetchModuleVersions } from "@/apis/devCloud";
 
 export const useModuleVersion = () => {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
+  const { devBranchData } = useDevBranch();
   const { moduleVersionLists, updateModuleVersionLists } =
     useModuleVersionStore();
 
@@ -23,12 +29,19 @@ export const useModuleVersion = () => {
         },
       ],
       queryFn: async () =>
-        await fetchModuleVersions(
-          params?.projectUuid as string,
-          params?.devName as string,
-          params?.moduleUuid as string
-        ),
+        devBranchData?.cloud
+          ? await fetchModuleVersions(
+              await createSupabaseClient(),
+              devBranchData?.uuid,
+              params?.moduleUuid as string
+            )
+          : await fetchLocalModuleVersions(
+              params?.projectUuid as string,
+              params?.devName as string,
+              params?.moduleUuid as string
+            ),
       onSettled: async (data) => {
+        if (devBranchData?.cloud) return;
         await updateDevBranchSync(
           await createSupabaseClient(),
           params?.projectUuid as string,
@@ -36,9 +49,9 @@ export const useModuleVersion = () => {
           true
         );
       },
-      enabled: Boolean(
-        params?.moduleUuid && params?.devName && params?.projectUuid
-      ),
+      enabled:
+        Boolean(params?.moduleUuid && params?.devName && params?.projectUuid) &&
+        devBranchData != null,
     });
 
   useEffect(() => {

@@ -6,7 +6,8 @@ export async function fetchChangelogs(
 ) {
   const res = await supabaseClient
     .from("project_changelog")
-    .select("changelog, previous_version, created_at")
-    .eq("project_uuid", projectUuid);
+    .select("logs, previous_version, created_at")
+    .eq("project_uuid", projectUuid)
+    .order("created_at", { ascending: false });
   return res.data;
 }

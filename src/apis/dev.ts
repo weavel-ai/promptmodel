@@ -1,18 +1,24 @@
+import { checkIfValidUUID } from "@/utils";
 import { fetchStream, railwayDevClient } from "./base";
 import { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 
 export async function fetchDevBranch(
   supabaseClient: SupabaseClient,
   projectUuid: string,
-  devName: string
+  nameOrUuid: string
 ) {
+  let matchObj = {};
+
+  if (checkIfValidUUID(nameOrUuid)) {
+    matchObj = { uuid: nameOrUuid, project_uuid: projectUuid };
+  } else {
+    matchObj = { name: nameOrUuid, project_uuid: projectUuid };
+  }
+
   const res = await supabaseClient
     .from("dev_branch")
-    .select("online, sync")
-    .match({
-      project_uuid: projectUuid,
-      name: devName,
-    });
+    .select("online, sync, cloud")
+    .match(matchObj);
   return res.data;
 }
 
