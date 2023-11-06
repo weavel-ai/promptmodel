@@ -34,7 +34,7 @@ import { editor } from "monaco-editor/esm/vs/editor/editor.api";
 import "reactflow/dist/style.css";
 import { useHotkeys } from "react-hotkeys-hook";
 import {
-  streamLLMModuleRun,
+  streamLLMModuleRun as streamLocalLLMModuleRun,
   subscribeDevBranchStatus,
   updateVersionStatus as updateLocalVersionStatus,
 } from "@/apis/dev";
@@ -64,7 +64,7 @@ import {
 import { FunctionSelector } from "@/components/select/FunctionSelector";
 import { useFunctions } from "@/hooks/dev/useFunctions";
 import { useDevBranch } from "@/hooks/useDevBranch";
-import { updateVersionStatus } from "@/apis/devCloud";
+import { streamLLMModuleRun, updateVersionStatus } from "@/apis/devCloud";
 
 export default function Page() {
   const params = useParams();
@@ -302,7 +302,7 @@ export default function Page() {
     const cacheParsedOutputs = {};
 
     const uuid = uuidv4();
-    await streamLLMModuleRun({
+    const args: any = {
       projectUuid: params?.projectUuid as string,
       devName: params?.devName as string,
       moduleUuid: params?.moduleUuid as string,
@@ -377,7 +377,16 @@ export default function Page() {
           cacheRawOutput = "";
         }
       },
-    });
+    };
+
+    if (devBranchData?.cloud) {
+      delete args.projectUuid;
+      delete args.devName;
+      args["devUuid"] = devBranchData?.uuid;
+      await streamLLMModuleRun(args);
+    } else {
+      await streamLocalLLMModuleRun(args);
+    }
     if (isNew) {
       refetchVersionListData();
       if (!moduleVersionData?.uuid) {
@@ -454,7 +463,7 @@ export default function Page() {
                 setModel={setSelectedModel}
               />
               <button
-                className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20"
+                className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20 disabled:bg-muted disabled:border-muted-content"
                 onClick={() => handleClickRun(true)}
                 disabled={
                   !(modifiedPrompts?.length > 0) ||
@@ -515,7 +524,7 @@ export default function Page() {
                 </div>
               </div>
               <div
-                className="flex flex-row flex-grow justify-end items-center tooltip tooltip-bottom"
+                className="flex flex-row justify-end items-center tooltip tooltip-left"
                 data-tip="Press Cmd + / to insert output format to your prompt"
               >
                 <kbd className="kbd text-base-content">
@@ -642,7 +651,7 @@ export default function Page() {
                     <div className="flex flex-row gap-x-3">
                       <ModelDisplay modelName={moduleVersionData?.model} />
                       <button
-                        className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20"
+                        className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20 disabled:bg-muted disabled:border-muted-content"
                         onClick={() => handleClickRun(false)}
                       >
                         <p className="text-base-content">Run</p>
@@ -708,7 +717,7 @@ export default function Page() {
                       <button
                         className={classNames(
                           "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
-                          "disabled:bg-neutral-content"
+                          "disabled:bg-muted disabled:border-muted-content"
                         )}
                         onClick={() => handleClickRun(true)}
                         disabled={!isNewVersionReady}
@@ -826,7 +835,7 @@ export default function Page() {
                           )}
                         </div>
                         <div
-                          className="flex flex-row flex-grow justify-end items-center tooltip tooltip-bottom"
+                          className="flex flex-row justify-end items-center tooltip tooltip-left"
                           data-tip="Press Cmd + / to insert output format to your prompt"
                         >
                           <kbd className="kbd text-base-content">
@@ -1103,6 +1112,7 @@ const PromptComponent = ({
   const [open, setOpen] = useState(true);
   const [height, setHeight] = useState(30);
   const editorRef = useRef(null);
+  const { setFocusedEditor, setShowSlashOptions } = useModuleVersionStore();
 
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
     const contentHeight = editor.getContentHeight();
@@ -1112,6 +1122,15 @@ const PromptComponent = ({
     if (contentHeight) {
       setHeight(contentHeight);
     }
+
+    editor.onKeyDown((e) => {
+      if (e.code === "Slash" && (e.ctrlKey || e.metaKey)) {
+        setShowSlashOptions(true);
+      }
+    });
+    editor.onDidFocusEditorWidget(() => {
+      setFocusedEditor(editorRef.current);
+    });
   };
 
   useEffect(() => {

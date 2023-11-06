@@ -112,7 +112,7 @@ export async function fetchPrompts(
 ) {
   const res = await supabaseClient
     .from("prompt")
-    .select("type, step, content")
+    .select("role, step, content")
     .eq("version_uuid", moduleVersionUuid);
   return res.data;
 }
@@ -142,8 +142,7 @@ export async function fetchRunLogs(
 }
 
 export async function streamLLMModuleRun({
-  projectUuid,
-  devName,
+  devUuid,
   moduleUuid,
   moduleName,
   sampleName,
@@ -156,8 +155,7 @@ export async function streamLLMModuleRun({
   functions,
   onNewData,
 }: {
-  projectUuid: string;
-  devName: string;
+  devUuid: string;
   moduleUuid: string;
   moduleName: string;
   sampleName: string;
@@ -171,10 +169,9 @@ export async function streamLLMModuleRun({
   onNewData?: (data: Record<string, any>) => void;
 }) {
   await fetchStream({
-    url: "/dev/run_llm_module",
+    url: "/web/run_llm_module",
     params: {
-      project_uuid: projectUuid,
-      dev_name: devName,
+      dev_uuid: devUuid,
     },
     body: {
       llm_module_uuid: moduleUuid,
