@@ -8,8 +8,6 @@ from pydantic import BaseModel
 
 from fastapi import APIRouter, HTTPException, Depends, Response
 from fastapi.responses import JSONResponse, StreamingResponse
-from regex import P
-from sqlalchemy import null
 from starlette.status import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
@@ -18,7 +16,6 @@ from starlette.status import (
 from promptmodel.llms.llm_dev import LLMDev
 from promptmodel.utils.types import LLMStreamResponse
 
-from utils.security import get_project
 from utils.logger import logger
 from base.database import supabase
 from api.dev import PromptModelRunConfig
