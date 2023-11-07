@@ -147,6 +147,7 @@ async def run_cloud_dev_llm(dev_uuid: str, run_config: PromptModelRunConfig):
                         "output_keys": run_config.output_keys,
                         "functions": run_config.functions,
                         "dev_branch_uuid": dev_uuid,
+                        "is_deployed": False,
                     }
                 )
                 .execute()
