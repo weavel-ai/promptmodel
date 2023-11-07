@@ -18,7 +18,7 @@ from promptmodel.utils.types import LLMStreamResponse
 from utils.security import get_project
 from utils.logger import logger
 from base.database import supabase
-from api.dev import RunConfig
+from api.dev import PromptModelRunConfig
 
 router = APIRouter()
 
@@ -54,14 +54,14 @@ async def create_project(project: Project):
     return JSONResponse(project_res, status_code=HTTP_200_OK)
 
 
-@router.post("/run_llm_module")
-async def run_llm_module(dev_uuid: str, run_config: RunConfig):
-    """Run LLM module for cloud development environment.
+@router.post("/run_prompt_model")
+async def run_prompt_model(dev_uuid: str, run_config: PromptModelRunConfig):
+    """Run PromptModel for cloud development environment.
 
     Args:
         dev_name (str): Dev branch uuid
-        run_config (RunConfig):
-            llm_module_name: str
+        run_config (PromptModelRunConfig):
+            prompt_model_name: str
             model: str
             prompts: List of prompts (type, step, content)
             from_uuid: previous version uuid (Optional)
@@ -89,8 +89,8 @@ async def run_llm_module(dev_uuid: str, run_config: RunConfig):
         ) from exc
 
 
-async def run_cloud_dev_llm(dev_uuid: str, run_config: RunConfig):
-    """Run LLM module for cloud development environment."""
+async def run_cloud_dev_llm(dev_uuid: str, run_config: PromptModelRunConfig):
+    """Run PromptModel for cloud development environment."""
     sample_input: Dict[str, Any] = {}
     # get sample from db
     if run_config.sample_name:
@@ -128,26 +128,26 @@ async def run_cloud_dev_llm(dev_uuid: str, run_config: RunConfig):
     # Start PromptModel Running
     output = {"raw_output": "", "parsed_outputs": {}}
     try:
-        logger.info(f"Started PromptModel: {run_config.llm_module_name}")
-        # create llm_module_dev_instance
-        llm_module_dev = LLMDev()
-        # fine llm_module_uuid from local db
-        llm_module_uuid: str = (
-            supabase.table("llm_module")
+        logger.info(f"Started PromptModel: {run_config.prompt_model_name}")
+        # create prompt_model_dev_instance
+        prompt_model_dev = LLMDev()
+        # fine prompt_model_uuid from local db
+        prompt_model_uuid: str = (
+            supabase.table("prompt_model")
             .select("uuid")
-            .eq("name", run_config.llm_module_name)
+            .eq("name", run_config.prompt_model_name)
             .single()
             .execute()
             .data["uuid"]
         )
-        llm_module_version_uuid: Optional[str] = run_config.uuid
-        # If llm_module_version_uuid is None, create new version & prompt
-        if llm_module_version_uuid is None:
-            llm_module_version = (
-                supabase.table("llm_module_version")
+        prompt_model_version_uuid: Optional[str] = run_config.uuid
+        # If prompt_model_version_uuid is None, create new version & prompt
+        if prompt_model_version_uuid is None:
+            prompt_model_version = (
+                supabase.table("prompt_model_version")
                 .insert(
                     {
-                        "llm_module_uuid": llm_module_uuid,
+                        "prompt_model_uuid": prompt_model_uuid,
                         "from_uuid": run_config.from_uuid,
                         "model": run_config.model,
                         "parsing_type": run_config.parsing_type,
@@ -160,12 +160,12 @@ async def run_cloud_dev_llm(dev_uuid: str, run_config: RunConfig):
                 .data[0]
             )
 
-            llm_module_version_uuid: str = llm_module_version["uuid"]
+            prompt_model_version_uuid: str = prompt_model_version["uuid"]
 
             for prompt in run_config.prompts:
                 supabase.table("prompt").insert(
                     {
-                        "version_uuid": llm_module_version_uuid,
+                        "version_uuid": prompt_model_version_uuid,
                         "role": prompt.role,
                         "step": prompt.step,
                         "content": prompt.content,
@@ -174,7 +174,7 @@ async def run_cloud_dev_llm(dev_uuid: str, run_config: RunConfig):
             # send message to backend
 
             data = {
-                "llm_module_version_uuid": llm_module_version_uuid,
+                "prompt_model_version_uuid": prompt_model_version_uuid,
                 "status": "running",
             }
             yield data
@@ -204,7 +204,7 @@ async def run_cloud_dev_llm(dev_uuid: str, run_config: RunConfig):
         error_log = None
         # NOTE : Function call is not supported in cloud development environment
 
-        res: AsyncGenerator[LLMStreamResponse, None] = llm_module_dev.dev_run(
+        res: AsyncGenerator[LLMStreamResponse, None] = prompt_model_dev.dev_run(
             messages=[message.model_dump() for message in messages_for_run],
             parsing_type=parsing_type,
             model=model,
@@ -248,17 +248,17 @@ async def run_cloud_dev_llm(dev_uuid: str, run_config: RunConfig):
             error_log = error_log if error_log else "Key matching failed."
             data = {"status": "failed", "log": f"parsing failed, {error_log}"}
 
-            # Update llm_module_version status to broken
-            supabase.table("llm_module_version").update(
+            # Update prompt_model_version status to broken
+            supabase.table("prompt_model_version").update(
                 {
                     "status": "broken",
                 }
-            ).eq("uuid", llm_module_version_uuid).execute()
+            ).eq("uuid", prompt_model_version_uuid).execute()
 
             # Create run log
             supabase.table("run_log").insert(
                 {
-                    "version_uuid": llm_module_version_uuid,
+                    "version_uuid": prompt_model_version_uuid,
                     "inputs": sample_input,
                     "raw_output": output["raw_output"],
                     "parsed_outputs": output["parsed_outputs"],
@@ -274,17 +274,17 @@ async def run_cloud_dev_llm(dev_uuid: str, run_config: RunConfig):
         }
 
         yield data
-        # Update llm_module_version status to working
-        supabase.table("llm_module_version").update(
+        # Update prompt_model_version status to working
+        supabase.table("prompt_model_version").update(
             {
                 "status": "working",
             }
-        ).eq("uuid", llm_module_version_uuid).execute()
+        ).eq("uuid", prompt_model_version_uuid).execute()
 
         # Create run log
         supabase.table("run_log").insert(
             {
-                "version_uuid": llm_module_version_uuid,
+                "version_uuid": prompt_model_version_uuid,
                 "inputs": sample_input,
                 "raw_output": output["raw_output"],
                 "parsed_outputs": output["parsed_outputs"],

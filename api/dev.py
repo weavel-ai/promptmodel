@@ -442,7 +442,7 @@ async def push_version(
 
         response = await websocket_manager.request(
             cli_access_key,
-            LocalTask.GET_VERSION_TO_SAVE,
+            LocalTask.GET_PROMPT_MODEL_VERSION_TO_SAVE,
             {"prompt_model_version_uuid": prompt_model_version_uuid},
         )
         if not response:
@@ -495,7 +495,7 @@ async def push_version(
 
         await websocket_manager.send_message(
             cli_access_key,
-            LocalTask.UPDATE_CANDIDATE_VERSION_ID,
+            LocalTask.UPDATE_CANDIDATE_PROMPT_MODEL_VERSION_ID,
             {"new_candidates": new_candidates},
         )
 
@@ -561,7 +561,7 @@ async def push_version(
 
 @router.post("/push_versions")
 async def push_versions(
-    project_uuid: str, dev_name: str, prompt_model_uuid: Optional[str] = None
+    project_uuid: str, dev_name: str, prompt_model_uuid: Optional[str] = None, chat_model_uuid: Optional[str] = None
 ):
     """Push version to Server DB from local DB
 
@@ -592,7 +592,7 @@ async def push_versions(
             data["prompt_model_uuid"] = prompt_model_uuid
 
         response = await websocket_manager.request(
-            cli_access_key, LocalTask.GET_VERSIONS_TO_SAVE, data
+            cli_access_key, LocalTask.GET_PROMPT_MODEL_VERSIONS_TO_SAVE, data
         )
         if not response:
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
@@ -639,6 +639,7 @@ async def push_versions(
             .eq("dev_branch_uuid", None)
             .execute()
         ).data
+
         last_versions = {}
         for previous_version in previous_version_list:
             if previous_version["prompt_model_uuid"] not in last_versions:
