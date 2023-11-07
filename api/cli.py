@@ -205,7 +205,7 @@ async def pull_project(project_uuid: str, user_id: str = Depends(get_cli_user_id
             supabase.table("prompt_model")
             .select("uuid, created_at, name, project_uuid")
             .eq("project_uuid", project_uuid)
-            .eq("dev_branch_uuid", None)
+            .is_("dev_branch_uuid", None)
             .execute()
             .data
         )
@@ -217,7 +217,7 @@ async def pull_project(project_uuid: str, user_id: str = Depends(get_cli_user_id
                 "uuid, created_at, version, from_uuid, prompt_model_uuid, model, is_published, is_ab_test, parsing_type, output_keys"
             )
             .in_("prompt_model_uuid", [x["uuid"] for x in prompt_models])
-            .eq("dev_branch_uuid", None)
+            .is_("dev_branch_uuid", None)
             .execute()
             .data
         )
@@ -244,7 +244,7 @@ async def pull_project(project_uuid: str, user_id: str = Depends(get_cli_user_id
             )
             .in_("version_uuid", versions_uuid_list)
             .eq("is_deployment", "False")
-            .eq("dev_branch_uuid", None)
+            .is_("dev_branch_uuid", None)
             .execute()
             .data
         )
@@ -307,7 +307,7 @@ async def check_update(cached_version: str, project: dict = Depends(get_project)
             supabase.table("prompt_model")
             .select("uuid, name")
             .eq("project_uuid", project["uuid"])
-            .eq("dev_branch_uuid", None)
+            .is_("dev_branch_uuid", None)
             .execute()
             .data
         )

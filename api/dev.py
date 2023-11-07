@@ -475,7 +475,7 @@ async def push_version(
             supabase.table("prompt_model_version")
             .select("version")
             .eq("prompt_model_uuid", version["prompt_model_uuid"])
-            .eq("dev_branch_uuid", None)
+            .is_("dev_branch_uuid", None)
             .order("version", desc=True)
             .execute()
         )
@@ -561,7 +561,10 @@ async def push_version(
 
 @router.post("/push_versions")
 async def push_versions(
-    project_uuid: str, dev_name: str, prompt_model_uuid: Optional[str] = None, chat_model_uuid: Optional[str] = None
+    project_uuid: str,
+    dev_name: str,
+    prompt_model_uuid: Optional[str] = None,
+    chat_model_uuid: Optional[str] = None,
 ):
     """Push version to Server DB from local DB
 
@@ -636,7 +639,7 @@ async def push_versions(
             supabase.table("prompt_model_version")
             .select("version, prompt_model_uuid")
             .in_("prompt_model_uuid", version_prompt_model_uuid_list)
-            .eq("dev_branch_uuid", None)
+            .is_("dev_branch_uuid", None)
             .execute()
         ).data
 
