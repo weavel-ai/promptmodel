@@ -679,7 +679,7 @@ async def push_versions(
         # print(f"new candidates: {new_candidates}")
         await websocket_manager.send_message(
             cli_access_key,
-            LocalTask.UPDATE_CANDIDATE_VERSION_ID,
+            LocalTask.UPDATE_CANDIDATE_PROMPT_MODEL_VERSION_ID,
             {"new_candidates": new_candidates},
         )
 
