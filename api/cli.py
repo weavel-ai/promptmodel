@@ -12,7 +12,7 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
     Depends,
-    Query
+    Query,
 )
 from fastapi.responses import JSONResponse
 from starlette.status import (
@@ -28,6 +28,7 @@ from utils.logger import logger
 from base.database import supabase
 from base.websocket_connection import websocket_manager
 from litellm.utils import completion_cost
+
 router = APIRouter()
 
 
@@ -38,8 +39,8 @@ async def check_cli_access(api_key: str = Depends(get_api_key)):
         supabase.table("cli_access").select("user_id").eq("api_key", api_key).execute()
     ).data
     if not user_id:
-        return False # Response(status_code=HTTP_403_FORBIDDEN)
-    return True # Response(status_code=HTTP_200_OK)
+        return False  # Response(status_code=HTTP_403_FORBIDDEN)
+    return True  # Response(status_code=HTTP_200_OK)
 
 
 @router.get("/list_orgs")
@@ -86,7 +87,7 @@ async def check_dev_branch_name(name: str, user_id: str = Depends(get_cli_user_i
             .eq("user_id", user_id)
             .execute()
         ).data[0]["organization_id"]
-        
+
         project_rows = (
             supabase.table("project")
             .select("uuid")
@@ -95,7 +96,7 @@ async def check_dev_branch_name(name: str, user_id: str = Depends(get_cli_user_i
             .data
         )
         project_uuid_list = [x["uuid"] for x in project_rows]
-        
+
         res = (
             supabase.table("dev_branch")
             .select("name")
@@ -130,40 +131,21 @@ async def get_project_version(
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
-@router.get("/list_llm_modules")
-async def list_llm_modules(
-    project_uuid: str, user_id: str = Depends(get_cli_user_id)
-):
-    """Get llm module list in project"""
-    try:
-        res = (
-            supabase.table("llm_module")
-            .select("*")
-            .eq("project_uuid", project_uuid)
-            .eq("dev_branch_uuid", None)
-            .execute()
-        )
-
-        llm_modules = [x['llm_module'] for x in res.data]
-        return JSONResponse(llm_modules, status_code=HTTP_200_OK)
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 @router.get("/get_changelog")
 async def get_changelog(
     project_uuid: str,
     local_project_version: str,
     levels: List[int] = Query(...),
-    user_id: str = Depends(get_cli_user_id)
+    user_id: str = Depends(get_cli_user_id),
 ):
     """Get changelog of project after a certain version
-    
+
     Args:
         - project_uuid (str): uuid of project
         - local_project_version (str): version of local project
         - levels (list[int]): levels of changelog to fetch
-    
+
     """
     try:
         # changelog가 없을 수 있음
@@ -172,13 +154,14 @@ async def get_changelog(
             .select("id")
             .eq("project_uuid", project_uuid)
             .eq("previous_version", local_project_version)
-            .execute().data
+            .execute()
+            .data
         )
-        
+
         if (len(start_point)) == 0:
             return JSONResponse([], status_code=HTTP_200_OK)
-        
-        current_version_id = start_point[0]['id']
+
+        current_version_id = start_point[0]["id"]
 
         res = (
             supabase.table("project_changelog")
@@ -194,19 +177,18 @@ async def get_changelog(
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
+
 @router.get("/pull_project")
-async def pull_project(
-    project_uuid: str, user_id: str = Depends(get_cli_user_id)
-):
+async def pull_project(project_uuid: str, user_id: str = Depends(get_cli_user_id)):
     """Pull project from cloud
-    
+
     Return
         - version : project version
-        - llm_modules : llm module list
-        - llm_module_versions : llm module version list
+        - prompt_models : prompt model list
+        - prompt_model_versions : prompt model version list
         - prompts : prompt list
         - run_logs : run log list
-    
+
     """
     try:
         # get project version
@@ -218,9 +200,9 @@ async def pull_project(
             .execute()
             .data["version"]
         )
-        # get llm_modules
-        llm_modules = (
-            supabase.table("llm_module")
+        # get prompt_models
+        prompt_models = (
+            supabase.table("prompt_model")
             .select("uuid, created_at, name, project_uuid")
             .eq("project_uuid", project_uuid)
             .eq("dev_branch_uuid", None)
@@ -229,20 +211,22 @@ async def pull_project(
         )
 
         # get versions
-        llm_module_versions = (
-            supabase.table("llm_module_version")
-            .select("uuid, created_at, version, from_uuid, llm_module_uuid, model, is_published, is_ab_test, parsing_type, output_keys")
-            .in_("llm_module_uuid", [x["uuid"] for x in llm_modules])
+        prompt_model_versions = (
+            supabase.table("prompt_model_version")
+            .select(
+                "uuid, created_at, version, from_uuid, prompt_model_uuid, model, is_published, is_ab_test, parsing_type, output_keys"
+            )
+            .in_("prompt_model_uuid", [x["uuid"] for x in prompt_models])
             .eq("dev_branch_uuid", None)
             .execute()
             .data
         )
-        for llm_module_version in llm_module_versions:
-            if llm_module_version['is_ab_test'] is True:
-                llm_module_version['is_published'] = True
-            del llm_module_version['is_ab_test']
+        for prompt_model_version in prompt_model_versions:
+            if prompt_model_version["is_ab_test"] is True:
+                prompt_model_version["is_published"] = True
+            del prompt_model_version["is_ab_test"]
 
-        versions_uuid_list = [x["uuid"] for x in llm_module_versions]
+        versions_uuid_list = [x["uuid"] for x in prompt_model_versions]
         # get prompts
         prompts = (
             supabase.table("prompt")
@@ -255,7 +239,9 @@ async def pull_project(
         # get run_logs
         run_logs = (
             supabase.table("run_log")
-            .select("created_at, version_uuid, inputs, raw_output, parsed_outputs, is_deployment")
+            .select(
+                "created_at, version_uuid, inputs, raw_output, parsed_outputs, is_deployment"
+            )
             .in_("version_uuid", versions_uuid_list)
             .eq("is_deployment", "False")
             .eq("dev_branch_uuid", None)
@@ -264,13 +250,13 @@ async def pull_project(
         )
 
         res = {
-            "project_version" : project_version,
-            "llm_modules" : llm_modules,
-            "llm_module_versions" : llm_module_versions,
-            "prompts" : prompts,
-            "run_logs" : run_logs
+            "project_version": project_version,
+            "prompt_models": prompt_models,
+            "prompt_model_versions": prompt_model_versions,
+            "prompts": prompts,
+            "run_logs": run_logs,
         }
-        
+
         return JSONResponse(res, status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
@@ -278,19 +264,17 @@ async def pull_project(
 
 
 @router.get("/check_update")
-async def check_update(
-    cached_version: str, project: dict=Depends(get_project)
-):
+async def check_update(cached_version: str, project: dict = Depends(get_project)):
     """
-    Check version between local Cache and cloud,   
-    If local version is lower than cloud, return (True, New Version, project_status)  
-    Else return (False, New Version, None)  
+    Check version between local Cache and cloud,
+    If local version is lower than cloud, return (True, New Version, project_status)
+    Else return (False, New Version, None)
 
-    Input:  
-        - cached_version: local cached version  
-        
+    Input:
+        - cached_version: local cached version
+
     Return:
-        - need_update: bool  
+        - need_update: bool
         - version : str
         - project_status : dict
     """
@@ -299,7 +283,7 @@ async def check_update(
         project_version = (
             supabase.table("project")
             .select("version")
-            .eq("uuid", project['uuid'])
+            .eq("uuid", project["uuid"])
             .single()
             .execute()
             .data["version"]
@@ -308,37 +292,39 @@ async def check_update(
         if project_version == cached_version:
             need_update = False
             res = {
-                "need_update" : need_update,
-                "version" : project_version,
-                "project_status" : None
+                "need_update": need_update,
+                "version": project_version,
+                "project_status": None,
             }
             return JSONResponse(res, status_code=HTTP_200_OK)
         else:
             need_update = True
-        
+
         # get current project status
-        
-        # get llm_modules
-        llm_modules = (
-            supabase.table("llm_module")
+
+        # get prompt_models
+        prompt_models = (
+            supabase.table("prompt_model")
             .select("uuid, name")
-            .eq("project_uuid", project['uuid'])
+            .eq("project_uuid", project["uuid"])
             .eq("dev_branch_uuid", None)
             .execute()
             .data
         )
 
-        # get published, ab_test llm_versions
-        deployed_llm_module_versions = (
-            supabase.table("deployed_llm_module_version")
-            .select("uuid, from_uuid, llm_module_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys")
-            #.select("uuid, from_uuid, llm_module_uuid, model, is_published, is_ab_test, ratio")
-            .in_("llm_module_uuid", [x["uuid"] for x in llm_modules])
+        # get published, ab_test prompt_model_versions
+        deployed_prompt_model_versions = (
+            supabase.table("deployed_prompt_model_version")
+            .select(
+                "uuid, from_uuid, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+            )
+            # .select("uuid, from_uuid, prompt_model_uuid, model, is_published, is_ab_test, ratio")
+            .in_("prompt_model_uuid", [x["uuid"] for x in prompt_models])
             .execute()
             .data
         )
 
-        versions_uuid_list = [x["uuid"] for x in deployed_llm_module_versions]
+        versions_uuid_list = [x["uuid"] for x in deployed_prompt_model_versions]
         # get prompts
         prompts = (
             supabase.table("prompt")
@@ -349,20 +335,21 @@ async def check_update(
         )
 
         res = {
-            "need_update" : need_update,
-            "version" : project_version,
-            "project_status" : {
-                "llm_modules" : llm_modules,
-                "llm_module_versions" : deployed_llm_module_versions,
-                "prompts" : prompts,
-            }
+            "need_update": need_update,
+            "version": project_version,
+            "project_status": {
+                "prompt_models": prompt_models,
+                "prompt_model_versions": deployed_prompt_model_versions,
+                "prompts": prompts,
+            },
         }
-        
+
         return JSONResponse(res, status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-    
+
+
 # Create APIs
 @router.post("/create_dev_branch")
 async def create_dev_branch(
@@ -385,6 +372,7 @@ async def create_dev_branch(
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
+
 # promptmodel library local dev server websocket endpoint
 @router.websocket("/open_websocket")
 async def open_websocket(
@@ -403,7 +391,8 @@ async def open_websocket(
     except Exception as error:
         logger.error(f"Error in local dev server websocket for token {token}: {error}")
         websocket_manager.disconnect(token)
-        
+
+
 @router.post("/connect_cli_dev")
 async def connect_cli_dev(
     project_uuid: str, branch_name: str, api_key: str = Depends(get_api_key)
@@ -420,24 +409,31 @@ async def connect_cli_dev(
             .execute()
             .data
         )
-        if dev_branch_data['online'] is True:
+        if dev_branch_data["online"] is True:
             # return false, already connected
-            return HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Already connected")
+            return HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="Already connected"
+            )
         else:
             # update dev_branch_data
-            res = supabase.table("dev_branch").update(
-                {
-                    "cli_access_key": api_key,
-                    "online": False,
-                }
-            ).eq("id", dev_branch_data['id']).execute()
+            res = (
+                supabase.table("dev_branch")
+                .update(
+                    {
+                        "cli_access_key": api_key,
+                        "online": False,
+                    }
+                )
+                .eq("id", dev_branch_data["id"])
+                .execute()
+            )
             # return true, connected
             return Response(status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-    
-    
+
+
 @router.post("/log_deployment_run")
 async def log_deployment_run(
     version_uuid: str,
@@ -445,7 +441,7 @@ async def log_deployment_run(
     api_response: Dict[str, Any],
     parsed_outputs: Dict[str, Any],
     metadata: Dict[str, Any],
-    project: dict=Depends(get_project)
+    project: dict = Depends(get_project),
 ):
     try:
         # save log
@@ -454,14 +450,14 @@ async def log_deployment_run(
             supabase.table("run_log")
             .insert(
                 {
-                    "inputs" : inputs,
-                    "raw_output" : api_response['choices'][0]["message"]['content'],
-                    "parsed_outputs" : parsed_outputs,
+                    "inputs": inputs,
+                    "raw_output": api_response["choices"][0]["message"]["content"],
+                    "parsed_outputs": parsed_outputs,
                     "input_register_name": None,
-                    "is_deployment" : True,
-                    "version_uuid" : version_uuid,
-                    "token_usage": api_response['usage'],
-                    "latency" : api_response['response_ms'],
+                    "is_deployment": True,
+                    "version_uuid": version_uuid,
+                    "token_usage": api_response["usage"],
+                    "latency": api_response["response_ms"],
                     "cost": completion_cost(api_response),
                     "metadata": metadata,
                 }

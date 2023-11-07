@@ -1,5 +1,4 @@
 """APIs for promptmodel dev page"""
-import secrets
 import json
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
@@ -26,9 +25,9 @@ class PromptConfig(BaseModel):
     content: str
 
 
-class RunConfig(BaseModel):
-    llm_module_uuid: str
-    llm_module_name: str
+class PromptModelRunConfig(BaseModel):
+    prompt_model_uuid: str
+    prompt_model_name: str
     prompts: List[PromptConfig]
     model: Optional[str] = "gpt-3.5-turbo"
     from_uuid: Optional[str] = None
@@ -45,18 +44,12 @@ class RunLog(BaseModel):
     parsed_outputs: Dict[str, Any]
 
 
-class VersionConfig(BaseModel):
-    llm_module_name: str
-    llm_module_uuid: str
-    from_uuid: str
-    run_logs: List[RunLog]
-    prompts: List[PromptConfig]
-
-
-@router.post("/run_llm_module")
-async def run_llm_module(project_uuid: str, dev_name: str, run_config: RunConfig):
+@router.post("/run_prompt_model")
+async def run_prompt_model(
+    project_uuid: str, dev_name: str, run_config: PromptModelRunConfig
+):
     """
-    <h2>For dev branch, Send run_llm_module request to the local server  </h2>
+    <h2>For dev branch, Send run_prompt_model request to the local server  </h2>
 
     <h3>Input:</h3>
     <ul>
@@ -64,15 +57,16 @@ async def run_llm_module(project_uuid: str, dev_name: str, run_config: RunConfig
         <li><b>dev_name:</b> dev branch name</li>
         <li><b>run_config:</b></li>
         <ul>
-            <li>llm_module_name: llm_module name</li>
+            <li>prompt_model_name: prompt_model name</li>
+            <li>prompt_model_uuid: prompt_model uuid</li>
             <li>output_keys: List[str] | None (Optional)</li>
             <li>model: model name</li>
             <li>sample_name : sample name (Optional)  </li>
             <li>prompts : list of prompts (type, step, content)  </li>
             <li>from_uuid : previous version uuid (Optional) </li>
             <li>uuid : current uuid (optional if run_previous)  </li>
-            <li>parsing_type: parsing type (colon, square_bracket, double_square_bracket)  </li>
-            <li>functions : list of functions (Optional[List[str]])  </li>
+            <li>parsing_type: parsing type (colon, square_bracket, double_square_bracket, html, None)  </li>
+            <li>functions : list of function names (Optional[List[str]])  </li>
         </ul>
     </ul>
 
@@ -105,7 +99,7 @@ async def run_llm_module(project_uuid: str, dev_name: str, run_config: RunConfig
         try:
             return StreamingResponse(
                 websocket_manager.stream(
-                    cli_access_key, LocalTask.RUN_LLM_MODULE, run_config.model_dump()
+                    cli_access_key, LocalTask.RUN_PROMPT_MODEL, run_config.model_dump()
                 )
             )
         except Exception as exc:
@@ -120,9 +114,9 @@ async def run_llm_module(project_uuid: str, dev_name: str, run_config: RunConfig
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.get("/list_modules")
-async def list_modules(project_uuid: str, dev_name: str):
-    """Get list of llm modules in local DB by websocket
+@router.get("/list_prompt_models")
+async def list_prompt_models(project_uuid: str, dev_name: str):
+    """Get list of prompt models in local DB by websocket
     Input:
         - project_uuid : project uuid
         - dev_name : dev branch name
@@ -130,7 +124,7 @@ async def list_modules(project_uuid: str, dev_name: str):
     Output:
         Response
             - correlation_id: str
-            - llm_modules: list
+            - prompt_models: list
                 - local_usage
                 - is_deployment
                 - uuid
@@ -153,7 +147,7 @@ async def list_modules(project_uuid: str, dev_name: str):
 
         cli_access_key = dev_branch[0]["cli_access_key"]
         response = await websocket_manager.request(
-            cli_access_key, LocalTask.LIST_MODULES
+            cli_access_key, LocalTask.LIST_PROMPT_MODELS
         )
         if not response:
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
@@ -167,21 +161,23 @@ async def list_modules(project_uuid: str, dev_name: str):
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.get("/list_versions")
-async def list_versions(project_uuid: str, dev_name: str, llm_module_uuid: str):
-    """Get list of llm module versions for llm_module_uuid in local DB by websocket
+@router.get("/list_prompt_model_versions")
+async def list_prompt_model_versions(
+    project_uuid: str, dev_name: str, prompt_model_uuid: str
+):
+    """Get list of prompt model versions for prompt_model_uuid in local DB by websocket
     Input:
         - project_uuid : project uuid
         - dev_name : dev branch name
-        - llm_module_uuid : llm_module uuid
+        - prompt_model_uuid : prompt_model uuid
 
     Output:
         Response
             - correlation_id: str
-            - llm_module_versions: list
+            - prompt_model_versions: list
                 - uuid
                 - from_uuid
-                - llm_module_uuid
+                - prompt_model_uuid
                 - status
                 - model
                 - candidate_version : int
@@ -205,8 +201,8 @@ async def list_versions(project_uuid: str, dev_name: str, llm_module_uuid: str):
         cli_access_key = dev_branch[0]["cli_access_key"]
         response = await websocket_manager.request(
             cli_access_key,
-            LocalTask.LIST_VERSIONS,
-            {"llm_module_uuid": llm_module_uuid},
+            LocalTask.LIST_PROMPT_MODEL_VERSIONS,
+            {"prompt_model_uuid": prompt_model_uuid},
         )
         if not response:
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
@@ -289,13 +285,13 @@ async def list_functions(
 
 
 @router.get("/get_prompts")
-async def get_prompts(project_uuid: str, dev_name: str, llm_module_version_uuid: str):
-    """Get list of prompts of llm_module_version_uuid in local DB by websocket
+async def get_prompts(project_uuid: str, dev_name: str, prompt_model_version_uuid: str):
+    """Get list of prompts of prompt_model_version_uuid in local DB by websocket
 
     Args:
         project_uuid (str): project_uuid
         dev_name (str): dev_name
-        llm_module_version_uuid (str): version uuid
+        prompt_model_version_uuid (str): version uuid
 
     Returns:
         Response
@@ -322,7 +318,7 @@ async def get_prompts(project_uuid: str, dev_name: str, llm_module_version_uuid:
         response = await websocket_manager.request(
             cli_access_key,
             LocalTask.GET_PROMPTS,
-            {"llm_module_version_uuid": llm_module_version_uuid},
+            {"prompt_model_version_uuid": prompt_model_version_uuid},
         )
         if not response:
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
@@ -337,13 +333,15 @@ async def get_prompts(project_uuid: str, dev_name: str, llm_module_version_uuid:
 
 
 @router.get("/get_run_logs")
-async def get_run_logs(project_uuid: str, dev_name: str, llm_module_version_uuid: str):
-    """Get list of run_logs of llm_module_version_uuid in local DB by websocket
+async def get_run_logs(
+    project_uuid: str, dev_name: str, prompt_model_version_uuid: str
+):
+    """Get list of run_logs of prompt_model_version_uuid in local DB by websocket
 
     Args:
         project_uuid (str): project_uuid
         dev_name (str): dev_name
-        llm_module_version_uuid (str): version uuid
+        prompt_model_version_uuid (str): version uuid
 
     Returns:
         Response
@@ -371,7 +369,7 @@ async def get_run_logs(project_uuid: str, dev_name: str, llm_module_version_uuid
         response = await websocket_manager.request(
             cli_access_key,
             LocalTask.GET_RUN_LOGS,
-            {"llm_module_version_uuid": llm_module_version_uuid},
+            {"prompt_model_version_uuid": prompt_model_version_uuid},
         )
         if not response:
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
@@ -385,9 +383,9 @@ async def get_run_logs(project_uuid: str, dev_name: str, llm_module_version_uuid
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.post("/change_version_status")
-async def change_version_status(
-    project_uuid: str, dev_name: str, llm_module_version_uuid: str, status: str
+@router.post("/change_prompt_model_version_status")
+async def change_prompt_model_version_status(
+    project_uuid: str, dev_name: str, prompt_model_version_uuid: str, status: str
 ):
     try:
         # Find local server websocket
@@ -405,8 +403,8 @@ async def change_version_status(
         cli_access_key = dev_branch[0]["cli_access_key"]
         response = await websocket_manager.request(
             cli_access_key,
-            LocalTask.CHANGE_VERSION_STATUS,
-            {"llm_module_version_uuid": llm_module_version_uuid, "status": status},
+            LocalTask.CHANGE_PROMPT_MODEL_VERSION_STATUS,
+            {"prompt_model_version_uuid": prompt_model_version_uuid, "status": status},
         )
         if not response:
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
@@ -421,7 +419,9 @@ async def change_version_status(
 
 
 @router.post("/push_version")
-async def push_version(project_uuid: str, dev_name: str, llm_module_version_uuid: str):
+async def push_version(
+    project_uuid: str, dev_name: str, prompt_model_version_uuid: str
+):
     """Push 1 version to Server DB from local DB"""
     try:
         changelogs = []
@@ -442,25 +442,27 @@ async def push_version(project_uuid: str, dev_name: str, llm_module_version_uuid
 
         response = await websocket_manager.request(
             cli_access_key,
-            LocalTask.GET_VERSION_TO_SAVE,
-            {"llm_module_version_uuid": llm_module_version_uuid},
+            LocalTask.GET_PROMPT_MODEL_VERSION_TO_SAVE,
+            {"prompt_model_version_uuid": prompt_model_version_uuid},
         )
         if not response:
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # save llm_module_versions to server DB
+        # save prompt_model_versions to server DB
 
-        # if there are llm_modules (which is only in local), save
-        llm_modules = response["llm_modules"]
+        # if there are prompt_models (which is only in local), save
+        prompt_models = response["prompt_models"]
         # Delete id for insert
-        for llm_module in llm_modules:
-            del llm_module["id"]
-        if llm_modules:
-            (supabase.table("llm_module").insert(llm_modules).execute())
+        for prompt_model in prompt_models:
+            del prompt_model["id"]
+        if prompt_models:
+            (supabase.table("prompt_model").insert(prompt_models).execute())
             changelogs.append(
                 {
-                    "subject": "llm_module",
-                    "identifiers": [llm_module["uuid"] for llm_module in llm_modules],
+                    "subject": "prompt_model",
+                    "identifiers": [
+                        prompt_model["uuid"] for prompt_model in prompt_models
+                    ],
                     "action": "ADD",
                 }
             )
@@ -470,9 +472,9 @@ async def push_version(project_uuid: str, dev_name: str, llm_module_version_uuid
         del version["id"]
         # get last version(ID)
         last_version = (
-            supabase.table("llm_module_version")
+            supabase.table("prompt_model_version")
             .select("version")
-            .eq("llm_module_uuid", version["llm_module_uuid"])
+            .eq("prompt_model_uuid", version["prompt_model_uuid"])
             .eq("dev_branch_uuid", None)
             .order("version", desc=True)
             .execute()
@@ -484,7 +486,7 @@ async def push_version(project_uuid: str, dev_name: str, llm_module_version_uuid
         else:
             version["version"] = last_version[0]["version"] + 1
 
-        (supabase.table("llm_module_version").insert(version).execute())
+        (supabase.table("prompt_model_version").insert(version).execute())
 
         prompts = response["prompts"]
         (supabase.table("prompt").insert(prompts).execute())
@@ -493,14 +495,14 @@ async def push_version(project_uuid: str, dev_name: str, llm_module_version_uuid
 
         await websocket_manager.send_message(
             cli_access_key,
-            LocalTask.UPDATE_CANDIDATE_VERSION_ID,
+            LocalTask.UPDATE_CANDIDATE_PROMPT_MODEL_VERSION_ID,
             {"new_candidates": new_candidates},
         )
 
-        # make project_changelog level 2, subject = llm_module_version
+        # make project_changelog level 2, subject = prompt_model_version
         changelogs.append(
             {
-                "subject": "llm_module_version",
+                "subject": "prompt_model_version",
                 "identifiers": [version["uuid"]],
                 "action": "ADD",
             }
@@ -559,14 +561,14 @@ async def push_version(project_uuid: str, dev_name: str, llm_module_version_uuid
 
 @router.post("/push_versions")
 async def push_versions(
-    project_uuid: str, dev_name: str, llm_module_uuid: Optional[str] = None
+    project_uuid: str, dev_name: str, prompt_model_uuid: Optional[str] = None, chat_model_uuid: Optional[str] = None
 ):
     """Push version to Server DB from local DB
 
     Input:
     - project_uuid
     - dev_name
-    - module_uuid: Optional(str) if module_uuid is given, push only one module
+    - prompt_model_uuid: Optional(str) if prompt_model_uuid is given, push only one prompt_model
     """
     try:
         changelogs = []
@@ -586,26 +588,28 @@ async def push_versions(
         cli_access_key = dev_branch[0]["cli_access_key"]
 
         data = {}
-        if llm_module_uuid:
-            data["llm_module_uuid"] = llm_module_uuid
+        if prompt_model_uuid:
+            data["prompt_model_uuid"] = prompt_model_uuid
 
         response = await websocket_manager.request(
-            cli_access_key, LocalTask.GET_VERSIONS_TO_SAVE, data
+            cli_access_key, LocalTask.GET_PROMPT_MODEL_VERSIONS_TO_SAVE, data
         )
         if not response:
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # save llm_module_versions to server DB
+        # save prompt_model_versions to server DB
 
-        # if there are llm_modules (which is only in local), save them
-        llm_modules = response["llm_modules"]
-        if len(llm_modules) > 0:
-            (supabase.table("llm_module").insert(llm_modules).execute())
-            # make changelog level 1, subject = llm_module
+        # if there are prompt_models (which is only in local), save them
+        prompt_models = response["prompt_models"]
+        if len(prompt_models) > 0:
+            (supabase.table("prompt_model").insert(prompt_models).execute())
+            # make changelog level 1, subject = prompt_model
             changelogs.append(
                 {
-                    "subject": "llm_module",
-                    "identifiers": [llm_module["uuid"] for llm_module in llm_modules],
+                    "subject": "prompt_model",
+                    "identifiers": [
+                        prompt_model["uuid"] for prompt_model in prompt_models
+                    ],
                     "action": "ADD",
                 }
             )
@@ -615,33 +619,36 @@ async def push_versions(
             map(
                 lambda version: (
                     (
-                        version.update({"llm_module_uuid": version["llm_module_uuid"]}),
+                        version.update(
+                            {"prompt_model_uuid": version["prompt_model_uuid"]}
+                        ),
                         version,
                     )[1]
                 ),
                 response["versions"],
             )
         )
-        # get last version(ID) for each llm_modules
-        version_llm_module_uuid_list = list(
-            set([version["llm_module_uuid"] for version in new_versions])
+        # get last version(ID) for each prompt_models
+        version_prompt_model_uuid_list = list(
+            set([version["prompt_model_uuid"] for version in new_versions])
         )
         previous_version_list = (
-            supabase.table("llm_module_version")
-            .select("version, llm_module_uuid")
-            .in_("llm_module_uuid", version_llm_module_uuid_list)
+            supabase.table("prompt_model_version")
+            .select("version, prompt_model_uuid")
+            .in_("prompt_model_uuid", version_prompt_model_uuid_list)
             .eq("dev_branch_uuid", None)
             .execute()
         ).data
+
         last_versions = {}
         for previous_version in previous_version_list:
-            if previous_version["llm_module_uuid"] not in last_versions:
-                last_versions[previous_version["llm_module_uuid"]] = int(
+            if previous_version["prompt_model_uuid"] not in last_versions:
+                last_versions[previous_version["prompt_model_uuid"]] = int(
                     previous_version["version"]
                 )
             else:
-                last_versions[previous_version["llm_module_uuid"]] = max(
-                    last_versions[previous_version["llm_module_uuid"]],
+                last_versions[previous_version["prompt_model_uuid"]] = max(
+                    last_versions[previous_version["prompt_model_uuid"]],
                     int(previous_version["version"]),
                 )
 
@@ -650,19 +657,19 @@ async def push_versions(
         new_candidates = {}
         new_versions = sorted(new_versions, key=lambda x: x["created_at"])
         for new_version in new_versions:
-            if new_version["llm_module_uuid"] in last_versions:
+            if new_version["prompt_model_uuid"] in last_versions:
                 new_version["version"] = (
-                    last_versions[new_version["llm_module_uuid"]] + 1
+                    last_versions[new_version["prompt_model_uuid"]] + 1
                 )
-                last_versions[new_version["llm_module_uuid"]] += 1
+                last_versions[new_version["prompt_model_uuid"]] += 1
             else:
                 new_version["version"] = 1
-                last_versions[new_version["llm_module_uuid"]] = 1
+                last_versions[new_version["prompt_model_uuid"]] = 1
                 new_version["is_published"] = True
                 new_version["ratio"] = 1.0
             new_candidates[new_version["uuid"]] = int(new_version["version"])
 
-        (supabase.table("llm_module_version").insert(new_versions).execute())
+        (supabase.table("prompt_model_version").insert(new_versions).execute())
         prompts = response["prompts"]
         (supabase.table("prompt").insert(prompts).execute())
 
@@ -673,10 +680,10 @@ async def push_versions(
             {"new_candidates": new_candidates},
         )
 
-        # make project_changelog level 2, subject = llm_module_version
+        # make project_changelog level 2, subject = prompt_model_version
         changelogs.append(
             {
-                "subject": "llm_module_version",
+                "subject": "prompt_model_version",
                 "identifiers": [version["uuid"] for version in new_versions],
                 "action": "ADD",
             }
