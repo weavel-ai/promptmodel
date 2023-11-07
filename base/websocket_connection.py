@@ -12,24 +12,28 @@ from fastapi import WebSocket
 from base.database import supabase
 from utils.logger import logger
 
+
 class LocalTask(str, Enum):
-    RUN_LLM_MODULE = "RUN_LLM_MODULE"
-    EVAL_LLM_MODULE = "EVAL_LLM_MODULE"
-    LIST_MODULES = "LIST_MODULES"
-    LIST_VERSIONS = "LIST_VERSIONS"
+    RUN_PROMPT_MODEL = "RUN_PROMPT_MODEL"
+    LIST_PROMPT_MODELS = "LIST_PROMPT_MODELS"
+    LIST_PROMPT_MODEL_VERSIONS = "LIST_PROMPT_MODEL_VERSIONS"
     LIST_SAMPLES = "LIST_SAMPLES"
     LIST_FUNCTIONS = "LIST_FUNCTIONS"
     GET_PROMPTS = "GET_PROMPTS"
     GET_RUN_LOGS = "GET_RUN_LOGS"
-    CHANGE_VERSION_STATUS = "CHANGE_VERSION_STATUS"
-    GET_VERSION_TO_SAVE = "GET_VERSION_TO_SAVE"
-    GET_VERSIONS_TO_SAVE = "GET_VERSIONS_TO_SAVE"
-    UPDATE_CANDIDATE_VERSION_ID = "UPDATE_CANDIDATE_VERSION_ID"
+    CHANGE_PROMPT_MODEL_VERSION_STATUS = "CHANGE_PROMPT_MODEL_VERSION_STATUS"
+    GET_PROMPT_MODEL_VERSION_TO_SAVE = "GET_PROMPT_MODEL_VERSION_TO_SAVE"
+    GET_PROMPT_MODEL_VERSIONS_TO_SAVE = "GET_PROMPT_MODEL_VERSIONS_TO_SAVE"
+    UPDATE_CANDIDATE_PROMPT_MODEL_VERSION_ID = (
+        "UPDATE_CANDIDATE_PROMPT_MODEL_VERSION_ID"
+    )
+
 
 class ServerTask(str, Enum):
     UPDATE_RESULT_RUN = "UPDATE_RESULT_RUN"
     LOCAL_UPDATE_ALERT = "LOCAL_UPDATE_ALERT"
     UPDATE_RESULT_EVAL = "UPDATE_RESULT_EVAL"
+
 
 class ConnectionManager:
     def __init__(self):
@@ -54,6 +58,7 @@ class ConnectionManager:
         # Start a dedicated reader task for this local server
         task = asyncio.create_task(self.websocket_reader(websocket, token))
         return task
+
     async def websocket_reader(self, websocket: WebSocket, token: str):
         """Read messages from the websocket and put them in the appropriate queue/cache."""
         while True:
@@ -67,7 +72,9 @@ class ConnectionManager:
                 if correlation_id and correlation_id in self.pending_requests:
                     await self.responses[correlation_id].put(data)
                     if not self.pending_requests[correlation_id].is_set():
-                        self.pending_requests[correlation_id].set()  # Signal the event that the response has arrived
+                        self.pending_requests[
+                            correlation_id
+                        ].set()  # Signal the event that the response has arrived
                 else:
                     await self.task_handler(token, data)
                     # await self.agent_queues[token].put(data)
@@ -96,7 +103,7 @@ class ConnectionManager:
             )
         except Exception as error:
             logger.error(f"Error updating online status for token {token}: {error}")
-            
+
     async def send_message(
         self,
         token: str,
@@ -159,7 +166,7 @@ class ConnectionManager:
                 self.responses.pop(correlation_id, None)
         else:
             raise ValueError(f"No active local dev server found for token {token}")
-        
+
     async def stream(self, token: str, task_type: LocalTask, message: Dict = {}):
         """
         Send a message to the local dev server and wait for a stream generator.
@@ -185,17 +192,17 @@ class ConnectionManager:
                 self.pending_requests[correlation_id] = event
                 stream_end = False
                 await asyncio.wait_for(event.wait(), timeout=60)
-                while not stream_end: 
+                while not stream_end:
                     response = await self.responses[correlation_id].get()
                     # print(response)
                     # if "parsed_outputs" in response:
                     #     print("type of parsed outputs", type(response["parsed_outputs"]))
                     #     print(json.dumps(response))
                     #     print(type(json.dumps(response)))
-                    if response['status'] in ['completed', 'failed']:
+                    if response["status"] in ["completed", "failed"]:
                         stream_end = True
-                    if response['status'] == 'failed':
-                        logger.error(response['log'])
+                    if response["status"] == "failed":
+                        logger.error(response["log"])
                     yield json.dumps(response)
             except Exception as error:
                 logger.error(
@@ -208,7 +215,7 @@ class ConnectionManager:
                 self.responses.pop(correlation_id, None)
         else:
             raise ValueError(f"No active local dev server found for token {token}")
-    
+
     async def task_handler(self, token: str, data: dict):
         """Handles the message received from the agent."""
         if data["type"] == ServerTask.LOCAL_UPDATE_ALERT:
@@ -219,15 +226,16 @@ class ConnectionManager:
                     .eq("cli_access_key", token)
                     .execute()
                 ).data
-                
+
                 if len(dev_branch) == 0:
                     logger.error(f"Dev branch not found for token {token}")
                     return
-                
+
                 dev_branch_id = dev_branch[0]["id"]
                 logger.info(f"Dev branch {dev_branch_id} sync columm updated to False")
 
             except Exception as error:
                 logger.error(f"Error updating Dev branch sync columm: {error}")
+
 
 websocket_manager = ConnectionManager()
