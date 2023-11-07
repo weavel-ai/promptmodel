@@ -2,15 +2,14 @@
 
 import { hierarchy, tree, stratify } from "d3-hierarchy";
 import { Drawer } from "@/components/Drawer";
-// import { useModuleVersion } from "@/hooks/useModuleVersion";
-import { useModuleVersion } from "@/hooks/dev/useModuleVersion";
-import { useModule } from "@/hooks/dev/useModule";
-import { useModuleVersionDetails } from "@/hooks/dev/useModuleVersionDetails";
+import { usePromptModelVersion } from "@/hooks/dev/usePromptModelVersion";
+import { usePromptModel } from "@/hooks/dev/usePromptModel";
+import { usePromptModelVersionDetails } from "@/hooks/dev/usePromptModelVersionDetails";
 import {
   Prompt,
   RunLog,
-  useModuleVersionStore,
-} from "@/stores/moduleVersionStore";
+  usePromptModelVersionStore,
+} from "@/stores/promptModelVersionStore";
 import classNames from "classnames";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
@@ -34,9 +33,9 @@ import { editor } from "monaco-editor/esm/vs/editor/editor.api";
 import "reactflow/dist/style.css";
 import { useHotkeys } from "react-hotkeys-hook";
 import {
-  streamLLMModuleRun as streamLocalLLMModuleRun,
+  streamPromptModelRun as streamLocalPromptModelRun,
   subscribeDevBranchStatus,
-  updateVersionStatus as updateLocalVersionStatus,
+  updatePromptModelVersionStatus as updateLocalVersionStatus,
 } from "@/apis/dev";
 import { useParams } from "next/navigation";
 import { StatusIndicator } from "@/components/StatusIndicator";
@@ -64,13 +63,16 @@ import {
 import { FunctionSelector } from "@/components/select/FunctionSelector";
 import { useFunctions } from "@/hooks/dev/useFunctions";
 import { useDevBranch } from "@/hooks/useDevBranch";
-import { streamLLMModuleRun, updateVersionStatus } from "@/apis/devCloud";
+import {
+  streamPromptModelRun,
+  updatePromptModelVersionStatus,
+} from "@/apis/devCloud";
 
 export default function Page() {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
-  const { moduleListData } = useModule();
-  const { versionListData, refetchVersionListData } = useModuleVersion();
+  const { promptModelListData } = usePromptModel();
+  const { versionListData, refetchVersionListData } = usePromptModelVersion();
   const { devBranchData } = useDevBranch();
 
   const [nodes, setNodes] = useState([]);
@@ -89,16 +91,16 @@ export default function Page() {
     selectedVersionUuid,
     focusedEditor,
     showSlashOptions,
-    updateModuleVersionLists,
+    updateVersionLists,
     updateRunLogs,
     updatePrompts,
     removeRunLog,
     setSelectedVersionUuid,
     setNewVersionUuidCache,
     setShowSlashOptions,
-  } = useModuleVersionStore();
+  } = usePromptModelVersionStore();
 
-  const { promptListData } = useModuleVersionDetails(selectedVersionUuid);
+  const { promptListData } = usePromptModelVersionDetails(selectedVersionUuid);
   const { refetchRunLogData } = useRunLogs(selectedVersionUuid);
   const { refetchSampleList } = useSamples();
   const { refetchFunctionListData } = useFunctions();
@@ -107,9 +109,9 @@ export default function Page() {
   const [modifiedPrompts, setModifiedPrompts] = useState<Prompt[]>([]);
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
-  const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
+  const nodeTypes = useMemo(() => ({ modelVersion: ModelVersionNode }), []);
 
-  const moduleVersionData = useMemo(() => {
+  const modelVersionData = useMemo(() => {
     const data = versionListData?.find(
       (version) => version.uuid === selectedVersionUuid
     );
@@ -153,11 +155,11 @@ export default function Page() {
       !originalPrompts?.every(
         (val, idx) => val === modifiedPrompts[idx]?.content
       ) ||
-      selectedModel != moduleVersionData?.model ||
-      moduleVersionData?.parsing_type != parser ||
-      (moduleVersionData?.parsing_type != null &&
-        moduleVersionData?.output_keys != outputKeys) ||
-      moduleVersionData?.functions != selectedFunctions
+      selectedModel != modelVersionData?.model ||
+      modelVersionData?.parsing_type != parser ||
+      (modelVersionData?.parsing_type != null &&
+        modelVersionData?.output_keys != outputKeys) ||
+      modelVersionData?.functions != selectedFunctions
     );
   }, [
     selectedModel,
@@ -268,7 +270,7 @@ export default function Page() {
 
         return {
           id: item.uuid,
-          type: "moduleVersion",
+          type: "modelVersion",
           data: {
             label: item.candidate_version ?? item.uuid.slice(0, 3),
             uuid: item.uuid,
@@ -305,23 +307,23 @@ export default function Page() {
     const args: any = {
       projectUuid: params?.projectUuid as string,
       devName: params?.devName as string,
-      moduleUuid: params?.moduleUuid as string,
-      moduleName: moduleListData?.find(
-        (module) => module.uuid === params?.moduleUuid
+      promptModelUuid: params?.promptModelUuid as string,
+      promptModelName: promptModelListData?.find(
+        (promptModel) => promptModel.uuid === params?.promptModelUuid
       ).name,
       sampleName: selectedSample == EMPTY_INPUTS_LABEL ? null : selectedSample,
       prompts: prompts,
-      model: isNew ? selectedModel : moduleVersionData.model,
-      fromUuid: isNew ? moduleVersionData?.uuid ?? null : null,
-      uuid: isNew ? null : moduleVersionData?.uuid,
-      parsingType: isNew ? parser : moduleVersionData?.parsing_type,
-      outputKeys: isNew ? outputKeys : moduleVersionData?.output_keys,
-      functions: isNew ? selectedFunctions : moduleVersionData?.functions,
+      model: isNew ? selectedModel : modelVersionData.model,
+      fromUuid: isNew ? modelVersionData?.uuid ?? null : null,
+      uuid: isNew ? null : modelVersionData?.uuid,
+      parsingType: isNew ? parser : modelVersionData?.parsing_type,
+      outputKeys: isNew ? outputKeys : modelVersionData?.output_keys,
+      functions: isNew ? selectedFunctions : modelVersionData?.functions,
       onNewData: async (data) => {
         switch (data?.status) {
           case "completed":
             await refetchRunLogData();
-            removeRunLog(isNew ? "new" : moduleVersionData?.uuid, uuid);
+            removeRunLog(isNew ? "new" : modelVersionData?.uuid, uuid);
             toast.update(toastId, {
               render: "Completed",
               type: "success",
@@ -331,7 +333,7 @@ export default function Page() {
             break;
           case "failed":
             await refetchRunLogData();
-            removeRunLog(isNew ? "new" : moduleVersionData?.uuid, uuid);
+            removeRunLog(isNew ? "new" : modelVersionData?.uuid, uuid);
             toast.update(toastId, {
               render: data?.log,
               type: "error",
@@ -340,17 +342,17 @@ export default function Page() {
             });
             break;
         }
-        if (data?.llm_module_version_uuid) {
-          setNewVersionUuidCache(data?.llm_module_version_uuid);
+        if (data?.prompt_model_version_uuid) {
+          setNewVersionUuidCache(data?.prompt_model_version_uuid);
         }
         if (data?.inputs) {
-          updateRunLogs(isNew ? "new" : moduleVersionData?.uuid, uuid, {
+          updateRunLogs(isNew ? "new" : modelVersionData?.uuid, uuid, {
             inputs: data?.inputs,
           });
         }
         if (data?.raw_output) {
           cacheRawOutput += data?.raw_output;
-          updateRunLogs(isNew ? "new" : moduleVersionData?.uuid, uuid, {
+          updateRunLogs(isNew ? "new" : modelVersionData?.uuid, uuid, {
             raw_output: cacheRawOutput,
           });
         }
@@ -363,14 +365,14 @@ export default function Page() {
               cacheParsedOutputs[key] = parsedOutputs[key];
             }
           }
-          updateRunLogs(isNew ? "new" : moduleVersionData?.uuid, uuid, {
+          updateRunLogs(isNew ? "new" : modelVersionData?.uuid, uuid, {
             parsed_outputs: cacheParsedOutputs,
           });
         }
         if (data?.function_call) {
           const functionCallData = data?.function_call;
           functionCallData["initial_raw_output"] = cacheRawOutput;
-          updateRunLogs(isNew ? "new" : moduleVersionData?.uuid, uuid, {
+          updateRunLogs(isNew ? "new" : modelVersionData?.uuid, uuid, {
             raw_output: "",
             function_call: data?.function_call,
           });
@@ -383,13 +385,13 @@ export default function Page() {
       delete args.projectUuid;
       delete args.devName;
       args["devUuid"] = devBranchData?.uuid;
-      await streamLLMModuleRun(args);
+      await streamPromptModelRun(args);
     } else {
-      await streamLocalLLMModuleRun(args);
+      await streamLocalPromptModelRun(args);
     }
     if (isNew) {
       refetchVersionListData();
-      if (!moduleVersionData?.uuid) {
+      if (!modelVersionData?.uuid) {
         setSelectedVersionUuid(newVersionUuidCache);
       }
     }
@@ -399,24 +401,24 @@ export default function Page() {
     status: "broken" | "working" | "candidate"
   ) {
     if (devBranchData?.cloud) {
-      await updateVersionStatus(
+      await updatePromptModelVersionStatus(
         await createSupabaseClient(),
         devBranchData?.uuid,
-        moduleVersionData?.uuid,
+        modelVersionData?.uuid,
         status
       );
     } else {
       await updateLocalVersionStatus(
         params?.projectUuid as string,
         params?.devName as string,
-        moduleVersionData?.uuid,
+        modelVersionData?.uuid,
         status
       );
     }
-    updateModuleVersionLists(
-      params?.moduleUuid as string,
+    updateVersionLists(
+      params?.promptModelUuid as string,
       versionListData?.map((version) => {
-        if (version.uuid === moduleVersionData?.uuid) {
+        if (version.uuid === modelVersionData?.uuid) {
           return {
             ...version,
             status: status,
@@ -612,13 +614,13 @@ export default function Page() {
               {/* Header */}
               <div className="flex flex-row justify-between items-center gap-x-8">
                 <div className="flex flex-row w-full justify-between items-center gap-x-3 mb-2 mr-2">
-                  {moduleVersionData?.candidate_version ? (
+                  {modelVersionData?.candidate_version ? (
                     <div className="flex flex-row justify-start items-center gap-x-3">
                       <p className="text-base-content font-bold text-lg">
-                        Prompt V{moduleVersionData?.candidate_version}
+                        Prompt V{modelVersionData?.candidate_version}
                       </p>
 
-                      {moduleVersionData?.is_published ? (
+                      {modelVersionData?.is_published ? (
                         <div className="flex flex-row gap-x-2 items-center">
                           <StatusIndicator status="published" />
                           <p className="text-base-content font-medium text-sm">
@@ -637,11 +639,11 @@ export default function Page() {
                   ) : (
                     <div className="flex flex-row justify-start items-center gap-x-3">
                       <p className="text-base-content font-bold text-lg">
-                        Prompt V{moduleVersionData?.uuid.slice(0, 6)}
+                        Prompt V{modelVersionData?.uuid.slice(0, 6)}
                       </p>
                       <div className="flex flex-row gap-x-2 items-center">
                         <StatusSelector
-                          status={moduleVersionData?.status}
+                          status={modelVersionData?.status}
                           setStatus={handleUpdateVersionStatus}
                         />
                       </div>
@@ -649,7 +651,7 @@ export default function Page() {
                   )}
                   {createVariantOpen ? (
                     <div className="flex flex-row gap-x-3">
-                      <ModelDisplay modelName={moduleVersionData?.model} />
+                      <ModelDisplay modelName={modelVersionData?.model} />
                       <button
                         className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20 disabled:bg-muted disabled:border-muted-content"
                         onClick={() => handleClickRun(false)}
@@ -664,7 +666,7 @@ export default function Page() {
                     </div>
                   ) : (
                     <div className="flex flex-row gap-x-3">
-                      <ModelDisplay modelName={moduleVersionData?.model} />
+                      <ModelDisplay modelName={modelVersionData?.model} />
                       <button
                         className="flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
                         onClick={handleClickCreateVariant}
@@ -700,8 +702,8 @@ export default function Page() {
                         From&nbsp;
                         <u>
                           Prompt V
-                          {moduleVersionData?.candidate_version ??
-                            moduleVersionData?.uuid?.slice(0, 6)}
+                          {modelVersionData?.candidate_version ??
+                            modelVersionData?.uuid?.slice(0, 6)}
                         </u>
                       </p>
                     </div>
@@ -746,23 +748,23 @@ export default function Page() {
                             </span>
                           </label>
                           <ParserTypeSelector
-                            parser={moduleVersionData?.parsing_type}
+                            parser={modelVersionData?.parsing_type}
                           />
                         </div>
                         <div className="w-auto flex flex-col items-start justify-start">
                           <label className="label text-xs font-medium">
                             <span className="label-text">Output keys</span>
                           </label>
-                          {moduleVersionData?.output_keys && (
+                          {modelVersionData?.output_keys && (
                             <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
-                              {moduleVersionData?.output_keys?.map((key) => (
+                              {modelVersionData?.output_keys?.map((key) => (
                                 <Badge className="text-sm" variant="secondary">
                                   {key}
                                 </Badge>
                               ))}
                             </div>
                           )}
-                          {!moduleVersionData?.output_keys && (
+                          {!modelVersionData?.output_keys && (
                             <Badge className="text-sm" variant="muted">
                               No output keys
                             </Badge>
@@ -773,9 +775,9 @@ export default function Page() {
                         <label className="label text-xs font-medium">
                           <span className="label-text">Functions</span>
                         </label>
-                        {moduleVersionData?.functions && (
+                        {modelVersionData?.functions && (
                           <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
-                            {moduleVersionData?.functions?.map(
+                            {modelVersionData?.functions?.map(
                               (functionName) => (
                                 <Badge
                                   key={functionName}
@@ -788,8 +790,8 @@ export default function Page() {
                             )}
                           </div>
                         )}
-                        {(!moduleVersionData?.functions ||
-                          moduleVersionData?.functions?.length == 0) && (
+                        {(!modelVersionData?.functions ||
+                          modelVersionData?.functions?.length == 0) && (
                           <Badge className="text-sm" variant="muted">
                             No functions
                           </Badge>
@@ -862,23 +864,23 @@ export default function Page() {
                         <span className="label-text">Output parser type</span>
                       </label>
                       <ParserTypeSelector
-                        parser={moduleVersionData?.parsing_type}
+                        parser={modelVersionData?.parsing_type}
                       />
                     </div>
                     <div className="w-auto flex flex-col items-start justify-start">
                       <label className="label text-xs font-medium">
                         <span className="label-text">Output keys</span>
                       </label>
-                      {moduleVersionData?.output_keys && (
+                      {modelVersionData?.output_keys && (
                         <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
-                          {moduleVersionData?.output_keys?.map((key) => (
+                          {modelVersionData?.output_keys?.map((key) => (
                             <Badge className="text-sm" variant="secondary">
                               {key}
                             </Badge>
                           ))}
                         </div>
                       )}
-                      {!moduleVersionData?.output_keys && (
+                      {!modelVersionData?.output_keys && (
                         <Badge className="text-sm" variant="muted">
                           No output keys
                         </Badge>
@@ -888,9 +890,9 @@ export default function Page() {
                       <label className="label text-xs font-medium">
                         <span className="label-text">Functions</span>
                       </label>
-                      {moduleVersionData?.functions && (
+                      {modelVersionData?.functions && (
                         <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
-                          {moduleVersionData?.functions?.map((functionName) => (
+                          {modelVersionData?.functions?.map((functionName) => (
                             <Badge
                               key={functionName}
                               className="text-sm"
@@ -901,8 +903,8 @@ export default function Page() {
                           ))}
                         </div>
                       )}
-                      {(!moduleVersionData?.functions ||
-                        moduleVersionData?.functions?.length == 0) && (
+                      {(!modelVersionData?.functions ||
+                        modelVersionData?.functions?.length == 0) && (
                         <Badge className="text-sm" variant="muted">
                           No functions
                         </Badge>
@@ -1112,7 +1114,8 @@ const PromptComponent = ({
   const [open, setOpen] = useState(true);
   const [height, setHeight] = useState(30);
   const editorRef = useRef(null);
-  const { setFocusedEditor, setShowSlashOptions } = useModuleVersionStore();
+  const { setFocusedEditor, setShowSlashOptions } =
+    usePromptModelVersionStore();
 
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
     const contentHeight = editor.getContentHeight();
@@ -1222,7 +1225,8 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
   const [height, setHeight] = useState(30);
   const originalEditorRef = useRef(null);
   const modifiedEditorRef = useRef(null);
-  const { setFocusedEditor, setShowSlashOptions } = useModuleVersionStore();
+  const { setFocusedEditor, setShowSlashOptions } =
+    usePromptModelVersionStore();
 
   const handleEditorDidMount = (editor: MonacoDiffEditor, monaco: Monaco) => {
     originalEditorRef.current = editor.getOriginalEditor();
@@ -1315,7 +1319,7 @@ const RunLogSection = ({
 }) => {
   const [showRaw, setShowRaw] = useState(true);
   const { runLogData } = useRunLogs(versionUuid);
-  const { runTasksCount, runLogs } = useModuleVersionStore();
+  const { runTasksCount, runLogs } = usePromptModelVersionStore();
   const [runLogList, setRunLogList] = useState<RunLog[]>([]);
 
   useEffect(() => {
@@ -1471,9 +1475,9 @@ const RunLogComponent = ({
   );
 };
 
-function ModuleVersionNode({ data }) {
+function ModelVersionNode({ data }) {
   const { selectedVersionUuid, setSelectedVersionUuid } =
-    useModuleVersionStore();
+    usePromptModelVersionStore();
   return (
     <div
       className={classNames(

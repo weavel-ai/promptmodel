@@ -4,26 +4,27 @@ import { fetchProject, fetchProjects } from "@/apis/project";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
-import { fetchModules } from "@/apis/module";
-import { fetchModuleVersions } from "@/apis/moduleVersion";
+import { fetchPromptModels } from "@/apis/promptModel";
+import { fetchPromptModelVersions } from "@/apis/promptModelVersion";
 
-export const useModuleVersion = () => {
+export const usePromptModelVersion = () => {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
 
   const { data: versionListData, refetch: refetchVersionListData } = useQuery({
-    queryKey: ["versionListData", { moduleUuid: params?.moduleUuid }],
+    queryKey: ["versionListData", { promptModelUuid: params?.promptModelUuid }],
     queryFn: async () =>
-      await fetchModuleVersions(
+      await fetchPromptModelVersions(
         await createSupabaseClient(),
-        params?.moduleUuid as string
+        params?.promptModelUuid as string
       ),
-    enabled: params?.moduleUuid != undefined && params?.moduleUuid != null,
+    enabled:
+      params?.promptModelUuid != undefined && params?.promptModelUuid != null,
   });
 
   return {
-    moduleUuid: params?.moduleUuid as string,
+    promptModelUuid: params?.promptModelUuid as string,
     versionListData,
-    refetchVersionListData
+    refetchVersionListData,
   };
 };

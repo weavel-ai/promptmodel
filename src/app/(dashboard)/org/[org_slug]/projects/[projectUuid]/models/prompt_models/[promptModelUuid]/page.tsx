@@ -1,8 +1,8 @@
 "use client";
 
 import { Drawer } from "@/components/Drawer";
-import { useModuleVersion } from "@/hooks/useModuleVersion";
-import { useModuleVersionStore } from "@/stores/moduleVersionStore";
+import { usePromptModelVersion } from "@/hooks/usePromptModelVersion";
+import { usePromptModelVersionStore } from "@/stores/promptModelVersionStore";
 import classNames from "classnames";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
@@ -12,7 +12,7 @@ import ReactFlow, {
   Position,
 } from "reactflow";
 import { motion } from "framer-motion";
-import { useModuleVersionDetails } from "@/hooks/useModuleVersionDetails";
+import { usePromptModelVersionDetails } from "@/hooks/usePromptModelVersionDetails";
 import {
   ArrowsOut,
   CaretDown,
@@ -21,7 +21,7 @@ import {
   XCircle,
 } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import { updatePublishedModuleVersion } from "@/apis/moduleVersion";
+import { updatePublishedPromptModelVersion } from "@/apis/promptModelVersion";
 import { useSupabaseClient } from "@/apis/base";
 import "reactflow/dist/style.css";
 import { useRunLog } from "@/hooks/useRunLog";
@@ -184,18 +184,18 @@ const AnalyticsPage = () => {
 // Versions Tab Page
 const VersionsPage = () => {
   const { createSupabaseClient } = useSupabaseClient();
-  const { versionListData, refetchVersionListData } = useModuleVersion();
+  const { versionListData, refetchVersionListData } = usePromptModelVersion();
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
 
   const { selectedVersionUuid, setSelectedVersionUuid } =
-    useModuleVersionStore();
+    usePromptModelVersionStore();
   const { projectData } = useProject();
-  const nodeTypes = useMemo(() => ({ moduleVersion: ModuleVersionNode }), []);
+  const nodeTypes = useMemo(() => ({ modelVersion: ModelVersionNode }), []);
 
   const queryClient = useQueryClient();
-  const { promptListData, moduleVersionData } =
-    useModuleVersionDetails(selectedVersionUuid);
+  const { promptListData, promptModelVersionData } =
+    usePromptModelVersionDetails(selectedVersionUuid);
 
   const { runLogData } = useRunLog(selectedVersionUuid);
 
@@ -263,7 +263,7 @@ const VersionsPage = () => {
 
         return {
           id: item.uuid.toString(),
-          type: "moduleVersion",
+          type: "modelVersion",
           data: {
             label: item.version,
             uuid: item.uuid,
@@ -284,7 +284,7 @@ const VersionsPage = () => {
       (v) => v.is_published
     )?.uuid;
 
-    await updatePublishedModuleVersion(
+    await updatePublishedPromptModelVersion(
       await createSupabaseClient(),
       selectedVersionUuid,
       previousPublishedUuid,
@@ -294,7 +294,7 @@ const VersionsPage = () => {
     await refetchVersionListData();
     queryClient.invalidateQueries({
       predicate: (query: any) =>
-        query.queryKey[0] === "moduleVersionData" &&
+        query.queryKey[0] === "modelVersionData" &&
         (query.queryKey[1]?.uuid === selectedVersionUuid ||
           query.queryKey[1]?.uuid == previousPublishedUuid),
     });
@@ -329,9 +329,9 @@ const VersionsPage = () => {
           <div className="flex flex-row justify-between items-center mb-2">
             <div className="flex flex-row gap-x-2 justify-start items-center">
               <p className="text-base-content font-bold text-lg">
-                Prompt V{moduleVersionData?.version}
+                Prompt V{promptModelVersionData?.version}
               </p>
-              {moduleVersionData?.is_published && (
+              {promptModelVersionData?.is_published && (
                 <div className="flex flex-row gap-x-2 items-center px-2 justify-self-start">
                   <div className="w-2 h-2 rounded-full bg-secondary" />
                   <p className="text-base-content font-medium text-sm">
@@ -341,7 +341,7 @@ const VersionsPage = () => {
               )}
             </div>
             <div className="flex flex-row gap-x-2 items-center">
-              {!moduleVersionData?.is_published && (
+              {!promptModelVersionData?.is_published && (
                 <button
                   className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
                   onClick={handleClickPublish}
@@ -390,16 +390,16 @@ const VersionsPage = () => {
                     <span className="label-text">Output parser type</span>
                   </label>
                   <ParserTypeSelector
-                    parser={moduleVersionData?.parsing_type}
+                    parser={promptModelVersionData?.parsing_type}
                   />
                 </div>
                 <div className="flex flex-col items-start justify-start">
                   <label className="label text-xs font-medium">
                     <span className="label-text">Output keys</span>
                   </label>
-                  {moduleVersionData?.output_keys && (
+                  {promptModelVersionData?.output_keys && (
                     <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
-                      {moduleVersionData?.output_keys?.map((key) => (
+                      {promptModelVersionData?.output_keys?.map((key) => (
                         <Badge
                           key={key}
                           className="text-sm"
@@ -410,7 +410,7 @@ const VersionsPage = () => {
                       ))}
                     </div>
                   )}
-                  {!moduleVersionData?.output_keys && (
+                  {!promptModelVersionData?.output_keys && (
                     <Badge className="text-sm" variant="muted">
                       No output keys
                     </Badge>
@@ -420,9 +420,9 @@ const VersionsPage = () => {
                   <label className="label text-xs font-medium">
                     <span className="label-text">Functions</span>
                   </label>
-                  {moduleVersionData?.functions && (
+                  {promptModelVersionData?.functions && (
                     <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
-                      {moduleVersionData?.functions?.map((funcName) => (
+                      {promptModelVersionData?.functions?.map((funcName) => (
                         <Badge
                           key={funcName}
                           className="text-sm"
@@ -433,8 +433,8 @@ const VersionsPage = () => {
                       ))}
                     </div>
                   )}
-                  {(!moduleVersionData?.functions ||
-                    moduleVersionData?.functions?.length == 0) && (
+                  {(!promptModelVersionData?.functions ||
+                    promptModelVersionData?.functions?.length == 0) && (
                     <Badge className="text-sm" variant="muted">
                       No functions
                     </Badge>
@@ -704,9 +704,9 @@ const RunLogComponent = ({ runLogData, isFullScreen, setIsFullScreen }) => {
   );
 };
 
-function ModuleVersionNode({ data }) {
+function ModelVersionNode({ data }) {
   const { selectedVersionUuid, setSelectedVersionUuid } =
-    useModuleVersionStore();
+    usePromptModelVersionStore();
   return (
     <div
       className={classNames(

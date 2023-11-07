@@ -1,28 +1,27 @@
 import { useSupabaseClient } from "@/apis/base";
-import { fetchModuleVersion } from "@/apis/moduleVersion";
+import { fetchPromptModelVersion } from "@/apis/promptModelVersion";
 import { fetchPrompts } from "@/apis/prompt";
 import { useQuery } from "@tanstack/react-query";
 
-export const useModuleVersionDetails = (versionUuid: string) => {
+export const usePromptModelVersionDetails = (versionUuid: string) => {
   const { createSupabaseClient } = useSupabaseClient();
 
   const { data: promptListData } = useQuery({
-    queryKey: ["promptListData", { moduleVersionUuid: versionUuid }],
+    queryKey: ["promptListData", { versionUuid: versionUuid }],
     queryFn: async () =>
       await fetchPrompts(await createSupabaseClient(), versionUuid),
     enabled: versionUuid != undefined && versionUuid != null,
   });
 
-  const { data: moduleVersionData } = useQuery({
-    queryKey: ["moduleVersionData", { uuid: versionUuid }],
+  const { data: promptModelVersionData } = useQuery({
+    queryKey: ["promptModelVersionData", { uuid: versionUuid }],
     queryFn: async () =>
-      await fetchModuleVersion(await createSupabaseClient(), versionUuid),
+      await fetchPromptModelVersion(await createSupabaseClient(), versionUuid),
     enabled: versionUuid != undefined && versionUuid != null,
   });
 
   return {
     promptListData,
-    moduleVersionData,
+    promptModelVersionData,
   };
 };
-

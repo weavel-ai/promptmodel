@@ -1,22 +1,22 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
-export async function fetchModuleVersions(
+export async function fetchPromptModelVersions(
   supabaseClient: SupabaseClient,
-  moduleUuid: string
+  promptModelUuid: string
 ) {
   const res = await supabaseClient
-    .from("llm_module_version")
+    .from("prompt_model_version")
     .select("uuid, version, from_uuid, is_published")
-    .eq("llm_module_uuid", moduleUuid)
+    .eq("prompt_model_uuid", promptModelUuid)
     .order("version", { ascending: true });
   return res.data;
 }
-export async function fetchModuleVersion(
+export async function fetchPromptModelVersion(
   supabaseClient: SupabaseClient,
   uuid: string
 ) {
   const res = await supabaseClient
-    .from("llm_module_version")
+    .from("prompt_model_version")
     .select(
       "version, from_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys, functions"
     )
@@ -25,7 +25,7 @@ export async function fetchModuleVersion(
   return res.data;
 }
 
-export async function updatePublishedModuleVersion(
+export async function updatePublishedPromptModelVersion(
   supabaseClient: SupabaseClient,
   uuid: string,
   previousPublishedVersionUuid: string | null,
@@ -34,12 +34,12 @@ export async function updatePublishedModuleVersion(
 ) {
   if (previousPublishedVersionUuid) {
     await supabaseClient
-      .from("llm_module_version")
+      .from("prompt_model_version")
       .update({ is_published: false })
       .eq("uuid", previousPublishedVersionUuid);
   }
   const res = await supabaseClient
-    .from("llm_module_version")
+    .from("prompt_model_version")
     .update({ is_published: true })
     .eq("uuid", uuid)
     .single();
@@ -61,4 +61,6 @@ export async function updatePublishedModuleVersion(
   return res.data;
 }
 
-export type ModuleVersion = Awaited<ReturnType<typeof fetchModuleVersions>>[0];
+export type PromptModelVersion = Awaited<
+  ReturnType<typeof fetchPromptModelVersions>
+>[0];

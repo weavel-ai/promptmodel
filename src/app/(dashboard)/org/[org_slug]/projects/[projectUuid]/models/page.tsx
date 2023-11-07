@@ -1,5 +1,5 @@
 "use client";
-import { useModule } from "@/hooks/useModule";
+import { usePromptModel } from "@/hooks/usePromptModel";
 import classNames from "classnames";
 import { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
@@ -24,18 +24,18 @@ const initialEdges = [];
 export default function Page() {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
-  const { moduleListData } = useModule();
+  const { promptModelListData } = usePromptModel();
   const [showCreateDevModal, setShowCreateDevModal] = useState(false);
 
   const nodeTypes = useMemo(
-    () => ({ module: ModuleNode, groupLabel: GroupNode }),
+    () => ({ model: ModelNode, groupLabel: GroupNode }),
     []
   );
 
   // Build nodes
   useEffect(() => {
-    if (!moduleListData || moduleListData?.length == 0) return;
-    const totalNodes = moduleListData.length;
+    if (!promptModelListData || promptModelListData?.length == 0) return;
+    const totalNodes = promptModelListData.length;
     const windowHeight = window.innerHeight;
     const windowWidth = window.innerWidth;
     let maxNodesPerRow = Math.floor(
@@ -71,7 +71,7 @@ export default function Page() {
       },
     ];
     newNodes.push(
-      ...moduleListData.map((module, index) => {
+      ...promptModelListData.map((model, index) => {
         // Set node position
         const row = Math.floor(index / maxNodesPerRow);
         const col = index % maxNodesPerRow;
@@ -84,20 +84,20 @@ export default function Page() {
         const y = topPadding + row * (NODE_HEIGHT + NODE_PADDING);
 
         return {
-          id: module.uuid,
-          type: "module",
+          id: model.uuid,
+          type: "model",
           position: { x: x, y: y },
           data: {
-            label: module.name,
-            name: module.name,
-            uuid: module.uuid,
-            created_at: module.created_at,
+            label: model.name,
+            name: model.name,
+            uuid: model.uuid,
+            created_at: model.created_at,
           },
         };
       })
     );
     setNodes(newNodes);
-  }, [moduleListData]);
+  }, [promptModelListData]);
 
   return (
     <div className="w-full h-full">
@@ -128,11 +128,11 @@ export default function Page() {
   );
 }
 
-function ModuleNode({ data }) {
+function ModelNode({ data }) {
   const pathname = usePathname();
   return (
     <Link
-      href={`${pathname}/${data.uuid}`}
+      href={`${pathname}/prompt_models/${data.uuid}`}
       className={classNames(
         "bg-base-200 p-4 rounded-box flex flex-col gap-y-2 justify-start items-start",
         "w-[16rem] h-[9rem] visible",

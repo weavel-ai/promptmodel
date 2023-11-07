@@ -17,7 +17,7 @@ type Store = {
   runTasksCount: Record<string | "new", number>;
   newVersionUuidCache: string | null;
   newPromptCache: Prompt[];
-  moduleVersionLists: Record<string, any>;
+  versionLists: Record<string, any>;
   focusedEditor: editor.ICodeEditor | null;
   showSlashOptions: boolean;
 };
@@ -31,19 +31,19 @@ type Actions = {
   removeRunTask: (version: string | "new") => void;
   setNewVersionUuidCache: (uuid: string) => void;
   setNewPromptCache: (prompts: Prompt[]) => void;
-  updateModuleVersionLists: (moduleUuid: string, versionList: any) => void;
+  updateVersionLists: (promptModelUuid: string, versionList: any) => void;
   setFocusedEditor: (editor: editor.ICodeEditor | null) => void;
   setShowSlashOptions: (show: boolean) => void;
 };
 
-export const useModuleVersionStore = create<Store & Actions>((set) => ({
+export const usePromptModelVersionStore = create<Store & Actions>((set) => ({
   selectedVersionUuid: null,
   runLogs: {},
   prompts: {},
   runTasksCount: {},
   newVersionUuidCache: null,
   newPromptCache: [],
-  moduleVersionLists: {},
+  versionLists: {},
   focusedEditor: null,
   showSlashOptions: false,
   setSelectedVersionUuid: (uuid) => set({ selectedVersionUuid: uuid }),
@@ -101,11 +101,11 @@ export const useModuleVersionStore = create<Store & Actions>((set) => ({
   },
   setNewVersionUuidCache: (uuid) => set({ newVersionUuidCache: uuid }),
   setNewPromptCache: (prompts) => set({ newPromptCache: prompts }),
-  updateModuleVersionLists: (moduleUuid, versionList) =>
+  updateVersionLists: (promptModelUuid, versionList) =>
     set((state) => ({
-      moduleVersionLists: {
-        ...state.moduleVersionLists,
-        [moduleUuid]: versionList,
+      versionLists: {
+        ...state.versionLists,
+        [promptModelUuid]: versionList,
       },
     })),
   setFocusedEditor: (editor) => set({ focusedEditor: editor }),

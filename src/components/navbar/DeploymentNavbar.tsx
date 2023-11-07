@@ -25,7 +25,7 @@ import { Michroma, Russo_One } from "next/font/google";
 import { fetchOrganization, updateOrganization } from "@/apis/organization";
 import { useOrgData } from "@/hooks/useOrgData";
 import { useProject } from "@/hooks/useProject";
-import { useModule } from "@/hooks/useModule";
+import { usePromptModel } from "@/hooks/usePromptModel";
 import { SelectNavigator } from "../SelectNavigator";
 
 const michroma = Michroma({
@@ -48,7 +48,7 @@ export const DeploymentNavbar = (props: NavbarProps) => {
   const { organization } = useOrganization();
   const { orgData, refetchOrgData } = useOrgData();
   const { projectListData } = useProject();
-  const { moduleListData } = useModule();
+  const { promptModelListData } = usePromptModel();
   // Mobile
   const isMobile = useMediaQuery({ query: "(max-width: 768px)" });
   const [showDropdown, setShowDropdown] = useState(false);
@@ -150,29 +150,29 @@ export const DeploymentNavbar = (props: NavbarProps) => {
                   label: projectListData?.find(
                     (project) => project.uuid == params?.projectUuid
                   )?.name,
-                  href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/modules`,
+                  href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models`,
                 }}
                 options={projectListData?.map((project) => {
                   return {
                     label: project.name,
-                    href: `/org/${params?.org_slug}/projects/${project?.uuid}/modules`,
+                    href: `/org/${params?.org_slug}/projects/${project?.uuid}/models`,
                   };
                 })}
               />
             )}
-            {/* LLM Module navigator */}
-            {params?.moduleUuid && (
+            {/* PromptModel navigator */}
+            {params?.promptModelUuid && (
               <SelectNavigator
                 current={{
-                  label: moduleListData?.find(
-                    (module) => module.uuid == params?.moduleUuid
+                  label: promptModelListData?.find(
+                    (promptModel) => promptModel.uuid == params?.promptModelUuid
                   )?.name,
-                  href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/modules/${params?.moduleUuid}`,
+                  href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/prompt_models/${params?.promptModelUuid}`,
                 }}
-                options={moduleListData?.map((module) => {
+                options={promptModelListData?.map((promptModel) => {
                   return {
-                    label: module.name,
-                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/modules/${module.uuid}`,
+                    label: promptModel.name,
+                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/prompt_models/${promptModel.uuid}`,
                   };
                 })}
               />

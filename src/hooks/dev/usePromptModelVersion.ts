@@ -1,21 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import {
-  fetchModuleVersions as fetchLocalModuleVersions,
+  fetchPromptModelVersions as fetchLocalPromptModelVersions,
   updateDevBranchSync,
 } from "@/apis/dev";
 import { useSupabaseClient } from "@/apis/base";
 import { useEffect, useMemo, useState } from "react";
-import { useModuleVersionStore } from "@/stores/moduleVersionStore";
+import { usePromptModelVersionStore } from "@/stores/promptModelVersionStore";
 import { useDevBranch } from "../useDevBranch";
-import { fetchModuleVersions } from "@/apis/devCloud";
+import { fetchPromptModelVersions } from "@/apis/devCloud";
 
-export const useModuleVersion = () => {
+export const usePromptModelVersion = () => {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
   const { devBranchData } = useDevBranch();
-  const { moduleVersionLists, updateModuleVersionLists } =
-    useModuleVersionStore();
+  const { versionLists, updateVersionLists } = usePromptModelVersionStore();
 
   const { data: fetchedVersionListData, refetch: refetchVersionListData } =
     useQuery({
@@ -23,22 +22,22 @@ export const useModuleVersion = () => {
         "versionListData",
         "sync",
         {
-          moduleUuid: params?.moduleUuid,
+          promptModelUuid: params?.promptModelUuid,
           devName: params?.devName,
           projectUuid: params?.projectUuid,
         },
       ],
       queryFn: async () =>
         devBranchData?.cloud
-          ? await fetchModuleVersions(
+          ? await fetchPromptModelVersions(
               await createSupabaseClient(),
               devBranchData?.uuid,
-              params?.moduleUuid as string
+              params?.promptModelUuid as string
             )
-          : await fetchLocalModuleVersions(
+          : await fetchLocalPromptModelVersions(
               params?.projectUuid as string,
               params?.devName as string,
-              params?.moduleUuid as string
+              params?.promptModelUuid as string
             ),
       onSettled: async (data) => {
         if (devBranchData?.cloud) return;
@@ -50,26 +49,27 @@ export const useModuleVersion = () => {
         );
       },
       enabled:
-        Boolean(params?.moduleUuid && params?.devName && params?.projectUuid) &&
-        devBranchData != null,
+        Boolean(
+          params?.promptModelUuid && params?.devName && params?.projectUuid
+        ) && devBranchData != null,
     });
 
   useEffect(() => {
-    updateModuleVersionLists(
-      params?.moduleUuid as string,
+    updateVersionLists(
+      params?.promptModelUuid as string,
       fetchedVersionListData
     );
   }, [fetchedVersionListData]);
 
   const versionListData = useMemo(() => {
-    if (!params?.moduleUuid) return [];
-    return moduleVersionLists[params?.moduleUuid as string];
-  }, [params, moduleVersionLists]);
+    if (!params?.promptModelUuid) return [];
+    return versionLists[params?.promptModelUuid as string];
+  }, [params, versionLists]);
 
   return {
-    moduleUuid: params?.moduleUuid as string,
+    promptModelUuid: params?.promptModelUuid as string,
     versionListData,
-    moduleVersionLists,
+    versionLists,
     fetchedVersionListData,
     refetchVersionListData,
   };

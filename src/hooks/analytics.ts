@@ -1,25 +1,25 @@
 import { useSupabaseClient } from "@/apis/base";
 import { useQuery } from "@tanstack/react-query";
-import { useModule } from "./useModule";
+import { usePromptModel } from "./usePromptModel";
 import { fetchDailyRunLogMetrics } from "@/apis/analytics";
 
 export const useDailyRunLogMetrics = (startDay, endDay) => {
-  const { moduleUuid } = useModule();
+  const { promptModelUuid } = usePromptModel();
   const { createSupabaseClient } = useSupabaseClient();
 
   const { data: dailyRunLogMetrics } = useQuery({
     queryKey: [
       "dailyRunLogMetrics",
-      { moduleUuid: moduleUuid, startDay: startDay, endDay: endDay },
+      { promptModelUuid: promptModelUuid, startDay: startDay, endDay: endDay },
     ],
     queryFn: async () =>
       await fetchDailyRunLogMetrics(
         await createSupabaseClient(),
-        moduleUuid,
+        promptModelUuid,
         startDay,
         endDay
       ),
-    enabled: moduleUuid != undefined && moduleUuid != null,
+    enabled: promptModelUuid != undefined && promptModelUuid != null,
   });
 
   return {

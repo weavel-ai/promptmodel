@@ -63,29 +63,29 @@ export function subscribeDevBranchStatus(
   return devBranchStream;
 }
 
-export async function fetchModules(projectUuid: string, devName: string) {
-  const res = await railwayDevClient.get("/list_modules", {
+export async function fetchPromptModels(projectUuid: string, devName: string) {
+  const res = await railwayDevClient.get("/list_prompt_models", {
     params: {
       project_uuid: projectUuid,
       dev_name: devName,
     },
   });
-  return res.data.llm_modules;
+  return res.data.prompt_models;
 }
 
-export async function fetchModuleVersions(
+export async function fetchPromptModelVersions(
   projectUuid: string,
   devName: string,
-  moduleUuid: string
+  promptModelUuid: string
 ) {
-  const res = await railwayDevClient.get("/list_versions", {
+  const res = await railwayDevClient.get("/list_prompt_model_versions", {
     params: {
       project_uuid: projectUuid,
       dev_name: devName,
-      llm_module_uuid: moduleUuid,
+      prompt_model_uuid: promptModelUuid,
     },
   });
-  return res.data.llm_module_versions;
+  return res.data.prompt_model_versions;
 }
 
 export async function fetchFunctions(
@@ -101,20 +101,20 @@ export async function fetchFunctions(
   return res.data.functions;
 }
 
-export async function updateVersionStatus(
+export async function updatePromptModelVersionStatus(
   projectUuid: string,
   devName: string,
   versionUuid: string,
   status: "broken" | "working" | "candidate"
 ) {
   await railwayDevClient.post(
-    "/change_version_status",
+    "/change_prompt_model_version_status",
     {},
     {
       params: {
         project_uuid: projectUuid,
         dev_name: devName,
-        llm_module_version_uuid: versionUuid,
+        prompt_model_version_uuid: versionUuid,
         status: status,
       },
     }
@@ -124,13 +124,13 @@ export async function updateVersionStatus(
 export async function fetchPrompts(
   projectUuid: string,
   devName: string,
-  moduleVersionUuid: string
+  promptModelVersionUuid: string
 ) {
   const res = await railwayDevClient.get("/get_prompts", {
     params: {
       project_uuid: projectUuid,
       dev_name: devName,
-      llm_module_version_uuid: moduleVersionUuid,
+      prompt_model_version_uuid: promptModelVersionUuid,
     },
   });
   return res.data.prompts;
@@ -149,23 +149,23 @@ export async function fetchSamples(projectUuid: string, devName: string) {
 export async function fetchRunLogs(
   projectUuid: string,
   devName: string,
-  moduleVersionUuid: string
+  promptModelVersionUuid: string
 ) {
   const res = await railwayDevClient.get("/get_run_logs", {
     params: {
       project_uuid: projectUuid,
       dev_name: devName,
-      llm_module_version_uuid: moduleVersionUuid,
+      prompt_model_version_uuid: promptModelVersionUuid,
     },
   });
   return res.data.run_logs;
 }
 
-export async function streamLLMModuleRun({
+export async function streamPromptModelRun({
   projectUuid,
   devName,
-  moduleUuid,
-  moduleName,
+  promptModelUuid,
+  promptModelName,
   sampleName,
   prompts,
   model,
@@ -178,8 +178,8 @@ export async function streamLLMModuleRun({
 }: {
   projectUuid: string;
   devName: string;
-  moduleUuid: string;
-  moduleName: string;
+  promptModelUuid: string;
+  promptModelName: string;
   sampleName: string;
   prompts: { role: string; step: number; content: string }[];
   model: string;
@@ -191,14 +191,14 @@ export async function streamLLMModuleRun({
   onNewData?: (data: Record<string, any>) => void;
 }) {
   await fetchStream({
-    url: "/dev/run_llm_module",
+    url: "/dev/run_prompt_model",
     params: {
       project_uuid: projectUuid,
       dev_name: devName,
     },
     body: {
-      llm_module_uuid: moduleUuid,
-      llm_module_name: moduleName,
+      prompt_model_uuid: promptModelUuid,
+      prompt_model_name: promptModelName,
       sample_name: sampleName,
       prompts: prompts,
       from_uuid: fromUuid,
@@ -215,11 +215,13 @@ export async function streamLLMModuleRun({
 export async function deployCandidates({
   projectUuid,
   devName,
-  moduleUuid = null,
+  promptModelUuid = null,
+  chatModelUuid = null,
 }: {
   projectUuid: string;
   devName: string;
-  moduleUuid?: string | null;
+  promptModelUuid?: string | null;
+  chatModelUuid?: string | null;
 }) {
   const res = await railwayDevClient.post(
     "/push_versions",
@@ -228,7 +230,8 @@ export async function deployCandidates({
       params: {
         project_uuid: projectUuid,
         dev_name: devName,
-        moduleUuid: moduleUuid,
+        prompt_model_uuid: promptModelUuid,
+        chat_model_uuid: chatModelUuid,
       },
     }
   );
