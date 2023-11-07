@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from fastapi import APIRouter, HTTPException, Depends, Response
 from fastapi.responses import JSONResponse, StreamingResponse
+from regex import P
 from starlette.status import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
@@ -131,15 +132,7 @@ async def run_cloud_dev_llm(dev_uuid: str, run_config: PromptModelRunConfig):
         logger.info(f"Started PromptModel: {run_config.prompt_model_name}")
         # create prompt_model_dev_instance
         prompt_model_dev = LLMDev()
-        # fine prompt_model_uuid from local db
-        prompt_model_uuid: str = (
-            supabase.table("prompt_model")
-            .select("uuid")
-            .eq("name", run_config.prompt_model_name)
-            .single()
-            .execute()
-            .data["uuid"]
-        )
+        # find prompt_model_uuid from local db
         prompt_model_version_uuid: Optional[str] = run_config.uuid
         # If prompt_model_version_uuid is None, create new version & prompt
         if prompt_model_version_uuid is None:
@@ -147,7 +140,7 @@ async def run_cloud_dev_llm(dev_uuid: str, run_config: PromptModelRunConfig):
                 supabase.table("prompt_model_version")
                 .insert(
                     {
-                        "prompt_model_uuid": prompt_model_uuid,
+                        "prompt_model_uuid": run_config.prompt_model_uuid,
                         "from_uuid": run_config.from_uuid,
                         "model": run_config.model,
                         "parsing_type": run_config.parsing_type,
