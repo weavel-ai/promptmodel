@@ -170,6 +170,14 @@ export default function Page() {
     selectedFunctions,
   ]);
 
+  const isVersionDeployed = useMemo(() => {
+    if (devBranchData?.cloud) {
+      return modelVersionData?.is_deployed;
+    } else {
+      return modelVersionData?.candidate_version;
+    }
+  }, [modelVersionData]);
+
   useHotkeys("esc", () => {
     if (createVariantOpen) {
       setCreateVariantOpen(false);
@@ -219,7 +227,7 @@ export default function Page() {
         from_uuid: null,
       },
       ...versionListData.map((item) => {
-        if (!item.from_uuid) {
+        if (!item.from_uuid && !item.dev_from_uuid) {
           return {
             ...item,
             from_uuid: "synthetic-root",
@@ -232,7 +240,9 @@ export default function Page() {
     // Then, use this preprocessed data with stratify
     const root = stratify()
       .id((d: any) => d.uuid)
-      .parentId((d: any) => d.from_uuid)(dataWithSyntheticRoot);
+      .parentId((d: any) =>
+        devBranchData?.cloud ? d.dev_from_uuid ?? d.from_uuid : d.from_uuid
+      )(dataWithSyntheticRoot);
 
     // Calculate the maximum number of nodes at any depth.
     const maxNodesAtDepth = Math.max(
@@ -254,12 +264,13 @@ export default function Page() {
         let status;
         if (item.is_published) {
           status = "published";
-        } else if (item.candidate_version) {
+        } else if (
+          devBranchData?.cloud ? item.is_deployed : item.candidate_version
+        ) {
           status = "deployed";
         } else {
           status = item.status;
         }
-
         if (item.from_uuid && item.from_uuid !== "synthetic-root") {
           generatedEdges.push({
             id: `e${item.uuid}-${item.from_uuid}`,
@@ -272,7 +283,9 @@ export default function Page() {
           id: item.uuid,
           type: "modelVersion",
           data: {
-            label: item.candidate_version ?? item.uuid.slice(0, 3),
+            label: devBranchData?.cloud
+              ? item.version
+              : item.candidate_version ?? item.uuid.slice(0, 3),
             uuid: item.uuid,
             status: status,
           },
@@ -614,10 +627,13 @@ export default function Page() {
               {/* Header */}
               <div className="flex flex-row justify-between items-center gap-x-8">
                 <div className="flex flex-row w-full justify-between items-center gap-x-3 mb-2 mr-2">
-                  {modelVersionData?.candidate_version ? (
+                  {isVersionDeployed ? (
                     <div className="flex flex-row justify-start items-center gap-x-3">
                       <p className="text-base-content font-bold text-lg">
-                        Prompt V{modelVersionData?.candidate_version}
+                        Prompt V
+                        {devBranchData?.cloud
+                          ? modelVersionData?.version
+                          : modelVersionData?.candidate_version}
                       </p>
 
                       {modelVersionData?.is_published ? (
@@ -702,7 +718,7 @@ export default function Page() {
                         From&nbsp;
                         <u>
                           Prompt V
-                          {modelVersionData?.candidate_version ??
+                          {isVersionDeployed ??
                             modelVersionData?.uuid?.slice(0, 6)}
                         </u>
                       </p>
@@ -986,10 +1002,14 @@ export default function Page() {
             </button>
             <div className="h-full overflow-auto mt-20">
               {versionListData?.map((version) => {
+                const isDeployed = devBranchData?.cloud
+                  ? version.is_deployed
+                  : version.candidate_version;
+
                 let status;
                 if (version.is_published) {
                   status = "published";
-                } else if (version.candidate_version) {
+                } else if (isDeployed) {
                   status = "deployed";
                 } else {
                   status = version.status;
@@ -1001,14 +1021,14 @@ export default function Page() {
                       "flex flex-row items-center gap-x-2 rounded-full p-2 backdrop-blur-sm hover:bg-base-content/10 transition-all cursor-pointer",
                       "active:scale-90"
                     )}
-                    key={version.candidate_version ?? version.uuid.slice(0, 3)}
+                    key={isDeployed ?? version.uuid.slice(0, 3)}
                     onClick={() => {
                       setSelectedVersionUuid(version.uuid);
                     }}
                   >
                     <StatusIndicator status={status} />
                     <p className="text-base-content font-semibold text-lg">
-                      V{version.candidate_version ?? version.uuid.slice(0, 3)}
+                      V{isDeployed ?? version.uuid.slice(0, 3)}
                     </p>
                   </div>
                 );
