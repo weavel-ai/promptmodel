@@ -10,7 +10,7 @@ import { useParams, usePathname } from "next/navigation";
 import { SelectNavigator } from "../SelectNavigator";
 import React, { useEffect, useMemo, useState } from "react";
 import { Cloud, GlobeHemisphereWest, Rocket } from "@phosphor-icons/react";
-import { deployCandidates } from "@/apis/dev";
+import { deployCandidates as deployLocalCandidates } from "@/apis/dev";
 import { usePromptModelVersion } from "@/hooks/dev/usePromptModelVersion";
 import { usePromptModelVersionStore } from "@/stores/promptModelVersionStore";
 import { toast } from "react-toastify";
@@ -18,6 +18,8 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { ModalPortal } from "../ModalPortal";
 import { useDevBranch } from "@/hooks/useDevBranch";
+import { deployCandidates } from "@/apis/devCloud";
+import { useSupabaseClient } from "@/apis/base";
 
 const michroma = Michroma({
   weight: ["400"],
@@ -129,9 +131,11 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
 const DeployCandidatesButton = () => {
   const [isOpen, setIsOpen] = useState(false);
   const params = useParams();
+  const { createSupabaseClient } = useSupabaseClient();
   const { projectUuid, projectListData } = useProject();
   const { promptModelListData, refetchPromptModelListData } = usePromptModel();
   const { versionListData, refetchVersionListData } = usePromptModelVersion();
+  const { devBranchData } = useDevBranch();
 
   const deployAll = useMemo(() => {
     if (params?.promptModelUuid) return false;
@@ -169,11 +173,23 @@ const DeployCandidatesButton = () => {
         : `Deploying candidates for ${promptModelName}...`
     );
     try {
-      await deployCandidates({
-        projectUuid: projectUuid,
-        devName: params?.devName as string,
-        promptModelUuid: deployAll ? null : (params?.promptModelUuid as string),
-      });
+      if (devBranchData?.cloud == false) {
+        await deployLocalCandidates({
+          projectUuid: projectUuid,
+          devName: params?.devName as string,
+          promptModelUuid: deployAll
+            ? null
+            : (params?.promptModelUuid as string),
+        });
+      } else {
+        await deployCandidates({
+          projectUuid: projectUuid,
+          devUuid: devBranchData?.uuid,
+          promptModelUuid: deployAll
+            ? null
+            : (params?.promptModelUuid as string),
+        });
+      }
       toast.update(toastId, {
         render: "Successfully deployed candidates!",
         type: "success",

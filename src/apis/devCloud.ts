@@ -1,6 +1,5 @@
-import { fetchStream, railwayDevClient } from "./base";
+import { fetchStream, railwayWebClient } from "./base";
 import { SupabaseClient } from "@supabase/supabase-js";
-import { usePromptModel } from "../hooks/dev/usePromptModel";
 
 export async function createDevBranch({
   supabaseClient,
@@ -72,7 +71,9 @@ export async function fetchPromptModelVersions(
 ) {
   const res = await supabaseClient
     .from("prompt_model_version")
-    .select("*")
+    .select(
+      "uuid, created_at, version, from_uuid, dev_from_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys, functions, status, is_deployed"
+    )
     .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
     .eq("prompt_model_uuid", promptModelUuid);
 
@@ -192,21 +193,21 @@ export async function streamPromptModelRun({
 
 export async function deployCandidates({
   projectUuid,
-  devName,
+  devUuid,
   promptModelUuid = null,
 }: {
   projectUuid: string;
-  devName: string;
+  devUuid: string;
   promptModelUuid?: string | null;
 }) {
-  const res = await railwayDevClient.post(
+  const res = await railwayWebClient.post(
     "/push_versions",
     {},
     {
       params: {
         project_uuid: projectUuid,
-        dev_name: devName,
-        moduleUuid: promptModelUuid,
+        dev_uuid: devUuid,
+        prompt_model_uuid: promptModelUuid,
       },
     }
   );
