@@ -5,16 +5,13 @@ import { useDevBranch } from "../useDevBranch";
 import { fetchPrompts } from "@/apis/devCloud";
 import { useSupabaseClient } from "@/apis/base";
 
-export const useModuleVersionDetails = (versionUuid: string) => {
+export const usePromptModelVersionDetails = (versionUuid: string) => {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
   const { devBranchData } = useDevBranch();
 
   const { data: promptListData } = useQuery({
-    queryKey: [
-      "promptListData",
-      { moduleVersionUuid: versionUuid, devName: params?.devName },
-    ],
+    queryKey: ["promptListData", { versionUuid, devName: params?.devName }],
     queryFn: async () =>
       devBranchData?.cloud
         ? await fetchPrompts(await createSupabaseClient(), versionUuid)

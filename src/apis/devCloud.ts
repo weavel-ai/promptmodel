@@ -1,5 +1,6 @@
 import { fetchStream, railwayDevClient } from "./base";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { usePromptModel } from "../hooks/dev/usePromptModel";
 
 export async function createDevBranch({
   supabaseClient,
@@ -26,13 +27,13 @@ export async function createDevBranch({
   return res.data.uuid;
 }
 
-export async function fetchModules(
+export async function fetchPromptModels(
   supabaseClient: SupabaseClient,
   devUuid: string,
   projectUuid: string
 ) {
   const res = await supabaseClient
-    .from("llm_module")
+    .from("prompt_model")
     .select("name, uuid, created_at, dev_branch_uuid")
     .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
     .eq("project_uuid", projectUuid);
@@ -40,7 +41,7 @@ export async function fetchModules(
   return res.data;
 }
 
-export async function createModel({
+export async function createPromptModel({
   supabaseClient,
   devUuid,
   projectUuid,
@@ -52,7 +53,7 @@ export async function createModel({
   name: string;
 }) {
   const res = await supabaseClient
-    .from("llm_module")
+    .from("prompt_model")
     .insert({
       dev_branch_uuid: devUuid,
       project_uuid: projectUuid,
@@ -64,16 +65,16 @@ export async function createModel({
   return res.data;
 }
 
-export async function fetchModuleVersions(
+export async function fetchPromptModelVersions(
   supabaseClient: SupabaseClient,
   devUuid: string,
-  moduleUuid: string
+  promptModelUuid: string
 ) {
   const res = await supabaseClient
-    .from("llm_module_version")
+    .from("prompt_model_version")
     .select("*")
     .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
-    .eq("llm_module_uuid", moduleUuid);
+    .eq("prompt_model_uuid", promptModelUuid);
 
   return res.data;
 }
@@ -91,14 +92,14 @@ export async function fetchModuleVersions(
 //   return res.data.functions;
 // }
 
-export async function updateVersionStatus(
+export async function updatePromptModelVersionStatus(
   supabaseClient: SupabaseClient,
   devUuid: string,
   versionUuid: string,
   status: "broken" | "working" | "candidate"
 ) {
   await supabaseClient
-    .from("llm_module_version")
+    .from("prompt_model_version")
     .update({
       status: status,
     })
@@ -108,12 +109,12 @@ export async function updateVersionStatus(
 
 export async function fetchPrompts(
   supabaseClient: SupabaseClient,
-  moduleVersionUuid: string
+  promptModelVersionUuid: string
 ) {
   const res = await supabaseClient
     .from("prompt")
     .select("role, step, content")
-    .eq("version_uuid", moduleVersionUuid);
+    .eq("version_uuid", promptModelVersionUuid);
   return res.data;
 }
 
@@ -130,21 +131,21 @@ export async function fetchPrompts(
 export async function fetchRunLogs(
   supabaseClient: SupabaseClient,
   devUuid: string,
-  moduleVersionUuid: string
+  promptModelVersionUuid: string
 ) {
   const res = await supabaseClient
     .from("run_log")
     .select("created_at, inputs, raw_output, parsed_outputs, is_deployment")
     .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
-    .eq("version_uuid", moduleVersionUuid);
+    .eq("version_uuid", promptModelVersionUuid);
 
   return res.data;
 }
 
-export async function streamLLMModuleRun({
+export async function streamPromptModelRun({
   devUuid,
-  moduleUuid,
-  moduleName,
+  promptModelUuid,
+  promptModelName,
   sampleName,
   prompts,
   model,
@@ -156,8 +157,8 @@ export async function streamLLMModuleRun({
   onNewData,
 }: {
   devUuid: string;
-  moduleUuid: string;
-  moduleName: string;
+  promptModelUuid: string;
+  promptModelName: string;
   sampleName: string;
   prompts: { role: string; step: number; content: string }[];
   model: string;
@@ -169,13 +170,13 @@ export async function streamLLMModuleRun({
   onNewData?: (data: Record<string, any>) => void;
 }) {
   await fetchStream({
-    url: "/web/run_llm_module",
+    url: "/web/run_prompt_model",
     params: {
       dev_uuid: devUuid,
     },
     body: {
-      llm_module_uuid: moduleUuid,
-      llm_module_name: moduleName,
+      prompt_model_uuid: promptModelUuid,
+      prompt_model_name: promptModelName,
       sample_name: sampleName,
       prompts: prompts,
       from_uuid: fromUuid,
@@ -192,11 +193,11 @@ export async function streamLLMModuleRun({
 export async function deployCandidates({
   projectUuid,
   devName,
-  moduleUuid = null,
+  promptModelUuid = null,
 }: {
   projectUuid: string;
   devName: string;
-  moduleUuid?: string | null;
+  promptModelUuid?: string | null;
 }) {
   const res = await railwayDevClient.post(
     "/push_versions",
@@ -205,7 +206,7 @@ export async function deployCandidates({
       params: {
         project_uuid: projectUuid,
         dev_name: devName,
-        moduleUuid: moduleUuid,
+        moduleUuid: promptModelUuid,
       },
     }
   );

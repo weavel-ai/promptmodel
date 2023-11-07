@@ -1,7 +1,7 @@
 "use client";
 
 import { PRODUCT_NAME } from "@/constants";
-import { useModule } from "@/hooks/dev/useModule";
+import { usePromptModel } from "@/hooks/dev/usePromptModel";
 import { useOrgData } from "@/hooks/useOrgData";
 import { useProject } from "@/hooks/useProject";
 import classNames from "classnames";
@@ -11,8 +11,8 @@ import { SelectNavigator } from "../SelectNavigator";
 import React, { useEffect, useMemo, useState } from "react";
 import { Cloud, GlobeHemisphereWest, Rocket } from "@phosphor-icons/react";
 import { deployCandidates } from "@/apis/dev";
-import { useModuleVersion } from "@/hooks/dev/useModuleVersion";
-import { useModuleVersionStore } from "@/stores/moduleVersionStore";
+import { usePromptModelVersion } from "@/hooks/dev/usePromptModelVersion";
+import { usePromptModelVersionStore } from "@/stores/promptModelVersionStore";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -35,7 +35,7 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
   const { orgData, refetchOrgData } = useOrgData();
   const { projectUuid, projectListData } = useProject();
   const { devBranchData } = useDevBranch();
-  const { moduleListData } = useModule();
+  const { promptModelListData } = usePromptModel();
 
   const projectName = useMemo(
     () =>
@@ -74,24 +74,25 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
             </Link>
             <div className="ms-8 px-3 py-1 font-light">{orgData?.name}</div>
             <Link
-              href={`${pathname.split("/").slice(0, -1).join("/")}`}
+              href={`/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}`}
               className="bg-base-content/10 rounded-md ms-2 mr-2 px-3 py-1 font-light"
             >
               {projectName}
             </Link>
             <div>
-              {params?.moduleUuid && (
+              {params?.promptModelUuid && (
                 <SelectNavigator
                   current={{
-                    label: moduleListData?.find(
-                      (module) => module.uuid == params?.moduleUuid
+                    label: promptModelListData?.find(
+                      (promptModel) =>
+                        promptModel.uuid == params?.promptModelUuid
                     )?.name,
-                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}/modules/${params?.moduleUuid}`,
+                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}/prompt_models/${params?.promptModelUuid}`,
                   }}
-                  options={moduleListData?.map((module) => {
+                  options={promptModelListData?.map((promptModel) => {
                     return {
-                      label: module.name,
-                      href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}/modules/${module.uuid}`,
+                      label: promptModel.name,
+                      href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}/prompt_models/${promptModel.uuid}`,
                     };
                   })}
                 />
@@ -129,13 +130,13 @@ const DeployCandidatesButton = () => {
   const [isOpen, setIsOpen] = useState(false);
   const params = useParams();
   const { projectUuid, projectListData } = useProject();
-  const { moduleListData, refetchModuleListData } = useModule();
-  const { versionListData, refetchVersionListData } = useModuleVersion();
+  const { promptModelListData, refetchPromptModelListData } = usePromptModel();
+  const { versionListData, refetchVersionListData } = usePromptModelVersion();
 
   const deployAll = useMemo(() => {
-    if (params?.moduleUuid) return false;
+    if (params?.promptModelUuid) return false;
     return true;
-  }, [params?.moduleUuid]);
+  }, [params?.promptModelUuid]);
 
   const candidateVersionList = useMemo(() => {
     if (versionListData == null) return [];
@@ -145,10 +146,12 @@ const DeployCandidatesButton = () => {
     );
   }, [versionListData]);
 
-  const moduleName = useMemo(
+  const promptModelName = useMemo(
     () =>
-      moduleListData?.find((module) => module.uuid == params?.moduleUuid)?.name,
-    [moduleListData, deployAll]
+      promptModelListData?.find(
+        (promptModel) => promptModel.uuid == params?.promptModelUuid
+      )?.name,
+    [promptModelListData, deployAll]
   );
 
   const disabled = useMemo(() => {
@@ -163,13 +166,13 @@ const DeployCandidatesButton = () => {
     const toastId = toast.loading(
       deployAll
         ? "Deploying all local candidates..."
-        : `Deploying candidates for ${moduleName}...`
+        : `Deploying candidates for ${promptModelName}...`
     );
     try {
       await deployCandidates({
         projectUuid: projectUuid,
         devName: params?.devName as string,
-        moduleUuid: deployAll ? null : (params?.moduleUuid as string),
+        promptModelUuid: deployAll ? null : (params?.promptModelUuid as string),
       });
       toast.update(toastId, {
         render: "Successfully deployed candidates!",
@@ -178,7 +181,7 @@ const DeployCandidatesButton = () => {
         autoClose: 2000,
       });
       if (deployAll) {
-        refetchModuleListData();
+        refetchPromptModelListData();
       } else {
         refetchVersionListData();
       }
@@ -242,7 +245,7 @@ const DeployCandidatesButton = () => {
                   </span>
                   &nbsp;candidate versions for PromptModel
                   <span className="text-secondary font-medium">
-                    &nbsp;{moduleName}&nbsp;
+                    &nbsp;{promptModelName}&nbsp;
                   </span>
                   will be deployed to production.
                 </p>

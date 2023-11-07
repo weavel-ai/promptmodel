@@ -4,22 +4,22 @@ import { fetchProject, fetchProjects } from "@/apis/project";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
-import { fetchModules } from "@/apis/module";
+import { fetchPromptModels } from "@/apis/promptModel";
 
-export const useModule = () => {
+export const usePromptModel = () => {
   const params = useParams();
   const { projectUuid } = useProject();
   const { createSupabaseClient } = useSupabaseClient();
 
-  const { data: moduleListData } = useQuery({
-    queryKey: ["moduleListData", { projectUuid: projectUuid }],
+  const { data: promptModelListData } = useQuery({
+    queryKey: ["promptModelListData", { projectUuid: projectUuid }],
     queryFn: async () =>
-      await fetchModules(await createSupabaseClient(), projectUuid),
+      await fetchPromptModels(await createSupabaseClient(), projectUuid),
     enabled: projectUuid != undefined && projectUuid != null,
   });
 
   return {
-    moduleUuid: params?.moduleUuid as string,
-    moduleListData,
+    promptModelUuid: params?.promptModelUuid as string,
+    promptModelListData,
   };
 };

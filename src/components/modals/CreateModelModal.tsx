@@ -6,7 +6,7 @@ import { Modal } from "./Modal";
 import classNames from "classnames";
 import { ArrowSquareOut } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import { createDevBranch, createModel } from "@/apis/devCloud";
+import { createDevBranch, createPromptModel } from "@/apis/devCloud";
 import { useSupabaseClient } from "@/apis/base";
 import { useParams, useRouter } from "next/navigation";
 import { SelectField } from "../select/SelectField";
@@ -38,7 +38,7 @@ export const CreateModelModal = ({
   async function handleCreateModel() {
     // TODO: Add PromptModel / ChatModel types
     const toastId = toast.loading("Creating...");
-    const resData = await createModel({
+    const resData = await createPromptModel({
       supabaseClient: await createSupabaseClient(),
       name,
       devUuid: devBranchData?.uuid,
@@ -53,7 +53,7 @@ export const CreateModelModal = ({
     setIsOpen(false);
     onCreated();
     router.push(
-      `/org/${params.org_slug}/projects/${params.projectUuid}/dev/${params.devName}/models/${resData.uuid}`
+      `/org/${params.org_slug}/projects/${params.projectUuid}/dev/${params.devName}/prompt_models/${resData.uuid}`
     );
   }
 
