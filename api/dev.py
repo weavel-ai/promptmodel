@@ -475,7 +475,7 @@ async def push_version(
             supabase.table("prompt_model_version")
             .select("version")
             .eq("prompt_model_uuid", version["prompt_model_uuid"])
-            .is_("dev_branch_uuid", None)
+            .is_("dev_branch_uuid", "null")
             .order("version", desc=True)
             .execute()
         )
@@ -639,7 +639,7 @@ async def push_versions(
             supabase.table("prompt_model_version")
             .select("version, prompt_model_uuid")
             .in_("prompt_model_uuid", version_prompt_model_uuid_list)
-            .is_("dev_branch_uuid", None)
+            .is_("dev_branch_uuid", "null")
             .execute()
         ).data
 
