@@ -145,8 +145,7 @@ const DeployCandidatesButton = () => {
   const candidateVersionList = useMemo(() => {
     if (versionListData == null) return [];
     return versionListData?.filter(
-      (version) =>
-        version.candidate_version == null && version.status == "candidate"
+      (version) => !version.is_deployed && version.status == "candidate"
     );
   }, [versionListData]);
 

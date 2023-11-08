@@ -271,12 +271,20 @@ export default function Page() {
         } else {
           status = item.status;
         }
-        if (item.from_uuid && item.from_uuid !== "synthetic-root") {
-          generatedEdges.push({
-            id: `e${item.uuid}-${item.from_uuid}`,
-            source: item.from_uuid,
-            target: item.uuid,
-          });
+        if (item.from_uuid !== "synthetic-root") {
+          if (item.from_uuid) {
+            generatedEdges.push({
+              id: `e${item.uuid}-${item.from_uuid}`,
+              source: item.from_uuid,
+              target: item.uuid,
+            });
+          } else if (item.dev_from_uuid) {
+            generatedEdges.push({
+              id: `e${item.uuid}-${item.dev_from_uuid}`,
+              source: item.dev_from_uuid,
+              target: item.uuid,
+            });
+          }
         }
 
         return {
@@ -284,7 +292,7 @@ export default function Page() {
           type: "modelVersion",
           data: {
             label: devBranchData?.cloud
-              ? item.version
+              ? item.version ?? item.uuid.slice(0, 3)
               : item.candidate_version ?? item.uuid.slice(0, 3),
             uuid: item.uuid,
             status: status,
@@ -735,17 +743,13 @@ export default function Page() {
                       <button
                         className={classNames(
                           "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
-                          "disabled:bg-muted disabled:border-muted-content"
+                          "text-base-100 disabled:bg-muted disabled:text-muted-content disabled:border-muted-content"
                         )}
                         onClick={() => handleClickRun(true)}
                         disabled={!isNewVersionReady}
                       >
-                        <p className="text-base-100">Run</p>
-                        <Play
-                          className="text-base-100"
-                          size={20}
-                          weight="fill"
-                        />
+                        <p>Run</p>
+                        <Play size={20} weight="fill" />
                       </button>
                     </div>
                   </div>
@@ -1001,18 +1005,18 @@ export default function Page() {
               </div>
             </button>
             <div className="h-full overflow-auto mt-20">
-              {versionListData?.map((version) => {
-                const isDeployed = devBranchData?.cloud
-                  ? version.is_deployed
-                  : version.candidate_version;
+              {versionListData?.map((versionData) => {
+                const deployedVersion = devBranchData?.cloud
+                  ? versionData.version
+                  : versionData.candidate_version;
 
                 let status;
-                if (version.is_published) {
+                if (versionData.is_published) {
                   status = "published";
-                } else if (isDeployed) {
+                } else if (deployedVersion) {
                   status = "deployed";
                 } else {
-                  status = version.status;
+                  status = versionData.status;
                 }
 
                 return (
@@ -1021,14 +1025,14 @@ export default function Page() {
                       "flex flex-row items-center gap-x-2 rounded-full p-2 backdrop-blur-sm hover:bg-base-content/10 transition-all cursor-pointer",
                       "active:scale-90"
                     )}
-                    key={isDeployed ?? version.uuid.slice(0, 3)}
+                    key={deployedVersion ?? versionData.uuid.slice(0, 3)}
                     onClick={() => {
-                      setSelectedVersionUuid(version.uuid);
+                      setSelectedVersionUuid(versionData.uuid);
                     }}
                   >
                     <StatusIndicator status={status} />
                     <p className="text-base-content font-semibold text-lg">
-                      V{isDeployed ?? version.uuid.slice(0, 3)}
+                      V{deployedVersion ?? versionData.uuid.slice(0, 3)}
                     </p>
                   </div>
                 );
