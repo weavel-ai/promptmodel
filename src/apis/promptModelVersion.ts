@@ -7,7 +7,10 @@ export async function fetchPromptModelVersions(
   const res = await supabaseClient
     .from("prompt_model_version")
     .select("uuid, version, from_uuid, is_published")
-    .eq("prompt_model_uuid", promptModelUuid)
+    .match({
+      "prompt_model_uuid": promptModelUuid,
+      "is_deployed": true,
+    })
     .order("version", { ascending: true });
   return res.data;
 }
