@@ -313,10 +313,6 @@ async def push_versions(
     try:
         changelogs = []
         changelog_level = 2
-        version_filter = {}
-
-        if prompt_model_uuid:
-            version_filter["prompt_model_uuid"] = prompt_model_uuid
 
         # Update dev environment prompt_models to deployed
         (
@@ -335,7 +331,6 @@ async def push_versions(
         deployed_versions = (
             supabase.table("prompt_model_version")
             .select("created_at, uuid, from_uuid, prompt_model_uuid, status")
-            .match(version_filter)
             .eq("is_deployed", True)
             .execute()
             .data
@@ -344,12 +339,25 @@ async def push_versions(
         dev_versions = (
             supabase.table("prompt_model_version")
             .select("created_at, uuid, dev_from_uuid, prompt_model_uuid, status")
-            .match(version_filter)
             .eq("is_deployed", False)
             .eq("dev_branch_uuid", dev_uuid)
             .execute()
             .data
         )
+
+        if prompt_model_uuid:
+            deployed_versions = list(
+                filter(
+                    lambda version: version["prompt_model_uuid"] == prompt_model_uuid,
+                    deployed_versions,
+                )
+            )
+            dev_versions = list(
+                filter(
+                    lambda version: version["prompt_model_uuid"] == prompt_model_uuid,
+                    dev_versions,
+                )
+            )
 
         # Merge deployed_versions and dev_versions
         all_versions = deployed_versions + dev_versions
