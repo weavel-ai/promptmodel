@@ -256,6 +256,7 @@ async def run_cloud_dev_llm(dev_uuid: str, run_config: PromptModelRunConfig):
                     "raw_output": output["raw_output"],
                     "parsed_outputs": output["parsed_outputs"],
                     "dev_branch_uuid": dev_uuid,
+                    "run_from_deployment": False,
                 }
             ).execute()
 
@@ -282,6 +283,7 @@ async def run_cloud_dev_llm(dev_uuid: str, run_config: PromptModelRunConfig):
                 "raw_output": output["raw_output"],
                 "parsed_outputs": output["parsed_outputs"],
                 "dev_branch_uuid": dev_uuid,
+                "run_from_deployment": False,
             }
         ).execute()
     except Exception as error:
@@ -315,6 +317,19 @@ async def push_versions(
 
         if prompt_model_uuid:
             version_filter["prompt_model_uuid"] = prompt_model_uuid
+
+        # Update dev environment prompt_models to deployed
+        (
+            supabase.table("prompt_model")
+            .update({"dev_branch_uuid": None})
+            .match(
+                {
+                    "project_uuid": project_uuid,
+                    "dev_branch_uuid": dev_uuid,
+                }
+            )
+            .execute()
+        )
 
         # Get deployed versions
         deployed_versions = (
