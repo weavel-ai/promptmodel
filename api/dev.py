@@ -125,8 +125,8 @@ async def list_prompt_models(project_uuid: str, dev_name: str):
         Response
             - correlation_id: str
             - prompt_models: list
-                - local_usage
-                - is_deployment
+                - used_in_code
+                - is_deployed
                 - uuid
                 - name
 
@@ -180,7 +180,7 @@ async def list_prompt_model_versions(
                 - prompt_model_uuid
                 - status
                 - model
-                - candidate_version : int
+                - version
                 - parsint_type
                 - output_keys
                 - functions
@@ -349,7 +349,7 @@ async def get_run_logs(
             - inputs
             - raw_output
             - parsed_outputs
-            - is_deployment
+            - run_from_deployment
     """
     # If the API key in header is valid, this function will execute.
     try:
@@ -451,37 +451,35 @@ async def push_version(
         # save prompt_model_versions to server DB
 
         # if there are prompt_models (which is only in local), save
-        prompt_models = response["prompt_models"]
-        # Delete id for insert
-        for prompt_model in prompt_models:
-            del prompt_model["id"]
-        if prompt_models:
-            (supabase.table("prompt_model").insert(prompt_models).execute())
+        prompt_model = response["prompt_model"]
+        if prompt_model:
+            prompt_model["id"]
+            prompt_model["is_deployed"] = True
+            (supabase.table("prompt_model").insert(prompt_model).execute())
             changelogs.append(
                 {
                     "subject": "prompt_model",
-                    "identifiers": [
-                        prompt_model["uuid"] for prompt_model in prompt_models
-                    ],
+                    "identifiers": [prompt_model["uuid"]],
                     "action": "ADD",
                 }
             )
             changelog_level = 1
 
         version = response["version"]
+        version["is_deployed"] = True
         del version["id"]
         # get last version(ID)
         last_version = (
             supabase.table("prompt_model_version")
             .select("version")
             .eq("prompt_model_uuid", version["prompt_model_uuid"])
-            .is_("dev_branch_uuid", "null")
+            .eq("is_deployed", True)
             .order("version", desc=True)
             .execute()
         )
         if len(last_version) == 0:
             version["version"] = 1
-            version["is_published"] = True
+            version["is_published"] = True # If there is no previous version, publish it
             version["ratio"] = 1.0
         else:
             version["version"] = last_version[0]["version"] + 1
@@ -605,6 +603,10 @@ async def push_versions(
         # if there are prompt_models (which is only in local), save them
         prompt_models = response["prompt_models"]
         if len(prompt_models) > 0:
+            # add prompt_model["is_deployed"] = True
+            for prompt_model in prompt_models:
+                prompt_model["is_deployed"] = True
+
             (supabase.table("prompt_model").insert(prompt_models).execute())
             # make changelog level 1, subject = prompt_model
             changelogs.append(
@@ -639,7 +641,7 @@ async def push_versions(
             supabase.table("prompt_model_version")
             .select("version, prompt_model_uuid")
             .in_("prompt_model_uuid", version_prompt_model_uuid_list)
-            .is_("dev_branch_uuid", "null")
+            .eq("is_deployed", True)
             .execute()
         ).data
 
@@ -660,6 +662,7 @@ async def push_versions(
         new_candidates = {}
         new_versions = sorted(new_versions, key=lambda x: x["created_at"])
         for new_version in new_versions:
+            new_version["is_deployed"] = True
             if new_version["prompt_model_uuid"] in last_versions:
                 new_version["version"] = (
                     last_versions[new_version["prompt_model_uuid"]] + 1
@@ -668,7 +671,9 @@ async def push_versions(
             else:
                 new_version["version"] = 1
                 last_versions[new_version["prompt_model_uuid"]] = 1
-                new_version["is_published"] = True
+                new_version[
+                    "is_published"
+                ] = True  # If there is no previous version, publish it
                 new_version["ratio"] = 1.0
             new_candidates[new_version["uuid"]] = int(new_version["version"])
 
@@ -679,7 +684,7 @@ async def push_versions(
         # print(f"new candidates: {new_candidates}")
         await websocket_manager.send_message(
             cli_access_key,
-            LocalTask.UPDATE_CANDIDATE_VERSION_ID,
+            LocalTask.UPDATE_CANDIDATE_PROMPT_MODEL_VERSION_ID,
             {"new_candidates": new_candidates},
         )
 
