@@ -373,7 +373,7 @@ async def push_versions(
         for version in new_versions:
             root_version_uuid = None  # Start with the current version's UUID
             parent_version = version
-            while parent_version["dev_from_uuid"] is not None:
+            while parent_version.get("dev_from_uuid") is not None:
                 # Find the parent version
                 parent_version = next(
                     filter(
@@ -413,7 +413,7 @@ async def push_versions(
                     last_versions[previous_version["prompt_model_uuid"]],
                     int(previous_version["version"]),
                 )
-
+        logger.debug(f"last_versions: {last_versions}")
         # allocate version(ID) for new versions
         # sort by created_at ascending
         new_candidates = {}
@@ -430,6 +430,9 @@ async def push_versions(
                 new_version["is_published"] = True
                 new_version["ratio"] = 1.0
             new_candidates[new_version["uuid"]] = int(new_version["version"])
+        logger.debug(f"new_candidates: {new_candidates}")
+        logger.debug(f"new_versions: {new_versions}")
+        logger.debug(f"last_versions: {last_versions}")
 
         for new_version in new_versions:
             supabase.table("prompt_model_version").update(
