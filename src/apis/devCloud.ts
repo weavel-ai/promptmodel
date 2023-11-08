@@ -136,7 +136,9 @@ export async function fetchRunLogs(
 ) {
   const res = await supabaseClient
     .from("run_log")
-    .select("created_at, inputs, raw_output, parsed_outputs, is_deployment")
+    .select(
+      "created_at, inputs, raw_output, parsed_outputs, run_from_deployment"
+    )
     .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
     .eq("version_uuid", promptModelVersionUuid);
 
