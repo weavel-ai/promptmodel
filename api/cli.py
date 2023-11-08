@@ -371,7 +371,7 @@ async def create_dev_branch(
             )
             .execute()
         )
-        return Response(status_code=HTTP_200_OK, content=res.data[0])
+        return JSONResponse(status_code=HTTP_200_OK, content=res.data[0])
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
