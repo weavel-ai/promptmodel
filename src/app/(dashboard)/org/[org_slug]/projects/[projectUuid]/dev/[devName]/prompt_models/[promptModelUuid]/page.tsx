@@ -83,6 +83,7 @@ export default function Page() {
   const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo");
   const [outputKeys, setOutputKeys] = useState<string[]>([]);
   const [parser, selectParser] = useState<ParsingType | null>(null);
+  const [hasRun, setHasRun] = useState(false);
   // Local dev environment
   const [selectedSample, setSelectedSample] =
     useState<string>(EMPTY_INPUTS_LABEL);
@@ -151,6 +152,24 @@ export default function Page() {
 
   const isNewVersionReady = useMemo(() => {
     if (!createVariantOpen) return false;
+    if (hasRun) return false;
+
+    // console.log("===================");
+    // console.log(
+    //   !originalPrompts?.every(
+    //     (val, idx) => val === modifiedPrompts[idx]?.content
+    //   )
+    // );
+    // console.log(selectedModel != modelVersionData?.model);
+    // console.log(modelVersionData?.parsing_type != parser);
+    // console.log(
+    //   modelVersionData?.parsing_type != null &&
+    //     modelVersionData?.output_keys != outputKeys
+    // );
+    // console.log(modelVersionData?.functions != selectedFunctions);
+    // console.log(modelVersionData?.functions);
+    // console.log(selectedFunctions);
+    // console.log("===================");
 
     return (
       !originalPrompts?.every(
@@ -160,7 +179,9 @@ export default function Page() {
       modelVersionData?.parsing_type != parser ||
       (modelVersionData?.parsing_type != null &&
         modelVersionData?.output_keys != outputKeys) ||
-      modelVersionData?.functions != selectedFunctions
+      (modelVersionData?.functions != selectedFunctions &&
+        (modelVersionData?.functions.length != 0 ||
+          selectedFunctions.length != 0))
     );
   }, [
     selectedModel,
@@ -169,6 +190,7 @@ export default function Page() {
     parser,
     outputKeys,
     selectedFunctions,
+    hasRun,
   ]);
 
   const isVersionDeployed = useMemo(() => {
@@ -746,7 +768,10 @@ export default function Page() {
                           "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
                           "text-base-100 disabled:bg-muted disabled:text-muted-content disabled:border-muted-content"
                         )}
-                        onClick={() => handleClickRun(true)}
+                        onClick={() => {
+                          setHasRun(true);
+                          handleClickRun(true);
+                        }}
                         disabled={!isNewVersionReady}
                       >
                         <p>Run</p>
@@ -1028,6 +1053,7 @@ export default function Page() {
                     )}
                     key={deployedVersion ?? versionData.uuid.slice(0, 3)}
                     onClick={() => {
+                      setHasRun(false);
                       setSelectedVersionUuid(versionData.uuid);
                     }}
                   >
