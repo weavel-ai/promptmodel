@@ -1,33 +1,67 @@
 "use client";
 
 import { useProject } from "@/hooks/useProject";
-import { toast } from "react-toastify";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import classNames from "classnames";
 import { CornersOut } from "@phosphor-icons/react";
 import ReactJson from "react-json-view";
-import { fetchDeplRunLogs } from "@/apis/runlog";
+import { fetchDeplRunLogs, subscribeRunLogs } from "@/apis/runlog";
 import { useSupabaseClient } from "@/apis/base";
 import { useQuery } from "@tanstack/react-query";
+import dayjs from "dayjs";
 
 export default function Page() {
-  const { projectData } = useProject();
+  const { projectData, projectUuid } = useProject();
   const { createSupabaseClient } = useSupabaseClient();
+  const [isRealtime, setIsRealtime] = useState(false);
 
-  const { data: runLogListData } = useQuery({
+  const { data: runLogListData, refetch: refetchRunLogListData } = useQuery({
     queryKey: ["runLogList", { projectUuid: projectData?.uuid }],
     queryFn: async () =>
       await fetchDeplRunLogs(await createSupabaseClient(), projectData?.uuid),
     enabled: !!projectData?.uuid,
   });
 
+  // Subscribe run logs
+  useEffect(() => {
+    if (!projectUuid) return;
+    if (isRealtime) {
+      createSupabaseClient().then(async (client) => {
+        const runLogsStream = await subscribeRunLogs(
+          client,
+          projectUuid,
+          () => {
+            refetchRunLogListData();
+          }
+        );
+        console.log(runLogsStream);
+        // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
+        return () => {
+          if (runLogsStream) {
+            runLogsStream.unsubscribe();
+            client.removeChannel(runLogsStream);
+          }
+        };
+      });
+    }
+  }, [projectUuid, isRealtime]);
+
   return (
-    <div className="w-full h-full pl-20">
+    <div className="w-full h-full pl-20 overflow-hidden">
       <div className="w-full h-full flex flex-col gap-y-4 pt-16">
         {/* TODO: ADD FILTERS */}
-        {/* <div className="flex flex-row justify-start items-center">
-          <p className="text-lg font-medium text-base-content">Filter</p>
-        </div> */}
+        <div className="w-full flex flex-row justify-between items-center px-2">
+          {/* <p className="text-lg font-medium text-base-content">Filter</p> */}
+          <div className="w-full flex flex-row justify-end gap-x-4 mr-4">
+            <p>Realtime</p>
+            <input
+              type="checkbox"
+              className="toggle toggle-info"
+              checked={isRealtime}
+              onChange={(e) => setIsRealtime(e.target.checked)}
+            />
+          </div>
+        </div>
         <RunLogComponent
           runLogData={runLogListData}
           isFullScreen={false}
@@ -84,7 +118,16 @@ const RunLogComponent = ({ runLogData, isFullScreen, setIsFullScreen }) => {
             <thead className="sticky top-0 z-10 bg-base-100 w-full">
               <tr className="text-base-content border-b-4 border-base-300">
                 <td>
-                  <p className="text-lg font-medium pe-36">Input</p>
+                  <p className="text-lg font-medium">PromptModel</p>
+                </td>
+                <td>
+                  <p className="text-lg font-medium">Version</p>
+                </td>
+                <td>
+                  <p className="text-lg font-medium">Timestamp</p>
+                </td>
+                <td>
+                  <p className="text-lg font-medium">Input</p>
                 </td>
                 <td className="flex flex-row gap-x-6 items-center pe-8">
                   <p className="text-lg font-medium">Output</p>
@@ -129,6 +172,13 @@ const RunLogComponent = ({ runLogData, isFullScreen, setIsFullScreen }) => {
               {runLogData?.map((runLog) => {
                 return (
                   <tr className="border-b-2 border-base-300">
+                    <td className="align-top">{runLog.prompt_model_name}</td>
+                    <td className="align-top text-lg">
+                      {runLog.prompt_model_version}
+                    </td>
+                    <td className="align-top">
+                      {dayjs(runLog.created_at).format("YYYY. MM. DD HH:mm:ss")}
+                    </td>
                     <td className="align-top">
                       {runLog?.inputs == null ? (
                         <p>None</p>
