@@ -159,7 +159,7 @@ const DeployCandidatesButton = () => {
 
   const disabled = useMemo(() => {
     if (deployAll) {
-      return !devBranchData.online && !devBranchData.cloud;
+      return !devBranchData?.online && !devBranchData?.cloud;
     } else {
       return candidateVersionList?.length == 0;
     }
