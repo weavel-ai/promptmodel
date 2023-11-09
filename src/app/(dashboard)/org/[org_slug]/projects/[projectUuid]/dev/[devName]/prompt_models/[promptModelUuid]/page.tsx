@@ -94,6 +94,7 @@ export default function Page() {
     selectedVersionUuid,
     focusedEditor,
     showSlashOptions,
+    runLogs,
     updateVersionLists,
     updateRunLogs,
     updatePrompts,
@@ -418,9 +419,18 @@ export default function Page() {
           functionCallData["initial_raw_output"] = cacheRawOutput;
           updateRunLogs(isNew ? "new" : modelVersionData?.uuid, uuid, {
             raw_output: "",
-            function_call: data?.function_call,
+            function_call: functionCallData,
           });
           cacheRawOutput = "";
+        }
+        if (data?.function_response) {
+          const functionCallData =
+            runLogs?.[isNew ? "new" : modelVersionData?.uuid]?.[uuid]
+              ?.function_call;
+          functionCallData["response"] = data?.function_response;
+          updateRunLogs(isNew ? "new" : modelVersionData?.uuid, uuid, {
+            function_call: functionCallData,
+          });
         }
       },
     };

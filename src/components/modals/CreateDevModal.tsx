@@ -49,7 +49,7 @@ export const CreateDevModal = ({
     });
     setIsOpen(false);
     window.open(
-      `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${devBranchUuid}/prompt_models`,
+      `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${devBranchUuid}`,
       "_blank"
     );
   }
