@@ -22,12 +22,13 @@ import { motion } from "framer-motion";
 import {
   CaretDown,
   Command,
+  CornersOut,
   GitBranch,
   Play,
   Trash,
   XCircle,
 } from "@phosphor-icons/react";
-import { Monaco, MonacoDiffEditor, useMonaco } from "@monaco-editor/react";
+import { Monaco, MonacoDiffEditor } from "@monaco-editor/react";
 import { editor } from "monaco-editor/esm/vs/editor/editor.api";
 
 import "reactflow/dist/style.css";
@@ -67,6 +68,7 @@ import {
   streamPromptModelRun,
   updatePromptModelVersionStatus,
 } from "@/apis/devCloud";
+import { ModalPortal } from "@/components/ModalPortal";
 
 export default function Page() {
   const params = useParams();
@@ -105,7 +107,6 @@ export default function Page() {
   const { refetchSampleList } = useSamples();
   const { refetchFunctionListData } = useFunctions();
 
-  const monaco = useMonaco();
   const [modifiedPrompts, setModifiedPrompts] = useState<Prompt[]>([]);
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
@@ -1317,10 +1318,11 @@ const RunLogSection = ({
   versionUuid: string | "new";
   className?: string;
 }) => {
-  const [showRaw, setShowRaw] = useState(true);
+  // const [showRaw, setShowRaw] = useState(true);
   const { runLogData } = useRunLogs(versionUuid);
   const { runTasksCount, runLogs } = usePromptModelVersionStore();
   const [runLogList, setRunLogList] = useState<RunLog[]>([]);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   useEffect(() => {
     if (runTasksCount == null || runLogData == undefined || runLogData == null)
@@ -1365,50 +1367,93 @@ const RunLogSection = ({
         className
       )}
     >
-      <div className="w-full h-full bg-base-200 rounded overflow-auto">
-        <table className="w-full table table-pin-cols">
-          <thead className="sticky top-0 z-10 bg-base-100 w-full">
-            <tr className="text-base-content">
-              <th className="w-fit">
-                <p className="text-lg font-medium ps-1">Input</p>
-              </th>
-              <th className="flex flex-row gap-x-6 items-center">
-                <p className="text-lg font-medium ps-1">Output</p>
-                <div className="join">
-                  <button
-                    className={classNames(
-                      "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                      showRaw && "bg-base-300",
-                      !showRaw && "bg-base-300/40"
-                    )}
-                    onClick={() => setShowRaw(true)}
-                  >
-                    Raw
-                  </button>
-                  <button
-                    className={classNames(
-                      "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                      !showRaw && "bg-base-300",
-                      showRaw && "bg-base-300/40"
-                    )}
-                    onClick={() => setShowRaw(false)}
-                  >
-                    Parsed
-                  </button>
-                </div>
-              </th>
-              <th>
-                <p className="text-lg font-medium ps-1">Function call</p>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-base-100">
-            {runLogList?.map((log) => (
-              <RunLogComponent showRaw={showRaw} runLogData={log} />
-            ))}
-          </tbody>
-        </table>
+      <div className="w-full h-full flex flex-col gap-y-2 bg-base-200 rounded overflow-auto">
+        <div className="w-full flex flex-row justify-between align-middle">
+          <div className="text-xl font-semibold ps-2">Run Log</div>
+          <button
+            className="btn btn-sm bg-transparent border-transparent items-center hover:bg-neutral-content/20"
+            onClick={() => {
+              setIsFullScreen(!isFullScreen);
+            }}
+          >
+            <CornersOut size={22} />
+          </button>
+        </div>
+        {isFullScreen && (
+          <ModalPortal>
+            <motion.div
+              className="w-screen h-screen fixed z-[999999] bg-base-100 p-4 flex flex-col gap-y-4 rounded"
+              initial={{ bottom: 4, right: 4 }}
+              animate={{ top: 4, left: 4, bottom: 4, right: 4 }}
+            >
+              <div className="w-full flex flex-row justify-between align-middle">
+                <div className="text-3xl font-semibold ps-2">Run Log</div>
+                <button
+                  className="btn btn-sm bg-transparent border-transparent items-center hover:bg-neutral-content/20 py-2 h-fit"
+                  onClick={() => {
+                    setIsFullScreen(!isFullScreen);
+                  }}
+                >
+                  <CornersOut size={30} />
+                </button>
+              </div>
+              <RunLogTable runLogList={runLogList} />
+            </motion.div>
+          </ModalPortal>
+        )}
+        <RunLogTable runLogList={runLogList} />
       </div>
+    </div>
+  );
+};
+
+const RunLogTable = ({ runLogList }) => {
+  const [showRaw, setShowRaw] = useState(true);
+
+  return (
+    <div className="overflow-auto">
+      <table className="w-full table table-pin-cols">
+        <thead className="sticky top-0 z-10 bg-base-100 w-full">
+          <tr className="text-base-content">
+            <th className="w-fit">
+              <p className="text-lg font-medium ps-1">Input</p>
+            </th>
+            <th className="flex flex-row gap-x-6 items-center">
+              <p className="text-lg font-medium ps-1">Output</p>
+              <div className="join">
+                <button
+                  className={classNames(
+                    "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
+                    showRaw && "bg-base-300",
+                    !showRaw && "bg-base-300/40"
+                  )}
+                  onClick={() => setShowRaw(true)}
+                >
+                  Raw
+                </button>
+                <button
+                  className={classNames(
+                    "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
+                    !showRaw && "bg-base-300",
+                    showRaw && "bg-base-300/40"
+                  )}
+                  onClick={() => setShowRaw(false)}
+                >
+                  Parsed
+                </button>
+              </div>
+            </th>
+            <th>
+              <p className="text-lg font-medium ps-1">Function call</p>
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-base-100">
+          {runLogList?.map((log) => (
+            <RunLogComponent showRaw={showRaw} runLogData={log} />
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
