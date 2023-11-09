@@ -75,7 +75,8 @@ export async function fetchPromptModelVersions(
       "uuid, created_at, version, from_uuid, dev_from_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys, functions, status, is_deployed"
     )
     .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
-    .eq("prompt_model_uuid", promptModelUuid);
+    .eq("prompt_model_uuid", promptModelUuid)
+    .order("version", { ascending: true });
 
   return res.data;
 }
