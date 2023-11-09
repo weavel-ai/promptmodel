@@ -438,36 +438,36 @@ async def connect_cli_dev(
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-# @router.post("/log_deployment_run")
-# async def log_deployment_run(
-#     version_uuid: str,
-#     inputs: Dict[str, Any],
-#     api_response: Dict[str, Any],
-#     parsed_outputs: Dict[str, Any],
-#     metadata: Dict[str, Any],
-#     project: dict = Depends(get_project),
-# ):
-#     try:
-#         # save log
-#         # TODO: add function call
-#         (
-#             supabase.table("run_log")
-#             .insert(
-#                 {
-#                     "inputs": inputs,
-#                     "raw_output": api_response["choices"][0]["message"]["content"],
-#                     "parsed_outputs": parsed_outputs,
-#                     "input_register_name": None,
-#                     "run_from_deployment": True,
-#                     "version_uuid": version_uuid,
-#                     "token_usage": api_response["usage"],
-#                     "latency": api_response["response_ms"],
-#                     "cost": completion_cost(api_response),
-#                     "metadata": metadata,
-#                 }
-#             )
-#             .execute()
-#         )
-#     except Exception as exc:
-#         logger.error(exc)
-#         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+@router.post("/log_deployment_run")
+async def log_deployment_run(
+    version_uuid: str,
+    inputs: Dict[str, Any],
+    api_response: Dict[str, Any],
+    parsed_outputs: Dict[str, Any],
+    metadata: Dict[str, Any],
+    project: dict = Depends(get_project),
+):
+    try:
+        # save log
+        # TODO: add function call
+        (
+            supabase.table("run_log")
+            .insert(
+                {
+                    "inputs": inputs,
+                    "raw_output": api_response["choices"][0]["message"]["content"],
+                    "parsed_outputs": parsed_outputs,
+                    "input_register_name": None,
+                    "run_from_deployment": True,
+                    "version_uuid": version_uuid,
+                    "token_usage": api_response["usage"],
+                    "latency": api_response["response_ms"],
+                    "cost": completion_cost(api_response),
+                    "metadata": metadata,
+                }
+            )
+            .execute()
+        )
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
