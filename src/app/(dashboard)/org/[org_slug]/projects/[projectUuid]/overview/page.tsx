@@ -60,7 +60,7 @@ export default function Page() {
                   return (
                     <Link
                       key={branch.name}
-                      href={`/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${devBranchListData?.[0]?.name}`}
+                      href={`/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${branch.name}`}
                       target="_blank"
                       className="w-full flex flex-row items-center gap-x-4 transition-all hover:bg-base-300/50 rounded-lg py-1 pr-2 group"
                     >
