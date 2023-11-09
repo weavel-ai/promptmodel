@@ -141,7 +141,7 @@ function ModelNode({ data }) {
     >
       <p className="text-base-content font-bold text-lg">{data.name}</p>
       <p className="text-neutral-content font-medium text-sm">
-        {dayjs(data.created_at).fromNow()}
+        {dayjs(data.created_at)?.fromNow()}
       </p>
     </Link>
   );

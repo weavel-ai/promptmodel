@@ -1,4 +1,4 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 
 export async function fetchVersionRunLogs(
   supabaseClient: SupabaseClient,
@@ -28,6 +28,45 @@ export async function fetchDeplRunLogs(
     .order("created_at", { ascending: false });
 
   return res.data;
+}
+
+export async function subscribeRunLogs(
+  supabaseClient: SupabaseClient,
+  projectUuid: string,
+  onUpdate: () => void
+): Promise<RealtimeChannel> {
+  const promptModelList = await supabaseClient
+    .from("prompt_model")
+    .select("uuid")
+    .eq("project_uuid", projectUuid);
+
+  const promptModelVersionList = await supabaseClient
+    .from("prompt_model_version")
+    .select("uuid")
+    .in(
+      "prompt_model_uuid",
+      promptModelList.data.map((item) => item.uuid)
+    );
+
+  const runLogsStream = supabaseClient
+    .channel("any")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "run_log",
+        filter: `version_uuid=in.(${promptModelVersionList.data
+          .map((item) => `${item.uuid}`)
+          .join(",")})`,
+      },
+      (payload) => {
+        onUpdate();
+      }
+    )
+    .subscribe();
+
+  return runLogsStream;
 }
 
 export type RunLog = Awaited<ReturnType<typeof fetchVersionRunLogs>>[0];
