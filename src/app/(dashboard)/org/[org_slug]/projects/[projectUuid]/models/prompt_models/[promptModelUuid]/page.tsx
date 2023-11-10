@@ -735,7 +735,7 @@ function ModelVersionNode({ data }) {
     >
       <Handle type="target" position={Position.Top} />
       <p className="text-base-content font-medium italic">
-        V<span className="font-bold text-xl not-italic">{data.label}</span>
+        V <span className="font-bold text-xl not-italic">{data.label}</span>
       </p>
       <Handle type="source" position={Position.Bottom} />
     </div>

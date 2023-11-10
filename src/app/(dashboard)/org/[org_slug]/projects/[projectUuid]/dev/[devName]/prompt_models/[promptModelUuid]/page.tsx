@@ -1604,7 +1604,7 @@ function ModelVersionNode({ data }) {
           <StatusIndicator status={data.status} />
         )}
         <p className="text-base-content font-medium">
-          V<span className="font-bold text-xl">{data.label}</span>
+          V <span className="font-bold text-xl">{data.label}</span>
         </p>
       </div>
       <Handle type="source" position={Position.Bottom} />
