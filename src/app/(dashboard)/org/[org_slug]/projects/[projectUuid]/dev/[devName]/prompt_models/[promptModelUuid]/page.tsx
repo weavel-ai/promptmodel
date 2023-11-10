@@ -347,6 +347,7 @@ export default function Page() {
 
     let cacheRawOutput = "";
     const cacheParsedOutputs = {};
+    let cacheFunctionCallData = {};
 
     const uuid = uuidv4();
     const args: any = {
@@ -415,21 +416,18 @@ export default function Page() {
           });
         }
         if (data?.function_call) {
-          const functionCallData = data?.function_call;
-          functionCallData["initial_raw_output"] = cacheRawOutput;
+          cacheFunctionCallData = data?.function_call;
+          // functionCallData["initial_raw_output"] = cacheRawOutput;
           updateRunLogs(isNew ? "new" : modelVersionData?.uuid, uuid, {
-            raw_output: "",
-            function_call: functionCallData,
+            // raw_output: "",
+            function_call: cacheFunctionCallData,
           });
-          cacheRawOutput = "";
+          // cacheRawOutput = "";
         }
         if (data?.function_response) {
-          const functionCallData =
-            runLogs?.[isNew ? "new" : modelVersionData?.uuid]?.[uuid]
-              ?.function_call;
-          functionCallData["response"] = data?.function_response;
+          cacheFunctionCallData["response"] = data?.function_response;
           updateRunLogs(isNew ? "new" : modelVersionData?.uuid, uuid, {
-            function_call: functionCallData,
+            function_call: cacheFunctionCallData,
           });
         }
       },
@@ -1586,7 +1584,7 @@ function ModelVersionNode({ data }) {
   return (
     <div
       className={classNames(
-        "p-4 rounded-full flex justify-center items-center",
+        "p-2 rounded-full flex justify-center items-center",
         "w-20 h-20 visible cursor-pointer",
         "transition-all",
         selectedVersionUuid == data.uuid
@@ -1603,7 +1601,7 @@ function ModelVersionNode({ data }) {
         {data.status != "published" && data.status != "deployed" && (
           <StatusIndicator status={data.status} />
         )}
-        <p className="text-base-content font-medium">
+        <p className="text-base-content font-medium flex-shrink-0">
           V <span className="font-bold text-xl">{data.label}</span>
         </p>
       </div>

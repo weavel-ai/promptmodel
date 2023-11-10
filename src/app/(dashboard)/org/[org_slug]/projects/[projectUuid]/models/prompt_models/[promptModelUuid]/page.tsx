@@ -721,7 +721,7 @@ function ModelVersionNode({ data }) {
   return (
     <div
       className={classNames(
-        "bg-base-200 p-4 rounded-full flex justify-center items-center",
+        "bg-base-200 p-2 rounded-full flex justify-center items-center",
         "w-20 h-20 visible cursor-pointer",
         "transition-colors",
         selectedVersionUuid == data.uuid
