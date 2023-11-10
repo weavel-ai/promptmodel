@@ -350,6 +350,65 @@ async def check_update(cached_version: str, project: dict = Depends(get_project)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
+@router.get("/fetch_published_prompt_model_version")
+async def fetch_published_prompt_model_version(
+    prompt_model_name: str, project: dict = Depends(get_project)
+):
+    """
+    Only use when use_cache = False.
+    Find published version of prompt_model_version and prompt and return them.
+
+    Input:
+        - cached_version: local cached version
+
+    Return:
+        - prompt_model_versions : List[Dict]
+        - prompts : List[Dict]
+    """
+    try:
+        # find_prompt_model
+        prompt_model = (
+            supabase.table("prompt_model")
+            .select("uuid, name")
+            .eq("project_uuid", project["uuid"])
+            .eq("name", prompt_model_name)
+            .is_("dev_branch_uuid", "null")
+            .single()
+            .execute()
+            .data
+        )
+        # get published, ab_test prompt_model_versions
+        deployed_prompt_model_versions = (
+            supabase.table("deployed_prompt_model_version")
+            .select(
+                "uuid, from_uuid, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+            )
+            .eq("prompt_model_uuid", prompt_model["uuid"])
+            .execute()
+            .data
+        )
+
+        versions_uuid_list = [x["uuid"] for x in deployed_prompt_model_versions]
+        # get prompts
+        prompts = (
+            supabase.table("prompt")
+            .select("version_uuid, role, step, content")
+            .in_("version_uuid", versions_uuid_list)
+            .execute()
+            .data
+        )
+
+        res = {
+            "prompt_model_versions": deployed_prompt_model_versions,
+            "prompts": prompts,
+        }
+
+        return JSONResponse(res, status_code=HTTP_200_OK)
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+
+
 # Create APIs
 @router.post("/create_dev_branch")
 async def create_dev_branch(
@@ -441,28 +500,29 @@ async def connect_cli_dev(
 @router.post("/log_deployment_run")
 async def log_deployment_run(
     version_uuid: str,
-    inputs: Dict[str, Any],
-    api_response: Dict[str, Any],
-    parsed_outputs: Dict[str, Any],
-    metadata: Dict[str, Any],
+    inputs: Optional[Dict[str, Any]] = None,
+    api_response: Optional[Dict[str, Any]] = None,
+    parsed_outputs: Optional[Dict[str, Any]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
     project: dict = Depends(get_project),
 ):
     try:
         # save log
-        # TODO: add function call
         (
             supabase.table("run_log")
             .insert(
                 {
                     "inputs": inputs,
-                    "raw_output": api_response["choices"][0]["message"]["content"],
+                    "raw_output": api_response["choices"][0]["message"]["content"]
+                    if api_response
+                    else None,
                     "parsed_outputs": parsed_outputs,
                     "input_register_name": None,
                     "run_from_deployment": True,
                     "version_uuid": version_uuid,
-                    "token_usage": api_response["usage"],
-                    "latency": api_response["response_ms"],
-                    "cost": completion_cost(api_response),
+                    "token_usage": api_response["usage"] if api_response else None,
+                    "latency": api_response["response_ms"] if api_response else None,
+                    "cost": completion_cost(api_response) if api_response else None,
                     "metadata": metadata,
                 }
             )
