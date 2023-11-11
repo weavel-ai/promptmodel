@@ -670,6 +670,8 @@ async def push_versions(
                     last_versions[new_version["prompt_model_uuid"]] + 1
                 )
                 last_versions[new_version["prompt_model_uuid"]] += 1
+                new_version["is_published"] = False
+                new_version["ratio"] = None
             else:
                 new_version["version"] = 1
                 last_versions[new_version["prompt_model_uuid"]] = 1
