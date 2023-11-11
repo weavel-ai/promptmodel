@@ -479,7 +479,9 @@ async def push_version(
         )
         if len(last_version) == 0:
             version["version"] = 1
-            version["is_published"] = True # If there is no previous version, publish it
+            version[
+                "is_published"
+            ] = True  # If there is no previous version, publish it
             version["ratio"] = 1.0
         else:
             version["version"] = last_version[0]["version"] + 1
@@ -604,8 +606,8 @@ async def push_versions(
         prompt_models = response["prompt_models"]
         if len(prompt_models) > 0:
             # add prompt_model["is_deployed"] = True
-            for prompt_model in prompt_models:
-                prompt_model["is_deployed"] = True
+            # for prompt_model in prompt_models:
+            #     prompt_model["is_deployed"] = True
 
             (supabase.table("prompt_model").insert(prompt_models).execute())
             # make changelog level 1, subject = prompt_model
