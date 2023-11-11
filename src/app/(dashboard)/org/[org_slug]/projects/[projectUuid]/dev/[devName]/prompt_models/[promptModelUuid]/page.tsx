@@ -194,14 +194,6 @@ export default function Page() {
     hasRun,
   ]);
 
-  const isVersionDeployed = useMemo(() => {
-    if (devBranchData?.cloud) {
-      return modelVersionData?.is_deployed;
-    } else {
-      return modelVersionData?.candidate_version;
-    }
-  }, [modelVersionData]);
-
   useHotkeys("esc", () => {
     if (createVariantOpen) {
       setCreateVariantOpen(false);
@@ -288,9 +280,7 @@ export default function Page() {
         let status;
         if (item.is_published) {
           status = "published";
-        } else if (
-          devBranchData?.cloud ? item.is_deployed : item.candidate_version
-        ) {
+        } else if (item.is_deployed) {
           status = "deployed";
         } else {
           status = item.status;
@@ -315,9 +305,7 @@ export default function Page() {
           id: item.uuid,
           type: "modelVersion",
           data: {
-            label: devBranchData?.cloud
-              ? item.version ?? item.uuid.slice(0, 3)
-              : item.candidate_version ?? item.uuid.slice(0, 3),
+            label: item.version ?? item.uuid.slice(0, 3),
             uuid: item.uuid,
             status: status,
           },
@@ -666,13 +654,10 @@ export default function Page() {
               {/* Header */}
               <div className="flex flex-row justify-between items-center gap-x-8">
                 <div className="flex flex-row w-full justify-between items-center gap-x-3 mb-2 mr-2">
-                  {isVersionDeployed ? (
+                  {modelVersionData?.is_deployed ? (
                     <div className="flex flex-row justify-start items-center gap-x-3">
                       <p className="text-base-content font-bold text-lg">
-                        Prompt V
-                        {devBranchData?.cloud
-                          ? modelVersionData?.version
-                          : modelVersionData?.candidate_version}
+                        Prompt V{modelVersionData?.version}
                       </p>
 
                       {modelVersionData?.is_published ? (
@@ -757,7 +742,7 @@ export default function Page() {
                         From&nbsp;
                         <u>
                           Prompt V
-                          {isVersionDeployed ??
+                          {modelVersionData?.is_deployed ??
                             modelVersionData?.uuid?.slice(0, 6)}
                         </u>
                       </p>
@@ -1040,14 +1025,10 @@ export default function Page() {
             </button>
             <div className="h-full overflow-auto mt-20">
               {versionListData?.map((versionData) => {
-                const deployedVersion = devBranchData?.cloud
-                  ? versionData.version
-                  : versionData.candidate_version;
-
                 let status;
                 if (versionData.is_published) {
                   status = "published";
-                } else if (deployedVersion) {
+                } else if (versionData.version) {
                   status = "deployed";
                 } else {
                   status = versionData.status;
@@ -1059,7 +1040,7 @@ export default function Page() {
                       "flex flex-row items-center gap-x-2 rounded-full p-2 backdrop-blur-sm hover:bg-base-content/10 transition-all cursor-pointer",
                       "active:scale-90"
                     )}
-                    key={deployedVersion ?? versionData.uuid.slice(0, 3)}
+                    key={versionData.version ?? versionData.uuid.slice(0, 3)}
                     onClick={() => {
                       setHasRun(false);
                       setSelectedVersionUuid(versionData.uuid);
@@ -1067,7 +1048,7 @@ export default function Page() {
                   >
                     <StatusIndicator status={status} />
                     <p className="text-base-content font-semibold text-lg">
-                      V{deployedVersion ?? versionData.uuid.slice(0, 3)}
+                      V{versionData.version ?? versionData.uuid.slice(0, 3)}
                     </p>
                   </div>
                 );
