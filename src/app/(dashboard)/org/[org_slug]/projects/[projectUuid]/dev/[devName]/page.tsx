@@ -328,8 +328,8 @@ function NoModelsDisplay({ show }: { show: boolean }) {
           Create a new PromptModel
         </p>
         <p className="text-base-content">
-          The code below will generate two PromptModels: <i>extract_keyword</i>{" "}
-          and <i>gen_story</i>.
+          The code below will display a PromptModel <i>gen_story</i> on the
+          dashboard.
           <br />
           Copy and modify the code to get started in a blink!
         </p>
