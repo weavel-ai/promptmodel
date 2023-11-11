@@ -43,16 +43,16 @@ const initialEdges = [];
 
 const SAMPLE_CODE = `# main.py
 
-from promptmodel import Client, PromptModel
+from promptmodel import DevClient, PromptModel
 
-client = Client()
+client = DevClient()
 
 # You can simply fetch prompts
-extract_keyword_prompts = PromptModel("extract_keyword").get_prompts()
+extract_keyword_prompts = PromptModel("gen_story").get_prompts()
 
 # Or use PromptModel's methods for LLM calls
 @client.register # This is required to display the promptmodel on the development dashboard
-def test():
+def gen_story():
     response = PromptModel("gen_story").run()
     print(response)`;
 
