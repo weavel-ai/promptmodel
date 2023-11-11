@@ -251,18 +251,21 @@ export default function Page() {
           <button
             className={classNames(
               "fixed top-16 right-6 flex flex-row gap-x-2 items-center backdrop-blur-sm z-50",
-              "btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
+              "btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20",
+              !devBranchData?.cloud && "hidden"
             )}
             onClick={() => setShowCreateModel(true)}
           >
             <Plus className="text-secondary" size={20} weight="fill" />
             <p className="text-base-content">Create new</p>
           </button>
-          <CreateModelModal
-            isOpen={showCreateModel}
-            setIsOpen={setShowCreateModel}
-            onCreated={refetchPromptModelListData}
-          />
+          {devBranchData?.cloud && (
+            <CreateModelModal
+              isOpen={showCreateModel}
+              setIsOpen={setShowCreateModel}
+              onCreated={refetchPromptModelListData}
+            />
+          )}
         </ReactFlow>
       </div>
     );
