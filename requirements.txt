@@ -1,6 +1,6 @@
 fastapi
 supabase
-openai
+openai==0.28.1
 uvicorn[standard]
 termcolor
 tiktoken
