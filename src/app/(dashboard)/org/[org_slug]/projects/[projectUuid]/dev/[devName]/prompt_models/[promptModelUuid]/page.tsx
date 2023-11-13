@@ -566,7 +566,7 @@ export default function Page() {
                 </div>
               </div>
               <div
-                className="flex flex-row justify-end items-center tooltip tooltip-left"
+                className="flex flex-row justify-end items-center tooltip tooltip-left tooltip-info"
                 data-tip="Press Cmd + / to insert output format to your prompt"
               >
                 <kbd className="kbd text-base-content">
@@ -876,7 +876,7 @@ export default function Page() {
                           )}
                         </div>
                         <div
-                          className="flex flex-row justify-end items-center tooltip tooltip-left"
+                          className="flex flex-row justify-end items-center tooltip tooltip-left tooltip-info"
                           data-tip="Press Cmd + / to insert output format to your prompt"
                         >
                           <kbd className="kbd text-base-content">

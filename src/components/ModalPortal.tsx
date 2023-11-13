@@ -2,12 +2,31 @@
 
 import { useModalStore } from "@/stores/modalStore";
 import classNames from "classnames";
+import { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 
 export const ModalPortal = ({ children }) => {
-  const modalRoot = document.getElementById("modal-root");
+  // Create a state to hold the div element
+  const [el] = useState(() => document.createElement("div"));
 
-  return ReactDOM.createPortal(children, modalRoot);
+  useEffect(() => {
+    // Get the modal root
+    const modalRoot = document.getElementById("modal-root");
+    if (!modalRoot) {
+      console.error("Modal root element not found");
+      return;
+    }
+
+    // Append the element into the DOM on mount
+    modalRoot.appendChild(el);
+
+    // Remove the element from the DOM when we unmount
+    return () => {
+      modalRoot.removeChild(el);
+    };
+  }, [el]);
+
+  return ReactDOM.createPortal(children, el);
 };
 
 export const ModalRoot = () => {

@@ -40,5 +40,6 @@ export const useDevBranch = () => {
   return {
     devBranchListData,
     devBranchData,
+    isCloudDev: devBranchData?.cloud,
   };
 };

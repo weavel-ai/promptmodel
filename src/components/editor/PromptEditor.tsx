@@ -4,7 +4,7 @@ import Editor, {
   DiffEditorProps,
   EditorProps,
 } from "@monaco-editor/react";
-import { registerCustomTheme } from "@/lib/promptLanguage";
+import { registerCustomThemeAndLanguage } from "@/lib/promptLanguage";
 
 export const PromptEditor: React.FC<EditorProps> = (props: EditorProps) => {
   return (
@@ -13,7 +13,7 @@ export const PromptEditor: React.FC<EditorProps> = (props: EditorProps) => {
       defaultLanguage="promptmodel"
       language="promptmodel"
       theme="promptmodelTheme"
-      beforeMount={registerCustomTheme}
+      beforeMount={registerCustomThemeAndLanguage}
       options={{
         ...props.options,
         scrollBeyondLastLine: false,
@@ -48,7 +48,7 @@ export const PromptDiffEditor: React.FC<DiffEditorProps> = (
           enabled: false,
         },
       }}
-      beforeMount={registerCustomTheme}
+      beforeMount={registerCustomThemeAndLanguage}
     />
   ) as ReactNode;
 };

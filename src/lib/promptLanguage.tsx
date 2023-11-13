@@ -1,6 +1,6 @@
 import { Monaco } from "@monaco-editor/react";
 
-export function registerCustomTheme(monaco: Monaco) {
+export function registerCustomLanguage(monaco: Monaco) {
   // Define the new language
   monaco.languages.register({ id: "promptmodel" });
 
@@ -24,7 +24,9 @@ export function registerCustomTheme(monaco: Monaco) {
       ],
     },
   });
+}
 
+export function registerCustomTheme(monaco: Monaco) {
   // Define the styling
   monaco.editor.defineTheme("promptmodelTheme", {
     base: "vs-dark",
@@ -51,4 +53,9 @@ export function registerCustomTheme(monaco: Monaco) {
       "editor.selectionHighlightBorder": "#122d42",
     },
   });
+}
+
+export function registerCustomThemeAndLanguage(monaco: Monaco) {
+  registerCustomLanguage(monaco);
+  registerCustomTheme(monaco);
 }
