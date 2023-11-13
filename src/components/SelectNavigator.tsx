@@ -55,11 +55,11 @@ export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
   }, []);
 
   return (
-    <div className="relative overflow-visible">
+    <div>
       <div className="flex flex-row items-center gap-x-2 cursor-pointer">
         <Link
-          href={current?.href}
           ref={containerRef}
+          href={current?.href}
           className={classNames("bg-base-100")}
         >
           {current.label}
@@ -69,7 +69,7 @@ export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
             setShowOptions(!showOptions);
           }}
         >
-          <CaretUpDown weight="bold" size={20} className="text-gray-400" />
+          <CaretUpDown weight="bold" size={20} className="text-muted-content" />
         </button>
       </div>
       {/* Options */}

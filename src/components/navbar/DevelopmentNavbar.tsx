@@ -56,7 +56,7 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
           : "w-screen",
         "flex justify-center h-12 px-4 transition-all",
         "fixed top-0",
-        "bg-base-100/5 backdrop-blur-sm z-50"
+        "bg-base-100/5 backdrop-blur-sm z-[999999]"
       )}
     >
       {
@@ -67,8 +67,8 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
               href="/org/redirect"
               className={classNames(
                 "btn btn-link px-0 normal-case no-underline hover:no-underline flex-0",
-                "text-lg font-extrabold text-transparent bg-clip-text bg-white",
-                "transition-colors hover:bg-gradient-to-br from-white to-primary",
+                "text-lg font-extrabold text-transparent bg-clip-text bg-base-content",
+                "transition-colors hover:bg-gradient-to-br from-base-content to-primary",
                 michroma.className
               )}
             >
@@ -77,41 +77,40 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
             <div className="ms-8 px-3 py-1 font-light">{orgData?.name}</div>
             <Link
               href={`/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}`}
-              className="bg-base-content/10 rounded-md ms-2 mr-2 px-3 py-1 font-light"
+              className="bg-base-content/10 rounded-md mr-2 px-3 py-1 font-light"
             >
               {projectName}
             </Link>
-            <div>
-              {params?.promptModelUuid && (
-                <SelectNavigator
-                  current={{
-                    label: promptModelListData?.find(
-                      (promptModel) =>
-                        promptModel.uuid == params?.promptModelUuid
-                    )?.name,
-                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}/prompt_models/${params?.promptModelUuid}`,
-                  }}
-                  options={promptModelListData?.map((promptModel) => {
-                    return {
-                      label: promptModel.name,
-                      href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}/prompt_models/${promptModel.uuid}`,
-                    };
-                  })}
-                />
-              )}
-            </div>
+            {params?.promptModelUuid && projectName && (
+              <SelectNavigator
+                current={{
+                  label: promptModelListData?.find(
+                    (promptModel) => promptModel.uuid == params?.promptModelUuid
+                  )?.name,
+                  href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}/prompt_models/${params?.promptModelUuid}`,
+                }}
+                options={promptModelListData?.map((promptModel) => {
+                  return {
+                    label: promptModel.name,
+                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}/prompt_models/${promptModel.uuid}`,
+                  };
+                })}
+              />
+            )}
           </div>
-          <div className="min-w-fit me-2 flex flex-row gap-x-2 items-center">
+          <div
+            className="min-w-fit me-2 flex flex-row gap-x-2 items-center tooltip tooltip-bottom tooltip-info"
+            data-tip={
+              devBranchData?.cloud
+                ? "This development environment is saved on the cloud."
+                : "This development environment is saved to your connected local instance."
+            }
+          >
             <div
               className={classNames(
-                "flex flex-row min-w-fit items-center gap-x-2 me-4 bg-[#2C2F41] px-3 py-1 border-[#2C2F41] rounded font-light justify-self-end self-center",
+                "flex flex-row min-w-fit items-center gap-x-2 me-4 bg-secondary px-3 py-1 border-popover rounded font-light justify-self-end self-center",
                 "tooltip tooltip-bottom"
               )}
-              data-tip={
-                devBranchData?.cloud
-                  ? "This development environment is saved on the cloud."
-                  : "This development environment is saved to your connected local instance."
-              }
             >
               {devBranchData?.cloud == true ? (
                 <Cloud size={24} weight="fill" />

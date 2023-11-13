@@ -132,8 +132,8 @@ export const FunctionSelector = ({
             "shadow-lg shadow-base-300/30 min-w-[200px]"
           )}
         >
-          <div className="overflow-auto flex-grow max-h-96 rounded-b-xl">
-            <div className="flex flex-col w-full h-full bg-base-100/70 backdrop-blur-sm">
+          <div className="overflow-auto flex-grow max-h-96">
+            <div className="flex flex-col w-full h-full bg-base-100/70 backdrop-blur-sm rounded-b-xl">
               {filteredOptions?.length === 0 && (
                 <div className="flex flex-col items-center justify-center flex-grow py-4">
                   <p className="text-base-content">No functions found.</p>
