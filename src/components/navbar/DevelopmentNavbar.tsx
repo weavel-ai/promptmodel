@@ -56,7 +56,7 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
           : "w-screen",
         "flex justify-center h-12 px-4 transition-all",
         "fixed top-0",
-        "bg-base-100/5 backdrop-blur-sm z-[999999]"
+        "bg-base-100/5 backdrop-blur-sm z-50"
       )}
     >
       {
@@ -99,7 +99,7 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
             )}
           </div>
           <div
-            className="min-w-fit me-2 flex flex-row gap-x-2 items-center tooltip tooltip-bottom tooltip-info"
+            className="min-w-fit me-2 flex flex-row gap-x-2 items-center tooltip tooltip-left tooltip-info"
             data-tip={
               devBranchData?.cloud
                 ? "This development environment is saved on the cloud."
@@ -108,8 +108,7 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
           >
             <div
               className={classNames(
-                "flex flex-row min-w-fit items-center gap-x-2 me-4 bg-secondary px-3 py-1 border-popover rounded font-light justify-self-end self-center",
-                "tooltip tooltip-bottom"
+                "flex flex-row min-w-fit items-center gap-x-2 me-4 bg-secondary px-3 py-1 border-popover rounded font-light justify-self-end self-center"
               )}
             >
               {devBranchData?.cloud == true ? (

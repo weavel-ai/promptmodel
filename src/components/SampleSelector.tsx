@@ -69,6 +69,21 @@ export const SampleSelector = (props: SampleSelectorProps) => {
     return sampleList?.find((sample) => sample.name === props.sampleName);
   }, [props.sampleName, sampleList]);
 
+  const hoveredSampleContent = useMemo(() => {
+    if (!hoveredSample) return null;
+    const content = hoveredSample?.content || hoveredSample?.contents;
+    // If hoveredSample.content is Record<string, any>, return it
+    if (typeof hoveredSample?.contents === "object")
+      return hoveredSample?.contents;
+    else {
+      try {
+        return JSON.parse(hoveredSample?.content);
+      } catch (err) {
+        return null;
+      }
+    }
+  }, [hoveredSample]);
+
   function handleClickOpen(event) {
     // if (createSampleModalRef.current.contains(event.target)) return;
     if (!isOpen) {
@@ -207,16 +222,18 @@ export const SampleSelector = (props: SampleSelectorProps) => {
                           {hoveredSample?.name}
                         </p>
                       </div>
-                      <ReactJson
-                        src={JSON.parse(hoveredSample?.content)}
-                        theme="monokai"
-                        name={false}
-                        displayDataTypes={false}
-                        displayObjectSize={false}
-                        style={{
-                          backgroundColor: "var(--base-100)",
-                        }}
-                      />
+                      {hoveredSampleContent && (
+                        <ReactJson
+                          src={hoveredSampleContent}
+                          theme="monokai"
+                          name={false}
+                          displayDataTypes={false}
+                          displayObjectSize={false}
+                          style={{
+                            backgroundColor: "var(--base-100)",
+                          }}
+                        />
+                      )}
                     </div>
                   )}
                 </motion.div>
