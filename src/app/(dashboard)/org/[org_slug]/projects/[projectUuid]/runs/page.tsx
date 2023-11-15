@@ -3,22 +3,51 @@
 import { useProject } from "@/hooks/useProject";
 import { useEffect, useState } from "react";
 import classNames from "classnames";
-import { CornersOut } from "@phosphor-icons/react";
+import { ArrowLeft, CornersOut } from "@phosphor-icons/react";
 import ReactJson from "react-json-view";
-import { fetchDeplRunLogs, subscribeRunLogs } from "@/apis/runlog";
+import {
+  fetchRunLogs,
+  fetchRunLogsCount,
+  subscribeRunLogs,
+} from "@/apis/runlog";
 import { useSupabaseClient } from "@/apis/base";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
+import { ArrowRight } from "lucide-react";
+
+const ROWS_PER_PAGE = 50;
 
 export default function Page() {
   const { projectData, projectUuid } = useProject();
   const { createSupabaseClient } = useSupabaseClient();
+  const [page, setPage] = useState(1);
   const [isRealtime, setIsRealtime] = useState(false);
 
-  const { data: runLogListData, refetch: refetchRunLogListData } = useQuery({
-    queryKey: ["runLogList", { projectUuid: projectData?.uuid }],
+  const { data: runLogsCountData, refetch: refetchRunLogsCountData } = useQuery(
+    {
+      queryKey: ["runLogsCount", { projectUuid: projectData?.uuid }],
+      queryFn: async () =>
+        await fetchRunLogsCount(
+          await createSupabaseClient(),
+          projectData?.uuid
+        ),
+      enabled: !!projectData?.uuid,
+    }
+  );
+
+  const {
+    data: runLogListData,
+    refetch: refetchRunLogListData,
+    isLoading: isRunLogLoading,
+  } = useQuery({
+    queryKey: ["runLogList", { projectUuid: projectData?.uuid, page: page }],
     queryFn: async () =>
-      await fetchDeplRunLogs(await createSupabaseClient(), projectData?.uuid),
+      await fetchRunLogs(
+        await createSupabaseClient(),
+        projectData?.uuid,
+        page,
+        ROWS_PER_PAGE
+      ),
     enabled: !!projectData?.uuid,
   });
 
@@ -31,10 +60,10 @@ export default function Page() {
           client,
           projectUuid,
           () => {
+            refetchRunLogsCountData();
             refetchRunLogListData();
           }
         );
-        console.log(runLogsStream);
         // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
         return () => {
           if (runLogsStream) {
@@ -48,9 +77,9 @@ export default function Page() {
 
   return (
     <div className="w-full h-full pl-20 overflow-hidden">
-      <div className="w-full h-full flex flex-col gap-y-4 pt-16">
+      <div className="w-full h-full flex flex-col pt-16">
         {/* TODO: ADD FILTERS */}
-        <div className="w-full flex flex-row justify-between items-center px-2">
+        <div className="w-full flex flex-row justify-between items-center px-2 pb-2">
           {/* <p className="text-lg font-medium text-base-content">Filter</p> */}
           <div className="w-full flex flex-row justify-end gap-x-4 mr-4">
             <p>Realtime</p>
@@ -67,6 +96,50 @@ export default function Page() {
           isFullScreen={false}
           setIsFullScreen={() => {}}
         />
+        <div className="w-full min-h-fit flex flex-row justify-start items-center p-2 bg-base-200 rounded-b text-sm gap-x-2">
+          <button
+            className="btn btn-outline btn-xs"
+            onClick={() => {
+              if (page > 1) {
+                setPage(page - 1);
+              }
+            }}
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <p>Page</p>
+          <input
+            type="number"
+            value={page}
+            onChange={(e) => setPage(parseInt(e.target.value))}
+            className="input bg-input input-xs w-[3rem] text-center flex-shrink focus:outline-none active:outline-none"
+          />
+          <p className="flex-shrink-0">
+            of {Math.ceil(runLogsCountData?.run_logs_count / ROWS_PER_PAGE)}
+          </p>
+          <button
+            className="btn btn-outline btn-xs mr-2"
+            onClick={() => {
+              if (
+                page <
+                Math.ceil(runLogsCountData?.run_logs_count / ROWS_PER_PAGE)
+              ) {
+                setPage(page + 1);
+              }
+            }}
+          >
+            <ArrowRight size={20} />
+          </button>
+          {isRunLogLoading ? (
+            <div className="loading loading-spinner loading-sm" />
+          ) : (
+            <p className="">{ROWS_PER_PAGE} records</p>
+          )}
+          <div className="divider divider-horizontal" />
+          <p className="text-muted-content">
+            Total {runLogsCountData?.run_logs_count} runs
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -78,14 +151,14 @@ const RunLogComponent = ({ runLogData, isFullScreen, setIsFullScreen }) => {
   return (
     <div
       className={classNames(
-        "w-full rounded-box items-center bg-base-200 p-2 flex flex-col flex-grow-1 gap-y-2 justify-start",
+        "w-full max-h-full flex-grow-1 items-center bg-base-200 p-2 flex flex-col gap-y-2 justify-start",
         isFullScreen && "h-full"
       )}
-      style={{ height: !isFullScreen && "calc(100% - 2rem)" }}
+      style={{ height: !isFullScreen && "calc(100% - 5rem)" }}
     >
       <div
         className={classNames(
-          "w-full max-h-full bg-base-200 rounded",
+          "w-full max-h-full bg-base-200 rounded-t",
           isFullScreen && "px-4 py-2",
           !isFullScreen && "overflow-auto"
         )}
@@ -168,6 +241,7 @@ const RunLogComponent = ({ runLogData, isFullScreen, setIsFullScreen }) => {
                 </td>
               </tr>
             </thead>
+
             <tbody className="bg-base-100">
               {runLogData?.map((runLog) => {
                 return (
