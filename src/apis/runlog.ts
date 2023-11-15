@@ -15,9 +15,11 @@ export async function fetchVersionRunLogs(
   return res.data;
 }
 
-export async function fetchDeplRunLogs(
+export async function fetchRunLogs(
   supabaseClient: SupabaseClient,
-  projectUuid: string
+  projectUuid: string,
+  page: number,
+  rowsPerPage: number
 ) {
   const res = await supabaseClient
     .from("deployment_run_log_view")
@@ -25,7 +27,21 @@ export async function fetchDeplRunLogs(
       "project_uuid, prompt_model_name, prompt_model_uuid, prompt_model_version_uuid, prompt_model_version, created_at, inputs, raw_output, parsed_outputs, function_call, latency, cost, token_usage, run_from_deployment"
     )
     .eq("project_uuid", projectUuid)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range((page - 1) * rowsPerPage, page * rowsPerPage - 1);
+
+  return res.data;
+}
+
+export async function fetchRunLogsCount(
+  supabaseClient: SupabaseClient,
+  projectUuid: string
+) {
+  const res = await supabaseClient
+    .from("run_logs_count")
+    .select("run_logs_count")
+    .eq("project_uuid", projectUuid)
+    .single();
 
   return res.data;
 }
