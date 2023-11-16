@@ -920,7 +920,7 @@ const ChatUI = ({
     }
   }
 
-  const child = (
+  const mainUI = (
     <div className={classNames("w-full h-full flex flex-col gap-y-2", "")}>
       <div className="w-full flex flex-row justify-between items-center">
         <div className="flex flex-row justify-start items-center gap-x-4">
@@ -1012,7 +1012,7 @@ const ChatUI = ({
           className
         )}
       >
-        {child}
+        {mainUI}
       </div>
     );
   } else {
@@ -1026,7 +1026,7 @@ const ChatUI = ({
             height: "100vh",
           }}
         >
-          {child}
+          {mainUI}
         </motion.div>
       </ModalPortal>
     );
