@@ -18,7 +18,7 @@ from promptmodel.utils.types import LLMStreamResponse
 
 from utils.logger import logger
 from base.database import supabase
-from api.dev import PromptModelRunConfig
+from api.dev import PromptModelRunConfig, ChatModelRunConfig
 
 router = APIRouter()
 
@@ -59,7 +59,7 @@ async def run_prompt_model(dev_uuid: str, run_config: PromptModelRunConfig):
     """Run PromptModel for cloud development environment.
 
     Args:
-        dev_name (str): Dev branch uuid
+        dev_uuid (str): Dev branch uuid
         run_config (PromptModelRunConfig):
             prompt_model_name: str
             model: str
@@ -285,6 +285,181 @@ async def run_cloud_dev_llm(dev_uuid: str, run_config: PromptModelRunConfig):
                 "dev_branch_uuid": dev_uuid,
                 "run_from_deployment": False,
             }
+        ).execute()
+    except Exception as error:
+        logger.error(f"Error running service: {error}")
+        data = {
+            "status": "failed",
+            "log": str(error),
+        }
+        yield data
+        return
+
+
+@router.post("/run_chat_model")
+async def run_chat_model(dev_uuid: str, chat_config: ChatModelRunConfig):
+    """Run ChatModel from cloud development environment.
+
+    Args:
+        dev_uuid (str): Dev branch uuid
+        chat_config (ChatModelRunConfig):
+            chat_model_name: str
+            model: str
+            system_prompt: str
+            from_uuid: previous version uuid (Optional)
+            uuid: current version uuid (Optional if from_uuid is provided)
+            functions: List of functions (Optional)
+
+    Raises:
+        HTTPException: _description_
+        HTTPException: _description_
+
+    Returns:
+        StreamingResponse
+            raw_output: str
+            status: "completed" | "failed" | "running"
+    """
+
+    async def stream_run():
+        async for chunk in run_cloud_dev_chat(
+            dev_uuid=dev_uuid, chat_config=chat_config
+        ):
+            yield json.dumps(chunk)
+
+    try:
+        return StreamingResponse(
+            stream_run(),
+        )
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
+        ) from exc
+
+
+async def run_cloud_dev_chat(dev_uuid: str, chat_config: ChatModelRunConfig):
+    """Run ChatModel from cloud development environment."""
+    try:
+        logger.info(f"Started ChatModel: {chat_config.chat_model_uuid}")
+        # create chat_model_dev_instance
+        chat_model_dev = LLMDev()
+        # find chat_model_version_uuid from cloud db
+        chat_model_version_uuid: Optional[str] = chat_config.version_uuid
+        session_uuid: Optional[str] = chat_config.session_uuid
+        # If chat_model_version_uuid is None, create new version
+        if chat_model_version_uuid is None:
+            print(chat_config.chat_model_uuid)
+            print(chat_config.from_uuid)
+            print(dev_uuid)
+            chat_model_version = (
+                supabase.table("chat_model_version")
+                .insert(
+                    {
+                        "chat_model_uuid": chat_config.chat_model_uuid,
+                        "dev_from_uuid": chat_config.from_uuid,
+                        "model": chat_config.model,
+                        "system_prompt": chat_config.system_prompt,
+                        "functions": chat_config.functions,
+                        "dev_branch_uuid": dev_uuid,
+                        "is_deployed": False,
+                    }
+                )
+                .execute()
+                .data[0]
+            )
+
+            chat_model_version_uuid: str = chat_model_version["uuid"]
+
+            data = {
+                "chat_model_version_uuid": chat_model_version_uuid,
+                "status": "running",
+            }
+            yield data
+        # If session uuid is None, create new session
+        if session_uuid is None:
+            session_uuid = (
+                supabase.table("chat_log_session")
+                .insert(
+                    {
+                        "version_uuid": chat_model_version_uuid,
+                        "dev_branch_uuid": dev_uuid,
+                        "run_from_deployment": False,
+                    }
+                )
+                .execute()
+                .data[0]["uuid"]
+            )
+            data = {
+                "chat_log_session_uuid": session_uuid,
+                "status": "running",
+            }
+            yield data
+
+        model = chat_config.model
+        messages = [{"role": "system", "content": chat_config.system_prompt}]
+
+        # Fetch session chat logs from cloud db
+        session_chat_logs = (
+            supabase.table("chat_log")
+            .select("role, content")
+            .eq("session_uuid", session_uuid)
+            .order("created_at", desc=False)
+            .execute()
+            .data
+        )
+
+        messages.extend(session_chat_logs)
+        messages.append({"role": "user", "content": chat_config.user_input})
+
+        res: AsyncGenerator[LLMStreamResponse, None] = chat_model_dev.dev_chat(
+            messages=messages,
+            model=model,
+        )
+
+        # TODO: Add function call support
+        raw_output = ""
+        async for item in res:
+            # send item to backend
+            # save item & parse
+            # if type(item) == str: raw output, if type(item) == dict: parsed output
+            if item.raw_output is not None:
+                raw_output += item.raw_output
+                data = {
+                    "status": "running",
+                    "raw_output": item.raw_output,
+                }
+
+            if item.error:
+                error_log = item.error_log
+
+            yield data
+
+        data = {
+            "status": "completed",
+        }
+
+        yield data
+        # Update chat_model_version status to working
+        supabase.table("chat_model_version").update(
+            {
+                "status": "working",
+            }
+        ).eq("uuid", chat_model_version_uuid).execute()
+
+        # Create chat log
+        supabase.table("chat_log").insert(
+            [
+                {
+                    "session_uuid": session_uuid,
+                    "role": "user",
+                    "content": chat_config.user_input,
+                },
+                {
+                    "session_uuid": session_uuid,
+                    "role": "assistant",
+                    "content": raw_output,
+                },
+            ]
         ).execute()
     except Exception as error:
         logger.error(f"Error running service: {error}")
