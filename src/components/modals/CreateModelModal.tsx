@@ -6,7 +6,11 @@ import { Modal } from "./Modal";
 import classNames from "classnames";
 import { ArrowSquareOut } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import { createDevBranch, createPromptModel } from "@/apis/devCloud";
+import {
+  createChatModel,
+  createDevBranch,
+  createPromptModel,
+} from "@/apis/devCloud";
 import { useSupabaseClient } from "@/apis/base";
 import { useParams, useRouter } from "next/navigation";
 import { SelectField } from "../select/SelectField";
@@ -38,12 +42,22 @@ export const CreateModelModal = ({
   async function handleCreateModel() {
     // TODO: Add PromptModel / ChatModel types
     const toastId = toast.loading("Creating...");
-    const resData = await createPromptModel({
-      supabaseClient: await createSupabaseClient(),
-      name,
-      devUuid: devBranchData?.uuid,
-      projectUuid: params.projectUuid as string,
-    });
+    let resData;
+    if (type == "PromptModel") {
+      resData = await createPromptModel({
+        supabaseClient: await createSupabaseClient(),
+        name,
+        devUuid: devBranchData?.uuid,
+        projectUuid: params.projectUuid as string,
+      });
+    } else if (type == "ChatModel") {
+      resData = await createChatModel({
+        supabaseClient: await createSupabaseClient(),
+        name,
+        devUuid: devBranchData?.uuid,
+        projectUuid: params.projectUuid as string,
+      });
+    }
     toast.update(toastId, {
       render: `Created ${name}!`,
       type: "success",
@@ -52,9 +66,15 @@ export const CreateModelModal = ({
     });
     setIsOpen(false);
     onCreated();
-    router.push(
-      `/org/${params.org_slug}/projects/${params.projectUuid}/dev/${params.devName}/prompt_models/${resData.uuid}`
-    );
+    if (type == "PromptModel")
+      router.push(
+        `/org/${params.org_slug}/projects/${params.projectUuid}/dev/${params.devName}/prompt_models/${resData.uuid}`
+      );
+    else if (type == "ChatModel") {
+      router.push(
+        `/org/${params.org_slug}/projects/${params.projectUuid}/dev/${params.devName}/chat_models/${resData.uuid}`
+      );
+    }
   }
 
   function validateName(value: string) {
@@ -107,9 +127,9 @@ export const CreateModelModal = ({
         <p className="label-text">Type</p>
         <select
           value={type}
-          onChange={(e) =>
-            // setType(e.target.value as "PromptModel" | "ChatModel")
-            setType("PromptModel")
+          onChange={
+            (e) => setType(e.target.value as "PromptModel" | "ChatModel")
+            // setType("PromptModel")
           }
           className="select bg-base-100 active:outline-none focus:outline-none"
         >

@@ -1,3 +1,7 @@
+export function firstLetterToUppercase(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 export function cloneDeep(obj: any): any {
   return JSON.parse(JSON.stringify(obj));
 }

@@ -74,7 +74,10 @@ export default function Page() {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
   const { promptModelListData } = usePromptModel();
-  const { versionListData, refetchVersionListData } = usePromptModelVersion();
+  const {
+    promptModelVersionListData: versionListData,
+    refetchPromptModelVersionListData: refetchVersionListData,
+  } = usePromptModelVersion();
   const { devBranchData } = useDevBranch();
 
   const [nodes, setNodes] = useState([]);
@@ -91,15 +94,15 @@ export default function Page() {
 
   const {
     newVersionUuidCache,
-    selectedVersionUuid,
+    selectedPromptModelVersionUuid: selectedVersionUuid,
     focusedEditor,
     showSlashOptions,
     runLogs,
-    updateVersionLists,
+    updatePromptModelVersionLists: updateVersionLists,
     updateRunLogs,
     updatePrompts,
     removeRunLog,
-    setSelectedVersionUuid,
+    setSelectedPromptModelVersionUuid: setSelectedVersionUuid,
     setNewVersionUuidCache,
     setShowSlashOptions,
   } = usePromptModelVersionStore();
@@ -194,13 +197,20 @@ export default function Page() {
     hasRun,
   ]);
 
-  useHotkeys("esc", () => {
-    if (createVariantOpen) {
-      setCreateVariantOpen(false);
-    } else if (selectedVersionUuid) {
-      setSelectedVersionUuid(null);
+  useHotkeys(
+    "esc",
+    () => {
+      if (createVariantOpen) {
+        setCreateVariantOpen(false);
+      } else if (selectedVersionUuid) {
+        setSelectedVersionUuid(null);
+      }
+    },
+    {
+      enableOnFormTags: true,
+      preventDefault: true,
     }
-  });
+  );
 
   // Subscribe to dev branch sync status
   useEffect(() => {
@@ -742,7 +752,7 @@ export default function Page() {
                         From&nbsp;
                         <u>
                           Prompt V
-                          {modelVersionData?.is_deployed ??
+                          {modelVersionData?.version ??
                             modelVersionData?.uuid?.slice(0, 6)}
                         </u>
                       </p>
@@ -1038,11 +1048,18 @@ export default function Page() {
                   <div
                     className={classNames(
                       "flex flex-row items-center gap-x-2 rounded-full p-2 backdrop-blur-sm hover:bg-base-content/10 transition-all cursor-pointer",
-                      "active:scale-90"
+                      "active:scale-90",
+                      selectedVersionUuid == versionData.uuid
+                        ? "bg-base-content/20"
+                        : "bg-transparent",
+                      newVersionUuidCache == versionData.uuid &&
+                        "tooltip tooltip-bottom tooltip-primary"
                     )}
+                    data-tip="New!"
                     key={versionData.version ?? versionData.uuid.slice(0, 3)}
                     onClick={() => {
                       setHasRun(false);
+                      setNewVersionUuidCache(null);
                       setSelectedVersionUuid(versionData.uuid);
                     }}
                   >
@@ -1560,8 +1577,10 @@ const RunLogComponent = ({
 };
 
 function ModelVersionNode({ data }) {
-  const { selectedVersionUuid, setSelectedVersionUuid } =
-    usePromptModelVersionStore();
+  const {
+    selectedPromptModelVersionUuid: selectedVersionUuid,
+    setSelectedPromptModelVersionUuid: setSelectedVersionUuid,
+  } = usePromptModelVersionStore();
   return (
     <div
       className={classNames(

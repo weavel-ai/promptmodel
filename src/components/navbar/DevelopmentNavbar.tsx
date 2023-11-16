@@ -12,7 +12,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Cloud, GlobeHemisphereWest, Rocket } from "@phosphor-icons/react";
 import { deployCandidates as deployLocalCandidates } from "@/apis/dev";
 import { usePromptModelVersion } from "@/hooks/dev/usePromptModelVersion";
-import { usePromptModelVersionStore } from "@/stores/promptModelVersionStore";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -98,18 +97,16 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
               />
             )}
           </div>
-          <div
-            className="min-w-fit me-2 flex flex-row gap-x-2 items-center tooltip tooltip-left tooltip-info"
-            data-tip={
-              devBranchData?.cloud
-                ? "This development environment is saved on the cloud."
-                : "This development environment is saved to your connected local instance."
-            }
-          >
+          <div className="min-w-fit me-2 flex flex-row gap-x-2 items-center">
             <div
               className={classNames(
-                "flex flex-row min-w-fit items-center gap-x-2 me-4 bg-secondary px-3 py-1 border-popover rounded font-light justify-self-end self-center"
+                "flex flex-row min-w-fit items-center gap-x-2 me-4 bg-secondary px-3 py-1 border-popover rounded font-light justify-self-end self-center tooltip tooltip-left tooltip-info"
               )}
+              data-tip={
+                devBranchData?.cloud
+                  ? "This development environment is saved on the cloud."
+                  : "This development environment is saved to your connected local instance."
+              }
             >
               {devBranchData?.cloud == true ? (
                 <Cloud size={24} weight="fill" />
@@ -132,7 +129,10 @@ const DeployCandidatesButton = () => {
   const { createSupabaseClient } = useSupabaseClient();
   const { projectUuid, projectListData } = useProject();
   const { promptModelListData, refetchPromptModelListData } = usePromptModel();
-  const { versionListData, refetchVersionListData } = usePromptModelVersion();
+  const {
+    promptModelVersionListData: versionListData,
+    refetchPromptModelVersionListData: refetchVersionListData,
+  } = usePromptModelVersion();
   const { devBranchData } = useDevBranch();
 
   const deployAll = useMemo(() => {
