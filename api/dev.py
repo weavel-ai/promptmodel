@@ -38,6 +38,17 @@ class PromptModelRunConfig(BaseModel):
     functions: Optional[List[str]] = []
 
 
+class ChatModelRunConfig(BaseModel):
+    chat_model_uuid: str
+    system_prompt: str
+    user_input: str
+    model: Optional[str] = "gpt-3.5-turbo"
+    from_uuid: Optional[str] = None
+    session_uuid: Optional[str] = None
+    version_uuid: Optional[str] = None
+    functions: Optional[List[str]] = []
+
+
 class RunLog(BaseModel):
     inputs: Dict[str, Any]
     raw_output: str
