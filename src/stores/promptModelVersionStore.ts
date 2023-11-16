@@ -11,19 +11,19 @@ export type RunLog = {
 export type Prompt = { role: string; step: number; content: string };
 
 type Store = {
-  selectedVersionUuid: string | null;
+  selectedPromptModelVersionUuid: string | null;
   runLogs: Record<string, Record<string, RunLog>>;
   prompts: Record<string, Prompt[]>;
   runTasksCount: Record<string | "new", number>;
   newVersionUuidCache: string | null;
   newPromptCache: Prompt[];
-  versionLists: Record<string, any>;
+  promptModelVersionLists: Record<string, any>;
   focusedEditor: editor.ICodeEditor | null;
   showSlashOptions: boolean;
 };
 
 type Actions = {
-  setSelectedVersionUuid: (version: string) => void;
+  setSelectedPromptModelVersionUuid: (version: string) => void;
   updateRunLogs: (version: string, uuid: string, runLog: RunLog) => void;
   updatePrompts: (version: string, prompts: Prompt[]) => void;
   removeRunLog: (version: string, uuid: string) => void;
@@ -31,22 +31,26 @@ type Actions = {
   removeRunTask: (version: string | "new") => void;
   setNewVersionUuidCache: (uuid: string) => void;
   setNewPromptCache: (prompts: Prompt[]) => void;
-  updateVersionLists: (promptModelUuid: string, versionList: any) => void;
+  updatePromptModelVersionLists: (
+    promptModelUuid: string,
+    versionList: any
+  ) => void;
   setFocusedEditor: (editor: editor.ICodeEditor | null) => void;
   setShowSlashOptions: (show: boolean) => void;
 };
 
 export const usePromptModelVersionStore = create<Store & Actions>((set) => ({
-  selectedVersionUuid: null,
+  selectedPromptModelVersionUuid: null,
   runLogs: {},
   prompts: {},
   runTasksCount: {},
   newVersionUuidCache: null,
   newPromptCache: [],
-  versionLists: {},
+  promptModelVersionLists: {},
   focusedEditor: null,
   showSlashOptions: false,
-  setSelectedVersionUuid: (uuid) => set({ selectedVersionUuid: uuid }),
+  setSelectedPromptModelVersionUuid: (uuid) =>
+    set({ selectedPromptModelVersionUuid: uuid }),
   updateRunLogs: (version, uuid, runLog) => {
     set((state) => ({
       runLogs: {
@@ -101,10 +105,10 @@ export const usePromptModelVersionStore = create<Store & Actions>((set) => ({
   },
   setNewVersionUuidCache: (uuid) => set({ newVersionUuidCache: uuid }),
   setNewPromptCache: (prompts) => set({ newPromptCache: prompts }),
-  updateVersionLists: (promptModelUuid, versionList) =>
+  updatePromptModelVersionLists: (promptModelUuid, versionList) =>
     set((state) => ({
-      versionLists: {
-        ...state.versionLists,
+      promptModelVersionLists: {
+        ...state.promptModelVersionLists,
         [promptModelUuid]: versionList,
       },
     })),

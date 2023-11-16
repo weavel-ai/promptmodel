@@ -74,7 +74,10 @@ export default function Page() {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
   const { promptModelListData } = usePromptModel();
-  const { versionListData, refetchVersionListData } = usePromptModelVersion();
+  const {
+    promptModelVersionListData: versionListData,
+    refetchPromptModelVersionListData: refetchVersionListData,
+  } = usePromptModelVersion();
   const { devBranchData } = useDevBranch();
 
   const [nodes, setNodes] = useState([]);
@@ -91,15 +94,15 @@ export default function Page() {
 
   const {
     newVersionUuidCache,
-    selectedVersionUuid,
+    selectedPromptModelVersionUuid: selectedVersionUuid,
     focusedEditor,
     showSlashOptions,
     runLogs,
-    updateVersionLists,
+    updatePromptModelVersionLists: updateVersionLists,
     updateRunLogs,
     updatePrompts,
     removeRunLog,
-    setSelectedVersionUuid,
+    setSelectedPromptModelVersionUuid: setSelectedVersionUuid,
     setNewVersionUuidCache,
     setShowSlashOptions,
   } = usePromptModelVersionStore();
@@ -1560,8 +1563,10 @@ const RunLogComponent = ({
 };
 
 function ModelVersionNode({ data }) {
-  const { selectedVersionUuid, setSelectedVersionUuid } =
-    usePromptModelVersionStore();
+  const {
+    selectedPromptModelVersionUuid: selectedVersionUuid,
+    setSelectedPromptModelVersionUuid: setSelectedVersionUuid,
+  } = usePromptModelVersionStore();
   return (
     <div
       className={classNames(

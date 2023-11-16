@@ -144,7 +144,7 @@ export const DeploymentNavbar = (props: NavbarProps) => {
               </div>
             )}
             {/* Project navigator */}
-            {params?.projectUuid && (
+            {params?.projectUuid && organization && (
               <SelectNavigator
                 current={{
                   label: projectListData?.find(
@@ -161,7 +161,7 @@ export const DeploymentNavbar = (props: NavbarProps) => {
               />
             )}
             {/* PromptModel navigator */}
-            {params?.promptModelUuid && (
+            {params?.promptModelUuid && organization && (
               <SelectNavigator
                 current={{
                   label: promptModelListData?.find(

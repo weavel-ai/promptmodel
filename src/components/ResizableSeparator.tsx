@@ -1,11 +1,20 @@
 import classNames from "classnames";
 
-export const ResizableSeparator = ({ height, setHeight }) => {
+export const ResizableSeparator = ({
+  height,
+  setHeight,
+  className,
+}: {
+  height: number;
+  setHeight: (height: number) => void;
+  className?: string;
+}) => {
   return (
     <div
       className={classNames(
         "absolute left-0 right-0 h-[0.4rem] cursor-row-resize bg-base-300/70 rounded-full",
-        "transition-colors hover:bg-blue-500/70 active:bg-blue-500/70 focus:bg-blue-500/70 active:select-none focus:select-none"
+        "transition-colors hover:bg-blue-500/70 active:bg-blue-500/70 focus:bg-blue-500/70 active:select-none focus:select-none",
+        className
       )}
       {...registerMouseDownDrag((deltaX, deltaY) => {
         if (height - deltaY > window.innerHeight - 160) {

@@ -40,6 +40,20 @@ export async function fetchPromptModels(
   return res.data;
 }
 
+export async function fetchChatModels(
+  supabaseClient: SupabaseClient,
+  devUuid: string,
+  projectUuid: string
+) {
+  const res = await supabaseClient
+    .from("chat_model")
+    .select("name, uuid, created_at, dev_branch_uuid")
+    .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
+    .eq("project_uuid", projectUuid);
+
+  return res.data;
+}
+
 export async function createPromptModel({
   supabaseClient,
   devUuid,
@@ -53,6 +67,30 @@ export async function createPromptModel({
 }) {
   const res = await supabaseClient
     .from("prompt_model")
+    .insert({
+      dev_branch_uuid: devUuid,
+      project_uuid: projectUuid,
+      name: name,
+    })
+    .select("uuid")
+    .single();
+
+  return res.data;
+}
+
+export async function createChatModel({
+  supabaseClient,
+  devUuid,
+  projectUuid,
+  name,
+}: {
+  supabaseClient: SupabaseClient;
+  devUuid: string;
+  projectUuid: string;
+  name: string;
+}) {
+  const res = await supabaseClient
+    .from("chat_model")
     .insert({
       dev_branch_uuid: devUuid,
       project_uuid: projectUuid,
@@ -129,6 +167,38 @@ export async function fetchPrompts(
 //   });
 //   return res.data.samples;
 // }
+
+export async function fetchChatModelVersions(
+  supabaseClient: SupabaseClient,
+  devUuid: string,
+  chatModelUuid: string
+) {
+  const res = await supabaseClient
+    .from("chat_model_version")
+    .select(
+      "uuid, created_at, version, from_uuid, dev_from_uuid, model, system_prompt, is_published, is_ab_test, ratio, functions, status, is_deployed"
+    )
+    .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
+    .eq("chat_model_uuid", chatModelUuid)
+    .order("version", { ascending: true });
+
+  return res.data;
+}
+
+export async function updateChatModelVersionStatus(
+  supabaseClient: SupabaseClient,
+  devUuid: string,
+  versionUuid: string,
+  status: "broken" | "working" | "candidate"
+) {
+  await supabaseClient
+    .from("chat_model_version")
+    .update({
+      status: status,
+    })
+    .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
+    .eq("uuid", versionUuid);
+}
 
 export async function fetchRunLogs(
   supabaseClient: SupabaseClient,
@@ -213,6 +283,48 @@ export async function streamPromptModelRun({
       model: model,
       parsing_type: parsingType,
       output_keys: outputKeys,
+      functions: functions,
+    },
+    onNewData: onNewData,
+  });
+}
+
+export async function streamChatModelRun({
+  devUuid,
+  chatModelUuid,
+  systemPrompt,
+  sessionUuid,
+  userInput,
+  model,
+  fromUuid,
+  versionUuid,
+  functions,
+  onNewData,
+}: {
+  devUuid: string;
+  chatModelUuid: string;
+  systemPrompt: string;
+  sessionUuid: string;
+  userInput: string;
+  model: string;
+  fromUuid?: string | null;
+  versionUuid?: string | null;
+  functions?: string[] | null;
+  onNewData?: (data: Record<string, any>) => void;
+}) {
+  await fetchStream({
+    url: "/web/run_chat_model",
+    params: {
+      dev_uuid: devUuid,
+    },
+    body: {
+      chat_model_uuid: chatModelUuid,
+      system_prompt: systemPrompt,
+      session_uuid: sessionUuid,
+      user_input: userInput,
+      from_uuid: fromUuid,
+      version_uuid: versionUuid,
+      model: model,
       functions: functions,
     },
     onNewData: onNewData,

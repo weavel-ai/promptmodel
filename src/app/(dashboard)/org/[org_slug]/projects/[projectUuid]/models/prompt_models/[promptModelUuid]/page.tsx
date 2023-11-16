@@ -188,8 +188,10 @@ const VersionsPage = () => {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
 
-  const { selectedVersionUuid, setSelectedVersionUuid } =
-    usePromptModelVersionStore();
+  const {
+    selectedPromptModelVersionUuid: selectedVersionUuid,
+    setSelectedPromptModelVersionUuid: setSelectedVersionUuid,
+  } = usePromptModelVersionStore();
   const { projectData } = useProject();
   const nodeTypes = useMemo(() => ({ modelVersion: ModelVersionNode }), []);
 
@@ -716,8 +718,10 @@ const RunLogComponent = ({ runLogData, isFullScreen, setIsFullScreen }) => {
 };
 
 function ModelVersionNode({ data }) {
-  const { selectedVersionUuid, setSelectedVersionUuid } =
-    usePromptModelVersionStore();
+  const {
+    selectedPromptModelVersionUuid: selectedVersionUuid,
+    setSelectedPromptModelVersionUuid: setSelectedVersionUuid,
+  } = usePromptModelVersionStore();
   return (
     <div
       className={classNames(

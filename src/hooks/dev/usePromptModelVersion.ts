@@ -14,63 +14,66 @@ export const usePromptModelVersion = () => {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
   const { devBranchData } = useDevBranch();
-  const { versionLists, updateVersionLists } = usePromptModelVersionStore();
+  const { promptModelVersionLists, updatePromptModelVersionLists } =
+    usePromptModelVersionStore();
 
-  const { data: fetchedVersionListData, refetch: refetchVersionListData } =
-    useQuery({
-      queryKey: [
-        "versionListData",
-        "sync",
-        {
-          promptModelUuid: params?.promptModelUuid,
-          devName: params?.devName,
-          projectUuid: params?.projectUuid,
-        },
-      ],
-      queryFn: async () =>
-        devBranchData?.cloud
-          ? await fetchPromptModelVersions(
-              await createSupabaseClient(),
-              devBranchData?.uuid,
-              params?.promptModelUuid as string
-            )
-          : await fetchLocalPromptModelVersions(
-              params?.projectUuid as string,
-              params?.devName as string,
-              params?.promptModelUuid as string
-            ),
-      onSettled: async (data) => {
-        if (devBranchData?.cloud) return;
-        await updateDevBranchSync(
-          await createSupabaseClient(),
-          params?.projectUuid as string,
-          params?.devName as string,
-          true
-        );
+  const {
+    data: fetchedPromptModelVersionListData,
+    refetch: refetchPromptModelVersionListData,
+  } = useQuery({
+    queryKey: [
+      "promptModelVersionListData",
+      "sync",
+      {
+        promptModelUuid: params?.promptModelUuid,
+        devName: params?.devName,
+        projectUuid: params?.projectUuid,
       },
-      enabled:
-        Boolean(
-          params?.promptModelUuid && params?.devName && params?.projectUuid
-        ) && devBranchData != null,
-    });
+    ],
+    queryFn: async () =>
+      devBranchData?.cloud
+        ? await fetchPromptModelVersions(
+            await createSupabaseClient(),
+            devBranchData?.uuid,
+            params?.promptModelUuid as string
+          )
+        : await fetchLocalPromptModelVersions(
+            params?.projectUuid as string,
+            params?.devName as string,
+            params?.promptModelUuid as string
+          ),
+    onSettled: async (data) => {
+      if (devBranchData?.cloud) return;
+      await updateDevBranchSync(
+        await createSupabaseClient(),
+        params?.projectUuid as string,
+        params?.devName as string,
+        true
+      );
+    },
+    enabled:
+      Boolean(
+        params?.promptModelUuid && params?.devName && params?.projectUuid
+      ) && devBranchData != null,
+  });
 
   useEffect(() => {
-    updateVersionLists(
+    updatePromptModelVersionLists(
       params?.promptModelUuid as string,
-      fetchedVersionListData
+      fetchedPromptModelVersionListData
     );
-  }, [fetchedVersionListData]);
+  }, [fetchedPromptModelVersionListData]);
 
-  const versionListData = useMemo(() => {
+  const promptModelVersionListData = useMemo(() => {
     if (!params?.promptModelUuid) return [];
-    return versionLists[params?.promptModelUuid as string];
-  }, [params, versionLists]);
+    return promptModelVersionLists[params?.promptModelUuid as string];
+  }, [params, promptModelVersionLists]);
 
   return {
     promptModelUuid: params?.promptModelUuid as string,
-    versionListData,
-    versionLists,
-    fetchedVersionListData,
-    refetchVersionListData,
+    promptModelVersionListData,
+    promptModelVersionLists,
+    fetchedPromptModelVersionListData,
+    refetchPromptModelVersionListData,
   };
 };
