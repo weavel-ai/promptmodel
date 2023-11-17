@@ -30,7 +30,10 @@ import { ResizableSeparator } from "@/components/ResizableSeparator";
 import { useProject } from "@/hooks/useProject";
 import ReactJson from "react-json-view";
 import { SelectTab } from "@/components/SelectTab";
-import { useDailyRunLogMetrics } from "@/hooks/analytics";
+import {
+  useDailyChatLogMetrics,
+  useDailyRunLogMetrics,
+} from "@/hooks/analytics";
 import { CustomAreaChart } from "@/components/charts/CustomAreaChart";
 import { DatePickerWithRange } from "@/components/ui/DatePickerWithRange";
 import { DateRange } from "react-day-picker";
@@ -81,32 +84,33 @@ const AnalyticsPage = () => {
     to: new Date(),
   });
 
-  const { dailyRunLogMetrics } = useDailyRunLogMetrics(
+  const { dailyChatLogMetrics } = useDailyChatLogMetrics(
     dayjs(dateRange?.from)?.toISOString(),
     dayjs(dateRange?.to)?.toISOString()
   );
 
-  const totalCost = dailyRunLogMetrics?.reduce(
+  const totalCost = dailyChatLogMetrics?.reduce(
     (acc, curr) => acc + curr.total_cost,
     0
   );
 
-  const totalLatency = dailyRunLogMetrics?.reduce(
-    (acc, curr) => acc + curr.avg_latency * curr.total_runs,
+  const totalLatency = dailyChatLogMetrics?.reduce(
+    (acc, curr) => acc + curr.avg_latency * curr.total_chat_sessions,
     0
   );
 
-  const totalRuns = dailyRunLogMetrics?.reduce(
-    (acc, curr) => acc + curr.total_runs,
+  const totalChatSessions = dailyChatLogMetrics?.reduce(
+    (acc, curr) => acc + curr.total_chat_sessions,
     0
   );
 
-  const totalTokens = dailyRunLogMetrics?.reduce(
+  const totalTokens = dailyChatLogMetrics?.reduce(
     (acc, curr) => acc + curr.total_token_usage.total_tokens,
     0
   );
 
-  const avgLatency = totalRuns != 0 ? totalLatency / totalRuns : 0;
+  const avgLatency =
+    totalChatSessions != 0 ? totalLatency / totalChatSessions : 0;
 
   function formatDate(inputDate: Date): string {
     const year = inputDate.getFullYear();
@@ -117,15 +121,15 @@ const AnalyticsPage = () => {
   }
 
   let date = new Date(dateRange?.from);
-  const existingDates = dailyRunLogMetrics?.map((metric) => metric.day);
+  const existingDates = dailyChatLogMetrics?.map((metric) => metric.day);
 
   while (date <= dateRange?.to) {
     if (!existingDates?.includes(formatDate(date))) {
-      dailyRunLogMetrics?.push({
+      dailyChatLogMetrics?.push({
         day: formatDate(date),
         avg_latency: 0,
         total_cost: 0,
-        total_runs: 0,
+        total_chat_sessions: 0,
         total_token_usage: {
           total_tokens: 0,
           prompt_tokens: 0,
@@ -136,7 +140,7 @@ const AnalyticsPage = () => {
     date.setDate(date.getDate() + 1);
   }
 
-  dailyRunLogMetrics?.sort((a, b) => {
+  dailyChatLogMetrics?.sort((a, b) => {
     if (a.day < b.day) return -1;
     if (a.day > b.day) return 1;
     return 0;
@@ -151,28 +155,28 @@ const AnalyticsPage = () => {
         />
       </div>
       <CustomAreaChart
-        data={dailyRunLogMetrics}
+        data={dailyChatLogMetrics}
         dataKey="total_cost"
         xAxisDataKey="day"
         title="Total Cost"
         mainData={`$${totalCost}`}
       />
       <CustomAreaChart
-        data={dailyRunLogMetrics}
+        data={dailyChatLogMetrics}
         dataKey="avg_latency"
         xAxisDataKey="day"
         title="Average Latency"
         mainData={`${avgLatency?.toFixed(2)}s`}
       />
       <CustomAreaChart
-        data={dailyRunLogMetrics}
-        dataKey="total_runs"
+        data={dailyChatLogMetrics}
+        dataKey="total_chat_sessions"
         xAxisDataKey="day"
-        title="Total Runs"
-        mainData={totalRuns}
+        title="Total Chat Sessions"
+        mainData={totalChatSessions}
       />
       <CustomAreaChart
-        data={dailyRunLogMetrics}
+        data={dailyChatLogMetrics}
         dataKey="total_token_usage.total_tokens"
         xAxisDataKey="day"
         title="Token usage"

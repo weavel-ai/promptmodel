@@ -1,7 +1,11 @@
 import { useSupabaseClient } from "@/apis/base";
 import { useQuery } from "@tanstack/react-query";
 import { usePromptModel } from "./usePromptModel";
-import { fetchDailyRunLogMetrics } from "@/apis/analytics";
+import {
+  fetchDailyChatLogMetrics,
+  fetchDailyRunLogMetrics,
+} from "@/apis/analytics";
+import { useChatModel } from "./useChatModel";
 
 export const useDailyRunLogMetrics = (startDay, endDay) => {
   const { promptModelUuid } = usePromptModel();
@@ -24,5 +28,29 @@ export const useDailyRunLogMetrics = (startDay, endDay) => {
 
   return {
     dailyRunLogMetrics,
+  };
+};
+
+export const useDailyChatLogMetrics = (startDay, endDay) => {
+  const { chatModelUuid } = useChatModel();
+  const { createSupabaseClient } = useSupabaseClient();
+
+  const { data: dailyChatLogMetrics } = useQuery({
+    queryKey: [
+      "dailyChatLogMetrics",
+      { chatModelUuid: chatModelUuid, startDay: startDay, endDay: endDay },
+    ],
+    queryFn: async () =>
+      await fetchDailyChatLogMetrics(
+        await createSupabaseClient(),
+        chatModelUuid,
+        startDay,
+        endDay
+      ),
+    enabled: chatModelUuid != undefined && chatModelUuid != null,
+  });
+
+  return {
+    dailyChatLogMetrics,
   };
 };

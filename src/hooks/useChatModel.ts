@@ -19,7 +19,7 @@ export const useChatModel = () => {
   });
 
   return {
-    promptModelUuid: params?.promptModelUuid as string,
+    chatModelUuid: params?.chatModelUuid as string,
     chatModelListData,
   };
 };
