@@ -4,6 +4,7 @@ from operator import eq
 import re
 import secrets
 from typing import Any, AsyncGenerator, Dict, List, Optional, Sequence, Tuple, Union
+from click import prompt
 from pydantic import BaseModel
 
 from fastapi import APIRouter, HTTPException, Depends, Response
@@ -484,149 +485,45 @@ async def push_versions(
     - project_uuid
     - dev_uuid: uuid
     - prompt_model_uuid: Optional(str) if prompt_model_uuid is given, push only one prompt_model
+    - chat_model_uuid: Optional(str) if prompt_model_uuid is given, push only one prompt_model
     """
     try:
         changelogs = []
         changelog_level = 2
-
-        # Update dev environment prompt_models to deployed
-        (
-            supabase.table("prompt_model")
-            .update({"dev_branch_uuid": None})
-            .match(
-                {
-                    "project_uuid": project_uuid,
-                    "dev_branch_uuid": dev_uuid,
-                }
+        if not prompt_model_uuid and not chat_model_uuid:
+            # Deploy all prompt_models and chat_models of specified dev environment
+            changelogs = deploy_models(
+                project_uuid=project_uuid,
+                dev_uuid=dev_uuid,
+                model_type="prompt_model",
+                changelogs=changelogs,
             )
-            .execute()
-        )
-
-        # Get deployed versions
-        deployed_versions = (
-            supabase.table("prompt_model_version")
-            .select("created_at, uuid, from_uuid, prompt_model_uuid, status")
-            .eq("is_deployed", True)
-            .execute()
-            .data
-        )
-        # Get dev environment versions
-        dev_versions = (
-            supabase.table("prompt_model_version")
-            .select("created_at, uuid, dev_from_uuid, prompt_model_uuid, status")
-            .eq("is_deployed", False)
-            .eq("dev_branch_uuid", dev_uuid)
-            .execute()
-            .data
-        )
-
-        if prompt_model_uuid:
-            deployed_versions = list(
-                filter(
-                    lambda version: version["prompt_model_uuid"] == prompt_model_uuid,
-                    deployed_versions,
-                )
+            changelogs = deploy_models(
+                project_uuid=project_uuid,
+                dev_uuid=dev_uuid,
+                model_type="chat_model",
+                changelogs=changelogs,
             )
-            dev_versions = list(
-                filter(
-                    lambda version: version["prompt_model_uuid"] == prompt_model_uuid,
-                    dev_versions,
-                )
+        elif prompt_model_uuid:
+            # Deploy only specified prompt_model
+            changelogs = deploy_models(
+                project_uuid=project_uuid,
+                dev_uuid=dev_uuid,
+                model_type="prompt_model",
+                changelogs=changelogs,
+                model_uuid=prompt_model_uuid,
+            )
+        elif chat_model_uuid:
+            # Deploy only specified chat_model
+            changelogs = deploy_models(
+                project_uuid=project_uuid,
+                dev_uuid=dev_uuid,
+                model_type="chat_model",
+                changelogs=changelogs,
+                model_uuid=chat_model_uuid,
             )
 
-        # Merge deployed_versions and dev_versions
-        all_versions = deployed_versions + dev_versions
-
-        # Get versions to save
-        new_versions = list(
-            filter(lambda version: version["status"] == "candidate", dev_versions)
-        )
-
-        logger.debug(f"new_versions: {new_versions}")
-
-        # Set from_uuid of new_versions to the root ancestor version
-        for version in new_versions:
-            root_version_uuid = None  # Start with the current version's UUID
-            parent_version = version
-            while parent_version.get("dev_from_uuid") is not None:
-                # Find the parent version
-                parent_version = next(
-                    filter(
-                        lambda version: version["uuid"]
-                        == parent_version["dev_from_uuid"],
-                        all_versions,
-                    )
-                )
-                root_version_uuid = parent_version[
-                    "uuid"
-                ]  # Update root_version_uuid with the parent's UUID
-
-            # After finding the root version, set 'from_uuid' to the root version's UUID
-            logger.debug(f"root_version_uuid: {root_version_uuid}")
-            version["from_uuid"] = root_version_uuid
-
-        # get last version(ID) for each prompt_models
-        version_prompt_model_uuid_list = list(
-            set([version["prompt_model_uuid"] for version in new_versions])
-        )
-        previous_version_list = (
-            supabase.table("prompt_model_version")
-            .select("version, prompt_model_uuid")
-            .in_("prompt_model_uuid", version_prompt_model_uuid_list)
-            .eq("is_deployed", True)
-            .execute()
-        ).data
-
-        last_versions = {}
-        for previous_version in previous_version_list:
-            if previous_version["prompt_model_uuid"] not in last_versions:
-                last_versions[previous_version["prompt_model_uuid"]] = int(
-                    previous_version["version"]
-                )
-            else:
-                last_versions[previous_version["prompt_model_uuid"]] = max(
-                    last_versions[previous_version["prompt_model_uuid"]],
-                    int(previous_version["version"]),
-                )
-        logger.debug(f"last_versions: {last_versions}")
-        # allocate version(ID) for new versions
-        # sort by created_at ascending
-        new_candidates = {}
-        new_versions = sorted(new_versions, key=lambda x: x["created_at"])
-        for new_version in new_versions:
-            if new_version["prompt_model_uuid"] in last_versions:
-                new_version["version"] = (
-                    last_versions[new_version["prompt_model_uuid"]] + 1
-                )
-                last_versions[new_version["prompt_model_uuid"]] += 1
-            else:
-                new_version["version"] = 1
-                last_versions[new_version["prompt_model_uuid"]] = 1
-                new_version["is_published"] = True
-                new_version["ratio"] = 1.0
-            new_candidates[new_version["uuid"]] = int(new_version["version"])
-        logger.debug(f"new_candidates: {new_candidates}")
-        logger.debug(f"new_versions: {new_versions}")
-        logger.debug(f"last_versions: {last_versions}")
-
-        for new_version in new_versions:
-            supabase.table("prompt_model_version").update(
-                {
-                    "version": new_version["version"],
-                    "from_uuid": new_version["from_uuid"],
-                    "is_deployed": True,
-                }
-            ).eq("uuid", new_version["uuid"]).execute()
-
-        # make project_changelog level 2, subject = prompt_model_version
-        changelogs.append(
-            {
-                "subject": "prompt_model_version",
-                "identifiers": [version["uuid"] for version in new_versions],
-                "action": "ADD",
-            }
-        )
-        # update project_version
+        # Update project version & add changelogs
         current_project_version: str = (
             supabase.table("project")
             .select("version")
@@ -675,3 +572,162 @@ async def push_versions(
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+
+
+def deploy_models(
+    project_uuid: str,
+    dev_uuid: str,
+    model_type: str,  # prompt_model | chat_model
+    changelogs: List[Dict[str, Any]],
+    model_uuid: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Deploy models from dev cloud db to deployment cloud db
+
+    Args:
+        project_uuid (str): Project uuid
+        dev_uuid (str): Dev branch uuid
+        model_type (str): prompt_model | chat_model
+        model_uuid (Optional[str]): Specific model uuid to deploy. Defaults to None.
+
+    Returns:
+        List[Dict[str, Any]]: Appends and returns changelogs
+    """
+    # Update dev environment's models to deployed
+    model_filter = {
+        "project_uuid": project_uuid,
+        "dev_branch_uuid": dev_uuid,
+    }
+    if model_uuid:
+        model_filter["uuid"] = model_uuid
+    (
+        supabase.table(model_type)
+        .update({"dev_branch_uuid": None})
+        .match(model_filter)
+        .execute()
+    )
+
+    # Get deployed versions
+    deployed_versions = (
+        supabase.table(f"{model_type}_version")
+        .select(f"created_at, uuid, from_uuid, {model_type}_uuid, status")
+        .eq("is_deployed", True)
+        .execute()
+        .data
+    )
+    # Get dev environment versions
+    dev_versions = (
+        supabase.table(f"{model_type}_version")
+        .select(f"created_at, uuid, dev_from_uuid, {model_type}_uuid, status")
+        .eq("is_deployed", False)
+        .eq("dev_branch_uuid", dev_uuid)
+        .execute()
+        .data
+    )
+
+    if model_uuid:
+        deployed_versions = list(
+            filter(
+                lambda version: version["{model_type}_uuid"] == model_uuid,
+                deployed_versions,
+            )
+        )
+        dev_versions = list(
+            filter(
+                lambda version: version["{model_type}_uuid"] == model_uuid,
+                dev_versions,
+            )
+        )
+
+    # Merge deployed_versions and dev_versions
+    all_versions = deployed_versions + dev_versions
+
+    # Get versions to save
+    new_versions = list(
+        filter(lambda version: version["status"] == "candidate", dev_versions)
+    )
+
+    logger.debug(f"new_versions: {new_versions}")
+
+    # Set from_uuid of new_versions to the root ancestor version
+    for version in new_versions:
+        root_version_uuid = None  # Start with the current version's UUID
+        parent_version = version
+        while parent_version.get("dev_from_uuid") is not None:
+            # Find the parent version
+            parent_version = next(
+                filter(
+                    lambda version: version["uuid"] == parent_version["dev_from_uuid"],
+                    all_versions,
+                )
+            )
+            root_version_uuid = parent_version[
+                "uuid"
+            ]  # Update root_version_uuid with the parent's UUID
+
+        # After finding the root version, set 'from_uuid' to the root version's UUID
+        logger.debug(f"root_version_uuid: {root_version_uuid}")
+        version["from_uuid"] = root_version_uuid
+
+    # get last version(ID) for each prompt_models
+    version_model_uuid_list = list(
+        set([version[f"{model_type}_uuid"] for version in new_versions])
+    )
+    previous_version_list = (
+        supabase.table(f"{model_type}_version")
+        .select(f"version, {model_type}_uuid")
+        .in_(f"{model_type}_uuid", version_model_uuid_list)
+        .eq("is_deployed", True)
+        .execute()
+    ).data
+
+    last_versions = {}
+    for previous_version in previous_version_list:
+        if previous_version[f"{model_type}_uuid"] not in last_versions:
+            last_versions[previous_version[f"{model_type}_uuid"]] = int(
+                previous_version["version"]
+            )
+        else:
+            last_versions[previous_version[f"{model_type}_uuid"]] = max(
+                last_versions[previous_version[f"{model_type}_uuid"]],
+                int(previous_version["version"]),
+            )
+    logger.debug(f"last_versions: {last_versions}")
+    # allocate version(ID) for new versions
+    # sort by created_at ascending
+    new_candidates = {}
+    new_versions = sorted(new_versions, key=lambda x: x["created_at"])
+    for new_version in new_versions:
+        if new_version[f"{model_type}_uuid"] in last_versions:
+            new_version["version"] = (
+                last_versions[new_version[f"{model_type}_uuid"]] + 1
+            )
+            last_versions[new_version[f"{model_type}_uuid"]] += 1
+        else:
+            new_version["version"] = 1
+            last_versions[new_version[f"{model_type}_uuid"]] = 1
+            new_version["is_published"] = True
+            new_version["ratio"] = 1.0
+        new_candidates[new_version["uuid"]] = int(new_version["version"])
+    logger.debug(f"new_candidates: {new_candidates}")
+    logger.debug(f"new_versions: {new_versions}")
+    logger.debug(f"last_versions: {last_versions}")
+
+    for new_version in new_versions:
+        supabase.table(f"{model_type}_version").update(
+            {
+                "version": new_version["version"],
+                "from_uuid": new_version["from_uuid"],
+                "is_deployed": True,
+            }
+        ).eq("uuid", new_version["uuid"]).execute()
+
+    # make project_changelog level 2, subject = prompt_model_version
+    changelogs.append(
+        {
+            "subject": f"{model_type}_version",
+            "identifiers": [version["uuid"] for version in new_versions],
+            "action": "ADD",
+        }
+    )
+
+    return changelogs
