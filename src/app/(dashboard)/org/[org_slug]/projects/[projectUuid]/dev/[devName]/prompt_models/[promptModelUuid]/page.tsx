@@ -69,9 +69,11 @@ import {
   updatePromptModelVersionStatus,
 } from "@/apis/devCloud";
 import { ModalPortal } from "@/components/ModalPortal";
+import { useWindowHeight, useWindowWidth } from "@react-hook/window-size";
 
 export default function Page() {
   const params = useParams();
+  const windowWidth = useWindowWidth();
   const { createSupabaseClient } = useSupabaseClient();
   const { promptModelListData } = usePromptModel();
   const {
@@ -157,23 +159,6 @@ export default function Page() {
   const isNewVersionReady = useMemo(() => {
     if (!createVariantOpen) return false;
     if (hasRun) return false;
-
-    // console.log("===================");
-    // console.log(
-    //   !originalPrompts?.every(
-    //     (val, idx) => val === modifiedPrompts[idx]?.content
-    //   )
-    // );
-    // console.log(selectedModel != modelVersionData?.model);
-    // console.log(modelVersionData?.parsing_type != parser);
-    // console.log(
-    //   modelVersionData?.parsing_type != null &&
-    //     modelVersionData?.output_keys != outputKeys
-    // );
-    // console.log(modelVersionData?.functions != selectedFunctions);
-    // console.log(modelVersionData?.functions);
-    // console.log(selectedFunctions);
-    // console.log("===================");
 
     return (
       !originalPrompts?.every(
@@ -280,7 +265,7 @@ export default function Page() {
     const requiredWidth = maxNodesAtDepth * 320;
 
     // Use the smaller of window width and required width.
-    const layoutWidth = Math.min(window.innerWidth, requiredWidth);
+    const layoutWidth = Math.min(windowWidth, requiredWidth);
     const layout = tree().size([layoutWidth, root.height * 160]);
 
     const nodes = layout(root).descendants();
@@ -1165,6 +1150,7 @@ const PromptComponent = ({
   prompt: Prompt;
   setPrompts?: (prompts) => void;
 }) => {
+  const windowHeight = useWindowHeight();
   const [open, setOpen] = useState(true);
   const [height, setHeight] = useState(30);
   const editorRef = useRef(null);
@@ -1192,7 +1178,7 @@ const PromptComponent = ({
 
   useEffect(() => {
     const contentHeight = editorRef.current?.getContentHeight();
-    const maxHeight = window.innerHeight * 0.7;
+    const maxHeight = windowHeight * 0.7;
     if (contentHeight) {
       setHeight(Math.min(contentHeight, maxHeight));
     }
@@ -1286,7 +1272,7 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
     originalEditorRef.current = editor.getOriginalEditor();
     modifiedEditorRef.current = editor.getModifiedEditor();
     const originalHeight = originalEditorRef.current?.getContentHeight();
-    const maxHeight = window.innerHeight * 0.7;
+    const maxHeight = windowHeight * 0.7;
     if (originalHeight) {
       setHeight(Math.min(originalHeight, maxHeight));
     }
@@ -1320,7 +1306,7 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
   useEffect(() => {
     const originalHeight = originalEditorRef.current?.getContentHeight();
     const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
-    const maxHeight = window.innerHeight * 0.7;
+    const maxHeight = windowHeight * 0.7;
     if (modifiedHeight > originalHeight) {
       setHeight(Math.min(modifiedHeight, maxHeight));
     } else {

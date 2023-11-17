@@ -1,3 +1,5 @@
+"use client";
+import { useWindowHeight } from "@react-hook/window-size";
 import classNames from "classnames";
 
 export const ResizableSeparator = ({
@@ -9,6 +11,8 @@ export const ResizableSeparator = ({
   setHeight: (height: number) => void;
   className?: string;
 }) => {
+  const windowHeight = useWindowHeight();
+
   return (
     <div
       className={classNames(
@@ -17,7 +21,7 @@ export const ResizableSeparator = ({
         className
       )}
       {...registerMouseDownDrag((deltaX, deltaY) => {
-        if (height - deltaY > window.innerHeight - 160) {
+        if (height - deltaY > windowHeight - 160) {
           return;
         }
         if (height - deltaY < 100) return;

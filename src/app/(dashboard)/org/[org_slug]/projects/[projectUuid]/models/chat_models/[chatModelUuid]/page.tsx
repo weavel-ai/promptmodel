@@ -48,6 +48,7 @@ import { useChatModelVersionDetails } from "@/hooks/useChatModelVersionDetails";
 import { ModelDisplay } from "@/components/ModelSelector";
 import { updatePublishedChatModelVersion } from "@/apis/chatModelVersion";
 import { ChatUI } from "@/components/ChatUI";
+import { useWindowHeight, useWindowSize } from "@react-hook/window-size";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -208,7 +209,7 @@ const VersionsPage = () => {
   const { chatModelVersionData } = useChatModelVersionDetails(
     selectedChatModelVersionUuid
   );
-
+  const [windowWidth, windowHeight] = useWindowSize();
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
   useHotkeys(
@@ -239,6 +240,7 @@ const VersionsPage = () => {
   useEffect(() => {
     if (!chatModelVersionListData || chatModelVersionListData.length === 0)
       return;
+
     const generatedEdges = [];
     // Before passing your data to stratify, preprocess it:
     const dataWithSyntheticRoot = [
@@ -268,7 +270,7 @@ const VersionsPage = () => {
     const requiredWidth = maxNodesAtDepth * 320;
 
     // Use the smaller of window width and required width.
-    const layoutWidth = Math.min(window.innerWidth, requiredWidth);
+    const layoutWidth = Math.min(windowWidth, requiredWidth);
     const layout = tree().size([layoutWidth, root.height * 160]);
 
     const nodes = layout(root).descendants();
@@ -402,13 +404,13 @@ const VersionsPage = () => {
           <div
             className="flex flex-col justify-between"
             style={{
-              height: window.innerHeight - 120,
+              height: windowHeight - 120,
             }}
           >
             <motion.div
               className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow-0"
               style={{
-                height: window.innerHeight - lowerBoxHeight - 120,
+                height: windowHeight - lowerBoxHeight - 120,
               }}
             >
               <div className="flex flex-wrap justify-start gap-x-4 items-start mb-2">
@@ -473,11 +475,12 @@ const VersionsPage = () => {
 const PromptComponent = ({ systemPrompt }) => {
   const [height, setHeight] = useState(30);
   const editorRef = useRef(null);
+  const windowHeight = useWindowHeight();
 
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
     const contentHeight = editor.getContentHeight();
     editorRef.current = editor;
-    const maxHeight = window.innerHeight * 0.7;
+    const maxHeight = windowHeight * 0.4;
     if (contentHeight) {
       setHeight(Math.min(contentHeight, maxHeight));
     }

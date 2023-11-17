@@ -45,10 +45,12 @@ import { useSessionChatLogs } from "@/hooks/dev/useSessionChatLogs";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { ChatUI } from "@/components/ChatUI";
+import { useWindowHeight, useWindowWidth } from "@react-hook/window-size";
 dayjs.extend(relativeTime);
 
 export default function Page() {
   const params = useParams();
+  const windowWidth = useWindowWidth();
   const { createSupabaseClient } = useSupabaseClient();
   const { chatModelListData } = useChatModel();
   const { chatModelVersionListData, refetchChatModelVersionListData } =
@@ -208,7 +210,7 @@ export default function Page() {
     const requiredWidth = maxNodesAtDepth * 320;
 
     // Use the smaller of window width and required width.
-    const layoutWidth = Math.min(window.innerWidth, requiredWidth);
+    const layoutWidth = Math.min(windowWidth, requiredWidth);
     const layout = tree().size([layoutWidth, root.height * 160]);
 
     const nodes = layout(root).descendants();
@@ -655,6 +657,7 @@ const PromptComponent = ({
   setSystemPrompt?: (prompt: string) => void;
 }) => {
   const [height, setHeight] = useState(100);
+  const windowHeight = useWindowHeight();
   const editorRef = useRef(null);
   const { setFocusedEditor } = useChatModelVersionStore();
 
@@ -674,7 +677,7 @@ const PromptComponent = ({
   useEffect(() => {
     const contentHeight = editorRef.current?.getContentHeight();
     const minHeight = 200;
-    const maxHeight = window.innerHeight * 0.7;
+    const maxHeight = windowHeight * 0.7;
     if (contentHeight) {
       setHeight(Math.min(Math.max(minHeight, contentHeight), maxHeight));
     }
@@ -716,6 +719,7 @@ const PromptDiffComponent = ({
   systemPrompt: string;
   setSystemPrompt: (prompt: string) => void;
 }) => {
+  const windowHeight = useWindowHeight();
   const [open, setOpen] = useState(true);
   const [height, setHeight] = useState(30);
   const originalEditorRef = useRef(null);
@@ -726,7 +730,7 @@ const PromptDiffComponent = ({
     originalEditorRef.current = editor.getOriginalEditor();
     modifiedEditorRef.current = editor.getModifiedEditor();
     const originalHeight = originalEditorRef.current?.getContentHeight();
-    const maxHeight = window.innerHeight * 0.7;
+    const maxHeight = windowHeight * 0.7;
     if (originalHeight) {
       setHeight(Math.min(originalHeight, maxHeight));
     }
@@ -737,7 +741,7 @@ const PromptDiffComponent = ({
     modifiedEditorRef.current.onDidChangeModelContent(() => {
       setSystemPrompt(modifiedEditorRef.current?.getValue());
       const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
-      const maxHeight = window.innerHeight * 0.7;
+      const maxHeight = windowHeight * 0.7;
       if (modifiedHeight) {
         setHeight(Math.min(modifiedHeight, maxHeight));
       }
@@ -747,7 +751,7 @@ const PromptDiffComponent = ({
   useEffect(() => {
     const originalHeight = originalEditorRef.current?.getContentHeight();
     const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
-    const maxHeight = window.innerHeight * 0.7;
+    const maxHeight = windowHeight * 0.7;
     if (modifiedHeight > originalHeight) {
       setHeight(Math.min(modifiedHeight, maxHeight));
     } else {

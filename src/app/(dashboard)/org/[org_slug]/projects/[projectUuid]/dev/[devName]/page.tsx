@@ -34,6 +34,7 @@ import { CreateModelModal } from "@/components/modals/CreateModelModal";
 import { useChatModel } from "@/hooks/dev/useChatModel";
 import { ModelNode } from "@/components/nodes/ModelNode";
 import { GroupNode } from "@/components/nodes/GroupNode";
+import { useWindowSize } from "@react-hook/window-size";
 
 dayjs.extend(relativeTime);
 
@@ -78,6 +79,7 @@ export default function Page() {
   const { createSupabaseClient } = useSupabaseClient();
   const [status, setStatus] = useState<BranchStatus>(BranchStatus.LOADING);
   const [refetchCount, setRefetchCount] = useState<number>(0);
+  const [windowWidth, windowHeight] = useWindowSize();
 
   const { promptModelListData, refetchPromptModelListData } = usePromptModel();
   const { chatModelListData, refetchChatModelListData } = useChatModel();
@@ -121,10 +123,6 @@ export default function Page() {
   // // Build nodes
   useEffect(() => {
     if (!promptModelListData || !chatModelListData) return;
-
-    // Common calculations
-    const windowHeight = window.innerHeight;
-    const windowWidth = window.innerWidth;
 
     // Calculations for PromptModel
     const promptModelTotalNodes = promptModelListData.length;

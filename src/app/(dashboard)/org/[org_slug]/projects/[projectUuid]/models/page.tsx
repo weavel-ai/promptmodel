@@ -14,6 +14,7 @@ import { CreateDevModal } from "@/components/modals/CreateDevModal";
 import { useChatModel } from "@/hooks/useChatModel";
 import { ModelNode } from "@/components/nodes/ModelNode";
 import { GroupNode } from "@/components/nodes/GroupNode";
+import { useWindowSize } from "@react-hook/window-size";
 
 dayjs.extend(relativeTime);
 
@@ -25,6 +26,7 @@ const initialNodes = [];
 const initialEdges = [];
 
 export default function Page() {
+  const [windowWidth, windowHeight] = useWindowSize();
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
   const { chatModelListData } = useChatModel();
@@ -39,10 +41,6 @@ export default function Page() {
   // Build nodes
   useEffect(() => {
     if (!promptModelListData || !chatModelListData) return;
-
-    // Common calculations
-    const windowHeight = window.innerHeight;
-    const windowWidth = window.innerWidth;
 
     // Calculations for PromptModel
     const promptModelTotalNodes = promptModelListData.length;

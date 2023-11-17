@@ -44,6 +44,11 @@ import { ParserTypeSelector } from "@/components/select/ParserTypeSelector";
 import { Badge } from "@/components/ui/badge";
 import { PromptEditor } from "@/components/editor/PromptEditor";
 import { ModalPortal } from "@/components/ModalPortal";
+import {
+  useWindowHeight,
+  useWindowSize,
+  useWindowWidth,
+} from "@react-hook/window-size";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -184,6 +189,7 @@ const AnalyticsPage = () => {
 // Versions Tab Page
 const VersionsPage = () => {
   const { createSupabaseClient } = useSupabaseClient();
+  const [windowWidth, windowHeight] = useWindowSize();
   const { versionListData, refetchVersionListData } = usePromptModelVersion();
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
@@ -253,7 +259,7 @@ const VersionsPage = () => {
     const requiredWidth = maxNodesAtDepth * 320;
 
     // Use the smaller of window width and required width.
-    const layoutWidth = Math.min(window.innerWidth, requiredWidth);
+    const layoutWidth = Math.min(windowWidth, requiredWidth);
     const layout = tree().size([layoutWidth, root.height * 160]);
 
     const nodes = layout(root).descendants();
@@ -385,13 +391,13 @@ const VersionsPage = () => {
           <div
             className="flex flex-col justify-between"
             style={{
-              height: window.innerHeight - 120,
+              height: windowHeight - 120,
             }}
           >
             <motion.div
               className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow-0"
               style={{
-                height: window.innerHeight - lowerBoxHeight - 120,
+                height: windowHeight - lowerBoxHeight - 120,
               }}
             >
               <div className="flex flex-wrap justify-start gap-x-4 items-start mb-2">
@@ -517,6 +523,7 @@ const VersionsPage = () => {
 };
 
 const PromptComponent = ({ prompt }) => {
+  const windowHeight = useWindowHeight();
   const [open, setOpen] = useState(false);
   const [height, setHeight] = useState(30);
   const editorRef = useRef(null);
@@ -524,7 +531,7 @@ const PromptComponent = ({ prompt }) => {
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
     const contentHeight = editor.getContentHeight();
     editorRef.current = editor;
-    const maxHeight = window.innerHeight * 0.7;
+    const maxHeight = windowHeight * 0.7;
     if (contentHeight) {
       setHeight(Math.min(contentHeight, maxHeight));
     }
