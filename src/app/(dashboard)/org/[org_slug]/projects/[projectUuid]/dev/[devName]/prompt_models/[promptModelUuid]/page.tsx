@@ -1261,6 +1261,7 @@ const PromptComponent = ({
 };
 
 const PromptDiffComponent = ({ prompt, setPrompts }) => {
+  const windowHeight = useWindowHeight();
   const [open, setOpen] = useState(true);
   const [height, setHeight] = useState(30);
   const originalEditorRef = useRef(null);
