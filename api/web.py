@@ -4,6 +4,7 @@ from operator import eq
 import re
 import secrets
 from typing import Any, AsyncGenerator, Dict, List, Optional, Sequence, Tuple, Union
+from click import prompt
 from pydantic import BaseModel
 
 from fastapi import APIRouter, HTTPException, Depends, Response
@@ -11,6 +12,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.status import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
+    HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 from promptmodel.llms.llm_dev import LLMDev
@@ -297,11 +299,13 @@ async def run_cloud_dev_llm(dev_uuid: str, run_config: PromptModelRunConfig):
 
 
 @router.post("/run_chat_model")
-async def run_chat_model(dev_uuid: str, chat_config: ChatModelRunConfig):
-    """Run ChatModel from cloud development environment.
+async def run_chat_model(
+    chat_config: ChatModelRunConfig, dev_uuid: Optional[str] = None
+):
+    """Run ChatModel from cloud development/deployment environment.
 
     Args:
-        dev_uuid (str): Dev branch uuid
+        dev_uuid (Optional[str]): Dev branch uuid. If not provided, request is from deployment environment.
         chat_config (ChatModelRunConfig):
             chat_model_name: str
             model: str
@@ -311,16 +315,20 @@ async def run_chat_model(dev_uuid: str, chat_config: ChatModelRunConfig):
             functions: List of functions (Optional)
 
     Raises:
-        HTTPException: _description_
-        HTTPException: _description_
+        HTTPException: 500
 
     Returns:
         StreamingResponse
             raw_output: str
             status: "completed" | "failed" | "running"
     """
+    print(chat_config)
 
-    async def stream_run():
+    async def stream_depl_run():
+        async for chunk in run_cloud_depl_chat(chat_config=chat_config):
+            yield json.dumps(chunk)
+
+    async def stream_dev_run():
         async for chunk in run_cloud_dev_chat(
             dev_uuid=dev_uuid, chat_config=chat_config
         ):
@@ -328,7 +336,7 @@ async def run_chat_model(dev_uuid: str, chat_config: ChatModelRunConfig):
 
     try:
         return StreamingResponse(
-            stream_run(),
+            stream_dev_run() if dev_uuid else stream_depl_run(),
         )
     except Exception as exc:
         logger.error(exc)
@@ -337,20 +345,20 @@ async def run_chat_model(dev_uuid: str, chat_config: ChatModelRunConfig):
         ) from exc
 
 
-async def run_cloud_dev_chat(dev_uuid: str, chat_config: ChatModelRunConfig):
+async def run_cloud_dev_chat(
+    dev_uuid: str, chat_config: ChatModelRunConfig
+) -> AsyncGenerator[Dict[str, Any], None]:
     """Run ChatModel from cloud development environment."""
     try:
         logger.info(f"Started ChatModel: {chat_config.chat_model_uuid}")
         # create chat_model_dev_instance
         chat_model_dev = LLMDev()
-        # find chat_model_version_uuid from cloud db
         chat_model_version_uuid: Optional[str] = chat_config.version_uuid
         session_uuid: Optional[str] = chat_config.session_uuid
+        messages = [{"role": "system", "content": chat_config.system_prompt}]
+
         # If chat_model_version_uuid is None, create new version
         if chat_model_version_uuid is None:
-            print(chat_config.chat_model_uuid)
-            print(chat_config.from_uuid)
-            print(dev_uuid)
             chat_model_version = (
                 supabase.table("chat_model_version")
                 .insert(
@@ -375,6 +383,7 @@ async def run_cloud_dev_chat(dev_uuid: str, chat_config: ChatModelRunConfig):
                 "status": "running",
             }
             yield data
+
         # If session uuid is None, create new session
         if session_uuid is None:
             session_uuid = (
@@ -394,34 +403,28 @@ async def run_cloud_dev_chat(dev_uuid: str, chat_config: ChatModelRunConfig):
                 "status": "running",
             }
             yield data
+        else:
+            # If session exists, fetch session chat logs from cloud db
+            session_chat_logs = (
+                supabase.table("chat_log")
+                .select("role, content")
+                .eq("session_uuid", session_uuid)
+                .order("created_at", desc=False)
+                .execute()
+                .data
+            )
+            messages.extend(session_chat_logs)
 
-        model = chat_config.model
-        messages = [{"role": "system", "content": chat_config.system_prompt}]
-
-        # Fetch session chat logs from cloud db
-        session_chat_logs = (
-            supabase.table("chat_log")
-            .select("role, content")
-            .eq("session_uuid", session_uuid)
-            .order("created_at", desc=False)
-            .execute()
-            .data
-        )
-
-        messages.extend(session_chat_logs)
         messages.append({"role": "user", "content": chat_config.user_input})
 
         res: AsyncGenerator[LLMStreamResponse, None] = chat_model_dev.dev_chat(
             messages=messages,
-            model=model,
+            model=chat_config.model,
         )
 
         # TODO: Add function call support
         raw_output = ""
         async for item in res:
-            # send item to backend
-            # save item & parse
-            # if type(item) == str: raw output, if type(item) == dict: parsed output
             if item.raw_output is not None:
                 raw_output += item.raw_output
                 data = {
@@ -439,6 +442,7 @@ async def run_cloud_dev_chat(dev_uuid: str, chat_config: ChatModelRunConfig):
         }
 
         yield data
+
         # Update chat_model_version status to working
         supabase.table("chat_model_version").update(
             {
@@ -471,6 +475,126 @@ async def run_cloud_dev_chat(dev_uuid: str, chat_config: ChatModelRunConfig):
         return
 
 
+async def run_cloud_depl_chat(
+    chat_config: ChatModelRunConfig,
+) -> AsyncGenerator[Dict[str, Any], None]:
+    """Run ChatModel from cloud deployment environment.
+
+    Args:
+        chat_config (ChatModelRunConfig):
+            model: (str)
+            system_prompt: (str)
+            user_input: (str)
+            version_uuid: (str) Version uuid
+            session_uuid: (Optional[str]) Session uuid
+            functions: List of functions (Optional)
+
+    Raises:
+        HTTPException: 422
+
+    Returns:
+        AsyncGenerator: Dict[str, Any]
+            status: "completed" | "failed" | "running"
+            chat_log_session_uuid: Optional[str]
+            log: Optional[str]
+
+    """
+    try:
+        chat_model_dev = LLMDev()
+        chat_model_version_uuid: str = chat_config.version_uuid
+        session_uuid: Optional[str] = chat_config.session_uuid
+        messages = [{"role": "system", "content": chat_config.system_prompt}]
+
+        if chat_model_version_uuid is None:
+            raise HTTPException(
+                status_code=HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="version_uuid is required.",
+            )
+
+        # If session uuid is None, create new session
+        if session_uuid is None:
+            session_uuid = (
+                supabase.table("chat_log_session")
+                .insert(
+                    {
+                        "version_uuid": chat_model_version_uuid,
+                        "run_from_deployment": False,
+                    }
+                )
+                .execute()
+                .data[0]["uuid"]
+            )
+            data = {
+                "chat_log_session_uuid": session_uuid,
+                "status": "running",
+            }
+            yield data
+        else:
+            # If session exists, fetch session chat logs from cloud db
+            session_chat_logs = (
+                supabase.table("chat_log")
+                .select("role, content")
+                .eq("session_uuid", session_uuid)
+                .order("created_at", desc=False)
+                .execute()
+                .data
+            )
+            messages.extend(session_chat_logs)
+
+        messages.append({"role": "user", "content": chat_config.user_input})
+
+        res: AsyncGenerator[LLMStreamResponse, None] = chat_model_dev.dev_chat(
+            messages=messages,
+            model=chat_config.model,
+        )
+
+        # TODO: Add function call support
+        raw_output = ""
+        async for item in res:
+            if item.raw_output is not None:
+                raw_output += item.raw_output
+                data = {
+                    "status": "running",
+                    "raw_output": item.raw_output,
+                }
+
+            if item.error:
+                error_log = item.error_log
+
+            yield data
+
+        data = {
+            "status": "completed",
+        }
+
+        yield data
+
+        # Create chat log
+        supabase.table("chat_log").insert(
+            [
+                {
+                    "session_uuid": session_uuid,
+                    "role": "user",
+                    "content": chat_config.user_input,
+                },
+                {
+                    "session_uuid": session_uuid,
+                    "role": "assistant",
+                    "content": raw_output,
+                },
+            ]
+        ).execute()
+
+    except Exception as exc:
+        logger.error(f"Error running service: {exc}")
+        data = {
+            "status": "failed",
+            "log": str(exc),
+        }
+        yield data
+        return
+
+
 @router.post("/push_versions")
 async def push_versions(
     project_uuid: str,
@@ -484,149 +608,45 @@ async def push_versions(
     - project_uuid
     - dev_uuid: uuid
     - prompt_model_uuid: Optional(str) if prompt_model_uuid is given, push only one prompt_model
+    - chat_model_uuid: Optional(str) if prompt_model_uuid is given, push only one prompt_model
     """
     try:
         changelogs = []
         changelog_level = 2
-
-        # Update dev environment prompt_models to deployed
-        (
-            supabase.table("prompt_model")
-            .update({"dev_branch_uuid": None})
-            .match(
-                {
-                    "project_uuid": project_uuid,
-                    "dev_branch_uuid": dev_uuid,
-                }
+        if prompt_model_uuid is None and chat_model_uuid is None:
+            # Deploy all prompt_models and chat_models of specified dev environment
+            changelogs = deploy_models(
+                project_uuid=project_uuid,
+                dev_uuid=dev_uuid,
+                model_type="prompt_model",
+                changelogs=changelogs,
             )
-            .execute()
-        )
-
-        # Get deployed versions
-        deployed_versions = (
-            supabase.table("prompt_model_version")
-            .select("created_at, uuid, from_uuid, prompt_model_uuid, status")
-            .eq("is_deployed", True)
-            .execute()
-            .data
-        )
-        # Get dev environment versions
-        dev_versions = (
-            supabase.table("prompt_model_version")
-            .select("created_at, uuid, dev_from_uuid, prompt_model_uuid, status")
-            .eq("is_deployed", False)
-            .eq("dev_branch_uuid", dev_uuid)
-            .execute()
-            .data
-        )
-
-        if prompt_model_uuid:
-            deployed_versions = list(
-                filter(
-                    lambda version: version["prompt_model_uuid"] == prompt_model_uuid,
-                    deployed_versions,
-                )
+            changelogs = deploy_models(
+                project_uuid=project_uuid,
+                dev_uuid=dev_uuid,
+                model_type="chat_model",
+                changelogs=changelogs,
             )
-            dev_versions = list(
-                filter(
-                    lambda version: version["prompt_model_uuid"] == prompt_model_uuid,
-                    dev_versions,
-                )
+        elif prompt_model_uuid:
+            # Deploy only specified prompt_model
+            changelogs = deploy_models(
+                project_uuid=project_uuid,
+                dev_uuid=dev_uuid,
+                model_type="prompt_model",
+                changelogs=changelogs,
+                model_uuid=prompt_model_uuid,
+            )
+        elif chat_model_uuid:
+            # Deploy only specified chat_model
+            changelogs = deploy_models(
+                project_uuid=project_uuid,
+                dev_uuid=dev_uuid,
+                model_type="chat_model",
+                changelogs=changelogs,
+                model_uuid=chat_model_uuid,
             )
 
-        # Merge deployed_versions and dev_versions
-        all_versions = deployed_versions + dev_versions
-
-        # Get versions to save
-        new_versions = list(
-            filter(lambda version: version["status"] == "candidate", dev_versions)
-        )
-
-        logger.debug(f"new_versions: {new_versions}")
-
-        # Set from_uuid of new_versions to the root ancestor version
-        for version in new_versions:
-            root_version_uuid = None  # Start with the current version's UUID
-            parent_version = version
-            while parent_version.get("dev_from_uuid") is not None:
-                # Find the parent version
-                parent_version = next(
-                    filter(
-                        lambda version: version["uuid"]
-                        == parent_version["dev_from_uuid"],
-                        all_versions,
-                    )
-                )
-                root_version_uuid = parent_version[
-                    "uuid"
-                ]  # Update root_version_uuid with the parent's UUID
-
-            # After finding the root version, set 'from_uuid' to the root version's UUID
-            logger.debug(f"root_version_uuid: {root_version_uuid}")
-            version["from_uuid"] = root_version_uuid
-
-        # get last version(ID) for each prompt_models
-        version_prompt_model_uuid_list = list(
-            set([version["prompt_model_uuid"] for version in new_versions])
-        )
-        previous_version_list = (
-            supabase.table("prompt_model_version")
-            .select("version, prompt_model_uuid")
-            .in_("prompt_model_uuid", version_prompt_model_uuid_list)
-            .eq("is_deployed", True)
-            .execute()
-        ).data
-
-        last_versions = {}
-        for previous_version in previous_version_list:
-            if previous_version["prompt_model_uuid"] not in last_versions:
-                last_versions[previous_version["prompt_model_uuid"]] = int(
-                    previous_version["version"]
-                )
-            else:
-                last_versions[previous_version["prompt_model_uuid"]] = max(
-                    last_versions[previous_version["prompt_model_uuid"]],
-                    int(previous_version["version"]),
-                )
-        logger.debug(f"last_versions: {last_versions}")
-        # allocate version(ID) for new versions
-        # sort by created_at ascending
-        new_candidates = {}
-        new_versions = sorted(new_versions, key=lambda x: x["created_at"])
-        for new_version in new_versions:
-            if new_version["prompt_model_uuid"] in last_versions:
-                new_version["version"] = (
-                    last_versions[new_version["prompt_model_uuid"]] + 1
-                )
-                last_versions[new_version["prompt_model_uuid"]] += 1
-            else:
-                new_version["version"] = 1
-                last_versions[new_version["prompt_model_uuid"]] = 1
-                new_version["is_published"] = True
-                new_version["ratio"] = 1.0
-            new_candidates[new_version["uuid"]] = int(new_version["version"])
-        logger.debug(f"new_candidates: {new_candidates}")
-        logger.debug(f"new_versions: {new_versions}")
-        logger.debug(f"last_versions: {last_versions}")
-
-        for new_version in new_versions:
-            supabase.table("prompt_model_version").update(
-                {
-                    "version": new_version["version"],
-                    "from_uuid": new_version["from_uuid"],
-                    "is_deployed": True,
-                }
-            ).eq("uuid", new_version["uuid"]).execute()
-
-        # make project_changelog level 2, subject = prompt_model_version
-        changelogs.append(
-            {
-                "subject": "prompt_model_version",
-                "identifiers": [version["uuid"] for version in new_versions],
-                "action": "ADD",
-            }
-        )
-        # update project_version
+        # Update project version & add changelogs
         current_project_version: str = (
             supabase.table("project")
             .select("version")
@@ -675,3 +695,186 @@ async def push_versions(
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+
+
+def deploy_models(
+    project_uuid: str,
+    dev_uuid: str,
+    model_type: str,  # prompt_model | chat_model
+    changelogs: List[Dict[str, Any]],
+    model_uuid: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Deploy models from dev cloud db to deployment cloud db
+
+    Args:
+        project_uuid (str): Project uuid
+        dev_uuid (str): Dev branch uuid
+        model_type (str): prompt_model | chat_model
+        model_uuid (Optional[str]): Specific model uuid to deploy. Defaults to None.
+
+    Returns:
+        List[Dict[str, Any]]: Appends and returns changelogs
+    """
+    # Update dev environment's models to deployed
+    model_filter = {
+        "project_uuid": project_uuid,
+        "dev_branch_uuid": dev_uuid,
+    }
+    if model_uuid:
+        model_filter["uuid"] = model_uuid
+    (
+        supabase.table(model_type)
+        .update({"dev_branch_uuid": None})
+        .match(model_filter)
+        .execute()
+    )
+
+    # Get deployed versions
+    deployed_versions = (
+        supabase.table(f"{model_type}_version")
+        .select(f"created_at, uuid, from_uuid, {model_type}_uuid, status, version")
+        .eq("is_deployed", True)
+        .execute()
+        .data
+    )
+    # Get dev environment versions
+    dev_versions = (
+        supabase.table(f"{model_type}_version")
+        .select(f"created_at, uuid, dev_from_uuid, {model_type}_uuid, status, version")
+        .eq("is_deployed", False)
+        .eq("dev_branch_uuid", dev_uuid)
+        .execute()
+        .data
+    )
+
+    if model_uuid:
+        deployed_versions = list(
+            filter(
+                lambda version: version[f"{model_type}_uuid"] == model_uuid,
+                deployed_versions,
+            )
+        )
+        dev_versions = list(
+            filter(
+                lambda version: version[f"{model_type}_uuid"] == model_uuid,
+                dev_versions,
+            )
+        )
+
+    # Merge deployed_versions and dev_versions
+    all_versions = deployed_versions + dev_versions
+
+    # Get versions to save
+    new_versions: List[Dict[str, Any]] = list(
+        filter(lambda version: version["status"] == "candidate", dev_versions)
+    )
+
+    logger.debug(f"new_versions: {new_versions}")
+
+    if not new_versions:
+        return changelogs
+
+    # Set from_uuid of new_versions to the root ancestor version
+    for version in new_versions:
+        ancestor = None
+        temp_version = version
+        get_parent_uuid = lambda child: child.get("dev_from_uuid") or child.get(
+            "from_uuid"
+        )
+        if get_parent_uuid(temp_version) is None:
+            version["from_uuid"] = None
+        else:
+            while get_parent_uuid(temp_version) is not None:
+                # Find the current parent's parent
+                temp_version = next(
+                    filter(
+                        lambda version: version["uuid"]
+                        == get_parent_uuid(temp_version),
+                        all_versions,
+                    )
+                )
+                if (
+                    temp_version["version"] is not None
+                    or temp_version["status"] == "candidate"
+                ):
+                    ancestor = temp_version
+                    break
+
+            # After finding the root version, set 'from_uuid' to the root version's UUID
+            logger.debug(f"ancestor: {ancestor}")
+            version["from_uuid"] = ancestor["uuid"]
+
+    # get last version(ID) for each prompt_models
+    version_model_uuid_list = list(
+        set([version[f"{model_type}_uuid"] for version in new_versions])
+    )
+    previous_version_list = (
+        supabase.table(f"{model_type}_version")
+        .select(f"version, {model_type}_uuid")
+        .in_(f"{model_type}_uuid", version_model_uuid_list)
+        .eq("is_deployed", True)
+        .execute()
+    ).data
+
+    version_uuid_version_num_map = {}
+    for previous_version in previous_version_list:
+        if previous_version[f"{model_type}_uuid"] not in version_uuid_version_num_map:
+            version_uuid_version_num_map[previous_version[f"{model_type}_uuid"]] = int(
+                previous_version["version"]
+            )
+        else:
+            version_uuid_version_num_map[previous_version[f"{model_type}_uuid"]] = max(
+                version_uuid_version_num_map[previous_version[f"{model_type}_uuid"]],
+                int(previous_version["version"]),
+            )
+    logger.debug(f"previous_versions: {version_uuid_version_num_map}")
+    # allocate version(ID) for new versions
+    # sort by created_at ascending
+    new_candidates = {}
+    new_versions = sorted(new_versions, key=lambda x: x["created_at"])
+    for new_version in new_versions:
+        if new_version[f"{model_type}_uuid"] in version_uuid_version_num_map:
+            new_version["version"] = (
+                version_uuid_version_num_map[new_version[f"{model_type}_uuid"]] + 1
+            )
+            version_uuid_version_num_map[new_version[f"{model_type}_uuid"]] += 1
+            new_version["is_published"] = False
+            new_version["ratio"] = None
+        else:
+            new_version["version"] = 1
+            version_uuid_version_num_map[new_version[f"{model_type}_uuid"]] = 1
+            new_version["is_published"] = True
+            new_version["ratio"] = 1.0
+        new_version["is_deployed"] = True
+        new_candidates[new_version["uuid"]] = int(new_version["version"])
+    logger.debug(f"new_candidates: {new_candidates}")
+    logger.debug(f"new_versions: {new_versions}")
+    logger.debug(f"versions: {version_uuid_version_num_map}")
+
+    for new_version in new_versions:
+        supabase.table(f"{model_type}_version").update(new_version).eq(
+            "uuid", new_version["uuid"]
+        ).execute()
+
+    # Push development-stage run_log / chat_log_session to deployment-stage
+    if model_type == "prompt_model":
+        for new_version in new_versions:
+            supabase.table("run_log").update({"dev_branch_uuid": None}).eq(
+                "version_uuid", new_version["uuid"]
+            ).execute()
+    elif model_type == "chat_model":
+        for new_version in new_versions:
+            supabase.table("chat_log_session").update({"dev_branch_uuid": None}).eq(
+                "version_uuid", new_version["uuid"]
+            ).execute()
+
+    # make project_changelog level 2, subject = prompt_model_version
+    changelogs.append(
+        {
+            "subject": f"{model_type}_version",
+            "identifiers": [version["uuid"] for version in new_versions],
+            "action": "ADD",
+        }
+    )
+
+    return changelogs

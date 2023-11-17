@@ -39,10 +39,10 @@ class PromptModelRunConfig(BaseModel):
 
 
 class ChatModelRunConfig(BaseModel):
-    chat_model_uuid: str
     system_prompt: str
     user_input: str
     model: Optional[str] = "gpt-3.5-turbo"
+    chat_model_uuid: Optional[str] = None
     from_uuid: Optional[str] = None
     session_uuid: Optional[str] = None
     version_uuid: Optional[str] = None
