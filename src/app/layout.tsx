@@ -6,6 +6,7 @@ import { Providers } from "@/components/Providers";
 import { ClerkProvider } from "@clerk/nextjs";
 import { DeploymentNavbar } from "@/components/navbar/DeploymentNavbar";
 import { ModalRoot } from "@/components/ModalPortal";
+import Head from "next/head";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -40,6 +41,14 @@ export default function RootLayout({
         className="w-screen h-screen bg-base-100 dark"
         data-theme="dark"
       >
+        <Head>
+          <link
+            rel="icon"
+            type="image/png"
+            sizes="32x32"
+            href="/promptmodel-favicon.png"
+          />
+        </Head>
         <body
           className={classNames(
             inter.className,
