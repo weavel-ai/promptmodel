@@ -20,13 +20,20 @@ import { SignInButton } from "../buttons/SignInButton";
 import { useMediaQuery } from "react-responsive";
 import { AnimatedUnderline } from "../AnimatedUnderline";
 import { useSupabaseClient } from "@/apis/base";
-import { ArrowRight, CaretUpDown, List, X } from "@phosphor-icons/react";
+import {
+  ArrowRight,
+  CaretRight,
+  CaretUpDown,
+  List,
+  X,
+} from "@phosphor-icons/react";
 import { Michroma, Russo_One } from "next/font/google";
 import { fetchOrganization, updateOrganization } from "@/apis/organization";
 import { useOrgData } from "@/hooks/useOrgData";
 import { useProject } from "@/hooks/useProject";
 import { usePromptModel } from "@/hooks/usePromptModel";
 import { SelectNavigator } from "../SelectNavigator";
+import { useChatModel } from "@/hooks/useChatModel";
 
 const michroma = Michroma({
   weight: ["400"],
@@ -49,9 +56,16 @@ export const DeploymentNavbar = (props: NavbarProps) => {
   const { orgData, refetchOrgData } = useOrgData();
   const { projectListData } = useProject();
   const { promptModelListData } = usePromptModel();
+  const { chatModelListData } = useChatModel();
   // Mobile
   const isMobile = useMediaQuery({ query: "(max-width: 768px)" });
   const [showDropdown, setShowDropdown] = useState(false);
+
+  const modelType = useMemo(() => {
+    if (params?.promptModelUuid) return "PromptModel";
+    if (params?.chatModelUuid) return "ChatModel";
+    return null;
+  }, [params?.promptModelUuid, params?.chatModelUuid]);
 
   useEffect(() => {
     if (pathname.includes("dev/")) return;
@@ -125,7 +139,7 @@ export const DeploymentNavbar = (props: NavbarProps) => {
             {pathname == "/" ? (
               <div className="px-6 pt-1 group justify-center">
                 <Link
-                  href="https://www.promptmodel.run/docs/intro"
+                  href="https://www.promptmodel.run/docs"
                   target="_blank"
                   className={classNames("relative")}
                 >
@@ -160,23 +174,53 @@ export const DeploymentNavbar = (props: NavbarProps) => {
                 })}
               />
             )}
-            {/* PromptModel navigator */}
-            {params?.promptModelUuid && organization && (
-              <SelectNavigator
-                current={{
-                  label: promptModelListData?.find(
-                    (promptModel) => promptModel.uuid == params?.promptModelUuid
-                  )?.name,
-                  href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/prompt_models/${params?.promptModelUuid}`,
-                }}
-                options={promptModelListData?.map((promptModel) => {
-                  return {
-                    label: promptModel.name,
-                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/prompt_models/${promptModel.uuid}`,
-                  };
-                })}
-              />
-            )}
+            <div className="flex flex-row items-center">
+              {modelType && (
+                <div className="flex flex-row">
+                  <p>{modelType}</p>
+                  <CaretRight
+                    size={16}
+                    weight="bold"
+                    className="text-muted-content mx-2 my-auto"
+                  />
+                </div>
+              )}
+              {/* PromptModel navigator */}
+              {params?.promptModelUuid && organization && (
+                <SelectNavigator
+                  current={{
+                    label: promptModelListData?.find(
+                      (promptModel) =>
+                        promptModel.uuid == params?.promptModelUuid
+                    )?.name,
+                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/prompt_models/${params?.promptModelUuid}`,
+                  }}
+                  options={promptModelListData?.map((promptModel) => {
+                    return {
+                      label: promptModel.name,
+                      href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/prompt_models/${promptModel.uuid}`,
+                    };
+                  })}
+                />
+              )}
+              {/* ChatModel navigator */}
+              {params?.chatModelUuid && organization && (
+                <SelectNavigator
+                  current={{
+                    label: chatModelListData?.find(
+                      (chatModel) => chatModel.uuid == params?.chatModelUuid
+                    )?.name,
+                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/chat_models/${params?.chatModelUuid}`,
+                  }}
+                  options={chatModelListData?.map((chatModel) => {
+                    return {
+                      label: chatModel.name,
+                      href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/chat_models/${chatModel.uuid}`,
+                    };
+                  })}
+                />
+              )}
+            </div>
           </div>
           {props.trailingComponent}
           {pathname == "/" && isSignedIn && (

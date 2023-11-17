@@ -9,7 +9,12 @@ import { Michroma } from "next/font/google";
 import { useParams, usePathname } from "next/navigation";
 import { SelectNavigator } from "../SelectNavigator";
 import React, { useEffect, useMemo, useState } from "react";
-import { Cloud, GlobeHemisphereWest, Rocket } from "@phosphor-icons/react";
+import {
+  CaretRight,
+  Cloud,
+  GlobeHemisphereWest,
+  Rocket,
+} from "@phosphor-icons/react";
 import { deployCandidates as deployLocalCandidates } from "@/apis/dev";
 import { usePromptModelVersion } from "@/hooks/dev/usePromptModelVersion";
 import { toast } from "react-toastify";
@@ -19,6 +24,8 @@ import { ModalPortal } from "../ModalPortal";
 import { useDevBranch } from "@/hooks/useDevBranch";
 import { deployCandidates } from "@/apis/devCloud";
 import { useSupabaseClient } from "@/apis/base";
+import { useChatModel } from "@/hooks/dev/useChatModel";
+import { useChatModelVersion } from "@/hooks/dev/useChatModelVersion";
 
 const michroma = Michroma({
   weight: ["400"],
@@ -37,6 +44,13 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
   const { projectUuid, projectListData } = useProject();
   const { devBranchData } = useDevBranch();
   const { promptModelListData } = usePromptModel();
+  const { chatModelListData } = useChatModel();
+
+  const modelType = useMemo(() => {
+    if (params?.promptModelUuid) return "PromptModel";
+    if (params?.chatModelUuid) return "ChatModel";
+    return null;
+  }, [params?.promptModelUuid, params?.chatModelUuid]);
 
   const projectName = useMemo(
     () =>
@@ -76,26 +90,57 @@ export const DevelopmentNavbar = (props: NavbarProps) => {
             <div className="ms-8 px-3 py-1 font-light">{orgData?.name}</div>
             <Link
               href={`/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}`}
-              className="bg-base-content/10 rounded-md mr-2 px-3 py-1 font-light"
+              className="bg-base-content/10 rounded-md mr-2 px-3 py-1 font-light transition-colors hover:bg-base-content/20"
             >
               {projectName}
             </Link>
-            {params?.promptModelUuid && projectName && (
-              <SelectNavigator
-                current={{
-                  label: promptModelListData?.find(
-                    (promptModel) => promptModel.uuid == params?.promptModelUuid
-                  )?.name,
-                  href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}/prompt_models/${params?.promptModelUuid}`,
-                }}
-                options={promptModelListData?.map((promptModel) => {
-                  return {
-                    label: promptModel.name,
-                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}/prompt_models/${promptModel.uuid}`,
-                  };
-                })}
-              />
-            )}
+            <div className="flex flex-row items-center">
+              {modelType && (
+                <div className="flex flex-row">
+                  <p>{modelType}</p>
+                  <CaretRight
+                    size={16}
+                    weight="bold"
+                    className="text-muted-content mx-2 my-auto"
+                  />
+                </div>
+              )}
+              {/* PromptModel navigator */}
+              {params?.promptModelUuid && projectName && (
+                <SelectNavigator
+                  current={{
+                    label: promptModelListData?.find(
+                      (promptModel) =>
+                        promptModel.uuid == params?.promptModelUuid
+                    )?.name,
+                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}/prompt_models/${params?.promptModelUuid}`,
+                  }}
+                  options={promptModelListData?.map((promptModel) => {
+                    return {
+                      label: promptModel.name,
+                      href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}/prompt_models/${promptModel.uuid}`,
+                    };
+                  })}
+                />
+              )}
+              {/* ChatModel navigator */}
+              {params?.chatModelUuid && projectName && (
+                <SelectNavigator
+                  current={{
+                    label: chatModelListData?.find(
+                      (chatModel) => chatModel.uuid == params?.chatModelUuid
+                    )?.name,
+                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}/chat_models/${params?.chatModelUuid}`,
+                  }}
+                  options={chatModelListData?.map((chatModel) => {
+                    return {
+                      label: chatModel.name,
+                      href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${params?.devName}/chat_models/${chatModel.uuid}`,
+                    };
+                  })}
+                />
+              )}
+            </div>
           </div>
           <div className="min-w-fit me-2 flex flex-row gap-x-2 items-center">
             <div
@@ -129,23 +174,43 @@ const DeployCandidatesButton = () => {
   const { createSupabaseClient } = useSupabaseClient();
   const { projectUuid, projectListData } = useProject();
   const { promptModelListData, refetchPromptModelListData } = usePromptModel();
-  const {
-    promptModelVersionListData: versionListData,
-    refetchPromptModelVersionListData: refetchVersionListData,
-  } = usePromptModelVersion();
+  const { chatModelListData, refetchChatModelListData } = useChatModel();
+  const { promptModelVersionListData, refetchPromptModelVersionListData } =
+    usePromptModelVersion();
+  const { chatModelVersionListData, refetchChatModelVersionListData } =
+    useChatModelVersion();
   const { devBranchData } = useDevBranch();
 
   const deployAll = useMemo(() => {
-    if (params?.promptModelUuid) return false;
+    if (params?.promptModelUuid || params?.chatModelUuid) return false;
     return true;
-  }, [params?.promptModelUuid]);
+  }, [params?.promptModelUuid, params?.chatModelUuid]);
+
+  const modelType = useMemo(() => {
+    if (params?.promptModelUuid) return "PromptModel";
+    if (params?.chatModelUuid) return "ChatModel";
+    return null;
+  }, [params?.promptModelUuid, params?.chatModelUuid]);
 
   const candidateVersionList = useMemo(() => {
-    if (versionListData == null) return [];
-    return versionListData?.filter(
-      (version) => !version.is_deployed && version.status == "candidate"
-    );
-  }, [versionListData]);
+    const candidateList = [];
+    if (promptModelVersionListData) {
+      candidateList.push(
+        ...promptModelVersionListData.filter(
+          (version) => !version.is_deployed && version.status == "candidate"
+        )
+      );
+    }
+    if (chatModelVersionListData) {
+      candidateList.push(
+        ...chatModelVersionListData.filter(
+          (version) => !version.is_deployed && version.status == "candidate"
+        )
+      );
+    }
+    console.log(candidateList);
+    return candidateList;
+  }, [promptModelVersionListData, chatModelVersionListData]);
 
   const promptModelName = useMemo(
     () =>
@@ -155,22 +220,31 @@ const DeployCandidatesButton = () => {
     [promptModelListData, deployAll]
   );
 
+  const chatModelName = useMemo(
+    () =>
+      chatModelListData?.find(
+        (chatModel) => chatModel.uuid == params?.chatModelUuid
+      )?.name,
+    [chatModelListData, deployAll]
+  );
+
   const disabled = useMemo(() => {
     if (deployAll) {
       return !devBranchData?.online && !devBranchData?.cloud;
     } else {
       return candidateVersionList?.length == 0;
     }
-  }, [candidateVersionList, deployAll, versionListData]);
+  }, [candidateVersionList, deployAll]);
 
   async function handleClickDeploy() {
     const toastId = toast.loading(
       deployAll
-        ? "Deploying all local candidates..."
-        : `Deploying candidates for ${promptModelName}...`
+        ? "Deploying all candidates..."
+        : `Deploying candidates for ${promptModelName || chatModelName}...`
     );
     try {
       if (devBranchData?.cloud == false) {
+        // TODO: Add ChatModel support
         await deployLocalCandidates({
           projectUuid: projectUuid,
           devName: params?.devName as string,
@@ -184,7 +258,10 @@ const DeployCandidatesButton = () => {
           devUuid: devBranchData?.uuid,
           promptModelUuid: deployAll
             ? null
-            : (params?.promptModelUuid as string),
+            : (params?.promptModelUuid as string | null),
+          chatModelUuid: deployAll
+            ? null
+            : (params?.chatModelUuid as string | null),
         });
       }
       toast.update(toastId, {
@@ -195,8 +272,13 @@ const DeployCandidatesButton = () => {
       });
       if (deployAll) {
         refetchPromptModelListData();
+        refetchChatModelListData();
       } else {
-        refetchVersionListData();
+        if (modelType == "PromptModel") {
+          refetchPromptModelVersionListData();
+        } else if (modelType == "ChatModel") {
+          refetchChatModelVersionListData();
+        }
       }
     } catch (e) {
       toast.update(toastId, {
@@ -248,15 +330,15 @@ const DeployCandidatesButton = () => {
               </p>
               {deployAll ? (
                 <p className="text-base-content self-start">
-                  All local candidate versions and created Promptmodels will be
-                  deployed to production.
+                  All candidate versions and created PromptModels / ChatModels
+                  will be deployed to production.
                 </p>
               ) : (
                 <p className="text-base-content self-start">
                   <span className="text-xl font-semibold text-secondary">
                     {candidateVersionList?.length}
                   </span>
-                  &nbsp;candidate versions for PromptModel
+                  &nbsp;candidate versions for {modelType}
                   <span className="text-secondary font-medium">
                     &nbsp;{promptModelName}&nbsp;
                   </span>

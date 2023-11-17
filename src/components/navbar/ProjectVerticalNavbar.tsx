@@ -44,7 +44,7 @@ export const ProjectVerticalNavbar = () => {
       <div className="flex flex-col h-fit justify-end pb-8 gap-y-5">
         <VerticalNavbarItem
           label="Docs"
-          href="https://www.promptmodel.run/docs/intro"
+          href="https://www.promptmodel.run/docs"
           external
         >
           <Notebook weight="fill" className="text-base-content" size={20} />

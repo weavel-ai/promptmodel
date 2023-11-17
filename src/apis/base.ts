@@ -35,21 +35,21 @@ export const fetchStream = async ({
   body?: Record<string, any>;
   onNewData: (data: Record<string, any>) => void;
 }) => {
+  let formattedUrl: string = ENDPOINT_URL + url;
+  if (params) {
+    formattedUrl += `?${Object.keys(params)
+      .map((key) => `${key}=${params[key]}`)
+      .join("&")}`;
+  }
+
   // Set params
-  const response = await fetch(
-    ENDPOINT_URL +
-      url +
-      `?${Object.keys(params)
-        .map((key) => `${key}=${params[key]}`)
-        .join("&")}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    }
-  );
+  const response = await fetch(formattedUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
   const reader = response.body?.getReader();
   console.log(response);
 

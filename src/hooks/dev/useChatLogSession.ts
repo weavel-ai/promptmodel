@@ -17,25 +17,30 @@ export const useChatLogSessions = (versionUuid: string) => {
     data: chatLogSessionListData,
     refetch: refetchChatLogSessionListData,
   } = useQuery({
-    queryKey: ["chatLogSessionListData", "dev", { versionUuid: versionUuid }],
+    queryKey: ["chatLogSessionListData", { versionUuid: versionUuid }],
     queryFn: async () => {
       let sessions: Record<string, any>[];
       if (versionUuid == "new") {
         sessions = [];
+      } else if (devBranchData == null) {
+        sessions = await fetchChatLogSessions({
+          supabaseClient: await createSupabaseClient(),
+          versionUuid: versionUuid,
+        });
       } else if (devBranchData?.cloud) {
-        sessions = await fetchChatLogSessions(
-          await createSupabaseClient(),
-          versionUuid,
-          devBranchData?.uuid
-        );
+        sessions = await fetchChatLogSessions({
+          supabaseClient: await createSupabaseClient(),
+          versionUuid: versionUuid,
+          devUuid: devBranchData?.uuid,
+        });
       } else {
         sessions = [];
       }
       sessions.unshift({ uuid: null, name: NEW_CHAT_LABEL, created_at: null });
       return sessions;
     },
-    enabled:
-      versionUuid != undefined && versionUuid != null && devBranchData != null,
+    enabled: versionUuid != undefined && versionUuid != null,
+    //  && devBranchData != null,
   });
 
   return {

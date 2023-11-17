@@ -32,7 +32,7 @@ export const ChatSessionSelector = (props: ChatSessionSelectorProps) => {
     >
       {chatLogSessionListData?.map((session) => {
         return (
-          <option key={session.uuid} value={session.uuid}>
+          <option key={session.uuid} value={session.uuid ?? NEW_CHAT_LABEL}>
             {session.name ??
               dayjs(session.created_at).format("YYYY-MM-DD HH:mm:ss")}
           </option>

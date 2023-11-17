@@ -8,10 +8,7 @@ import { useSupabaseClient } from "@/apis/base";
 import { useEffect, useMemo, useState } from "react";
 import { usePromptModelVersionStore } from "@/stores/promptModelVersionStore";
 import { useDevBranch } from "../useDevBranch";
-import {
-  fetchChatModelVersions,
-  fetchPromptModelVersions,
-} from "@/apis/devCloud";
+import { fetchChatModelVersions } from "@/apis/devCloud";
 import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
 
 export const useChatModelVersion = () => {
@@ -36,11 +33,11 @@ export const useChatModelVersion = () => {
     ],
     queryFn: async () =>
       devBranchData?.cloud
-        ? await fetchChatModelVersions(
-            await createSupabaseClient(),
-            devBranchData?.uuid,
-            params?.chatModelUuid as string
-          )
+        ? await fetchChatModelVersions({
+            supabaseClient: await createSupabaseClient(),
+            chatModelUuid: params?.chatModelUuid as string,
+            devUuid: devBranchData?.uuid,
+          })
         : null,
     onSettled: async (data) => {
       if (devBranchData?.cloud) return;
