@@ -258,6 +258,11 @@ export default function Page() {
             ...item,
             from_uuid: "synthetic-root",
           };
+        } else if (item.dev_from_uuid) {
+          return {
+            ...item,
+            from_uuid: item.dev_from_uuid,
+          };
         }
         return item;
       }),
@@ -266,9 +271,7 @@ export default function Page() {
     // Then, use this preprocessed data with stratify
     const root = stratify()
       .id((d: any) => d.uuid)
-      .parentId((d: any) =>
-        devBranchData?.cloud ? d.dev_from_uuid ?? d.from_uuid : d.from_uuid
-      )(dataWithSyntheticRoot);
+      .parentId((d: any) => d.from_uuid)(dataWithSyntheticRoot);
 
     // Calculate the maximum number of nodes at any depth.
     const maxNodesAtDepth = Math.max(
@@ -300,12 +303,6 @@ export default function Page() {
             generatedEdges.push({
               id: `e${item.uuid}-${item.from_uuid}`,
               source: item.from_uuid,
-              target: item.uuid,
-            });
-          } else if (item.dev_from_uuid) {
-            generatedEdges.push({
-              id: `e${item.uuid}-${item.dev_from_uuid}`,
-              source: item.dev_from_uuid,
               target: item.uuid,
             });
           }

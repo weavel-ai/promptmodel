@@ -17,19 +17,17 @@ export const useSessionChatLogs = (sessionUuid: string | null) => {
     useQuery({
       queryKey: ["chatLogListData", "dev", { sessionUuid: sessionUuid }],
       queryFn: async () => {
-        if (devBranchData?.cloud) {
+        if (devBranchData?.cloud == false) {
+          // TODO: fetch local chat logs
+          return [];
+        } else {
           return await fetchSessionChatLogs(
             await createSupabaseClient(),
             sessionUuid
           );
-        } else {
-          return [];
         }
       },
-      enabled:
-        sessionUuid != undefined &&
-        sessionUuid != null &&
-        devBranchData != null,
+      enabled: sessionUuid != undefined && sessionUuid != null,
     });
 
   useEffect(() => {

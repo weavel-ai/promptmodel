@@ -272,8 +272,13 @@ const DeployCandidatesButton = () => {
       });
       if (deployAll) {
         refetchPromptModelListData();
+        refetchChatModelListData();
       } else {
-        refetchPromptModelVersionListData();
+        if (modelType == "PromptModel") {
+          refetchPromptModelVersionListData();
+        } else if (modelType == "ChatModel") {
+          refetchChatModelVersionListData();
+        }
       }
     } catch (e) {
       toast.update(toastId, {

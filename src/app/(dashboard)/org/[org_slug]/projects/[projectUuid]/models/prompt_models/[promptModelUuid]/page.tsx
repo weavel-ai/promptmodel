@@ -188,30 +188,38 @@ const VersionsPage = () => {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
 
-  const {
-    selectedPromptModelVersionUuid: selectedVersionUuid,
-    setSelectedPromptModelVersionUuid: setSelectedVersionUuid,
-  } = usePromptModelVersionStore();
+  const { selectedPromptModelVersionUuid, setSelectedPromptModelVersionUuid } =
+    usePromptModelVersionStore();
   const { projectData } = useProject();
   const nodeTypes = useMemo(() => ({ modelVersion: ModelVersionNode }), []);
 
   const queryClient = useQueryClient();
   const { promptListData, promptModelVersionData } =
-    usePromptModelVersionDetails(selectedVersionUuid);
+    usePromptModelVersionDetails(selectedPromptModelVersionUuid);
 
-  const { runLogData } = useRunLog(selectedVersionUuid);
+  const { runLogData } = useRunLog(selectedPromptModelVersionUuid);
 
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
   const [isFullScreen, setIsFullScreen] = useState(false);
 
-  useHotkeys("esc", () => {
-    if (isFullScreen) {
-      setIsFullScreen(false);
-    } else {
-      setSelectedVersionUuid(null);
+  useHotkeys(
+    "esc",
+    () => {
+      if (isFullScreen) {
+        setIsFullScreen(false);
+      } else {
+        setSelectedPromptModelVersionUuid(null);
+      }
+    },
+    {
+      preventDefault: true,
     }
-  });
+  );
+
+  useEffect(() => {
+    setSelectedPromptModelVersionUuid(null);
+  }, []);
 
   // Build nodes
   useEffect(() => {
@@ -288,7 +296,7 @@ const VersionsPage = () => {
 
     await updatePublishedPromptModelVersion(
       await createSupabaseClient(),
-      selectedVersionUuid,
+      selectedPromptModelVersionUuid,
       previousPublishedUuid,
       projectData?.version,
       projectData?.uuid
@@ -296,8 +304,8 @@ const VersionsPage = () => {
     await refetchVersionListData();
     queryClient.invalidateQueries({
       predicate: (query: any) =>
-        query.queryKey[0] === "modelVersionData" &&
-        (query.queryKey[1]?.uuid === selectedVersionUuid ||
+        query.queryKey[0] === "promptModelVersionData" &&
+        (query.queryKey[1]?.uuid === selectedPromptModelVersionUuid ||
           query.queryKey[1]?.uuid == previousPublishedUuid),
     });
     toast.update(toastId, {
@@ -317,13 +325,13 @@ const VersionsPage = () => {
         proOptions={{ hideAttribution: true }}
         fitView={true}
         onPaneClick={() => {
-          setSelectedVersionUuid(null);
+          setSelectedPromptModelVersionUuid(null);
         }}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
       </ReactFlow>
       <Drawer
-        open={selectedVersionUuid != null}
+        open={selectedPromptModelVersionUuid != null}
         direction="right"
         classNames="!w-[45vw]"
       >
@@ -364,7 +372,7 @@ const VersionsPage = () => {
                   "normal-case font-normal"
                 )}
                 onClick={() => {
-                  setSelectedVersionUuid(null);
+                  setSelectedPromptModelVersionUuid(null);
                 }}
               >
                 <div className="flex flex-col">
@@ -453,6 +461,7 @@ const VersionsPage = () => {
               <ResizableSeparator
                 height={lowerBoxHeight}
                 setHeight={setLowerBoxHeight}
+                className="mx-4"
               />
               <motion.div>
                 <div

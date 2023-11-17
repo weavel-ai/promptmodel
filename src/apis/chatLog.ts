@@ -1,16 +1,30 @@
 import { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 
-export async function fetchChatLogSessions(
-  supabaseClient: SupabaseClient,
-  versionUuid: string,
-  devUuid?: string
-) {
-  const res = await supabaseClient
+export async function fetchChatLogSessions({
+  supabaseClient,
+  versionUuid,
+  devUuid,
+}: {
+  supabaseClient: SupabaseClient;
+  versionUuid: string;
+  devUuid?: string;
+}) {
+  const req = supabaseClient
     .from("chat_log_session")
     .select("uuid, created_at, run_from_deployment")
-    .eq("version_uuid", versionUuid)
-    .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
-    .order("created_at", { ascending: false });
+    .eq("version_uuid", versionUuid);
+
+  let res;
+
+  if (devUuid) {
+    res = await req
+      .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
+      .order("created_at", { ascending: false });
+  } else {
+    res = await req
+      .filter("dev_branch_uuid", "is", "null")
+      .order("created_at", { ascending: false });
+  }
 
   return res.data;
 }

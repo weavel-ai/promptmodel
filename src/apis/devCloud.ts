@@ -168,19 +168,33 @@ export async function fetchPrompts(
 //   return res.data.samples;
 // }
 
-export async function fetchChatModelVersions(
-  supabaseClient: SupabaseClient,
-  devUuid: string,
-  chatModelUuid: string
-) {
-  const res = await supabaseClient
+export async function fetchChatModelVersions({
+  supabaseClient,
+  chatModelUuid,
+  devUuid,
+}: {
+  supabaseClient: SupabaseClient;
+  chatModelUuid: string;
+  devUuid?: string;
+}) {
+  const req = supabaseClient
     .from("chat_model_version")
     .select(
       "uuid, created_at, version, from_uuid, dev_from_uuid, model, system_prompt, is_published, is_ab_test, ratio, functions, status, is_deployed"
     )
-    .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
-    .eq("chat_model_uuid", chatModelUuid)
-    .order("version", { ascending: true });
+    .eq("chat_model_uuid", chatModelUuid);
+
+  let res;
+
+  if (devUuid) {
+    res = await req
+      .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
+      .order("version", { ascending: true });
+  } else {
+    res = await req
+      .filter("dev_branch_uuid", "is", "null")
+      .order("version", { ascending: true });
+  }
 
   return res.data;
 }
@@ -289,7 +303,7 @@ export async function streamPromptModelRun({
   });
 }
 
-export async function streamChatModelRun({
+export async function streamDevChatModelRun({
   devUuid,
   chatModelUuid,
   systemPrompt,
@@ -304,9 +318,9 @@ export async function streamChatModelRun({
   devUuid: string;
   chatModelUuid: string;
   systemPrompt: string;
-  sessionUuid: string;
   userInput: string;
   model: string;
+  sessionUuid?: string | null;
   fromUuid?: string | null;
   versionUuid?: string | null;
   functions?: string[] | null;
@@ -323,6 +337,37 @@ export async function streamChatModelRun({
       session_uuid: sessionUuid,
       user_input: userInput,
       from_uuid: fromUuid,
+      version_uuid: versionUuid,
+      model: model,
+      functions: functions,
+    },
+    onNewData: onNewData,
+  });
+}
+
+export async function streamDeplChatModelRun({
+  systemPrompt,
+  sessionUuid,
+  userInput,
+  model,
+  versionUuid,
+  functions,
+  onNewData,
+}: {
+  versionUuid: string;
+  systemPrompt: string;
+  userInput: string;
+  model: string;
+  sessionUuid?: string | null;
+  functions?: string[] | null;
+  onNewData?: (data: Record<string, any>) => void;
+}) {
+  await fetchStream({
+    url: "/web/run_chat_model",
+    body: {
+      system_prompt: systemPrompt,
+      session_uuid: sessionUuid,
+      user_input: userInput,
       version_uuid: versionUuid,
       model: model,
       functions: functions,

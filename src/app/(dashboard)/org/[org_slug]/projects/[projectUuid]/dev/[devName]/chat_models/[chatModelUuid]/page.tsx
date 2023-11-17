@@ -34,10 +34,7 @@ import {
 import { FunctionSelector } from "@/components/select/FunctionSelector";
 import { useFunctions } from "@/hooks/dev/useFunctions";
 import { useDevBranch } from "@/hooks/useDevBranch";
-import {
-  streamChatModelRun,
-  updateChatModelVersionStatus,
-} from "@/apis/devCloud";
+import { updateChatModelVersionStatus } from "@/apis/devCloud";
 import { ModalPortal } from "@/components/ModalPortal";
 import { useChatModelVersion } from "@/hooks/dev/useChatModelVersion";
 import { useChatModel } from "@/hooks/dev/useChatModel";
@@ -47,6 +44,7 @@ import { ChatSessionSelector } from "@/components/select/ChatSessionSelector";
 import { useSessionChatLogs } from "@/hooks/dev/useSessionChatLogs";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { ChatUI } from "@/components/ChatUI";
 dayjs.extend(relativeTime);
 
 export default function Page() {
@@ -188,6 +186,11 @@ export default function Page() {
             ...item,
             from_uuid: "synthetic-root",
           };
+        } else if (item.dev_from_uuid) {
+          return {
+            ...item,
+            from_uuid: item.dev_from_uuid,
+          };
         }
         return item;
       }),
@@ -196,9 +199,7 @@ export default function Page() {
     // Then, use this preprocessed data with stratify
     const root = stratify()
       .id((d: any) => d.uuid)
-      .parentId((d: any) =>
-        devBranchData?.cloud ? d.dev_from_uuid ?? d.from_uuid : d.from_uuid
-      )(dataWithSyntheticRoot);
+      .parentId((d: any) => d.from_uuid)(dataWithSyntheticRoot);
 
     // Calculate the maximum number of nodes at any depth.
     const maxNodesAtDepth = Math.max(
@@ -230,12 +231,6 @@ export default function Page() {
             generatedEdges.push({
               id: `e${item.uuid}-${item.from_uuid}`,
               source: item.from_uuid,
-              target: item.uuid,
-            });
-          } else if (item.dev_from_uuid) {
-            generatedEdges.push({
-              id: `e${item.uuid}-${item.dev_from_uuid}`,
-              source: item.dev_from_uuid,
               target: item.uuid,
             });
           }
@@ -785,354 +780,9 @@ const PromptDiffComponent = ({
   );
 };
 
-const ChatUI = ({
-  versionUuid,
-  className,
-}: {
-  versionUuid: string | "new";
-  className?: string;
-}) => {
-  const params = useParams();
-  const [chatInput, setChatInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [generatedMessage, setGeneratedMessage] = useState(null);
-  const [selectedSessionUuid, setSelectedSessionUuid] = useState(null);
-  const { refetchChatModelVersionListData } = useChatModelVersion();
-  const { refetchChatLogSessionListData } = useChatLogSessions(versionUuid);
-  const { devBranchData } = useDevBranch();
-  const {
-    fullScreenChatVersion,
-    newVersionUuidCache,
-    selectedModel,
-    selectedFunctions,
-    originalVersionData,
-    modifiedSystemPrompt,
-    selectedChatModelVersionUuid,
-    setSelectedChatModelVersionUuid,
-    setNewVersionUuidCache,
-    setFullScreenChatVersion,
-  } = useChatModelVersionStore();
-  const {
-    chatLogListData,
-    setChatLogListData,
-    refetchChatLogListData,
-    resetChatLogListData,
-  } = useSessionChatLogs(selectedSessionUuid);
-  const scrollDivRef = useRef(null);
-
-  useEffect(() => {
-    resetChatLogListData();
-    setSelectedSessionUuid(null);
-  }, [selectedChatModelVersionUuid]);
-
-  useEffect(() => {
-    // Scroll to bottom whenever chatLogListData changes
-    if (scrollDivRef.current) {
-      scrollDivRef.current.scrollTo({
-        top: scrollDivRef.current.scrollHeight,
-        behavior: "smooth",
-      });
-    }
-  }, [chatLogListData, generatedMessage]);
-
-  // Run ChatModel
-  async function handleSubmit() {
-    const userInput = chatInput;
-    setChatLogListData([
-      ...chatLogListData,
-      {
-        role: "user",
-        content: chatInput,
-        created_at: new Date().toISOString(),
-      },
-    ]);
-    setChatInput("");
-    setGeneratedMessage("");
-    setIsLoading(true);
-    const isNew = versionUuid === "new";
-    let systemPrompt: string;
-    let newVersionUuid: string;
-
-    if (isNew) {
-      systemPrompt = modifiedSystemPrompt;
-    } else {
-      systemPrompt = originalVersionData.system_prompt;
-    }
-
-    let cacheRawOutput = "";
-    let cacheFunctionCallData = {};
-
-    const args: any = {
-      projectUuid: params?.projectUuid as string,
-      chatModelUuid: params?.chatModelUuid as string,
-      sessionUuid: selectedSessionUuid,
-      userInput: userInput,
-      systemPrompt: systemPrompt,
-      model: isNew ? selectedModel : originalVersionData.model,
-      fromUuid: isNew ? originalVersionData?.uuid ?? null : null,
-      versionUuid: isNew ? null : originalVersionData?.uuid,
-      functions: isNew ? selectedFunctions : originalVersionData?.functions,
-      onNewData: async (data) => {
-        switch (data?.status) {
-          case "completed":
-            await refetchChatLogListData();
-            setGeneratedMessage(null);
-            setIsLoading(false);
-            break;
-          case "failed":
-            await refetchChatLogListData();
-            setGeneratedMessage(null);
-            toast.error(data?.log, {
-              autoClose: 4000,
-            });
-            setIsLoading(false);
-            break;
-        }
-        if (data?.chat_model_version_uuid) {
-          setNewVersionUuidCache(data?.chat_model_version_uuid);
-        }
-        if (data?.chat_log_session_uuid) {
-          await refetchChatLogSessionListData();
-          setSelectedSessionUuid(data.chat_log_session_uuid);
-        }
-        if (data?.raw_output) {
-          cacheRawOutput += data?.raw_output;
-          setGeneratedMessage(cacheRawOutput);
-        }
-      },
-    };
-
-    if (devBranchData?.cloud) {
-      delete args.projectUuid;
-      args["devUuid"] = devBranchData?.uuid;
-      await streamChatModelRun(args);
-    } else {
-      // TODO : Stream local ChatModel run
-      // await streamLocalPromptModelRun(args);
-    }
-    setIsLoading(false);
-
-    if (isNew) {
-      await refetchChatModelVersionListData();
-      if (!originalVersionData?.uuid) {
-        setSelectedChatModelVersionUuid(newVersionUuidCache);
-      }
-    }
-  }
-
-  const mainUI = (
-    <div className={classNames("w-full h-full flex flex-col gap-y-2", "")}>
-      <div className="w-full flex flex-row justify-between items-center">
-        <div className="flex flex-row justify-start items-center gap-x-4">
-          <p className="text-xl font-semibold ps-2">Chat</p>
-          <ChatSessionSelector
-            versionUuid={versionUuid}
-            selectedSessionUuid={selectedSessionUuid}
-            setSelectedSessionUuid={setSelectedSessionUuid}
-          />
-        </div>
-        <button
-          className="btn btn-sm bg-transparent border-transparent items-center hover:bg-neutral-content/20"
-          onClick={() => {
-            setFullScreenChatVersion(versionUuid);
-          }}
-        >
-          <CornersOut size={22} />
-        </button>
-      </div>
-      <div className="flex flex-col justify-between w-full h-full overflow-hidden">
-        <div ref={scrollDivRef} className="flex-grow w-full overflow-auto">
-          <div className="flex-grow w-full flex flex-col justify-start gap-y-2 p-2">
-            {chatLogListData?.map((chatLog, idx) => {
-              return (
-                <div
-                  className={classNames(
-                    "chat",
-                    chatLog.role == "user" ? "chat-end" : "chat-start"
-                  )}
-                  key={idx}
-                >
-                  <div className="chat-header">
-                    {firstLetterToUppercase(chatLog.role)}
-                    <time className="text-xs opacity-50 ml-2">
-                      {dayjs(chatLog.created_at).fromNow()}
-                    </time>
-                  </div>
-                  <div
-                    className={classNames(
-                      "chat-bubble",
-                      chatLog.role == "assistant" && "bg-base-300"
-                    )}
-                  >
-                    {chatLog.content}
-                  </div>
-                  {chatLog.token_usage && (
-                    <div className="chat-footer opacity-50">
-                      {chatLog.token_usage} tokens
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            {generatedMessage != null && (
-              <div className="chat chat-start">
-                <div className="chat-header">
-                  Assistant
-                  <time className="text-xs opacity-50 ml-2">
-                    {dayjs().fromNow()}
-                  </time>
-                </div>
-                <div className="chat-bubble bg-base-300">
-                  {generatedMessage?.length == 0 ? (
-                    <div className="loading loading-dots loading-sm" />
-                  ) : (
-                    <p>{generatedMessage}</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        <ChatInput
-          onSubmit={handleSubmit}
-          chatInput={chatInput}
-          setChatInput={setChatInput}
-          isLoading={isLoading}
-          isNewVersion={versionUuid == "new"}
-        />
-      </div>
-    </div>
-  );
-
-  if (fullScreenChatVersion != versionUuid) {
-    return (
-      <div
-        className={classNames(
-          "w-full h-full rounded-box bg-base-200 p-4",
-          className
-        )}
-      >
-        {mainUI}
-      </div>
-    );
-  } else {
-    return (
-      <ModalPortal>
-        <motion.div
-          className="fixed bottom-0 right-0 z-[999999] bg-base-200/70 backdrop-blur-md p-4 flex flex-col gap-y-4 rounded"
-          initial={{ width: "50vw", height: "40vh" }}
-          animate={{
-            width: "100vw",
-            height: "100vh",
-          }}
-        >
-          {mainUI}
-        </motion.div>
-      </ModalPortal>
-    );
-  }
-};
-
-const ChatInput = ({
-  onSubmit,
-  chatInput,
-  setChatInput,
-  isLoading,
-  isNewVersion,
-}: {
-  onSubmit: () => void;
-  chatInput: string;
-  setChatInput: (input: string) => void;
-  isLoading: boolean;
-  isNewVersion: boolean;
-}) => {
-  const { originalVersionData, modifiedSystemPrompt } =
-    useChatModelVersionStore();
-
-  const disabledMessage = useMemo(() => {
-    if (isLoading) return true;
-    if (chatInput.length == 0) return true;
-    if (isNewVersion) {
-      if (modifiedSystemPrompt?.length == 0)
-        return "Please enter a system prompt";
-      if (originalVersionData?.system_prompt == modifiedSystemPrompt)
-        return "System prompt is equal to original version";
-    }
-    return false;
-  }, [
-    chatInput,
-    isLoading,
-    isNewVersion,
-    modifiedSystemPrompt,
-    originalVersionData,
-  ]);
-
-  return (
-    <form
-      className={classNames(
-        "bg-popover h-14 w-full max-w-5xl mx-auto rounded-box flex-shrink-0 flex flex-row justify-between items-center px-2"
-      )}
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (isLoading) return;
-        onSubmit();
-      }}
-    >
-      <input
-        type="text"
-        className={classNames(
-          "ml-4 w-full focus:outline-none bg-transparent",
-          "text-popover-content"
-        )}
-        placeholder="How can I help you?"
-        value={chatInput}
-        onChange={(e) => setChatInput(e.target.value)}
-      />
-      {isLoading ? (
-        <div className="rounded-lg w-12 bg-base-content flex justify-center items-center h-10">
-          <div className="loading loading-spinner loading-sm text-base-100" />
-        </div>
-      ) : (
-        <div
-          className={classNames(
-            typeof disabledMessage == "string" &&
-              "tooltip tooltip-left tooltip-accent"
-          )}
-          data-tip={disabledMessage}
-        >
-          <SendChatButton
-            onClick={onSubmit}
-            disabled={Boolean(disabledMessage)}
-          />
-        </div>
-      )}
-    </form>
-  );
-};
-
-function SendChatButton({
-  onClick,
-  disabled,
-}: {
-  onClick: () => void;
-  disabled: boolean;
-}) {
-  return (
-    <button
-      className="flex justify-center items-center btn btn-sm bg-base-content text-popover normal-case font-normal h-10 hover:bg-base-content/80 hover:text-popover/80 disabled:bg-muted"
-      onClick={onClick}
-      disabled={disabled}
-    >
-      <ArrowUp size={20} weight="bold" />
-    </button>
-  );
-}
-
 function ModelVersionNode({ data }) {
-  const {
-    selectedChatModelVersionUuid,
-    setSelectedChatModelVersionUuid: setSelectedChatModelVersionUuid,
-  } = useChatModelVersionStore();
+  const { selectedChatModelVersionUuid, setSelectedChatModelVersionUuid } =
+    useChatModelVersionStore();
   return (
     <div
       className={classNames(
