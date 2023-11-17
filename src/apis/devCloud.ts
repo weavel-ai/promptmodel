@@ -335,10 +335,12 @@ export async function deployCandidates({
   projectUuid,
   devUuid,
   promptModelUuid = null,
+  chatModelUuid = null,
 }: {
   projectUuid: string;
   devUuid: string;
   promptModelUuid?: string | null;
+  chatModelUuid?: string | null;
 }) {
   const res = await railwayWebClient.post(
     "/push_versions",
@@ -348,6 +350,7 @@ export async function deployCandidates({
         project_uuid: projectUuid,
         dev_uuid: devUuid,
         prompt_model_uuid: promptModelUuid,
+        chat_model_uuid: chatModelUuid,
       },
     }
   );

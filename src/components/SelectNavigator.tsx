@@ -56,11 +56,13 @@ export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
 
   return (
     <div>
-      <div className="flex flex-row items-center gap-x-2 cursor-pointer">
+      <div className="flex flex-row items-center gap-x-1 cursor-pointer">
         <Link
           ref={containerRef}
           href={current?.href}
-          className={classNames("bg-base-100")}
+          className={classNames(
+            "bg-base-content/10 w-full h-full rounded-md px-2 py-1 transition-colors hover:bg-base-content/20"
+          )}
         >
           {current.label}
         </Link>
@@ -68,8 +70,9 @@ export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
           onClick={() => {
             setShowOptions(!showOptions);
           }}
+          className="text-muted-content hover:bg-base-content/20 transition-colors rounded-md py-1"
         >
-          <CaretUpDown weight="bold" size={20} className="text-muted-content" />
+          <CaretUpDown weight="bold" size={20} />
         </button>
       </div>
       {/* Options */}
