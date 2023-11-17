@@ -490,7 +490,7 @@ async def push_versions(
     try:
         changelogs = []
         changelog_level = 2
-        if not prompt_model_uuid and not chat_model_uuid:
+        if prompt_model_uuid is None and chat_model_uuid is None:
             # Deploy all prompt_models and chat_models of specified dev environment
             changelogs = deploy_models(
                 project_uuid=project_uuid,
@@ -609,7 +609,7 @@ def deploy_models(
     # Get deployed versions
     deployed_versions = (
         supabase.table(f"{model_type}_version")
-        .select(f"created_at, uuid, from_uuid, {model_type}_uuid, status")
+        .select(f"created_at, uuid, from_uuid, {model_type}_uuid, status, version")
         .eq("is_deployed", True)
         .execute()
         .data
@@ -617,7 +617,7 @@ def deploy_models(
     # Get dev environment versions
     dev_versions = (
         supabase.table(f"{model_type}_version")
-        .select(f"created_at, uuid, dev_from_uuid, {model_type}_uuid, status")
+        .select(f"created_at, uuid, dev_from_uuid, {model_type}_uuid, status, version")
         .eq("is_deployed", False)
         .eq("dev_branch_uuid", dev_uuid)
         .execute()
@@ -627,13 +627,13 @@ def deploy_models(
     if model_uuid:
         deployed_versions = list(
             filter(
-                lambda version: version["{model_type}_uuid"] == model_uuid,
+                lambda version: version[f"{model_type}_uuid"] == model_uuid,
                 deployed_versions,
             )
         )
         dev_versions = list(
             filter(
-                lambda version: version["{model_type}_uuid"] == model_uuid,
+                lambda version: version[f"{model_type}_uuid"] == model_uuid,
                 dev_versions,
             )
         )
@@ -648,25 +648,38 @@ def deploy_models(
 
     logger.debug(f"new_versions: {new_versions}")
 
+    if not new_versions:
+        return changelogs
+
     # Set from_uuid of new_versions to the root ancestor version
     for version in new_versions:
-        root_version_uuid = None  # Start with the current version's UUID
-        parent_version = version
-        while parent_version.get("dev_from_uuid") is not None:
-            # Find the parent version
-            parent_version = next(
-                filter(
-                    lambda version: version["uuid"] == parent_version["dev_from_uuid"],
-                    all_versions,
+        ancestor = None
+        temp_version = version
+        get_parent_uuid = lambda child: child.get("dev_from_uuid") or child.get(
+            "from_uuid"
+        )
+        if get_parent_uuid(temp_version) is None:
+            version["from_uuid"] = None
+        else:
+            while get_parent_uuid(temp_version) is not None:
+                # Find the current parent's parent
+                temp_version = next(
+                    filter(
+                        lambda version: version["uuid"]
+                        == get_parent_uuid(temp_version),
+                        all_versions,
+                    )
                 )
-            )
-            root_version_uuid = parent_version[
-                "uuid"
-            ]  # Update root_version_uuid with the parent's UUID
+                if (
+                    temp_version["version"] is not None
+                    or temp_version["status"] == "candidate"
+                ):
+                    ancestor = temp_version
+                    break
 
-        # After finding the root version, set 'from_uuid' to the root version's UUID
-        logger.debug(f"root_version_uuid: {root_version_uuid}")
-        version["from_uuid"] = root_version_uuid
+            # After finding the root version, set 'from_uuid' to the root version's UUID
+            logger.debug(f"ancestor: {ancestor}")
+            version["from_uuid"] = ancestor["uuid"]
 
     # get last version(ID) for each prompt_models
     version_model_uuid_list = list(
@@ -680,46 +693,45 @@ def deploy_models(
         .execute()
     ).data
 
-    last_versions = {}
+    version_uuid_version_num_map = {}
     for previous_version in previous_version_list:
-        if previous_version[f"{model_type}_uuid"] not in last_versions:
-            last_versions[previous_version[f"{model_type}_uuid"]] = int(
+        if previous_version[f"{model_type}_uuid"] not in version_uuid_version_num_map:
+            version_uuid_version_num_map[previous_version[f"{model_type}_uuid"]] = int(
                 previous_version["version"]
             )
         else:
-            last_versions[previous_version[f"{model_type}_uuid"]] = max(
-                last_versions[previous_version[f"{model_type}_uuid"]],
+            version_uuid_version_num_map[previous_version[f"{model_type}_uuid"]] = max(
+                version_uuid_version_num_map[previous_version[f"{model_type}_uuid"]],
                 int(previous_version["version"]),
             )
-    logger.debug(f"last_versions: {last_versions}")
+    logger.debug(f"previous_versions: {version_uuid_version_num_map}")
     # allocate version(ID) for new versions
     # sort by created_at ascending
     new_candidates = {}
     new_versions = sorted(new_versions, key=lambda x: x["created_at"])
     for new_version in new_versions:
-        if new_version[f"{model_type}_uuid"] in last_versions:
+        if new_version[f"{model_type}_uuid"] in version_uuid_version_num_map:
             new_version["version"] = (
-                last_versions[new_version[f"{model_type}_uuid"]] + 1
+                version_uuid_version_num_map[new_version[f"{model_type}_uuid"]] + 1
             )
-            last_versions[new_version[f"{model_type}_uuid"]] += 1
+            version_uuid_version_num_map[new_version[f"{model_type}_uuid"]] += 1
+            new_version["is_published"] = False
+            new_version["ratio"] = None
         else:
             new_version["version"] = 1
-            last_versions[new_version[f"{model_type}_uuid"]] = 1
+            version_uuid_version_num_map[new_version[f"{model_type}_uuid"]] = 1
             new_version["is_published"] = True
             new_version["ratio"] = 1.0
+        new_version["is_deployed"] = True
         new_candidates[new_version["uuid"]] = int(new_version["version"])
     logger.debug(f"new_candidates: {new_candidates}")
     logger.debug(f"new_versions: {new_versions}")
-    logger.debug(f"last_versions: {last_versions}")
+    logger.debug(f"versions: {version_uuid_version_num_map}")
 
     for new_version in new_versions:
-        supabase.table(f"{model_type}_version").update(
-            {
-                "version": new_version["version"],
-                "from_uuid": new_version["from_uuid"],
-                "is_deployed": True,
-            }
-        ).eq("uuid", new_version["uuid"]).execute()
+        supabase.table(f"{model_type}_version").update(new_version).eq(
+            "uuid", new_version["uuid"]
+        ).execute()
 
     # make project_changelog level 2, subject = prompt_model_version
     changelogs.append(
