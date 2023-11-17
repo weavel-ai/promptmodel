@@ -642,7 +642,7 @@ def deploy_models(
     all_versions = deployed_versions + dev_versions
 
     # Get versions to save
-    new_versions = list(
+    new_versions: List[Dict[str, Any]] = list(
         filter(lambda version: version["status"] == "candidate", dev_versions)
     )
 
@@ -732,6 +732,18 @@ def deploy_models(
         supabase.table(f"{model_type}_version").update(new_version).eq(
             "uuid", new_version["uuid"]
         ).execute()
+
+    # Push development-stage run_log / chat_log_session to deployment-stage
+    if model_type == "prompt_model":
+        for new_version in new_versions:
+            supabase.table("run_log").update({"dev_branch_uuid": None}).eq(
+                "version_uuid", new_version["uuid"]
+            ).execute()
+    elif model_type == "chat_model":
+        for new_version in new_versions:
+            supabase.table("chat_log_session").update({"dev_branch_uuid": None}).eq(
+                "version_uuid", new_version["uuid"]
+            ).execute()
 
     # make project_changelog level 2, subject = prompt_model_version
     changelogs.append(
