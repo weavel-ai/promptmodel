@@ -112,7 +112,7 @@ export async function fetchPromptModelVersions(
     .select(
       "uuid, created_at, version, from_uuid, dev_from_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys, functions, status, is_deployed"
     )
-    .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
+    .or(`dev_branch_uuid.eq.${devUuid},is_deployed.eq.true`)
     .eq("prompt_model_uuid", promptModelUuid)
     .order("version", { ascending: true });
 
@@ -188,7 +188,7 @@ export async function fetchChatModelVersions({
 
   if (devUuid) {
     res = await req
-      .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
+      .or(`dev_branch_uuid.eq.${devUuid},is_deployed.eq.true`)
       .order("version", { ascending: true });
   } else {
     res = await req
@@ -210,7 +210,6 @@ export async function updateChatModelVersionStatus(
     .update({
       status: status,
     })
-    .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
     .eq("uuid", versionUuid);
 }
 
