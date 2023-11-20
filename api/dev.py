@@ -15,8 +15,10 @@ from utils.security import get_project
 from utils.logger import logger
 from base.database import supabase
 from base.websocket_connection import websocket_manager, LocalTask
+from dev_chat import router as chat_router
 
 router = APIRouter()
+router.include_router(chat_router)
 
 
 class PromptConfig(BaseModel):
@@ -590,159 +592,317 @@ async def push_versions(
 
         cli_access_key = dev_branch[0]["cli_access_key"]
 
+        if prompt_model_uuid and chat_model_uuid:
+            raise ValueError(
+                "prompt_model_uuid and chat_model_uuid cannot be given at the same time"
+            )
+        if not prompt_model_uuid and not chat_model_uuid:
+            raise ValueError(
+                "prompt_model_uuid or chat_model_uuid should be given at least one"
+            )
+
         data = {}
         if prompt_model_uuid:
             data["prompt_model_uuid"] = prompt_model_uuid
 
-        response = await websocket_manager.request(
-            cli_access_key, LocalTask.GET_PROMPT_MODEL_VERSIONS_TO_SAVE, data
-        )
-        if not response:
-            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
+            response = await websocket_manager.request(
+                cli_access_key, LocalTask.GET_PROMPT_MODEL_VERSIONS_TO_SAVE, data
+            )
+            if not response:
+                raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # save prompt_model_versions to server DB
+            # save prompt_model_versions to server DB
 
-        # if there are prompt_models (which is only in local), save them
-        prompt_models = response["prompt_models"]
-        if len(prompt_models) > 0:
-            # add prompt_model["is_deployed"] = True
-            # for prompt_model in prompt_models:
-            #     prompt_model["is_deployed"] = True
+            # if there are prompt_models (which is only in local), save them
+            prompt_models = response["prompt_models"]
+            if len(prompt_models) > 0:
+                # add prompt_model["is_deployed"] = True
+                # for prompt_model in prompt_models:
+                #     prompt_model["is_deployed"] = True
 
-            (supabase.table("prompt_model").insert(prompt_models).execute())
-            # make changelog level 1, subject = prompt_model
+                (supabase.table("prompt_model").insert(prompt_models).execute())
+                # make changelog level 1, subject = prompt_model
+                changelogs.append(
+                    {
+                        "subject": "prompt_model",
+                        "identifiers": [
+                            prompt_model["uuid"] for prompt_model in prompt_models
+                        ],
+                        "action": "ADD",
+                    }
+                )
+                changelog_level = 1
+
+            new_versions = list(
+                map(
+                    lambda version: (
+                        (
+                            version.update(
+                                {"prompt_model_uuid": version["prompt_model_uuid"]}
+                            ),
+                            version,
+                        )[1]
+                    ),
+                    response["versions"],
+                )
+            )
+            # get last version(ID) for each prompt_models
+            version_prompt_model_uuid_list = list(
+                set([version["prompt_model_uuid"] for version in new_versions])
+            )
+            previous_version_list = (
+                supabase.table("prompt_model_version")
+                .select("version, prompt_model_uuid")
+                .in_("prompt_model_uuid", version_prompt_model_uuid_list)
+                .eq("is_deployed", True)
+                .execute()
+            ).data
+
+            last_versions = {}
+            for previous_version in previous_version_list:
+                if previous_version["prompt_model_uuid"] not in last_versions:
+                    last_versions[previous_version["prompt_model_uuid"]] = int(
+                        previous_version["version"]
+                    )
+                else:
+                    last_versions[previous_version["prompt_model_uuid"]] = max(
+                        last_versions[previous_version["prompt_model_uuid"]],
+                        int(previous_version["version"]),
+                    )
+
+            # allocate version(ID) for new versions
+            # sort by created_at ascending
+            new_candidates = {}
+            new_versions = sorted(new_versions, key=lambda x: x["created_at"])
+            for new_version in new_versions:
+                new_version["is_deployed"] = True
+                if new_version["prompt_model_uuid"] in last_versions:
+                    new_version["version"] = (
+                        last_versions[new_version["prompt_model_uuid"]] + 1
+                    )
+                    last_versions[new_version["prompt_model_uuid"]] += 1
+                    new_version["is_published"] = False
+                    new_version["ratio"] = None
+                else:
+                    new_version["version"] = 1
+                    last_versions[new_version["prompt_model_uuid"]] = 1
+                    new_version[
+                        "is_published"
+                    ] = True  # If there is no previous version, publish it
+                    new_version["ratio"] = 1.0
+                new_candidates[new_version["uuid"]] = int(new_version["version"])
+
+            (supabase.table("prompt_model_version").insert(new_versions).execute())
+            prompts = response["prompts"]
+            (supabase.table("prompt").insert(prompts).execute())
+
+            # print(f"new candidates: {new_candidates}")
+            await websocket_manager.send_message(
+                cli_access_key,
+                LocalTask.UPDATE_CANDIDATE_PROMPT_MODEL_VERSION_ID,
+                {"new_candidates": new_candidates},
+            )
+
+            # make project_changelog level 2, subject = prompt_model_version
             changelogs.append(
                 {
-                    "subject": "prompt_model",
-                    "identifiers": [
-                        prompt_model["uuid"] for prompt_model in prompt_models
-                    ],
+                    "subject": "prompt_model_version",
+                    "identifiers": [version["uuid"] for version in new_versions],
                     "action": "ADD",
                 }
             )
-            changelog_level = 1
-
-        new_versions = list(
-            map(
-                lambda version: (
-                    (
-                        version.update(
-                            {"prompt_model_uuid": version["prompt_model_uuid"]}
-                        ),
-                        version,
-                    )[1]
-                ),
-                response["versions"],
+            # update project_version
+            current_project_version: str = (
+                supabase.table("project")
+                .select("version")
+                .eq("uuid", project_uuid)
+                .single()
+                .execute()
+                .data["version"]
             )
-        )
-        # get last version(ID) for each prompt_models
-        version_prompt_model_uuid_list = list(
-            set([version["prompt_model_uuid"] for version in new_versions])
-        )
-        previous_version_list = (
-            supabase.table("prompt_model_version")
-            .select("version, prompt_model_uuid")
-            .in_("prompt_model_uuid", version_prompt_model_uuid_list)
-            .eq("is_deployed", True)
-            .execute()
-        ).data
+            current_version_levels = current_project_version.split(".")
+            if changelog_level == 1:
+                new_project_version_levels = [
+                    str(int(current_version_levels[0]) + 1),
+                    "0",
+                    "0",
+                ]
+            elif changelog_level == 2:
+                new_project_version_levels = [
+                    current_version_levels[0],
+                    str(int(current_version_levels[1]) + 1),
+                    "0",
+                ]
+            new_project_version = ".".join(new_project_version_levels)
+            supabase.table("project").update({"version": new_project_version}).eq(
+                "uuid", project_uuid
+            ).execute()
 
-        last_versions = {}
-        for previous_version in previous_version_list:
-            if previous_version["prompt_model_uuid"] not in last_versions:
-                last_versions[previous_version["prompt_model_uuid"]] = int(
-                    previous_version["version"]
+            # insert project_changelog
+            (
+                supabase.table("project_changelog")
+                .insert(
+                    {
+                        "logs": changelogs,
+                        "project_uuid": project_uuid,
+                        "level": changelog_level,
+                        "previous_version": current_project_version,
+                    }
                 )
-            else:
-                last_versions[previous_version["prompt_model_uuid"]] = max(
-                    last_versions[previous_version["prompt_model_uuid"]],
-                    int(previous_version["version"]),
+                .execute()
+            )
+
+            return JSONResponse({}, status_code=HTTP_200_OK)
+
+        else:
+            data["chat_model_uuid"] = chat_model_uuid
+
+            response = await websocket_manager.request(
+                cli_access_key, LocalTask.GET_CHAT_MODEL_VERSIONS_TO_SAVE, data
+            )
+            if not response:
+                raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # save chat_model_versions to server DB
+
+            # if there are chat_models (which is only in local), save them
+            chat_models = response["chat_models"]
+            if len(chat_models) > 0:
+                # add chat_model["is_deployed"] = True
+                # for chat_model in chat_models:
+                #     chat_model["is_deployed"] = True
+
+                (supabase.table("chat_models").insert(chat_models).execute())
+                # make changelog level 1, subject = chat_models
+                changelogs.append(
+                    {
+                        "subject": "chat_models",
+                        "identifiers": [
+                            chat_model["uuid"] for chat_model in chat_models
+                        ],
+                        "action": "ADD",
+                    }
                 )
+                changelog_level = 1
 
-        # allocate version(ID) for new versions
-        # sort by created_at ascending
-        new_candidates = {}
-        new_versions = sorted(new_versions, key=lambda x: x["created_at"])
-        for new_version in new_versions:
-            new_version["is_deployed"] = True
-            if new_version["prompt_model_uuid"] in last_versions:
-                new_version["version"] = (
-                    last_versions[new_version["prompt_model_uuid"]] + 1
+            new_versions = list(
+                map(
+                    lambda version: (
+                        (
+                            version.update(
+                                {"chat_model_uuid": version["chat_model_uuid"]}
+                            ),
+                            version,
+                        )[1]
+                    ),
+                    response["versions"],
                 )
-                last_versions[new_version["prompt_model_uuid"]] += 1
-                new_version["is_published"] = False
-                new_version["ratio"] = None
-            else:
-                new_version["version"] = 1
-                last_versions[new_version["prompt_model_uuid"]] = 1
-                new_version[
-                    "is_published"
-                ] = True  # If there is no previous version, publish it
-                new_version["ratio"] = 1.0
-            new_candidates[new_version["uuid"]] = int(new_version["version"])
+            )
+            # get last version(ID) for each chat_models
+            version_chat_model_uuid_list = list(
+                set([version["chat_model_uuid"] for version in new_versions])
+            )
+            previous_version_list = (
+                supabase.table("chat_model_version")
+                .select("version, chat_model_uuid")
+                .in_("chat_model_uuid", version_chat_model_uuid_list)
+                .eq("is_deployed", True)
+                .execute()
+            ).data
 
-        (supabase.table("prompt_model_version").insert(new_versions).execute())
-        prompts = response["prompts"]
-        (supabase.table("prompt").insert(prompts).execute())
+            last_versions = {}
+            for previous_version in previous_version_list:
+                if previous_version["chat_model_uuid"] not in last_versions:
+                    last_versions[previous_version["chat_model_uuid"]] = int(
+                        previous_version["version"]
+                    )
+                else:
+                    last_versions[previous_version["chat_model_uuid"]] = max(
+                        last_versions[previous_version["chat_model_uuid"]],
+                        int(previous_version["version"]),
+                    )
 
-        # print(f"new candidates: {new_candidates}")
-        await websocket_manager.send_message(
-            cli_access_key,
-            LocalTask.UPDATE_CANDIDATE_PROMPT_MODEL_VERSION_ID,
-            {"new_candidates": new_candidates},
-        )
+            # allocate version(ID) for new versions
+            # sort by created_at ascending
+            new_candidates = {}
+            new_versions = sorted(new_versions, key=lambda x: x["created_at"])
+            for new_version in new_versions:
+                new_version["is_deployed"] = True
+                if new_version["chat_model_uuid"] in last_versions:
+                    new_version["version"] = (
+                        last_versions[new_version["chat_model_uuid"]] + 1
+                    )
+                    last_versions[new_version["chat_model_uuid"]] += 1
+                    new_version["is_published"] = False
+                    new_version["ratio"] = None
+                else:
+                    new_version["version"] = 1
+                    last_versions[new_version["chat_model_uuid"]] = 1
+                    new_version[
+                        "is_published"
+                    ] = True  # If there is no previous version, publish it
+                    new_version["ratio"] = 1.0
+                new_candidates[new_version["uuid"]] = int(new_version["version"])
 
-        # make project_changelog level 2, subject = prompt_model_version
-        changelogs.append(
-            {
-                "subject": "prompt_model_version",
-                "identifiers": [version["uuid"] for version in new_versions],
-                "action": "ADD",
-            }
-        )
-        # update project_version
-        current_project_version: str = (
-            supabase.table("project")
-            .select("version")
-            .eq("uuid", project_uuid)
-            .single()
-            .execute()
-            .data["version"]
-        )
-        current_version_levels = current_project_version.split(".")
-        if changelog_level == 1:
-            new_project_version_levels = [
-                str(int(current_version_levels[0]) + 1),
-                "0",
-                "0",
-            ]
-        elif changelog_level == 2:
-            new_project_version_levels = [
-                current_version_levels[0],
-                str(int(current_version_levels[1]) + 1),
-                "0",
-            ]
-        new_project_version = ".".join(new_project_version_levels)
-        supabase.table("project").update({"version": new_project_version}).eq(
-            "uuid", project_uuid
-        ).execute()
+            (supabase.table("chat_model_version").insert(new_versions).execute())
 
-        # insert project_changelog
-        (
-            supabase.table("project_changelog")
-            .insert(
+            # print(f"new candidates: {new_candidates}")
+            await websocket_manager.send_message(
+                cli_access_key,
+                LocalTask.UPDATE_CANDIDATE_CHAT_MODEL_VERSION_ID,
+                {"new_candidates": new_candidates},
+            )
+
+            # make project_changelog level 2, subject = chat_model_version
+            changelogs.append(
                 {
-                    "logs": changelogs,
-                    "project_uuid": project_uuid,
-                    "level": changelog_level,
-                    "previous_version": current_project_version,
+                    "subject": "chat_model_version",
+                    "identifiers": [version["uuid"] for version in new_versions],
+                    "action": "ADD",
                 }
             )
-            .execute()
-        )
+            # update project_version
+            current_project_version: str = (
+                supabase.table("project")
+                .select("version")
+                .eq("uuid", project_uuid)
+                .single()
+                .execute()
+                .data["version"]
+            )
+            current_version_levels = current_project_version.split(".")
+            if changelog_level == 1:
+                new_project_version_levels = [
+                    str(int(current_version_levels[0]) + 1),
+                    "0",
+                    "0",
+                ]
+            elif changelog_level == 2:
+                new_project_version_levels = [
+                    current_version_levels[0],
+                    str(int(current_version_levels[1]) + 1),
+                    "0",
+                ]
+            new_project_version = ".".join(new_project_version_levels)
+            supabase.table("project").update({"version": new_project_version}).eq(
+                "uuid", project_uuid
+            ).execute()
 
-        return JSONResponse({}, status_code=HTTP_200_OK)
+            # insert project_changelog
+            (
+                supabase.table("project_changelog")
+                .insert(
+                    {
+                        "logs": changelogs,
+                        "project_uuid": project_uuid,
+                        "level": changelog_level,
+                        "previous_version": current_project_version,
+                    }
+                )
+                .execute()
+            )
 
+            return JSONResponse({}, status_code=HTTP_200_OK)
     except ValueError as ve:
         logger.error(ve)
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST) from ve
