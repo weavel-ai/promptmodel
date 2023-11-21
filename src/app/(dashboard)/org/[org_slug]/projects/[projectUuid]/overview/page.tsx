@@ -61,7 +61,7 @@ export default function Page() {
                     <Link
                       key={branch.name}
                       href={`/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${branch.name}`}
-                      target="_blank"
+                      // target="_blank"
                       className="w-full flex flex-row items-center gap-x-4 transition-all hover:bg-base-300/50 rounded-lg py-1 pr-2 group"
                     >
                       <div className="bg-base-300 text-base-content px-2 py-1 flex-shrink-0 h-fit text-center rounded flex flex-row gap-x-2">
