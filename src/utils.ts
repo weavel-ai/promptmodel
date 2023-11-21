@@ -6,6 +6,16 @@ export function cloneDeep(obj: any): any {
   return JSON.parse(JSON.stringify(obj));
 }
 
+// Function to escape special characters in a string
+export function escapeCSV(str: string | null) {
+  if (!str) return null;
+  if (typeof str !== "string") {
+    str = JSON.stringify(str);
+  }
+  // Escape quotes and newline characters
+  return `"${str.replace(/"/g, '""').replace(/\n/g, "\\n")}"`;
+}
+
 export function parseMultipleJson(response: string): Record<string, any>[] {
   try {
     const singleJsonObject = JSON.parse(response);
