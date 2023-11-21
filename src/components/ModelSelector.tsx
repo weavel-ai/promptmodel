@@ -5,6 +5,7 @@ import { ModalPortal } from "./ModalPortal";
 import { CaretDown } from "@phosphor-icons/react";
 import { motion } from "framer-motion";
 import { ReactSVG } from "react-svg";
+import { useWindowWidth } from "@react-hook/window-size";
 
 interface ModelSelectorProps {
   modelName: string;
@@ -74,12 +75,17 @@ const SUPPORTED_MODELS: Model[] = [
     name: "command-nightly",
     provider: "Cohere",
   },
+  {
+    name: "HCX-002",
+    provider: "clova-studio",
+  },
 ];
 
 const PROVIDER_LOGO_PATHS: Record<string, string> = {
   OpenAI: "/logos/openai-logo.svg",
   Anthropic: "/logos/anthropic-logo.svg",
   Cohere: "/logos/cohere-logo.svg",
+  "clova-studio": "/logos/clova-studio-logo.png",
 };
 
 export const ModelDisplay = ({ modelName }) => {
@@ -92,7 +98,7 @@ export const ModelDisplay = ({ modelName }) => {
     <div className="p-2 flex flex-row gap-x-2 items-center justify-between bg-base-content/10 rounded-md max-w-[11rem]">
       <ReactSVG
         src={PROVIDER_LOGO_PATHS[model?.provider]}
-        className="text-base-content w-5 h-5 flex-none"
+        className="text-base-content w-5 h-5 flex-shrink-0"
       />
       <p className="truncate text-sm flex-grow">{model?.name}</p>
     </div>
@@ -101,11 +107,11 @@ export const ModelDisplay = ({ modelName }) => {
 
 export const ModelSelector = (props: ModelSelectorProps) => {
   const [isOpen, setIsOpen] = useState(false);
-
+  const windowWidth = useWindowWidth();
   const [inputValue, setInputValue] = useState<string>();
   const [modalPosition, setModalPosition] = useState({
     top: 0,
-    left: 0,
+    right: 0,
   });
   const selectorRef = useRef(null);
   const optionsRef = useRef(null);
@@ -153,7 +159,7 @@ export const ModelSelector = (props: ModelSelectorProps) => {
       const selectorRect = selectorRef.current?.getBoundingClientRect();
       setModalPosition({
         top: selectorRect.top + selectorRect.height,
-        left: selectorRect.left,
+        right: windowWidth - selectorRect.right,
       });
     }
     setIsOpen(!isOpen);
@@ -168,10 +174,19 @@ export const ModelSelector = (props: ModelSelectorProps) => {
       )}
       onClick={handleClickOpen}
     >
-      <ReactSVG
-        src={PROVIDER_LOGO_PATHS[selectedModel.provider]}
-        className="text-base-content w-5 h-5 flex-none"
-      />
+      {PROVIDER_LOGO_PATHS[selectedModel.provider].endsWith(".svg") ? (
+        <ReactSVG
+          src={PROVIDER_LOGO_PATHS[selectedModel.provider]}
+          className="text-base-content !w-5 !h-5 flex-shrink-0"
+        />
+      ) : (
+        <Image
+          alt="logo"
+          src={PROVIDER_LOGO_PATHS[selectedModel.provider]}
+          width={20}
+          height={20}
+        />
+      )}
       <p className="truncate text-sm flex-grow mx-2">{selectedModel.name}</p>
       <CaretDown size={20} className="flex-none" />
       {/* Options */}
@@ -183,13 +198,13 @@ export const ModelSelector = (props: ModelSelectorProps) => {
               opacity: 0,
               height: 0,
               top: modalPosition?.top + 30,
-              left: modalPosition?.left,
+              right: modalPosition?.right,
             }}
             animate={{
               opacity: isOpen ? 1 : 0,
               height: isOpen ? "auto" : 0,
               top: modalPosition?.top,
-              left: modalPosition?.left,
+              right: modalPosition?.right,
             }}
             className={classNames(
               `fixed z-[999999]`,
@@ -229,10 +244,21 @@ export const ModelSelector = (props: ModelSelectorProps) => {
                         setIsOpen(false);
                       }}
                     >
-                      <ReactSVG
-                        src={PROVIDER_LOGO_PATHS[modelOption.provider]}
-                        className="text-base-content !w-5 !h-5 flex-shrink-0"
-                      />
+                      {PROVIDER_LOGO_PATHS[modelOption.provider].endsWith(
+                        ".svg"
+                      ) ? (
+                        <ReactSVG
+                          src={PROVIDER_LOGO_PATHS[modelOption.provider]}
+                          className="text-base-content !w-5 !h-5 flex-shrink-0"
+                        />
+                      ) : (
+                        <Image
+                          alt="logo"
+                          src={PROVIDER_LOGO_PATHS[modelOption.provider]}
+                          width={20}
+                          height={20}
+                        />
+                      )}
                       <p>{modelOption.name}</p>
                     </div>
                   );
