@@ -322,7 +322,6 @@ async def run_chat_model(
             raw_output: str
             status: "completed" | "failed" | "running"
     """
-    print(chat_config)
 
     async def stream_depl_run():
         async for chunk in run_cloud_depl_chat(chat_config=chat_config):
@@ -434,14 +433,18 @@ async def run_cloud_dev_chat(
 
             if item.error:
                 error_log = item.error_log
+                # Update chat_model_version status to broken
+                supabase.table("chat_model_version").update(
+                    {
+                        "status": "broken",
+                    }
+                ).eq("uuid", chat_model_version_uuid).execute()
 
             yield data
 
-        data = {
+        yield {
             "status": "completed",
         }
-
-        yield data
 
         # Update chat_model_version status to working
         supabase.table("chat_model_version").update(
@@ -467,6 +470,13 @@ async def run_cloud_dev_chat(
         ).execute()
     except Exception as error:
         logger.error(f"Error running service: {error}")
+
+        # Update chat_model_version status to broken
+        supabase.table("chat_model_version").update(
+            {
+                "status": "broken",
+            }
+        ).eq("uuid", chat_model_version_uuid).execute()
         data = {
             "status": "failed",
             "log": str(error),
