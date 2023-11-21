@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import classNames from "classnames";
 import { motion } from "framer-motion";
 
@@ -9,31 +9,48 @@ interface SelectTabProps {
 }
 
 export const SelectTab = ({ tabs, selectedTab, onSelect }: SelectTabProps) => {
+  const containerRef = useRef(null);
+  const tabRefs = useRef(new Array(tabs.length));
+  const [xPosition, setXPosition] = useState(0);
+  const [tabWidth, setTabWidth] = useState(0);
+
+  useEffect(() => {
+    const selectedIndex = tabs.indexOf(selectedTab);
+    if (containerRef.current && tabRefs.current[selectedIndex]) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const selectedTabRect =
+        tabRefs.current[selectedIndex].getBoundingClientRect();
+
+      // Calculate the x position and width of the selected tab
+      const newPosition = selectedTabRect.left - containerRect.left;
+      const newWidth = selectedTabRect.width;
+      setXPosition(newPosition);
+      setTabWidth(newWidth);
+    }
+  }, [selectedTab, tabs.length]);
+
   return (
-    <div className="bg-secondary/20 backdrop-blur-sm rounded-full w-fit p-px h-8 flex flex-row items-center relative">
-      {tabs.map((tab) => (
+    <div
+      ref={containerRef}
+      className="bg-secondary/20 backdrop-blur-sm rounded-full w-fit p-px h-8 flex flex-row items-center relative"
+    >
+      {tabs.map((tab, index) => (
         <div
           key={tab}
+          ref={(el) => (tabRefs.current[index] = el)}
           className={classNames(
             "rounded-full w-full h-full px-3 flex justify-center items-center cursor-pointer transition-colors",
-            tab == selectedTab ? "text-neutral" : "text-base-content"
+            tab === selectedTab ? "text-neutral" : "text-base-content"
           )}
           onClick={() => onSelect(tab)}
         >
           {tab}
         </div>
       ))}
-      {/* Animated white box to color the selected tab */}
       <motion.div
-        className={`absolute top-0 left-0 h-full bg-base-content/90 rounded-full -z-10`}
-        style={{
-          width: `calc(100% / ${tabs.length})`,
-        }}
+        className="absolute top-0 left-0 h-full bg-base-content/90 rounded-full -z-10"
         initial={{ x: 0 }}
-        animate={{
-          x: `${tabs.indexOf(selectedTab) * 100}%`,
-          scaleX: 1.05,
-        }}
+        animate={{ x: xPosition, width: tabWidth }}
       />
     </div>
   );

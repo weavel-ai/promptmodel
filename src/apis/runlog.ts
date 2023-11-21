@@ -33,6 +33,7 @@ export async function fetchRunLogs(
   return res.data;
 }
 
+// View
 export async function fetchRunLogsCount(
   supabaseClient: SupabaseClient,
   projectUuid: string
