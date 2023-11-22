@@ -16,7 +16,7 @@ from starlette.status import (
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 from promptmodel.llms.llm_dev import LLMDev
-from promptmodel.utils.types import LLMStreamResponse
+from promptmodel.types.response import LLMStreamResponse
 
 from utils.logger import logger
 from base.database import supabase
