@@ -45,12 +45,16 @@ import { useSessionChatLogs } from "@/hooks/dev/useSessionChatLogs";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { ChatUI } from "@/components/ChatUI";
-import { useWindowHeight, useWindowWidth } from "@react-hook/window-size";
+import {
+  useWindowHeight,
+  useWindowSize,
+  useWindowWidth,
+} from "@react-hook/window-size";
 dayjs.extend(relativeTime);
 
 export default function Page() {
   const params = useParams();
-  const windowWidth = useWindowWidth();
+  const [windowWidth, windowHeight] = useWindowSize();
   const { createSupabaseClient } = useSupabaseClient();
   const { chatModelListData } = useChatModel();
   const { chatModelVersionListData, refetchChatModelVersionListData } =
@@ -69,7 +73,7 @@ export default function Page() {
     selectedModel,
     selectedFunctions,
     fullScreenChatVersion,
-    newVersionUuidCache,
+    newVersionCache,
     setSelectedModel,
     setSelectedFunctions,
     setOriginalVersionData,
@@ -77,16 +81,17 @@ export default function Page() {
     updateChatModelVersionLists,
     setSelectedChatModelVersionUuid,
     setFullScreenChatVersion,
-    setNewVersionUuidCache,
+    setNewVersionCache,
   } = useChatModelVersionStore();
 
   const { refetchFunctionListData } = useFunctions();
 
-  const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
+  const [lowerBoxHeight, setLowerBoxHeight] = useState(windowHeight * 0.6);
 
   const nodeTypes = useMemo(() => ({ modelVersion: ModelVersionNode }), []);
 
   useEffect(() => {
+    if (originalVersionData?.uuid === selectedChatModelVersionUuid) return;
     const data = chatModelVersionListData?.find(
       (version) => version.uuid === selectedChatModelVersionUuid
     );
@@ -110,17 +115,25 @@ export default function Page() {
 
   const isNewVersionReady = useMemo(() => {
     if (!createVariantOpen) return false;
+    if (
+      originalVersionData?.system_prompt == modifiedSystemPrompt &&
+      originalVersionData?.model == selectedModel &&
+      originalVersionData?.functions == selectedFunctions
+    )
+      return false;
 
-    return (
-      originalVersionData?.system_prompt != modifiedSystemPrompt ||
-      selectedModel != originalVersionData?.model ||
-      (originalVersionData?.functions != selectedFunctions &&
-        (originalVersionData?.functions.length != 0 ||
-          selectedFunctions.length != 0))
-    );
+    if (newVersionCache) {
+      if (
+        newVersionCache?.systemPrompt == modifiedSystemPrompt &&
+        newVersionCache?.model == selectedModel
+      )
+        return false;
+    }
+    return true;
   }, [
-    selectedModel,
     originalVersionData,
+    newVersionCache,
+    selectedModel,
     modifiedSystemPrompt,
     selectedFunctions,
   ]);
@@ -207,7 +220,7 @@ export default function Page() {
     const maxNodesAtDepth = Math.max(
       ...root.descendants().map((d: any) => d.depth)
     );
-    const requiredWidth = maxNodesAtDepth * 320;
+    const requiredWidth = maxNodesAtDepth * 140;
 
     // Use the smaller of window width and required width.
     const layoutWidth = Math.min(windowWidth, requiredWidth);
@@ -318,10 +331,12 @@ export default function Page() {
           <div className="flex flex-row justify-between items-center my-2">
             <p className="text-2xl font-bold">ChatModel V1</p>
             <div className="flex flex-row w-fit justify-end items-center gap-x-2">
-              <FunctionSelector
-                selectedFunctions={selectedFunctions}
-                setSelectedFunctions={setSelectedFunctions}
-              />
+              {!devBranchData?.cloud && (
+                <FunctionSelector
+                  selectedFunctions={selectedFunctions}
+                  setSelectedFunctions={setSelectedFunctions}
+                />
+              )}
               <ModelSelector
                 modelName={selectedModel}
                 setModel={setSelectedModel}
@@ -356,7 +371,7 @@ export default function Page() {
         direction="right"
         style={{ width: createVariantOpen ? "calc(100vw - 5rem)" : "auto" }}
         classNames={classNames(
-          createVariantOpen ? "backdrop-blur-md" : "!w-[45vw]",
+          createVariantOpen ? "backdrop-blur-md" : "!w-[60vw]",
           "mr-4"
         )}
       >
@@ -442,9 +457,9 @@ export default function Page() {
                     <div className="flex flex-row justify-start items-center gap-x-3">
                       <div className="flex flex-col items-start justify-center">
                         <p className="text-base-content font-medium text-lg">
-                          {newVersionUuidCache == null
+                          {isNewVersionReady
                             ? "New ChatModel"
-                            : `ChatModel V${newVersionUuidCache.slice(0, 6)}`}
+                            : `ChatModel V${newVersionCache?.uuid.slice(0, 6)}`}
                         </p>
                         <p className="text-base-content text-sm">
                           From&nbsp;
@@ -499,15 +514,17 @@ export default function Page() {
                       </div>
                     </div>
                     <div className="flex flex-col w-1/2 justify-start gap-y-2 items-start mb-2">
-                      <div className="flex flex-col items-start justify-start">
-                        <label className="label text-xs font-medium">
-                          <span className="label-text">Functions</span>
-                        </label>
-                        <FunctionSelector
-                          selectedFunctions={selectedFunctions}
-                          setSelectedFunctions={setSelectedFunctions}
-                        />
-                      </div>
+                      {!devBranchData?.cloud && (
+                        <div className="flex flex-col items-start justify-start">
+                          <label className="label text-xs font-medium">
+                            <span className="label-text">Functions</span>
+                          </label>
+                          <FunctionSelector
+                            selectedFunctions={selectedFunctions}
+                            setSelectedFunctions={setSelectedFunctions}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -569,7 +586,11 @@ export default function Page() {
                   />
                   {createVariantOpen && (
                     <ChatUI
-                      versionUuid={newVersionUuidCache ?? "new"}
+                      versionUuid={
+                        isNewVersionReady
+                          ? "new"
+                          : newVersionCache?.uuid ?? "new"
+                      }
                       className="!w-1/2"
                     />
                   )}
@@ -616,20 +637,20 @@ export default function Page() {
                       selectedChatModelVersionUuid === versionData.uuid
                         ? "bg-base-content/20"
                         : "bg-transparent",
-                      newVersionUuidCache == versionData.uuid &&
+                      newVersionCache?.uuid == versionData.uuid &&
                         "tooltip tooltip-bottom tooltip-primary"
                     )}
                     data-tip="New!"
                     key={versionData.version ?? versionData.uuid.slice(0, 3)}
                     onClick={() => {
-                      setNewVersionUuidCache(null);
+                      setNewVersionCache(null);
                       setSelectedChatModelVersionUuid(versionData.uuid);
                     }}
                   >
                     <div
                       className={classNames(
                         "absolute h-2 w-2 bg-secondary top-0 right-0 rounded-full z-50",
-                        newVersionUuidCache == versionData.uuid
+                        newVersionCache?.uuid == versionData.uuid
                           ? "animate-pulse"
                           : "hidden"
                       )}

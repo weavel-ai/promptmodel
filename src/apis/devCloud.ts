@@ -189,11 +189,13 @@ export async function fetchChatModelVersions({
   if (devUuid) {
     res = await req
       .or(`dev_branch_uuid.eq.${devUuid},is_deployed.eq.true`)
-      .order("version", { ascending: true });
+      .order("version", { ascending: true })
+      .order("created_at", { ascending: true });
   } else {
     res = await req
       .filter("dev_branch_uuid", "is", "null")
-      .order("version", { ascending: true });
+      .order("version", { ascending: true })
+      .order("created_at", { ascending: true });
   }
 
   return res.data;
