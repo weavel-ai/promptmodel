@@ -188,6 +188,8 @@ async def pull_project(project_uuid: str, user_id: str = Depends(get_cli_user_id
         - prompt_model_versions : prompt model version list
         - prompts : prompt list
         - run_logs : run log list
+        - chat_models : chat model list
+        - chat_model_versions : chat model version list
 
     """
     try:
@@ -210,7 +212,7 @@ async def pull_project(project_uuid: str, user_id: str = Depends(get_cli_user_id
             .data
         )
 
-        # get versions
+        # get prompt_model versions
         prompt_model_versions = (
             supabase.table("prompt_model_version")
             .select(
@@ -249,12 +251,35 @@ async def pull_project(project_uuid: str, user_id: str = Depends(get_cli_user_id
             .data
         )
 
+        # get chat_models
+        chat_models = (
+            supabase.table("chat_model")
+            .select("uuid, created_at, name, project_uuid")
+            .eq("project_uuid", project_uuid)
+            .is_("dev_branch_uuid", "null")
+            .execute()
+            .data
+        )
+        # get chat_model versions
+        chat_model_versions = (
+            supabase.table("chat_model_version")
+            .select(
+                "uuid, from_uuid, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
+            )
+            .in_("chat_model_uuid", [x["uuid"] for x in chat_models])
+            .eq("is_deployed", True)
+            .execute()
+            .data
+        )
+
         res = {
             "project_version": project_version,
             "prompt_models": prompt_models,
             "prompt_model_versions": prompt_model_versions,
             "prompts": prompts,
             "run_logs": run_logs,
+            "chat_models": chat_models,
+            "chat_model_versions": chat_model_versions,
         }
 
         return JSONResponse(res, status_code=HTTP_200_OK)
@@ -359,7 +384,7 @@ async def fetch_published_prompt_model_version(
     Find published version of prompt_model_version and prompt and return them.
 
     Input:
-        - cached_version: local cached version
+        - prompt_model_name: name of prompt_model
 
     Return:
         - prompt_model_versions : List[Dict]
@@ -401,6 +426,111 @@ async def fetch_published_prompt_model_version(
         res = {
             "prompt_model_versions": deployed_prompt_model_versions,
             "prompts": prompts,
+        }
+
+        return JSONResponse(res, status_code=HTTP_200_OK)
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+
+
+@router.get("/fetch_published_chat_model_version")
+async def fetch_published_chat_model_version(
+    chat_model_name: str,
+    session_uuid: Optional[str] = None,
+    project: dict = Depends(get_project),
+):
+    """
+    ChatModel Always use this function when use_cache = True or False
+    Find published version of chat_model_version
+
+    Input:
+        - chat_model_name: name of chat_model
+        - session_uuid: uuid of session
+
+    Return:
+        - chat_model_versions : List[Dict]
+    """
+    try:
+        # find chat_model
+        if session_uuid:
+            # find session's chat_model & version
+            session = (
+                supabase.table("chat_log_session")
+                .select("version_uuid")
+                .eq("uuid", session_uuid)
+                .single()
+                .execute()
+                .data
+            )
+            session_chat_model_version = (
+                supabase.table("chat_model_version")
+                .select(
+                    "uuid, from_uuid, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
+                )
+                .eq("uuid", session["version_uuid"])
+                .execute()
+                .data
+            )
+            res = {
+                "chat_model_versions": session_chat_model_version,
+            }
+        else:
+            chat_model = (
+                supabase.table("chat_model")
+                .select("uuid, name")
+                .eq("project_uuid", project["uuid"])
+                .eq("name", chat_model_name)
+                .is_("dev_branch_uuid", "null")
+                .single()
+                .execute()
+                .data
+            )
+            # get published, ab_test prompt_model_versions
+            deployed_chat_model_versions = (
+                supabase.table("deployed_chat_model_version")
+                .select(
+                    "uuid, from_uuid, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
+                )
+                .eq("chat_model_uuid", chat_model["uuid"])
+                .execute()
+                .data
+            )
+
+            res = {
+                "chat_model_versions": deployed_chat_model_versions,
+            }
+
+        return JSONResponse(res, status_code=HTTP_200_OK)
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+
+
+@router.get("/fetch_chat_logs")
+async def fetch_chat_logs(session_uuid: str, project: dict = Depends(get_project)):
+    """
+    Fetch chat logs from cloud
+
+    Input:
+        - session_uuid: uuid of session
+
+    Return:
+        - chat_logs : List[Dict]
+    """
+    try:
+        # find chat_model
+        chat_logs = (
+            supabase.table("chat_log")
+            .select("*")
+            .eq("session_uuid", session_uuid)
+            .order("created_at", desc=False)
+            .execute()
+            .data
+        )
+
+        res = {
+            "chat_logs": chat_logs,
         }
 
         return JSONResponse(res, status_code=HTTP_200_OK)
@@ -528,6 +658,68 @@ async def log_deployment_run(
             )
             .execute()
         )
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+
+
+@router.post("/log_deployment_chat")
+async def log_deployment_chat(
+    session_uuid: str,
+    version_uuid: str,
+    messages: List[Dict[str, Any]] = [],
+    metadata: Optional[List[Dict[str, Any]]] = None,
+    project: dict = Depends(get_project),
+):
+    try:
+        # check session
+        session = (
+            supabase.table("session")
+            .select("*")
+            .eq("uuid", session_uuid)
+            .single()
+            .execute()
+            .data
+        )
+        if len(session) == 0:
+            # make session
+            session = (
+                supabase.table("session")
+                .insert(
+                    {
+                        "uuid": session_uuid,
+                        "version_uuid": version_uuid,
+                        "run_from_deployment": True,
+                    }
+                )
+                .execute()
+            )
+        # make logs
+        logs = []
+        for message, meta in zip(messages, metadata):
+            token_usage = meta["token_usage"] if meta else None
+            latency = meta["response_ms"] if meta else None
+            cost = completion_cost(meta["api_response"]) if meta else None
+            if "token_usage" in meta:
+                del meta["token_usage"]
+            if "response_ms" in meta:
+                del meta["response_ms"]
+            logs.append(
+                {
+                    "session_uuid": session_uuid,
+                    "role": message["role"],
+                    "content": message["content"],
+                    "tool_calls": message["tool_calls"]
+                    if "tool_calls" in message
+                    else None,
+                    "token_usage": token_usage,
+                    "latency": latency,
+                    "cost": cost,
+                    "metadata": meta,
+                }
+            )
+        # save logs
+        (supabase.table("chat_log").insert(logs).execute())
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
