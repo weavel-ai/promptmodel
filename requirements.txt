@@ -13,4 +13,5 @@ APScheduler
 pytz
 pydantic
 python-multipart
-promptmodel
+# promptmodel
+git+https://github.com/weavel-ai/promptmodel.git#egg=promptmodel
