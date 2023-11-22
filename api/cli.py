@@ -271,6 +271,10 @@ async def pull_project(project_uuid: str, user_id: str = Depends(get_cli_user_id
             .execute()
             .data
         )
+        for chat_model_version in chat_model_versions:
+            if chat_model_version["is_ab_test"] is True:
+                chat_model_version["is_published"] = True
+            del chat_model_version["is_ab_test"]
 
         res = {
             "project_version": project_version,
