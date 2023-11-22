@@ -96,10 +96,19 @@ export const ModelDisplay = ({ modelName }) => {
 
   return (
     <div className="p-2 flex flex-row gap-x-2 items-center justify-between bg-base-content/10 rounded-md max-w-[11rem]">
-      <ReactSVG
-        src={PROVIDER_LOGO_PATHS[model?.provider]}
-        className="text-base-content w-5 h-5 flex-shrink-0"
-      />
+      {PROVIDER_LOGO_PATHS[model?.provider]?.endsWith(".svg") ? (
+        <ReactSVG
+          src={PROVIDER_LOGO_PATHS[model?.provider]}
+          className="text-base-content !w-5 !h-5 flex-shrink-0"
+        />
+      ) : (
+        <Image
+          alt="logo"
+          src={PROVIDER_LOGO_PATHS[model?.provider]}
+          width={20}
+          height={20}
+        />
+      )}
       <p className="truncate text-sm flex-grow">{model?.name}</p>
     </div>
   );

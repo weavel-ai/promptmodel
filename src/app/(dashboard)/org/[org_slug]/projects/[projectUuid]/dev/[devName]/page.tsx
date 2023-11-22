@@ -122,9 +122,10 @@ export default function Page() {
 
   // // Build nodes
   useEffect(() => {
-    if (!promptModelListData || !chatModelListData) return;
+    if (!promptModelListData) return;
+    if (devBranchData?.cloud == true && !chatModelListData) return;
 
-    // Calculations for PromptModel
+    // Calculations for PromptModelSingle tap:
     const promptModelTotalNodes = promptModelListData.length;
     let maxPromptNodesPerRow = Math.floor(
       (windowWidth - NODE_PADDING) / (NODE_WIDTH + NODE_PADDING)

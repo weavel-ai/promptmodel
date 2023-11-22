@@ -29,19 +29,21 @@ export function ChatUI({
   const [isLoading, setIsLoading] = useState(false);
   const [generatedMessage, setGeneratedMessage] = useState(null);
   const [selectedSessionUuid, setSelectedSessionUuid] = useState(null);
-  const { refetchChatModelVersionListData } = useChatModelVersion();
-  const { refetchChatLogSessionListData } = useChatLogSessions(versionUuid);
+  const { chatModelVersionListData, refetchChatModelVersionListData } =
+    useChatModelVersion();
+  const { chatLogSessionListData, refetchChatLogSessionListData } =
+    useChatLogSessions(versionUuid);
   const { devBranchData } = useDevBranch();
   const {
     fullScreenChatVersion,
-    newVersionUuidCache,
+    newVersionCache,
     selectedModel,
     selectedFunctions,
     originalVersionData,
     modifiedSystemPrompt,
     selectedChatModelVersionUuid,
     setSelectedChatModelVersionUuid,
-    setNewVersionUuidCache,
+    setNewVersionCache,
     setFullScreenChatVersion,
   } = useChatModelVersionStore();
   const {
@@ -52,10 +54,18 @@ export function ChatUI({
   } = useSessionChatLogs(selectedSessionUuid);
   const scrollDivRef = useRef(null);
 
+  // useEffect(() => {
+  //   resetChatLogListData();
+  // }, [selectedChatModelVersionUuid]);
+
   useEffect(() => {
-    resetChatLogListData();
-    setSelectedSessionUuid(null);
-  }, [selectedChatModelVersionUuid]);
+    console.log(selectedSessionUuid);
+    if (chatLogSessionListData?.length > 1) {
+      setSelectedSessionUuid(chatLogSessionListData[1].uuid);
+    } else {
+      setSelectedSessionUuid(null);
+    }
+  }, [chatLogSessionListData, selectedChatModelVersionUuid]);
 
   useEffect(() => {
     // Scroll to bottom whenever chatLogListData changes
@@ -119,8 +129,12 @@ export function ChatUI({
             setIsLoading(false);
             break;
         }
-        if (data?.chat_model_version_uuid) {
-          setNewVersionUuidCache(data?.chat_model_version_uuid);
+        if (data?.chat_model_version_uuid && isNew) {
+          setNewVersionCache({
+            uuid: data?.chat_model_version_uuid,
+            systemPrompt: systemPrompt,
+            model: selectedModel,
+          });
         }
         if (data?.chat_log_session_uuid) {
           await refetchChatLogSessionListData();
@@ -149,7 +163,7 @@ export function ChatUI({
     if (isNew) {
       await refetchChatModelVersionListData();
       if (!originalVersionData?.uuid) {
-        setSelectedChatModelVersionUuid(newVersionUuidCache);
+        setSelectedChatModelVersionUuid(newVersionCache?.uuid);
       }
     }
   }
@@ -287,8 +301,12 @@ const ChatInput = ({
   isLoading: boolean;
   isNewVersion: boolean;
 }) => {
-  const { originalVersionData, modifiedSystemPrompt } =
-    useChatModelVersionStore();
+  const {
+    originalVersionData,
+    modifiedSystemPrompt,
+    selectedModel,
+    newVersionCache,
+  } = useChatModelVersionStore();
 
   const disabledMessage = useMemo(() => {
     if (isLoading) return true;
@@ -296,14 +314,23 @@ const ChatInput = ({
     if (isNewVersion) {
       if (modifiedSystemPrompt?.length == 0)
         return "Please enter a system prompt";
-      if (originalVersionData?.system_prompt == modifiedSystemPrompt)
-        return "System prompt is equal to original version";
+      if (
+        originalVersionData?.system_prompt == modifiedSystemPrompt &&
+        selectedModel == originalVersionData?.model
+      )
+        return "System prompt & model is equal to original version";
+      if (
+        newVersionCache?.systemPrompt == modifiedSystemPrompt &&
+        newVersionCache?.model == selectedModel
+      )
+        return "System prompt & model is equal to previous version";
     }
     return false;
   }, [
     chatInput,
     isLoading,
     isNewVersion,
+    selectedModel,
     modifiedSystemPrompt,
     originalVersionData,
   ]);
@@ -315,7 +342,7 @@ const ChatInput = ({
       )}
       onSubmit={(e) => {
         e.preventDefault();
-        if (isLoading) return;
+        if (isLoading || disabledMessage) return;
         onSubmit();
       }}
     >
@@ -325,7 +352,7 @@ const ChatInput = ({
           "ml-4 w-full focus:outline-none bg-transparent",
           "text-popover-content"
         )}
-        placeholder="How can I help you?"
+        placeholder="Enter message..."
         value={chatInput}
         onChange={(e) => setChatInput(e.target.value)}
       />

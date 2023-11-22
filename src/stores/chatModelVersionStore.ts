@@ -8,6 +8,12 @@ export type RunLog = {
   function_call?: Record<string, any> | string;
 };
 
+type NewVersionCache = {
+  uuid: string | null;
+  systemPrompt: string | null;
+  model: string | null;
+};
+
 type Store = {
   selectedChatModelVersionUuid: string | null;
   chatModelVersionLists: Record<string, any>;
@@ -17,7 +23,7 @@ type Store = {
   modifiedSystemPrompt: string;
   chatLogs: Record<string, Record<string, RunLog>>;
   runTasksCount: Record<string | "new", number>;
-  newVersionUuidCache: string | null;
+  newVersionCache: NewVersionCache | null;
   focusedEditor: editor.ICodeEditor | null;
   fullScreenChatVersion: string | null;
 };
@@ -28,7 +34,7 @@ type Actions = {
   setSelectedModel: (model: string) => void;
   setSelectedFunctions: (functions: string[]) => void;
   setModifiedSystemPrompt: (prompt: string) => void;
-  setNewVersionUuidCache: (uuid: string) => void;
+  setNewVersionCache: (cache: NewVersionCache | null) => void;
   updateChatModelVersionLists: (
     promptModelUuid: string,
     versionList: any
@@ -46,7 +52,7 @@ export const useChatModelVersionStore = create<Store & Actions>((set) => ({
   modifiedSystemPrompt: "",
   chatLogs: {},
   runTasksCount: {},
-  newVersionUuidCache: null,
+  newVersionCache: null,
   focusedEditor: null,
   fullScreenChatVersion: null,
   setSelectedChatModelVersionUuid: (uuid) =>
@@ -55,7 +61,7 @@ export const useChatModelVersionStore = create<Store & Actions>((set) => ({
   setSelectedModel: (model) => set({ selectedModel: model }),
   setSelectedFunctions: (functions) => set({ selectedFunctions: functions }),
   setModifiedSystemPrompt: (prompt) => set({ modifiedSystemPrompt: prompt }),
-  setNewVersionUuidCache: (uuid) => set({ newVersionUuidCache: uuid }),
+  setNewVersionCache: (cache) => set({ newVersionCache: cache }),
   updateChatModelVersionLists: (chatModelUuid, versionList) =>
     set((state) => ({
       chatModelVersionLists: {

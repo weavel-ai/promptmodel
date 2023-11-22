@@ -30,7 +30,7 @@ export const useChatModel = () => {
               devBranchData?.uuid as string,
               params?.projectUuid as string
             )
-          : null,
+          : [],
       onSettled: async (data) => {
         if (devBranchData?.cloud) return;
         await updateDevBranchSync(
