@@ -15,3 +15,4 @@ pydantic
 python-multipart
 # promptmodel
 git+https://github.com/weavel-ai/promptmodel.git#egg=promptmodel
+# update
