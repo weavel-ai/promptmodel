@@ -15,7 +15,7 @@ from utils.security import get_project
 from utils.logger import logger
 from base.database import supabase
 from base.websocket_connection import websocket_manager, LocalTask
-from dev_chat import router as chat_router
+from .dev_chat import router as chat_router
 
 router = APIRouter()
 router.include_router(chat_router)
