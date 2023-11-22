@@ -264,7 +264,7 @@ async def pull_project(project_uuid: str, user_id: str = Depends(get_cli_user_id
         chat_model_versions = (
             supabase.table("chat_model_version")
             .select(
-                "uuid, from_uuid, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
+                "uuid, from_uuid, chat_model_uuid, model, is_published, is_ab_test, system_prompt"
             )
             .in_("chat_model_uuid", [x["uuid"] for x in chat_models])
             .eq("is_deployed", True)
