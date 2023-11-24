@@ -274,7 +274,7 @@ class ConnectionManager:
 
             except Exception as error:
                 logger.error(f"Error updating Dev branch sync columm: {error}")
-
+        # TODO: ADD theses ServerTasks
         elif data["type"] == ServerTask.SYNC_CODE:
             try:
                 project = (
