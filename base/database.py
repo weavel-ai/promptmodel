@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-deployment_stage: str = os.environ.get('DEPLOYMENT_STAGE')
-if deployment_stage == 'local':
+deployment_stage: str = os.environ.get("DEPLOYMENT_STAGE")
+if deployment_stage == "local":
     url: str = os.environ.get("PROMPTMODEL_SUPABASE_URL")
     key: str = os.environ.get("PROMPTMODEL_SUPABASE_KEY")
 else:
