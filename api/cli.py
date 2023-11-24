@@ -75,45 +75,6 @@ async def list_projects(organization_id: str, user_id: str = Depends(get_cli_use
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.get("/check_dev_branch_name")
-async def check_dev_branch_name(name: str, user_id: str = Depends(get_cli_user_id)):
-    """Check if dev branch name is available"""
-    try:
-        # TODO: optimize these queries
-        # TODO: add project_id to input params
-        organization_id = (
-            supabase.table("user_organizations")
-            .select("organization_id")
-            .eq("user_id", user_id)
-            .execute()
-        ).data[0]["organization_id"]
-
-        project_rows = (
-            supabase.table("project")
-            .select("uuid")
-            .eq("organization_id", organization_id)
-            .execute()
-            .data
-        )
-        project_uuid_list = [x["uuid"] for x in project_rows]
-
-        res = (
-            supabase.table("dev_branch")
-            .select("name")
-            .eq("name", name)
-            .in_("project_uuid", project_uuid_list)
-            .execute()
-        )
-        if res.data:
-            print(res.data)
-            return False
-        else:
-            return True
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
 @router.get("/get_project_version")
 async def get_project_version(
     project_uuid: str, user_id: str = Depends(get_cli_user_id)
@@ -178,120 +139,6 @@ async def get_changelog(
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.get("/pull_project")
-async def pull_project(project_uuid: str, user_id: str = Depends(get_cli_user_id)):
-    """Pull project from cloud
-
-    Return
-        - version : project version
-        - prompt_models : prompt model list
-        - prompt_model_versions : prompt model version list
-        - prompts : prompt list
-        - run_logs : run log list
-        - chat_models : chat model list
-        - chat_model_versions : chat model version list
-
-    """
-    try:
-        # get project version
-        project_version = (
-            supabase.table("project")
-            .select("version")
-            .eq("uuid", project_uuid)
-            .single()
-            .execute()
-            .data["version"]
-        )
-        # get prompt_models
-        prompt_models = (
-            supabase.table("prompt_model")
-            .select("uuid, created_at, name, project_uuid")
-            .eq("project_uuid", project_uuid)
-            .is_("dev_branch_uuid", "null")
-            .execute()
-            .data
-        )
-
-        # get prompt_model versions
-        prompt_model_versions = (
-            supabase.table("prompt_model_version")
-            .select(
-                "uuid, created_at, version, from_uuid, prompt_model_uuid, model, is_deployed, is_published, is_ab_test, parsing_type, output_keys"
-            )
-            .in_("prompt_model_uuid", [x["uuid"] for x in prompt_models])
-            .eq("is_deployed", True)
-            .execute()
-            .data
-        )
-        for prompt_model_version in prompt_model_versions:
-            if prompt_model_version["is_ab_test"] is True:
-                prompt_model_version["is_published"] = True
-            del prompt_model_version["is_ab_test"]
-
-        versions_uuid_list = [x["uuid"] for x in prompt_model_versions]
-        # get prompts
-        prompts = (
-            supabase.table("prompt")
-            .select("created_at, version_uuid, role, step, content")
-            .in_("version_uuid", versions_uuid_list)
-            .execute()
-            .data
-        )
-
-        # get run_logs
-        run_logs = (
-            supabase.table("run_log")
-            .select(
-                "created_at, version_uuid, inputs, raw_output, parsed_outputs, run_from_deployment"
-            )
-            .in_("version_uuid", versions_uuid_list)
-            .eq("run_from_deployment", "False")
-            .is_("dev_branch_uuid", "null")
-            .execute()
-            .data
-        )
-
-        # get chat_models
-        chat_models = (
-            supabase.table("chat_model")
-            .select("uuid, created_at, name, project_uuid")
-            .eq("project_uuid", project_uuid)
-            .is_("dev_branch_uuid", "null")
-            .execute()
-            .data
-        )
-        # get chat_model versions
-        chat_model_versions = (
-            supabase.table("chat_model_version")
-            .select(
-                "uuid, from_uuid, chat_model_uuid, model, is_published, is_ab_test, system_prompt"
-            )
-            .in_("chat_model_uuid", [x["uuid"] for x in chat_models])
-            .eq("is_deployed", True)
-            .execute()
-            .data
-        )
-        for chat_model_version in chat_model_versions:
-            if chat_model_version["is_ab_test"] is True:
-                chat_model_version["is_published"] = True
-            del chat_model_version["is_ab_test"]
-
-        res = {
-            "project_version": project_version,
-            "prompt_models": prompt_models,
-            "prompt_model_versions": prompt_model_versions,
-            "prompts": prompts,
-            "run_logs": run_logs,
-            "chat_models": chat_models,
-            "chat_model_versions": chat_model_versions,
-        }
-
-        return JSONResponse(res, status_code=HTTP_200_OK)
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
 @router.get("/check_update")
 async def check_update(cached_version: str, project: dict = Depends(get_project)):
     """
@@ -336,7 +183,6 @@ async def check_update(cached_version: str, project: dict = Depends(get_project)
             supabase.table("prompt_model")
             .select("uuid, name")
             .eq("project_uuid", project["uuid"])
-            .is_("dev_branch_uuid", "null")
             .execute()
             .data
         )
@@ -401,7 +247,6 @@ async def fetch_published_prompt_model_version(
             .select("uuid, name")
             .eq("project_uuid", project["uuid"])
             .eq("name", prompt_model_name)
-            .is_("dev_branch_uuid", "null")
             .single()
             .execute()
             .data
@@ -485,7 +330,6 @@ async def fetch_published_chat_model_version(
                 .select("uuid, name")
                 .eq("project_uuid", project["uuid"])
                 .eq("name", chat_model_name)
-                .is_("dev_branch_uuid", "null")
                 .single()
                 .execute()
                 .data
@@ -543,39 +387,12 @@ async def fetch_chat_logs(session_uuid: str, project: dict = Depends(get_project
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-# Create APIs
-@router.post("/create_dev_branch")
-async def create_dev_branch(
-    name: str, project_uuid: str, user_id: str = Depends(get_cli_user_id)
-):
-    """
-    Args:
-        name (str): name of dev branch
-        project_uuid (str): uuid of project
-    """
-    try:
-        res = (
-            supabase.table("dev_branch")
-            .insert(
-                {
-                    "name": name,
-                    "project_uuid": project_uuid,
-                }
-            )
-            .execute()
-        )
-        return JSONResponse(status_code=HTTP_200_OK, content=res.data[0])
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
-# promptmodel library local dev server websocket endpoint
+# promptmodel library local websocket connection endpoint
 @router.websocket("/open_websocket")
 async def open_websocket(
     websocket: WebSocket, token: str = Depends(get_websocket_token)
 ):
-    """Initializes a websocket connection with the local dev server."""
+    """Initializes a websocket connection with the local server."""
     # websocket_connection = await websocket_manager.connect(websocket, token)
     try:
         connection = await websocket_manager.connect(websocket, token)
@@ -586,42 +403,36 @@ async def open_websocket(
         #         5
         #     )  # This is an arbitrary sleep value, adjust as needed.
     except Exception as error:
-        logger.error(f"Error in local dev server websocket for token {token}: {error}")
+        logger.error(f"Error in local server websocket for token {token}: {error}")
         websocket_manager.disconnect(token)
 
 
-@router.post("/connect_cli_dev")
-async def connect_cli_dev(
-    project_uuid: str, branch_name: str, api_key: str = Depends(get_api_key)
-):
-    """Update cli token for dev branch."""
+@router.post("/connect_cli_project")
+async def connect_cli_project(project_uuid: str, api_key: str = Depends(get_api_key)):
+    """Update cli token for project."""
     try:
-        print(project_uuid, branch_name, api_key)
-        dev_branch_data = (
-            supabase.table("dev_branch")
-            .select("*")
-            .eq("name", branch_name)
-            .eq("project_uuid", project_uuid)
-            .single()
+        project = (
+            supabase.table("project")
+            .select("cli_access_key")
+            .eq("uuid", project_uuid)
             .execute()
             .data
         )
-        if dev_branch_data["online"] is True:
-            # return false, already connected
+
+        if project[0]["cli_access_key"] is not None:
             return HTTPException(
                 status_code=HTTP_403_FORBIDDEN, detail="Already connected"
             )
         else:
-            # update dev_branch_data
+            # update project
             res = (
-                supabase.table("dev_branch")
+                supabase.table("project")
                 .update(
                     {
                         "cli_access_key": api_key,
-                        "online": False,
                     }
                 )
-                .eq("id", dev_branch_data["id"])
+                .eq("id", project["id"])
                 .execute()
             )
             # return true, connected

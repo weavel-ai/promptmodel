@@ -1,7 +1,7 @@
 import json
 import asyncio
 from collections import defaultdict
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, AsyncGenerator
 from asyncio import Queue
 from uuid import uuid4
 from datetime import datetime, timezone
@@ -15,40 +15,27 @@ from utils.logger import logger
 
 class LocalTask(str, Enum):
     RUN_PROMPT_MODEL = "RUN_PROMPT_MODEL"
-    LIST_PROMPT_MODELS = "LIST_PROMPT_MODELS"
-    LIST_PROMPT_MODEL_VERSIONS = "LIST_PROMPT_MODEL_VERSIONS"
-    LIST_SAMPLES = "LIST_SAMPLES"
-    LIST_FUNCTIONS = "LIST_FUNCTIONS"
-    GET_PROMPTS = "GET_PROMPTS"
-    GET_RUN_LOGS = "GET_RUN_LOGS"
-    CHANGE_PROMPT_MODEL_VERSION_STATUS = "CHANGE_PROMPT_MODEL_VERSION_STATUS"
-    GET_PROMPT_MODEL_VERSION_TO_SAVE = "GET_PROMPT_MODEL_VERSION_TO_SAVE"
-    GET_PROMPT_MODEL_VERSIONS_TO_SAVE = "GET_PROMPT_MODEL_VERSIONS_TO_SAVE"
-    UPDATE_CANDIDATE_PROMPT_MODEL_VERSION_ID = (
-        "UPDATE_CANDIDATE_PROMPT_MODEL_VERSION_ID"
-    )
-
     RUN_CHAT_MODEL = "RUN_CHAT_MODEL"
-    LIST_CHAT_MODELS = "LIST_CHAT_MODELS"
-    LIST_CHAT_MODEL_VERSIONS = "LIST_CHAT_MODEL_VERSIONS"
-    CHANGE_CHAT_MODEL_VERSION_STATUS = "CHANGE_CHAT_MODEL_VERSION_STATUS"
-    GET_CHAT_MODEL_VERSION_TO_SAVE = "GET_CHAT_MODEL_VERSION_TO_SAVE"
-    GET_CHAT_MODEL_VERSIONS_TO_SAVE = "GET_CHAT_MODEL_VERSIONS_TO_SAVE"
-    UPDATE_CANDIDATE_CHAT_MODEL_VERSION_ID = "UPDATE_CANDIDATE_CHAT_MODEL_VERSION_ID"
-    GET_CHAT_LOG_SESSIONS = "GET_CHAT_LOG_SESSIONS"
-    GET_CHAT_LOGS = "GET_CHAT_LOGS"
+
+    LIST_CODE_CHAT_MODELS = "LIST_CHAT_MODELS"
+    LIST_CODE_PROMPT_MODELS = "LIST_PROMPT_MODELS"
+    LIST_CODE_FUNCTIONS = "LIST_FUNCTIONS"
 
 
 class ServerTask(str, Enum):
     UPDATE_RESULT_RUN = "UPDATE_RESULT_RUN"
     UPDATE_RESULT_CHAT_RUN = "UPDATE_RESULT_CHAT_RUN"
     LOCAL_UPDATE_ALERT = "LOCAL_UPDATE_ALERT"
-    UPDATE_RESULT_EVAL = "UPDATE_RESULT_EVAL"
+
+    UPDATE_PROMPT_MODEL = "UPDATE_PROMPT_MODEL"
+    UPDATE_CHAT_MODEL = "UPDATE_CHAT_MODEL"
+    UPDATE_SAMPLES = "UPDATE_SAMPLES"
+    UPDATE_FUNCTIONS = "UPDATE_FUNCTIONS"
 
 
 class ConnectionManager:
     def __init__(self):
-        # Store for the active local dev server connections
+        # Store for the active local  connections
         self.connected_locals: Dict[str, WebSocket] = {}
         # Store for the local server's messages (this maps tokens to asyncio Queues)
         # self.local_queues: Dict[str, Queue] = {}
@@ -106,12 +93,15 @@ class ConnectionManager:
     def _set_local_online_status(self, token: str, online: bool):
         """Update agent's online status in the Supabase database."""
         try:
-            (
-                supabase.table("dev_branch")
-                .update({"online": online})
-                .eq("cli_access_key", token)
-                .execute()
-            )
+            if not online:
+                (
+                    supabase.table("project")
+                    .update({"cli_access_key": None})
+                    .eq("cli_access_key", token)
+                    .execute()
+                )
+            else:
+                pass
         except Exception as error:
             logger.error(f"Error updating online status for token {token}: {error}")
 
@@ -139,11 +129,11 @@ class ConnectionManager:
   - Message: {message}"""
                 )
         else:
-            raise ValueError(f"No active local dev server found for token {token}")
+            raise ValueError(f"No active local connection found for token {token}")
 
     async def request(self, token: str, type: LocalTask, message: Dict = {}):
         """
-        Send a message to the local dev server and wait for a response.
+        Send a message to the local connected server and wait for a response.
 
         Returns a python object.
         """
@@ -176,11 +166,13 @@ class ConnectionManager:
                 self.pending_requests.pop(correlation_id, None)
                 self.responses.pop(correlation_id, None)
         else:
-            raise ValueError(f"No active local dev server found for token {token}")
+            raise ValueError(f"No active local connection found for token {token}")
 
-    async def stream(self, token: str, task_type: LocalTask, message: Dict = {}):
+    async def stream(
+        self, token: str, task_type: LocalTask, message: Dict = {}
+    ) -> AsyncGenerator[Dict[str, Any], None]:
         """
-        Send a message to the local dev server and wait for a stream generator.
+        Send a message to the local server and wait for a stream generator.
 
         Stream Dict[str, Any] until done.
         """
@@ -214,7 +206,7 @@ class ConnectionManager:
                         stream_end = True
                     if response["status"] == "failed":
                         logger.error(response["log"])
-                    yield json.dumps(response)
+                    yield response
             except Exception as error:
                 logger.error(
                     f"""Error for stream request to local: {error}
@@ -225,28 +217,43 @@ class ConnectionManager:
                 self.pending_requests.pop(correlation_id, None)
                 self.responses.pop(correlation_id, None)
         else:
-            raise ValueError(f"No active local dev server found for token {token}")
+            raise ValueError(
+                f"No active local connection server found for token {token}"
+            )
 
     async def task_handler(self, token: str, data: dict):
         """Handles the message received from the agent."""
+        # UPDATE_PROMPT_MODEL = "UPDATE_PROMPT_MODEL"
+        # UPDATE_CHAT_MODEL = "UPDATE_CHAT_MODEL"
+        # UPDATE_SAMPLES = "UPDATE_SAMPLES"
+        # UPDATE_FUNCTIONS = "UPDATE_FUNCTIONS"
         if data["type"] == ServerTask.LOCAL_UPDATE_ALERT:
             try:
-                dev_branch = (
-                    supabase.table("dev_branch")
+                project = (
+                    supabase.table("project")
                     .update({"sync": False})
                     .eq("cli_access_key", token)
                     .execute()
                 ).data
 
-                if len(dev_branch) == 0:
+                if len(project) == 0:
                     logger.error(f"Dev branch not found for token {token}")
                     return
 
-                dev_branch_id = dev_branch[0]["id"]
-                logger.info(f"Dev branch {dev_branch_id} sync columm updated to False")
+                project_name = project[0]["name"]
+                logger.info(f"Project {project_name} sync columm updated to False")
 
             except Exception as error:
                 logger.error(f"Error updating Dev branch sync columm: {error}")
+        # TODO: ADD theses ServerTasks
+        elif data["type"] == ServerTask.UPDATE_PROMPT_MODEL:
+            pass
+        elif data["type"] == ServerTask.UPDATE_CHAT_MODEL:
+            pass
+        elif data["type"] == ServerTask.UPDATE_SAMPLES:
+            pass
+        elif data["type"] == ServerTask.UPDATE_FUNCTIONS:
+            pass
 
 
 websocket_manager = ConnectionManager()

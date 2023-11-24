@@ -1,4 +1,4 @@
-"""APIs for chatmodel dev page"""
+"""APIs for chatmodel local connection"""
 import json
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
@@ -13,8 +13,10 @@ from starlette.status import (
 
 from utils.security import get_project
 from utils.logger import logger
+from utils.prompt_utils import update_dict
 from base.database import supabase
 from base.websocket_connection import websocket_manager, LocalTask
+from modules.websocket.run_model_functions import update_db_in_chat_model_run
 
 router = APIRouter()
 
@@ -27,9 +29,9 @@ class ChatLog(BaseModel):
 
 class ChatModelRunConfig(BaseModel):
     chat_model_uuid: str
-    chat_model_name: str
+    system_prompt: str
     new_messages: List[ChatLog]
-    system_prompt: ChatLog
+    session_uuid: Optional[str] = None
     model: Optional[str] = "gpt-3.5-turbo"
     from_uuid: Optional[str] = None
     uuid: Optional[str] = None
@@ -37,19 +39,15 @@ class ChatModelRunConfig(BaseModel):
 
 
 @router.post("/run_chat_model")
-async def run_chat_model(
-    project_uuid: str, dev_name: str, run_config: ChatModelRunConfig
-):
+async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
     """
-    <h2>For dev branch, Send run_chat_model request to the local server  </h2>
+    <h2>For local connection, Send run_chat_model request to the local server  </h2>
 
     <h3>Input:</h3>
     <ul>
         <li><b>project_uuid:</b> project uuid</li>
-        <li><b>dev_name:</b> dev branch name</li>
         <li><b>run_config:</b></li>
         <ul>
-            <li>chat_model_name: chat_model name</li>
             <li>chat_model_uuid: chat_model uuid</li>
             <li>new_messages: list of ChatLog</li>
             <ul>
@@ -57,7 +55,9 @@ async def run_chat_model(
                 <li>content: str</li>
                 <li>function_call: Dict</li>
             </ul>
-            <li>system_prompt: ChatLog</li>
+            <li>system_prompt: str</li>
+            <li>new_messages: List[ChatLog]</li>
+            <li>session_uuid: Optional[str]</li>
             <li>model: str</li>
             <li>from_uuid: str</li>
             <li>uuid: str</li>
@@ -79,23 +79,122 @@ async def run_chat_model(
     # If the API key in header is valid, this function will execute.
     try:
         # Find local server websocket
-        dev_branch = (
-            supabase.table("dev_branch")
+        project = (
+            supabase.table("project")
             .select("cli_access_key")
-            .eq("name", dev_name)
-            .eq("project_uuid", project_uuid)
+            .eq("uuid", project_uuid)
             .execute()
             .data
         )
-        if len(dev_branch) == 0:
-            raise ValueError("There is no dev_branch")
-        cli_access_key = dev_branch[0]["cli_access_key"]
+        if len(project) == 0:
+            raise ValueError("There is no project")
+        if project[0]["cli_access_key"] is None:
+            raise ValueError("There is no connection")
+
+        cli_access_key = project[0]["cli_access_key"]
+
+        async def run_chat_model_generator(
+            cli_access_key: str, run_config: ChatModelRunConfig
+        ):
+            run_config_dict = run_config.model_dump()
+
+            chat_model_version_config = {
+                "chat_model_uuid": run_config.chat_model_uuid,
+                "model": run_config.model,
+                "from_uuid": run_config.from_uuid,
+                "uuid": run_config.uuid,
+                "functions": run_config.functions,
+                "system_prompt": run_config.system_prompt,
+            }
+            session_uuid = run_config.session_uuid
+
+            old_messages = [{"role": "system", "content": run_config.system_prompt}]
+            if session_uuid:
+                chat_logs: List[Dict] = (
+                    supabase.table("chat_log")
+                    .select("role, name, content, function_call")
+                    .eq("session_uuid", session_uuid)
+                    .order("created_at", desc=False)
+                    .execute()
+                    .data
+                )
+                old_messages.extend(chat_logs)
+                # delete None values
+                old_messages = [
+                    {k: v for k, v in message.items() if v is not None}
+                    for message in old_messages
+                ]
+
+            run_config_dict["old_messages"] = old_messages
+            # add function schemas
+            function_schemas = (
+                supabase.table("function_schema")
+                .select("*")
+                .eq("project_uuid", project_uuid)
+                .in_("name", run_config.functions)
+                .execute()
+            )
+            run_config_dict["function_schemas"] = function_schemas.data
+
+            new_messages = run_config.new_messages
+            response_messages = []
+            current_message = {
+                "role": "assistant",
+                "content": "",
+                "function_call": None,
+            }
+
+            res = websocket_manager.stream(
+                cli_access_key, LocalTask.RUN_CHAT_MODEL, run_config_dict
+            )
+
+            async for chunk in res:
+                if "status" in chunk:
+                    if "raw_output" in chunk:
+                        current_message["content"] += chunk["raw_output"]
+                    if "function_call" in chunk:
+                        if current_message["function_call"] is None:
+                            current_message["function_call"] = chunk["function_call"]
+                        else:
+                            current_message["function_call"] = update_dict(
+                                current_message["function_call"], chunk["function_call"]
+                            )
+
+                    if "function_response" in chunk:
+                        response_messages.append(current_message)
+                        current_message = {
+                            "role": "assistant",
+                            "content": "",
+                            "function_call": None,
+                        }
+                        response_messages.append(
+                            {
+                                "role": "function",
+                                "name": chunk["function_response"]["name"],
+                                "content": chunk["function_response"]["response"],
+                            }
+                        )
+
+                    if chunk["status"] in ["completed", "failed"]:
+                        if (
+                            current_message["content"] != ""
+                            or current_message["function_call"] is not None
+                        ):
+                            response_messages.append(current_message)
+
+                        update_db_in_chat_model_run(
+                            chat_model_version_config,
+                            session_uuid,
+                            new_messages,
+                            response_messages,
+                            chunk["error_type"],
+                            chunk["log"],
+                        )
+                yield json.dumps(chunk)
 
         try:
             return StreamingResponse(
-                websocket_manager.stream(
-                    cli_access_key, LocalTask.RUN_CHAT_MODEL, run_config.model_dump()
-                )
+                run_chat_model_generator(cli_access_key, run_config)
             )
         except Exception as exc:
             logger.error(exc)
@@ -110,11 +209,10 @@ async def run_chat_model(
 
 
 @router.get("/list_chat_models")
-async def list_chat_models(project_uuid: str, dev_name: str):
+async def list_chat_models(project_uuid: str):
     """Get list of chat models in local DB by websocket
     Input:
         - project_uuid : project uuid
-        - dev_name : dev branch name
 
     Output:
         Response
@@ -129,196 +227,21 @@ async def list_chat_models(project_uuid: str, dev_name: str):
     # If the API key in header is valid, this function will execute.
     try:
         # Find local server websocket
-        dev_branch = (
-            supabase.table("dev_branch")
+        project = (
+            supabase.table("project")
             .select("cli_access_key")
-            .eq("name", dev_name)
-            .eq("project_uuid", project_uuid)
+            .eq("uuid", project_uuid)
             .execute()
             .data
         )
-        if len(dev_branch) == 0:
-            raise ValueError("There is no dev_branch")
+        if len(project) == 0:
+            raise ValueError("There is no project")
+        if project[0]["cli_access_key"] is None:
+            raise ValueError("There is no connection")
 
-        cli_access_key = dev_branch[0]["cli_access_key"]
+        cli_access_key = project[0]["cli_access_key"]
         response = await websocket_manager.request(
-            cli_access_key, LocalTask.LIST_CHAT_MODELS
-        )
-        if not response:
-            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
-        return JSONResponse(response, status_code=HTTP_200_OK)
-
-    except ValueError as ve:
-        logger.error(ve)
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST) from ve
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
-@router.get("/list_chat_model_versions")
-async def list_chat_model_versions(
-    project_uuid: str, dev_name: str, chat_model_uuid: str
-):
-    """Get list of chat model versions for chat_model_uuid in local DB by websocket
-    Input:
-        - project_uuid : project uuid
-        - dev_name : dev branch name
-        - chat_model_uuid : chat_model uuid
-
-    Output:
-        Response
-            - correlation_id: str
-            - chat_model_versions: list
-                - uuid
-                - from_uuid
-                - chat_model_uuid
-                - status
-                - model
-                - version
-                - system_prompt
-                - functions
-    """
-    # If the API key in header is valid, this function will execute.
-    try:
-        # Find local server websocket
-        dev_branch = (
-            supabase.table("dev_branch")
-            .select("cli_access_key")
-            .eq("name", dev_name)
-            .eq("project_uuid", project_uuid)
-            .execute()
-            .data
-        )
-        if len(dev_branch) == 0:
-            raise ValueError("There is no dev_branch")
-        cli_access_key = dev_branch[0]["cli_access_key"]
-        response = await websocket_manager.request(
-            cli_access_key,
-            LocalTask.LIST_CHAT_MODEL_VERSIONS,
-            {"chat_model_uuid": chat_model_uuid},
-        )
-        if not response:
-            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
-        return JSONResponse(response, status_code=HTTP_200_OK)
-
-    except ValueError as ve:
-        logger.error(ve)
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST) from ve
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
-@router.get("/get_chat_log_session")
-async def get_chat_log_session(
-    project_uuid: str, dev_name: str, chat_model_version_uuid: str
-):
-    """Get list of chat_log_sessions for chat_model_version_uuid in Local DB by websocket"""
-    # If the API key in header is valid, this function will execute.
-    try:
-        # Find local server websocket
-        dev_branch = (
-            supabase.table("dev_branch")
-            .select("cli_access_key")
-            .eq("name", dev_name)
-            .eq("project_uuid", project_uuid)
-            .execute()
-            .data
-        )
-        if len(dev_branch) == 0:
-            raise ValueError("There is no dev_branch")
-
-        cli_access_key = dev_branch[0]["cli_access_key"]
-        response = await websocket_manager.request(
-            cli_access_key,
-            LocalTask.GET_CHAT_LOG_SESSIONS,
-            {"chat_model_version_uuid": chat_model_version_uuid},
-        )
-        if not response:
-            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
-        return JSONResponse(response, status_code=HTTP_200_OK)
-
-    except ValueError as ve:
-        logger.error(ve)
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST) from ve
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
-@router.get("/get_chat_logs")
-async def get_chat_logs(project_uuid: str, dev_name: str, session_uuid: str):
-    """Get list of chat_logs of session_uuid in local DB by websocket
-
-    Args:
-        project_uuid (str): project_uuid
-        dev_name (str): dev_name
-        session_uuid (str): session_uuid
-
-    Returns:
-        Response
-            - chat_logs : List[Dict]
-                - session_uuid
-                - role
-                - content
-                - function_call
-                - run_from_deployment
-    """
-    # If the API key in header is valid, this function will execute.
-    try:
-        # Find local server websocket
-        dev_branch = (
-            supabase.table("dev_branch")
-            .select("cli_access_key")
-            .eq("name", dev_name)
-            .eq("project_uuid", project_uuid)
-            .execute()
-            .data
-        )
-        if len(dev_branch) == 0:
-            raise ValueError("There is no dev_branch")
-
-        cli_access_key = dev_branch[0]["cli_access_key"]
-        response = await websocket_manager.request(
-            cli_access_key,
-            LocalTask.GET_CHAT_LOGS,
-            {"session_uuid": session_uuid},
-        )
-        if not response:
-            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
-        return JSONResponse(response, status_code=HTTP_200_OK)
-
-    except ValueError as ve:
-        logger.error(ve)
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST) from ve
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
-@router.post("/change_chat_model_version_status")
-async def change_chat_model_version_status(
-    project_uuid: str, dev_name: str, chat_model_version_uuid: str, status: str
-):
-    try:
-        # Find local server websocket
-        dev_branch = (
-            supabase.table("dev_branch")
-            .select("cli_access_key")
-            .eq("name", dev_name)
-            .eq("project_uuid", project_uuid)
-            .execute()
-            .data
-        )
-        if len(dev_branch) == 0:
-            raise ValueError("There is no dev_branch")
-
-        cli_access_key = dev_branch[0]["cli_access_key"]
-        response = await websocket_manager.request(
-            cli_access_key,
-            LocalTask.CHANGE_CHAT_MODEL_VERSION_STATUS,
-            {"chat_model_version_uuid": chat_model_version_uuid, "status": status},
+            cli_access_key, LocalTask.LIST_CODE_CHAT_MODELS
         )
         if not response:
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
