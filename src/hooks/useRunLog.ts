@@ -6,7 +6,7 @@ export const useRunLogs = (versionUuid: string) => {
   const { createSupabaseClient } = useSupabaseClient();
 
   const { data: runLogData, refetch: refetchRunLogData } = useQuery({
-    queryKey: ["runLogData", { uuid: versionUuid }],
+    queryKey: ["runLogData", { versionUuid: versionUuid }],
     queryFn: async () =>
       await fetchVersionRunLogs(await createSupabaseClient(), versionUuid),
     enabled: versionUuid != undefined && versionUuid != null,

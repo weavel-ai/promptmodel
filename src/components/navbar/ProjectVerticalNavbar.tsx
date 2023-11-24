@@ -14,13 +14,27 @@ import {
 import classNames from "classnames";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
+import { useEffect } from "react";
 
 export const ProjectVerticalNavbar = () => {
-  const pathname = usePathname();
-  const { isCreateVariantOpen: isCreateChatModelVariantOpen } =
-    useChatModelVersionStore();
-  const { isCreateVariantOpen: isCreatePromptModelVariantOpen } =
-    usePromptModelVersionStore();
+  const params = useParams();
+  const {
+    isCreateVariantOpen: isCreateChatModelVariantOpen,
+    setIsCreateVariantOpen: setIsCreateChatModelVariantOpen,
+  } = useChatModelVersionStore();
+  const {
+    isCreateVariantOpen: isCreatePromptModelVariantOpen,
+    setIsCreateVariantOpen: setIsCreatePromptModelVariantOpen,
+  } = usePromptModelVersionStore();
+
+  useEffect(() => {
+    if (!params?.promptModelUuid) {
+      setIsCreatePromptModelVariantOpen(false);
+    }
+    if (!params?.chatModelUuid) {
+      setIsCreateChatModelVariantOpen(false);
+    }
+  }, [params?.promptModelUuid, params?.chatModelUuid]);
 
   if (isCreateChatModelVariantOpen || isCreatePromptModelVariantOpen)
     return null;

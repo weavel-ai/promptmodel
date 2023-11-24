@@ -64,6 +64,7 @@ export const DeploymentNavbar = (props: NavbarProps) => {
   const modelType = useMemo(() => {
     if (params?.promptModelUuid) return "PromptModel";
     if (params?.chatModelUuid) return "ChatModel";
+
     return null;
   }, [params?.promptModelUuid, params?.chatModelUuid]);
 

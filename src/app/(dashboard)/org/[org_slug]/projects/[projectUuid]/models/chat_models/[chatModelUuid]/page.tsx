@@ -42,6 +42,7 @@ import { useWindowHeight, useWindowSize } from "@react-hook/window-size";
 import { FunctionSelector } from "@/components/select/FunctionSelector";
 import { useChatModel } from "@/hooks/useChatModel";
 import { Monaco, MonacoDiffEditor } from "@monaco-editor/react";
+import { countStretchNodes } from "@/utils";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -237,14 +238,10 @@ const VersionsPage = () => {
     ];
 
     const root = stratify()
-      .id((d) => d.version)
-      .parentId((d) => d.from_version)(dataWithSyntheticRoot);
+      .id((d: any) => d.version)
+      .parentId((d: any) => d.from_version)(dataWithSyntheticRoot);
 
-    // Calculate the maximum number of nodes at any depth.
-    const maxNodesAtDepth = Math.max(
-      ...root.descendants().map((d: any) => d.depth)
-    );
-    const requiredWidth = maxNodesAtDepth * 300;
+    const requiredWidth = countStretchNodes(root) * 160;
     const layout = tree().size([requiredWidth, root.height * 160]);
     const nodes = layout(root).descendants();
 
@@ -623,77 +620,6 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
               </div>
             )}
           </div>
-          {/* <div
-            className="flex flex-col justify-between"
-            style={{
-              height: windowHeight - 120,
-            }}
-          >
-            <motion.div
-              className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow-0"
-              style={{
-                height: windowHeight - lowerBoxHeight - 120,
-              }}
-            >
-              <div className="flex flex-wrap justify-start gap-x-4 items-start mb-2">
-                <div className="flex flex-col items-start justify-start">
-                  <label className="label text-xs font-medium">
-                    <span className="label-text">Model</span>
-                  </label>
-                  <ModelDisplay modelName={chatModelVersionData?.model} />
-                </div>
-                <div className="flex flex-col items-start justify-start">
-                  <label className="label text-xs font-medium">
-                    <span className="label-text">Functions</span>
-                  </label>
-                  {chatModelVersionData?.functions && (
-                    <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
-                      {chatModelVersionData?.functions?.map((funcName) => (
-                        <Badge
-                          key={funcName}
-                          className="text-sm"
-                          variant="default"
-                        >
-                          {funcName}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                  {(!chatModelVersionData?.functions ||
-                    chatModelVersionData?.functions?.length == 0) && (
-                    <Badge className="text-sm" variant="muted">
-                      No functions
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-col gap-y-2 justify-start items-start">
-                {chatModelVersionData && (
-                  <PromptComponent
-                    systemPrompt={chatModelVersionData.system_prompt}
-                  />
-                )}
-              </div>
-            </motion.div>
-            <div className="min-h-[120px] backdrop-blur-md">
-              <ResizableSeparator
-                height={lowerBoxHeight}
-                setHeight={(height) => {
-                  if (height < 160) return;
-                  setLowerBoxHeight(height);
-                }}
-                className="mx-4"
-              />
-              <div
-                className="my-4 backdrop-blur-sm"
-                style={{ height: lowerBoxHeight }}
-              >
-                {selectedChatModelVersion && (
-                  <ChatUI versionUuid={selectedChatModelVersionUuid} />
-                )}
-              </div>
-            </div>
-          </div> */}
           {/* Prompt editor */}
           <motion.div className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow">
             {isCreateVariantOpen ? (

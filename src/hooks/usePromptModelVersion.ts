@@ -15,7 +15,7 @@ import {
   usePromptModelVersionStore,
 } from "@/stores/promptModelVersionStore";
 import { v4 as uuidv4 } from "uuid";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { fetchPrompts } from "@/apis/prompt";
 import { streamPromptModelRun } from "@/apis/stream";
 import { useRunLogs } from "./useRunLog";
@@ -75,10 +75,6 @@ export const usePromptModelVersion = () => {
         await createSupabaseClient(),
         selectedPromptModelVersionUuid
       ),
-    onSuccess: (data) => {
-      updatePrompts(selectedPromptModelVersionUuid, data);
-      setModifiedPrompts(cloneDeep(data));
-    },
     enabled:
       selectedPromptModelVersionUuid != undefined &&
       selectedPromptModelVersionUuid != null,
@@ -96,22 +92,31 @@ export const usePromptModelVersion = () => {
         await createSupabaseClient(),
         selectedPromptModelVersionUuid
       ),
-    onSuccess: (data) => {
-      if (data?.model) {
-        setSelectedModel(data?.model);
-      }
-      if (data?.parsing_type != null) {
-        setSelectedParser(data?.parsing_type);
-        setOutputKeys(data?.output_keys);
-      } else {
-        setSelectedParser(null);
-        setOutputKeys([]);
-      }
-    },
     enabled:
       selectedPromptModelVersionUuid != undefined &&
       selectedPromptModelVersionUuid != null,
   });
+
+  useEffect(() => {
+    if (!originalPromptListData) return;
+    if (!selectedPromptModelVersionUuid) return;
+    updatePrompts(selectedPromptModelVersionUuid, originalPromptListData);
+    setModifiedPrompts(cloneDeep(originalPromptListData));
+  }, [originalPromptListData, selectedPromptModelVersionUuid]);
+
+  useEffect(() => {
+    if (!originalPromptModelVersionData) return;
+    if (originalPromptModelVersionData?.model) {
+      setSelectedModel(originalPromptModelVersionData?.model);
+    }
+    if (originalPromptModelVersionData?.parsing_type != null) {
+      setSelectedParser(originalPromptModelVersionData?.parsing_type);
+      setOutputKeys(originalPromptModelVersionData?.output_keys);
+    } else {
+      setSelectedParser(null);
+      setOutputKeys([]);
+    }
+  }, [originalPromptModelVersionData]);
 
   // Run LLM call
   async function handleRun(isNew: boolean) {
@@ -193,7 +198,6 @@ export const usePromptModelVersion = () => {
           );
         }
         if (data?.raw_output) {
-          toast("new");
           cacheRawOutput += data?.raw_output;
           updateRunLogs(
             isNew ? "new" : originalPromptModelVersionData?.uuid,

@@ -57,7 +57,7 @@ import { RunLogUI } from "@/components/RunLogUI";
 import { SlashCommandOptions } from "@/components/select/SlashCommandOptions";
 import { usePromptModel } from "@/hooks/usePromptModel";
 import { Monaco, MonacoDiffEditor } from "@monaco-editor/react";
-import { arePrimitiveListsEqual } from "@/utils";
+import { arePrimitiveListsEqual, countStretchNodes } from "@/utils";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -239,14 +239,10 @@ const VersionsPage = () => {
     ];
 
     const root = stratify()
-      .id((d) => d.version)
-      .parentId((d) => d.from_version)(dataWithSyntheticRoot);
+      .id((d: any) => d.version)
+      .parentId((d: any) => d.from_version)(dataWithSyntheticRoot);
 
-    // Calculate the maximum number of nodes at any depth.
-    const maxNodesAtDepth = Math.max(
-      ...root.descendants().map((d: any) => d.depth)
-    );
-    const requiredWidth = maxNodesAtDepth * 300;
+    const requiredWidth = countStretchNodes(root) * 160;
     const layout = tree().size([requiredWidth, root.height * 160]);
     const nodes = layout(root).descendants();
 
@@ -387,124 +383,127 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
       classNames="!w-[100vw] px-4 flex flex-col justify-start items-center pb-4"
       duration={200}
     >
-      <div className="flex flex-col justify-start w-full max-w-4xl h-full">
-        <div className="flex flex-row justify-between items-center mb-2">
-          <p className="text-2xl font-bold">{promptModelData?.name} V1</p>
-          <div className="flex flex-row w-fit justify-end items-center gap-x-2">
-            <SampleSelector
-              sampleName={selectedSample}
-              setSample={setSelectedSample}
-            />
-            <ModelSelector
-              modelName={selectedModel}
-              setModel={setSelectedModel}
-            />
-            <button
-              className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20 disabled:bg-muted disabled:border-muted-content"
-              onClick={() => handleRun(true)}
-              disabled={
-                !(modifiedPrompts?.length > 0) ||
-                modifiedPrompts?.every?.((prompt) => prompt.content === "") ||
-                !selectedSample
-              }
-            >
-              <p className="text-base-content">Run</p>
-              <Play className="text-base-content" size={20} weight="fill" />
-            </button>
-          </div>
-        </div>
-        <div className="bg-base-200 flex-grow w-full p-4 rounded-t-box overflow-auto">
-          <div className="flex flex-row justify-between gap-x-2 items-start mb-2">
-            <div className="flex flex-wrap justify-start gap-4 items-start w-full">
-              <div className="flex flex-col items-start justify-start">
-                <label className="label text-xs font-medium">
-                  <span className="label-text">Model</span>
-                </label>
-                <ModelSelector
-                  modelName={selectedModel}
-                  setModel={setSelectedModel}
-                />
-              </div>
-              <div className="flex flex-col items-start justify-start">
-                <label className="label text-xs font-medium">
-                  <span className="label-text">Output parser type</span>
-                </label>
-                <ParserTypeSelector
-                  parser={selectedParser}
-                  selectParser={setSelectedParser}
-                />
-              </div>
-              <div className="flex flex-col items-start justify-start">
-                <label className="label text-xs font-medium">
-                  <span className="label-text">Output keys</span>
-                </label>
-                {selectedParser && (
-                  <div className="w-full bg-base-content/10 rounded-lg text-sm">
-                    <TagsInput
-                      value={outputKeys}
-                      name="Output Keys"
-                      classNames={{
-                        input: "text-sm m-0 flex-grow bg-transparent disabled",
-                        tag: "!bg-secondary text-secondary-content text-sm",
-                      }}
-                      placeHolder="Type and press enter"
-                      onChange={setOutputKeys}
-                    />
-                  </div>
-                )}
-                {(selectedParser == null || selectedParser == undefined) && (
-                  <Badge className="text-sm" variant="muted">
-                    No output keys
-                  </Badge>
-                )}
-              </div>
-              <div className="flex flex-col items-start justify-start">
-                <label className="label text-xs font-medium">
-                  <span className="label-text">Functions</span>
-                </label>
-                <FunctionSelector
-                  selectedFunctions={selectedFunctions}
-                  setSelectedFunctions={setSelectedFunctions}
-                />
-              </div>
-            </div>
-            <div
-              className="flex flex-row justify-end items-center tooltip tooltip-left tooltip-info"
-              data-tip="Press Cmd + / to insert output format to your prompt"
-            >
-              <kbd className="kbd text-base-content">
-                <Command size={16} />
-              </kbd>
-              <kbd className="kbd text-base-content">/</kbd>
+      {open && (
+        <div className="flex flex-col justify-start w-full max-w-4xl h-full">
+          <div className="flex flex-row justify-between items-center mb-2">
+            <p className="text-2xl font-bold">{promptModelData?.name} V1</p>
+            <div className="flex flex-row w-fit justify-end items-center gap-x-2">
+              <SampleSelector
+                sampleName={selectedSample}
+                setSample={setSelectedSample}
+              />
+              <ModelSelector
+                modelName={selectedModel}
+                setModel={setSelectedModel}
+              />
+              <button
+                className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20 disabled:bg-muted disabled:border-muted-content"
+                onClick={() => handleRun(true)}
+                disabled={
+                  !(modifiedPrompts?.length > 0) ||
+                  modifiedPrompts?.every?.((prompt) => prompt.content === "") ||
+                  !selectedSample
+                }
+              >
+                <p className="text-base-content">Run</p>
+                <Play className="text-base-content" size={20} weight="fill" />
+              </button>
             </div>
           </div>
-          <div className="divider" />
-          <div className="flex flex-col h-full gap-y-2 justify-start items-center">
-            {modifiedPrompts?.map?.((prompt) => (
-              <PromptComponent
-                prompt={prompt}
+          <div className="bg-base-200 flex-grow w-full p-4 rounded-t-box overflow-auto">
+            <div className="flex flex-row justify-between gap-x-2 items-start mb-2">
+              <div className="flex flex-wrap justify-start gap-4 items-start w-full">
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Model</span>
+                  </label>
+                  <ModelSelector
+                    modelName={selectedModel}
+                    setModel={setSelectedModel}
+                  />
+                </div>
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Output parser type</span>
+                  </label>
+                  <ParserTypeSelector
+                    parser={selectedParser}
+                    selectParser={setSelectedParser}
+                  />
+                </div>
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Output keys</span>
+                  </label>
+                  {selectedParser && (
+                    <div className="w-full bg-base-content/10 rounded-lg text-sm">
+                      <TagsInput
+                        value={outputKeys}
+                        name="Output Keys"
+                        classNames={{
+                          input:
+                            "text-sm m-0 flex-grow bg-transparent disabled",
+                          tag: "!bg-secondary text-secondary-content text-sm",
+                        }}
+                        placeHolder="Type and press enter"
+                        onChange={setOutputKeys}
+                      />
+                    </div>
+                  )}
+                  {(selectedParser == null || selectedParser == undefined) && (
+                    <Badge className="text-sm" variant="muted">
+                      No output keys
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Functions</span>
+                  </label>
+                  <FunctionSelector
+                    selectedFunctions={selectedFunctions}
+                    setSelectedFunctions={setSelectedFunctions}
+                  />
+                </div>
+              </div>
+              <div
+                className="flex flex-row justify-end items-center tooltip tooltip-left tooltip-info"
+                data-tip="Press Cmd + / to insert output format to your prompt"
+              >
+                <kbd className="kbd text-base-content">
+                  <Command size={16} />
+                </kbd>
+                <kbd className="kbd text-base-content">/</kbd>
+              </div>
+            </div>
+            <div className="divider" />
+            <div className="flex flex-col h-full gap-y-2 justify-start items-center">
+              {modifiedPrompts?.map?.((prompt) => (
+                <PromptComponent
+                  prompt={prompt}
+                  setPrompts={setModifiedPrompts}
+                />
+              ))}
+              <NewPromptButton
+                prompts={modifiedPrompts}
                 setPrompts={setModifiedPrompts}
               />
-            ))}
-            <NewPromptButton
-              prompts={modifiedPrompts}
-              setPrompts={setModifiedPrompts}
+            </div>
+          </div>
+          <div className="relative">
+            <ResizableSeparator
+              height={lowerBoxHeight}
+              setHeight={setLowerBoxHeight}
             />
+            <div
+              className="mt-4 backdrop-blur-sm"
+              style={{ height: lowerBoxHeight }}
+            >
+              <RunLogUI versionUuid="new" />
+            </div>
           </div>
         </div>
-        <div className="relative">
-          <ResizableSeparator
-            height={lowerBoxHeight}
-            setHeight={setLowerBoxHeight}
-          />
-          <div
-            className="mt-4 backdrop-blur-sm"
-            style={{ height: lowerBoxHeight }}
-          >
-            <RunLogUI versionUuid="new" />
-          </div>
-        </div>
-      </div>
+      )}
     </Drawer>
   );
 }
@@ -548,13 +547,13 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
   const isNewVersionReady = useMemo(() => {
     if (isCreateVariantOpen) {
       if (
-        !originalPromptListData.every((prompt, index) =>
-          Object.keys(prompt).every(
+        !originalPromptListData?.every((prompt, index) =>
+          Object.keys(prompt)?.every(
             (key) => prompt[key] == modifiedPrompts[index][key]
           )
         ) &&
         (!newVersionCache ||
-          !newVersionCache.prompts.every((prompt, index) =>
+          !newVersionCache?.prompts.every((prompt, index) =>
             Object.keys(prompt).every(
               (key) => prompt[key] == modifiedPrompts[index][key]
             )
@@ -563,12 +562,12 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
         return true;
       if (
         originalPromptModelVersionData?.model != selectedModel &&
-        (!newVersionCache || newVersionCache.model != selectedModel)
+        (!newVersionCache || newVersionCache?.model != selectedModel)
       )
         return true;
       if (
         originalPromptModelVersionData?.parsing_type != selectedParser &&
-        (!newVersionCache || newVersionCache.parsing_type != selectedParser)
+        (!newVersionCache || newVersionCache?.parsing_type != selectedParser)
       )
         return true;
       // if (
@@ -646,7 +645,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
       direction="right"
       style={{ width: isCreateVariantOpen ? "calc(100vw - 5rem)" : "auto" }}
       classNames={classNames(
-        isCreateVariantOpen ? "backdrop-blur-md" : "!w-[45vw]",
+        isCreateVariantOpen ? "backdrop-blur-md" : "!w-[60vw]",
         "mr-4"
       )}
     >
@@ -667,7 +666,8 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
             >
               <div className="flex flex-row gap-x-2 justify-start items-center">
                 <p className="text-base-content font-bold text-lg">
-                  Prompt <i>V</i> {originalPromptModelVersionData?.version}
+                  {promptModelData?.name} <i>V</i>{" "}
+                  {originalPromptModelVersionData?.version}
                 </p>
 
                 {originalPromptModelVersionData?.is_published &&
@@ -744,14 +744,14 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
             {isCreateVariantOpen && (
               <div className="flex flex-row w-1/2 justify-between items-center mb-2">
                 <div className="flex flex-col items-start justify-center">
-                  {isNewVersionReady ? (
-                    <p className="text-base-content font-medium text-lg">
-                      New Version
-                    </p>
-                  ) : (
+                  {newVersionCache ? (
                     <p className="text-base-content font-medium text-lg">
                       {promptModelData?.name} <i>V</i>{" "}
                       {newVersionCache?.version}
+                    </p>
+                  ) : (
+                    <p className="text-base-content font-medium text-lg">
+                      New Version
                     </p>
                   )}
                   <p className="text-base-content text-sm">
@@ -1036,152 +1036,6 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
           </div>
         </div>
       )}
-
-      {/* <div className="w-full h-full bg-transparent p-4 flex flex-col justify-start">
-        <div className="flex flex-row justify-between items-center mb-2">
-          <div className="flex flex-row gap-x-2 justify-start items-center">
-            <p className="text-base-content font-bold text-lg">
-              Prompt V{originalPromptModelVersionData?.version}
-            </p>
-            {originalPromptModelVersionData?.is_published && (
-              <div className="flex flex-row gap-x-2 items-center px-2 justify-self-start">
-                <div className="w-2 h-2 rounded-full bg-secondary" />
-                <p className="text-base-content font-medium text-sm">
-                  Published
-                </p>
-              </div>
-            )}
-          </div>
-          <div className="flex flex-row gap-x-2 items-center">
-            {!originalPromptModelVersionData?.is_published && (
-              <button
-                className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
-                onClick={handleClickPublish}
-              >
-                <RocketLaunch
-                  className="text-secondary"
-                  size={20}
-                  weight="fill"
-                />
-                <p className="text-base-content">Publish</p>
-              </button>
-            )}
-
-            <button
-              className={classNames(
-                "flex flex-col gap-y-2 pt-1 items-center",
-                "btn btn-sm bg-transparent border-transparent h-10 hover:bg-neutral-content/20",
-                "normal-case font-normal"
-              )}
-              onClick={() => {
-                setSelectedPromptModelVersion(null);
-              }}
-            >
-              <div className="flex flex-col">
-                <XCircle size={22} />
-                <p className="text-base-content text-xs">Esc</p>
-              </div>
-            </button>
-          </div>
-        </div>
-        <div
-          className="flex flex-col justify-between"
-          style={{
-            height: windowHeight - 120,
-          }}
-        >
-          <motion.div
-            className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow-0"
-            style={{
-              height: windowHeight - lowerBoxHeight - 120,
-            }}
-          >
-            <div className="flex flex-wrap justify-start gap-x-4 items-start mb-2">
-              <div className="flex flex-col items-start justify-start">
-                <label className="label text-xs font-medium">
-                  <span className="label-text">Output parser type</span>
-                </label>
-                <ParserTypeSelector
-                  parser={originalPromptModelVersionData?.parsing_type}
-                />
-              </div>
-              <div className="flex flex-col items-start justify-start">
-                <label className="label text-xs font-medium">
-                  <span className="label-text">Output keys</span>
-                </label>
-                {originalPromptModelVersionData?.output_keys && (
-                  <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
-                    {originalPromptModelVersionData?.output_keys?.map((key) => (
-                      <Badge key={key} className="text-sm" variant="secondary">
-                        {key}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-                {!originalPromptModelVersionData?.output_keys && (
-                  <Badge className="text-sm" variant="muted">
-                    No output keys
-                  </Badge>
-                )}
-              </div>
-              <div className="flex flex-col items-start justify-start">
-                <label className="label text-xs font-medium">
-                  <span className="label-text">Functions</span>
-                </label>
-                {originalPromptModelVersionData?.functions && (
-                  <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
-                    {originalPromptModelVersionData?.functions?.map(
-                      (funcName) => (
-                        <Badge
-                          key={funcName}
-                          className="text-sm"
-                          variant="default"
-                        >
-                          {funcName}
-                        </Badge>
-                      )
-                    )}
-                  </div>
-                )}
-                {(!originalPromptModelVersionData?.functions ||
-                  originalPromptModelVersionData?.functions?.length == 0) && (
-                  <Badge className="text-sm" variant="muted">
-                    No functions
-                  </Badge>
-                )}
-              </div>
-            </div>
-            <div className="flex flex-col gap-y-2 justify-start items-start">
-              {originalPromptListData?.map((prompt) => (
-                <PromptComponent prompt={prompt} />
-              ))}
-            </div>
-          </motion.div>
-          <div className="relative backdrop-blur-md h-fit">
-            <ResizableSeparator
-              height={lowerBoxHeight}
-              setHeight={setLowerBoxHeight}
-            />
-            <div
-              className="flex flex-row justify-between items-start mt-4 gap-x-4"
-              style={{ height: lowerBoxHeight }}
-            >
-              <RunLogUI
-                versionUuid={selectedPromptModelVersionUuid}
-                className={classNames(isCreateVariantOpen && "!w-1/2")}
-              />
-              {isCreateVariantOpen && (
-                <RunLogUI
-                  versionUuid={
-                    isNewVersionReady ? "new" : newVersionCache?.uuid ?? "new"
-                  }
-                  className="!w-1/2"
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      </div> */}
     </Drawer>
   );
 }
@@ -1263,7 +1117,7 @@ const PromptComponent = ({
   setPrompts?: (prompts) => void;
 }) => {
   const windowHeight = useWindowHeight();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [height, setHeight] = useState(30);
   const editorRef = useRef(null);
   const { setFocusedEditor, setShowSlashOptions } =

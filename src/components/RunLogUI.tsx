@@ -26,6 +26,8 @@ export function RunLogUI({
   const [runLogList, setRunLogList] = useState<RunLog[]>([]);
 
   useEffect(() => {
+    console.log(versionUuid);
+    console.log(runLogs);
     if (runTasksCount == null || runLogData == undefined || runLogData == null)
       return;
 
