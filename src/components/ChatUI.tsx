@@ -58,6 +58,7 @@ export function ChatUI({
 
   // Set initial session uuid
   useEffect(() => {
+    console.log(chatLogSessionListData);
     if (chatLogSessionListData?.length > 1) {
       setSelectedSessionUuid(chatLogSessionListData[1].uuid);
     } else {

@@ -16,13 +16,16 @@ import { useEffect, useState } from "react";
 import ReactJson from "react-json-view";
 import { motion } from "framer-motion";
 import classNames from "classnames";
+import { useRunLogCount } from "@/hooks/useRunLogCount";
+import { useChatLogCount } from "@/hooks/useChatLogCount";
+dayjs.extend(relativeTime);
 
 export default function Page() {
   const params = useParams();
   const { projectData } = useProject();
   const { changeLogListData } = useChangeLog();
-
-  dayjs.extend(relativeTime);
+  const { runLogCountData } = useRunLogCount();
+  const { chatLogCountData } = useChatLogCount();
 
   return (
     <div className="w-full h-full pl-28 pt-20 pb-8">
@@ -41,9 +44,15 @@ export default function Page() {
                 V{projectData?.version}
               </p>
               <p className="text-sm text-neutral-content">
-                Created at {projectData?.created_at}
+                Created at {dayjs(projectData?.created_at).format("YYYY-MM-DD")}
               </p>
-              <p className="text-sm text-neutral-content">Total runs: </p>
+              <p className="text-sm text-neutral-content">
+                Total runs:{" "}
+                <b>
+                  {runLogCountData?.run_logs_count +
+                    chatLogCountData?.chat_logs_count}
+                </b>
+              </p>
               {/* TODO */}
             </div>
           </div>
@@ -62,15 +71,6 @@ export default function Page() {
                       className="flex flex-row bg-base-200 w-full p-1 px-4 rounded place-content-between"
                     >
                       <div className="place-self-start text-base-content flex flex-col">
-                        {/* {changeLog.logs.action} : {changeLog.logs.object} }
-                      <ReactJson
-                        src={changeLog.logs}
-                        name={false}
-                        displayDataTypes={false}
-                        displayObjectSize={false}
-                        enableClipboard={false}
-                theme="harmonic"
-                />*/}
                         <div className="flex flex-col gap-y-2">
                           <ChangeLogComponent changeLog={changeLog} />
                         </div>

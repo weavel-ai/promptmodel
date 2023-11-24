@@ -247,6 +247,7 @@ const VersionsPage = () => {
 
     let publishedNodePosition = null;
     nodes.forEach((node) => {
+      // @ts-ignore
       if (node.data.is_published) {
         publishedNodePosition = { x: node.x, y: node.y };
       }
@@ -408,6 +409,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     setSelectedChatModelVersion,
     setFullScreenChatVersion,
   } = useChatModelVersionStore();
+
   const selectedChatModelVersionUuid = useMemo(() => {
     if (!chatModelVersionListData || !selectedChatModelVersion) return null;
     return chatModelVersionListData.find(

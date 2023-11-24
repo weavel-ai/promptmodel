@@ -18,10 +18,10 @@ export const useChatLogSessions = (versionUuid: string) => {
       ];
       if (versionUuid != "new") {
         sessions.push(
-          await fetchChatLogSessions({
+          ...(await fetchChatLogSessions({
             supabaseClient: await createSupabaseClient(),
             versionUuid: versionUuid,
-          })
+          }))
         );
       }
       return sessions;

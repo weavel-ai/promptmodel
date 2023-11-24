@@ -376,6 +376,12 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
     setSelectedFunctions,
   } = usePromptModelVersionStore();
 
+  useEffect(() => {
+    if (!open) return;
+    setModifiedPrompts([]);
+    setSelectedSample(null);
+  }, [open]);
+
   return (
     <Drawer
       open={open}
@@ -401,8 +407,7 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
                 onClick={() => handleRun(true)}
                 disabled={
                   !(modifiedPrompts?.length > 0) ||
-                  modifiedPrompts?.every?.((prompt) => prompt.content === "") ||
-                  !selectedSample
+                  modifiedPrompts?.every?.((prompt) => prompt.content === "")
                 }
               >
                 <p className="text-base-content">Run</p>
@@ -570,6 +575,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
         (!newVersionCache || newVersionCache?.parsing_type != selectedParser)
       )
         return true;
+      // TODO: Implement function diff
       // if (
       //   !arePrimitiveListsEqual(
       //     originalPromptModelVersionData?.functions,
@@ -744,14 +750,14 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
             {isCreateVariantOpen && (
               <div className="flex flex-row w-1/2 justify-between items-center mb-2">
                 <div className="flex flex-col items-start justify-center">
-                  {newVersionCache ? (
-                    <p className="text-base-content font-medium text-lg">
-                      {promptModelData?.name} <i>V</i>{" "}
-                      {newVersionCache?.version}
+                  {isNewVersionReady || !newVersionCache ? (
+                    <p className="text-base-content font-bold text-lg">
+                      New Version
                     </p>
                   ) : (
-                    <p className="text-base-content font-medium text-lg">
-                      New Version
+                    <p className="text-base-content font-bold text-lg">
+                      {promptModelData?.name} <i>V</i>{" "}
+                      {newVersionCache?.version}
                     </p>
                   )}
                   <p className="text-base-content text-sm">
@@ -909,6 +915,14 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
               </div>
             ) : (
               <div className="flex flex-wrap justify-start gap-x-4 items-start mb-4">
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Model</span>
+                  </label>
+                  <ModelDisplay
+                    modelName={originalPromptModelVersionData?.model}
+                  />
+                </div>
                 <div className="min-w-fit flex flex-col items-start justify-start">
                   <label className="label text-xs font-medium">
                     <span className="label-text">Output parser type</span>
@@ -1026,9 +1040,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
               />
               {isCreateVariantOpen && (
                 <RunLogUI
-                  versionUuid={
-                    isNewVersionReady ? "new" : newVersionCache?.uuid ?? "new"
-                  }
+                  versionUuid={newVersionCache?.uuid}
                   className="!w-1/2"
                 />
               )}
@@ -1120,13 +1132,12 @@ const PromptComponent = ({
   const [open, setOpen] = useState(true);
   const [height, setHeight] = useState(30);
   const editorRef = useRef(null);
-  const { setFocusedEditor, setShowSlashOptions } =
+  const { modifiedPrompts, setFocusedEditor, setShowSlashOptions } =
     usePromptModelVersionStore();
 
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
     const contentHeight = editor.getContentHeight();
     editorRef.current = editor;
-    console.log(editor.getModel()?.getLanguageId());
 
     if (contentHeight) {
       setHeight(contentHeight);
@@ -1169,15 +1180,15 @@ const PromptComponent = ({
           <button
             className="p-2 group"
             onClick={() => {
-              setPrompts((prevPrompts) => {
-                const newPrompts = prevPrompts.filter(
-                  (p) => p.step !== prompt.step
-                );
-                return newPrompts?.map((p, index) => ({
+              const newPrompts = modifiedPrompts.filter(
+                (p) => p.step !== prompt.step
+              );
+              setPrompts(
+                newPrompts?.map((p, index) => ({
                   ...p,
                   step: index + 1,
-                }));
-              });
+                }))
+              );
             }}
           >
             <Trash
@@ -1199,19 +1210,17 @@ const PromptComponent = ({
           value={prompt.content}
           onChange={(value) => {
             if (setPrompts) {
-              setPrompts((prevPrompts) => {
-                const newPrompts = [...prevPrompts];
-                if (newPrompts.length < prompt.step) {
-                  newPrompts.push({
-                    role: prompt.role,
-                    step: prompt.step,
-                    content: value,
-                  });
-                } else {
-                  newPrompts[prompt.step - 1].content = value;
-                }
-                return newPrompts;
-              });
+              const newPrompts = [...modifiedPrompts];
+              if (newPrompts.length < prompt.step) {
+                newPrompts.push({
+                  role: prompt.role,
+                  step: prompt.step,
+                  content: value,
+                });
+              } else {
+                newPrompts[prompt.step - 1].content = value;
+              }
+              setPrompts(newPrompts);
             }
           }}
           options={{

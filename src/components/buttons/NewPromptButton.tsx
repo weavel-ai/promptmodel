@@ -65,17 +65,15 @@ export function NewPromptButton({ prompts, setPrompts }) {
           {["system", "user", "assistant"].map((role: string) => (
             <button
               className="text-sm text-start hover:bg-base-content hover:text-base-100 rounded-lg px-3 py-2"
-              onClick={() =>
-                setPrompts((prevPrompts) => {
-                  const newPrompts = [...prevPrompts];
-                  newPrompts.push({
-                    role: role,
-                    step: newPrompts.length + 1,
-                    content: "",
-                  });
-                  return newPrompts;
-                })
-              }
+              onClick={() => {
+                const newPrompts = [...prompts];
+                newPrompts.push({
+                  role: role,
+                  step: newPrompts.length + 1,
+                  content: "",
+                });
+                setPrompts(newPrompts);
+              }}
             >
               {role.charAt(0).toUpperCase() + role.slice(1)}
             </button>

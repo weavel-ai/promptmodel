@@ -12,7 +12,7 @@ export function RunLogUI({
   versionUuid,
   className,
 }: {
-  versionUuid: string | "new";
+  versionUuid: string | null;
   className?: string;
 }) {
   // const [showRaw, setShowRaw] = useState(true);
@@ -26,8 +26,6 @@ export function RunLogUI({
   const [runLogList, setRunLogList] = useState<RunLog[]>([]);
 
   useEffect(() => {
-    console.log(versionUuid);
-    console.log(runLogs);
     if (runTasksCount == null || runLogData == undefined || runLogData == null)
       return;
 
@@ -67,27 +65,29 @@ export function RunLogUI({
     <div className="w-full h-full flex flex-col gap-y-2">
       <div className="w-full flex flex-row justify-between items-center">
         <p className="text-xl font-semibold ps-2">Run Log</p>
-        <button
-          className="btn btn-sm bg-transparent border-transparent items-center hover:bg-neutral-content/20"
-          onClick={() => {
-            if (fullScreenRunVersionUuid == versionUuid) {
-              setFullScreenRunVersionUuid(null);
-              return;
-            }
-            setFullScreenRunVersionUuid(versionUuid);
-          }}
-        >
-          <CornersOut size={22} />
-          {fullScreenRunVersionUuid == versionUuid && (
-            <kbd className="kbd">Esc</kbd>
-          )}
-        </button>
+        {versionUuid != null && (
+          <button
+            className="btn btn-sm bg-transparent border-transparent items-center hover:bg-neutral-content/20"
+            onClick={() => {
+              if (fullScreenRunVersionUuid == versionUuid) {
+                setFullScreenRunVersionUuid(null);
+                return;
+              }
+              setFullScreenRunVersionUuid(versionUuid);
+            }}
+          >
+            <CornersOut size={22} />
+            {fullScreenRunVersionUuid == versionUuid && (
+              <kbd className="kbd">Esc</kbd>
+            )}
+          </button>
+        )}
       </div>
       <RunLogTable runLogList={runLogList} />
     </div>
   );
 
-  if (fullScreenRunVersionUuid != versionUuid) {
+  if (fullScreenRunVersionUuid != versionUuid || versionUuid == null) {
     return (
       <div
         className={classNames(
