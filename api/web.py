@@ -279,12 +279,6 @@ async def run_cloud_llm(run_config: PromptModelRunConfig):
             yield data
             return
 
-        data = {
-            "status": "completed",
-        }
-
-        yield data
-
         # Create run log
         supabase.table("run_log").insert(
             {
@@ -295,6 +289,12 @@ async def run_cloud_llm(run_config: PromptModelRunConfig):
                 "run_from_deployment": False,
             }
         ).execute()
+
+        data = {
+            "status": "completed",
+        }
+
+        yield data
     except Exception as error:
         logger.error(f"Error running service: {error}")
         data = {
@@ -470,12 +470,6 @@ async def run_cloud_chat(
 
             yield data
 
-        data = {
-            "status": "completed",
-        }
-
-        yield data
-
         # Create chat log
         supabase.table("chat_log").insert(
             {
@@ -492,6 +486,12 @@ async def run_cloud_chat(
                 "content": raw_output,
             }
         ).execute()
+
+        data = {
+            "status": "completed",
+        }
+
+        yield data
 
     except Exception as exc:
         logger.error(f"Error running service: {exc}")
