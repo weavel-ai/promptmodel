@@ -9,22 +9,11 @@ export async function fetchChatLogSessions({
   versionUuid: string;
   devUuid?: string;
 }) {
-  const req = supabaseClient
+  const res = await supabaseClient
     .from("chat_log_session")
     .select("uuid, created_at, run_from_deployment")
-    .eq("version_uuid", versionUuid);
-
-  let res;
-
-  if (devUuid) {
-    res = await req
-      .or(`dev_branch_uuid.eq.${devUuid},dev_branch_uuid.is.null`)
-      .order("created_at", { ascending: false });
-  } else {
-    res = await req
-      .filter("dev_branch_uuid", "is", "null")
-      .order("created_at", { ascending: false });
-  }
+    .eq("version_uuid", versionUuid)
+    .order("created_at", { ascending: false });
 
   return res.data;
 }
@@ -73,7 +62,6 @@ export async function fetchChatLogsCount(
 
   return res.data;
 }
-
 
 export async function subscribeChatLogs(
   supabaseClient: SupabaseClient,

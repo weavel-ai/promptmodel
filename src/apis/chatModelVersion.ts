@@ -6,11 +6,8 @@ export async function fetchChatModelVersions(
 ) {
   const res = await supabaseClient
     .from("chat_model_version")
-    .select("uuid, version, from_uuid, is_published, system_prompt")
-    .match({
-      chat_model_uuid: chatModelUuid,
-      is_deployed: true,
-    })
+    .select("uuid, version, from_version, is_published, system_prompt")
+    .eq("chat_model_uuid", chatModelUuid)
     .order("version", { ascending: true });
   return res.data;
 }
@@ -21,7 +18,7 @@ export async function fetchChatModelVersion(
   const res = await supabaseClient
     .from("chat_model_version")
     .select(
-      "uuid, version, from_uuid, model, is_published, is_ab_test, ratio, system_prompt, functions"
+      "uuid, version, from_version, model, is_published, is_ab_test, ratio, system_prompt, functions"
     )
     .eq("uuid", uuid)
     .single();

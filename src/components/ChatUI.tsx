@@ -5,16 +5,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ModalPortal } from "./ModalPortal";
 import dayjs from "dayjs";
 import { ChatSessionSelector } from "./select/ChatSessionSelector";
-import { streamDeplChatModelRun, streamDevChatModelRun } from "@/apis/devCloud";
-import { useSessionChatLogs } from "@/hooks/dev/useSessionChatLogs";
-import { useChatModelVersion } from "@/hooks/dev/useChatModelVersion";
-import { useChatLogSessions } from "@/hooks/dev/useChatLogSession";
-import { useDevBranch } from "@/hooks/useDevBranch";
 import { firstLetterToUppercase } from "@/utils";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { useChatModelVersion } from "@/hooks/useChatModelVersion";
+import { useChatLogSessions } from "@/hooks/useChatLogSession";
+import { useSessionChatLogs } from "@/hooks/useSessionChatLogs";
+import { streamChatModelRun } from "@/apis/stream";
+import { useChatModel } from "@/hooks/useChatModel";
 dayjs.extend(relativeTime);
 
 export function ChatUI({
@@ -24,16 +24,15 @@ export function ChatUI({
   versionUuid: string | "new";
   className?: string;
 }) {
-  const params = useParams();
   const [chatInput, setChatInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [generatedMessage, setGeneratedMessage] = useState(null);
   const [selectedSessionUuid, setSelectedSessionUuid] = useState(null);
+  const { chatModelUuid } = useChatModel();
   const { chatModelVersionListData, refetchChatModelVersionListData } =
     useChatModelVersion();
   const { chatLogSessionListData, refetchChatLogSessionListData } =
     useChatLogSessions(versionUuid);
-  const { devBranchData } = useDevBranch();
   const {
     fullScreenChatVersion,
     newVersionCache,
@@ -41,8 +40,8 @@ export function ChatUI({
     selectedFunctions,
     originalVersionData,
     modifiedSystemPrompt,
-    selectedChatModelVersionUuid,
-    setSelectedChatModelVersionUuid,
+    selectedChatModelVersion: selectedChatModelVersionUuid,
+    setSelectedChatModelVersion: setSelectedChatModelVersionUuid,
     setNewVersionCache,
     setFullScreenChatVersion,
   } = useChatModelVersionStore();
@@ -58,8 +57,8 @@ export function ChatUI({
   //   resetChatLogListData();
   // }, [selectedChatModelVersionUuid]);
 
+  // Set initial session uuid
   useEffect(() => {
-    console.log(selectedSessionUuid);
     if (chatLogSessionListData?.length > 1) {
       setSelectedSessionUuid(chatLogSessionListData[1].uuid);
     } else {
@@ -67,8 +66,8 @@ export function ChatUI({
     }
   }, [chatLogSessionListData, selectedChatModelVersionUuid]);
 
+  // Scroll to bottom whenever chatLogListData changes
   useEffect(() => {
-    // Scroll to bottom whenever chatLogListData changes
     if (scrollDivRef.current) {
       scrollDivRef.current.scrollTo({
         top: scrollDivRef.current.scrollHeight,
@@ -104,8 +103,8 @@ export function ChatUI({
     let cacheRawOutput = "";
     let cacheFunctionCallData = {};
 
-    const args: any = {
-      chatModelUuid: params?.chatModelUuid as string,
+    const args = {
+      chatModelUuid: chatModelUuid,
       sessionUuid: selectedSessionUuid,
       userInput: userInput,
       systemPrompt: systemPrompt,
@@ -114,6 +113,7 @@ export function ChatUI({
       versionUuid: isNew ? null : originalVersionData?.uuid,
       functions: isNew ? selectedFunctions : originalVersionData?.functions,
       onNewData: async (data) => {
+        console.log(data);
         switch (data?.status) {
           case "completed":
             await refetchChatLogListData();
@@ -147,17 +147,7 @@ export function ChatUI({
       },
     };
 
-    if (devBranchData == null) {
-      delete args["chatModelUuid"];
-      await streamDeplChatModelRun(args);
-    } else if (devBranchData?.cloud) {
-      args["devUuid"] = devBranchData?.uuid;
-      await streamDevChatModelRun(args);
-    } else {
-      // TODO : Stream local ChatModel run
-      args["projectUuid"] = params?.projectUuid as string;
-      // await streamLocalPromptModelRun(args);
-    }
+    await streamChatModelRun(args);
     setIsLoading(false);
 
     if (isNew) {

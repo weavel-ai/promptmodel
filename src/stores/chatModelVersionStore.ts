@@ -15,7 +15,7 @@ type NewVersionCache = {
 };
 
 type Store = {
-  selectedChatModelVersionUuid: string | null;
+  selectedChatModelVersion: number | null;
   chatModelVersionLists: Record<string, any>;
   originalVersionData: Record<string, any> | null;
   selectedModel: string;
@@ -29,7 +29,7 @@ type Store = {
 };
 
 type Actions = {
-  setSelectedChatModelVersionUuid: (version: string) => void;
+  setSelectedChatModelVersion: (version: number) => void;
   setOriginalVersionData: (data: Record<string, any> | null) => void;
   setSelectedModel: (model: string) => void;
   setSelectedFunctions: (functions: string[]) => void;
@@ -44,7 +44,7 @@ type Actions = {
 };
 
 export const useChatModelVersionStore = create<Store & Actions>((set) => ({
-  selectedChatModelVersionUuid: null,
+  selectedChatModelVersion: null,
   chatModelVersionLists: {},
   originalVersionData: null,
   selectedModel: "gpt-3.5-turbo",
@@ -55,8 +55,8 @@ export const useChatModelVersionStore = create<Store & Actions>((set) => ({
   newVersionCache: null,
   focusedEditor: null,
   fullScreenChatVersion: null,
-  setSelectedChatModelVersionUuid: (uuid) =>
-    set({ selectedChatModelVersionUuid: uuid }),
+  setSelectedChatModelVersion: (version) =>
+    set({ selectedChatModelVersion: version }),
   setOriginalVersionData: (data) => set({ originalVersionData: data }),
   setSelectedModel: (model) => set({ selectedModel: model }),
   setSelectedFunctions: (functions) => set({ selectedFunctions: functions }),

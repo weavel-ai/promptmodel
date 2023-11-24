@@ -7,7 +7,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 export const Modal = ({
   isOpen,
   setIsOpen,
-  zIndex = 50,
+  zIndex = 999999,
   children,
 }: {
   isOpen: boolean;

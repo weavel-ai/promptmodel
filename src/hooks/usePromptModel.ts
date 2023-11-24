@@ -12,7 +12,10 @@ export const usePromptModel = () => {
   const { createSupabaseClient } = useSupabaseClient();
 
   const { data: promptModelListData } = useQuery({
-    queryKey: ["promptModelListData", { projectUuid: projectUuid }],
+    queryKey: [
+      "modelListData",
+      { type: "PromptModel", projectUuid: projectUuid },
+    ],
     queryFn: async () =>
       await fetchPromptModels(await createSupabaseClient(), projectUuid),
     enabled: projectUuid != undefined && projectUuid != null,

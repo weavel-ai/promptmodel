@@ -6,16 +6,13 @@ import { Modal } from "./Modal";
 import classNames from "classnames";
 import { ArrowSquareOut } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import {
-  createChatModel,
-  createDevBranch,
-  createPromptModel,
-} from "@/apis/devCloud";
 import { useSupabaseClient } from "@/apis/base";
 import { useParams, useRouter } from "next/navigation";
 import { SelectField } from "../select/SelectField";
 import Link from "next/link";
 import { useDevBranch } from "@/hooks/useDevBranch";
+import { createPromptModel } from "@/apis/promptModel";
+import { createChatModel } from "@/apis/chatModel";
 
 export const CreateModelModal = ({
   isOpen,
@@ -47,14 +44,12 @@ export const CreateModelModal = ({
       resData = await createPromptModel({
         supabaseClient: await createSupabaseClient(),
         name,
-        devUuid: devBranchData?.uuid,
         projectUuid: params.projectUuid as string,
       });
     } else if (type == "ChatModel") {
       resData = await createChatModel({
         supabaseClient: await createSupabaseClient(),
         name,
-        devUuid: devBranchData?.uuid,
         projectUuid: params.projectUuid as string,
       });
     }
@@ -68,11 +63,11 @@ export const CreateModelModal = ({
     onCreated();
     if (type == "PromptModel")
       router.push(
-        `/org/${params.org_slug}/projects/${params.projectUuid}/dev/${params.devName}/prompt_models/${resData.uuid}`
+        `/org/${params.org_slug}/projects/${params.projectUuid}/models/prompt_models/${resData.uuid}`
       );
     else if (type == "ChatModel") {
       router.push(
-        `/org/${params.org_slug}/projects/${params.projectUuid}/dev/${params.devName}/chat_models/${resData.uuid}`
+        `/org/${params.org_slug}/projects/${params.projectUuid}/models/chat_models/${resData.uuid}`
       );
     }
   }
@@ -96,7 +91,7 @@ export const CreateModelModal = ({
 
   return (
     <Modal isOpen={isOpen} setIsOpen={setIsOpen}>
-      <div className="bg-popover shadow-lg p-6 rounded-box flex flex-col gap-y-2 justify-start items-start min-w-[360px]">
+      <div className="bg-popover shadow-lg p-6 rounded-box flex flex-col gap-y-2 justify-start items-start min-w-[360px] max-w-[80vw]">
         <p className="text-popover-content font-bold text-2xl mb-2">
           Create PromptModel / ChatModel
         </p>

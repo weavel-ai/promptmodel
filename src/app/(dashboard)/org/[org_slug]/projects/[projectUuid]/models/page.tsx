@@ -9,12 +9,14 @@ import "reactflow/dist/style.css";
 import relativeTime from "dayjs/plugin/relativeTime";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PencilSimple } from "@phosphor-icons/react";
+import { PencilSimple, Plus } from "@phosphor-icons/react";
 import { CreateDevModal } from "@/components/modals/CreateDevModal";
 import { useChatModel } from "@/hooks/useChatModel";
 import { ModelNode } from "@/components/nodes/ModelNode";
 import { GroupNode } from "@/components/nodes/GroupNode";
 import { useWindowSize } from "@react-hook/window-size";
+import { CreateModelModal } from "@/components/modals/CreateModelModal";
+import { useQueryClient } from "@tanstack/react-query";
 
 dayjs.extend(relativeTime);
 
@@ -31,7 +33,8 @@ export default function Page() {
   const [edges, setEdges] = useState(initialEdges);
   const { chatModelListData } = useChatModel();
   const { promptModelListData } = usePromptModel();
-  const [showCreateDevModal, setShowCreateDevModal] = useState(false);
+  const [showCreateModelModal, setShowCreateModelModal] = useState(false);
+  const queryClient = useQueryClient();
 
   const nodeTypes = useMemo(
     () => ({ model: ModelNode, groupLabel: GroupNode }),
@@ -185,6 +188,12 @@ export default function Page() {
     setNodes(newNodes);
   }, [promptModelListData, chatModelListData]);
 
+  function handleModelCreated() {
+    queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey[0] === "modelListData",
+    });
+  }
+
   return (
     <div className="w-full h-full">
       <ReactFlow
@@ -195,21 +204,28 @@ export default function Page() {
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-        <button
-          className={classNames(
-            "fixed top-16 right-10 flex flex-row gap-x-2 items-center backdrop-blur-sm z-50",
-            "btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
-          )}
-          onClick={() => setShowCreateDevModal(true)}
-        >
-          <PencilSimple className="text-secondary" size={20} weight="fill" />
-          <p className="text-base-content">Develop</p>
-        </button>
+        <CreateNewButton onClick={() => setShowCreateModelModal(true)} />
+        <CreateModelModal
+          isOpen={showCreateModelModal}
+          setIsOpen={setShowCreateModelModal}
+          onCreated={handleModelCreated}
+        />
       </ReactFlow>
-      <CreateDevModal
-        isOpen={showCreateDevModal}
-        setIsOpen={setShowCreateDevModal}
-      />
     </div>
+  );
+}
+
+function CreateNewButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      className={classNames(
+        "fixed top-16 right-6 flex flex-row gap-x-2 items-center backdrop-blur-sm z-50",
+        "btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
+      )}
+      onClick={onClick}
+    >
+      <Plus className="text-secondary" size={20} weight="fill" />
+      <p className="text-base-content">Create new</p>
+    </button>
   );
 }

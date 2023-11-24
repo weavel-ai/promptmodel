@@ -41,7 +41,7 @@ import { useChatModel } from "@/hooks/dev/useChatModel";
 import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
 import { useChatLogSessions } from "@/hooks/dev/useChatLogSession";
 import { ChatSessionSelector } from "@/components/select/ChatSessionSelector";
-import { useSessionChatLogs } from "@/hooks/dev/useSessionChatLogs";
+import { useSessionChatLogs } from "@/hooks/useSessionChatLogs";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { ChatUI } from "@/components/ChatUI";
@@ -67,7 +67,7 @@ export default function Page() {
   // Local dev environment
 
   const {
-    selectedChatModelVersionUuid,
+    selectedChatModelVersion,
     originalVersionData,
     modifiedSystemPrompt,
     selectedModel,
@@ -79,10 +79,17 @@ export default function Page() {
     setOriginalVersionData,
     setModifiedSystemPrompt,
     updateChatModelVersionLists,
-    setSelectedChatModelVersionUuid,
+    setSelectedChatModelVersion,
     setFullScreenChatVersion,
     setNewVersionCache,
   } = useChatModelVersionStore();
+
+  const selectedChatModelVersionUuid = useMemo(() => {
+    if (!chatModelVersionListData || !selectedChatModelVersion) return null;
+    return chatModelVersionListData.find(
+      (v) => v.version == selectedChatModelVersion
+    )?.uuid;
+  }, [chatModelVersionListData, selectedChatModelVersion]);
 
   const { refetchFunctionListData } = useFunctions();
 
@@ -91,18 +98,18 @@ export default function Page() {
   const nodeTypes = useMemo(() => ({ modelVersion: ModelVersionNode }), []);
 
   useEffect(() => {
-    if (originalVersionData?.uuid === selectedChatModelVersionUuid) return;
+    if (originalVersionData?.uuid === selectedChatModelVersion) return;
     const data = chatModelVersionListData?.find(
-      (version) => version.uuid === selectedChatModelVersionUuid
+      (version) => version.uuid === selectedChatModelVersion
     );
     if (data?.model) {
       setSelectedModel(data?.model);
     }
     setOriginalVersionData(data);
-  }, [selectedChatModelVersionUuid, chatModelVersionListData]);
+  }, [selectedChatModelVersion, chatModelVersionListData]);
 
   useEffect(() => {
-    setSelectedChatModelVersionUuid(null);
+    setSelectedChatModelVersion(null);
   }, []);
 
   useEffect(() => {
@@ -111,7 +118,7 @@ export default function Page() {
     } else {
       setModifiedSystemPrompt("");
     }
-  }, [selectedChatModelVersionUuid, originalVersionData]);
+  }, [selectedChatModelVersion, originalVersionData]);
 
   const isNewVersionReady = useMemo(() => {
     if (!createVariantOpen) return false;
@@ -145,8 +152,8 @@ export default function Page() {
         setFullScreenChatVersion(null);
       } else if (createVariantOpen) {
         setCreateVariantOpen(false);
-      } else if (selectedChatModelVersionUuid) {
-        setSelectedChatModelVersionUuid(null);
+      } else if (selectedChatModelVersion) {
+        setSelectedChatModelVersion(null);
       }
     },
     {
@@ -157,7 +164,7 @@ export default function Page() {
 
   // Subscribe to dev branch sync status
   useEffect(() => {
-    setSelectedChatModelVersionUuid(null);
+    setSelectedChatModelVersion(null);
     if (devBranchData?.cloud) return;
     let devBranchStream;
     createSupabaseClient().then((client) => {
@@ -314,7 +321,7 @@ export default function Page() {
         edges={edges}
         proOptions={{ hideAttribution: true }}
         onPaneClick={() => {
-          setSelectedChatModelVersionUuid(null);
+          setSelectedChatModelVersion(null);
         }}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
@@ -367,7 +374,7 @@ export default function Page() {
       </Drawer>
 
       <Drawer
-        open={selectedChatModelVersionUuid != null}
+        open={selectedChatModelVersion != null}
         direction="right"
         style={{ width: createVariantOpen ? "calc(100vw - 5rem)" : "auto" }}
         classNames={classNames(
@@ -375,7 +382,7 @@ export default function Page() {
           "mr-4"
         )}
       >
-        {selectedChatModelVersionUuid && (
+        {selectedChatModelVersion && (
           <div className="w-full h-full bg-transparent flex flex-row justify-end items-start">
             <div
               className={classNames(
@@ -441,7 +448,7 @@ export default function Page() {
                       <button
                         className="flex flex-col gap-y-2 pt-1 items-center btn btn-sm normal-case font-normal bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
                         onClick={() => {
-                          setSelectedChatModelVersionUuid(null);
+                          setSelectedChatModelVersion(null);
                         }}
                       >
                         <div className="flex flex-col">
@@ -601,11 +608,11 @@ export default function Page() {
         )}
       </Drawer>
       <Drawer
-        open={createVariantOpen && selectedChatModelVersionUuid != null}
+        open={createVariantOpen && selectedChatModelVersion != null}
         direction="left"
         classNames="!w-[5rem] pl-2 relative"
       >
-        {createVariantOpen && selectedChatModelVersionUuid != null && (
+        {createVariantOpen && selectedChatModelVersion != null && (
           <div className="w-full h-full bg-transparent flex flex-col justify-center items-start gap-y-3">
             <button
               className="absolute top-6 left-2 flex flex-col gap-y-2 pt-1 items-center btn btn-sm normal-case font-normal bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
@@ -634,7 +641,7 @@ export default function Page() {
                     className={classNames(
                       "flex flex-row items-center gap-x-2 rounded-full p-2 backdrop-blur-sm hover:bg-base-content/10 transition-all cursor-pointer relative",
                       "active:scale-90",
-                      selectedChatModelVersionUuid === versionData.uuid
+                      selectedChatModelVersion === versionData.uuid
                         ? "bg-base-content/20"
                         : "bg-transparent",
                       newVersionCache?.uuid == versionData.uuid &&
@@ -644,7 +651,7 @@ export default function Page() {
                     key={versionData.version ?? versionData.uuid.slice(0, 3)}
                     onClick={() => {
                       setNewVersionCache(null);
-                      setSelectedChatModelVersionUuid(versionData.uuid);
+                      setSelectedChatModelVersion(versionData.uuid);
                     }}
                   >
                     <div
@@ -806,8 +813,10 @@ const PromptDiffComponent = ({
 };
 
 function ModelVersionNode({ data }) {
-  const { selectedChatModelVersionUuid, setSelectedChatModelVersionUuid } =
-    useChatModelVersionStore();
+  const {
+    selectedChatModelVersion: selectedChatModelVersionUuid,
+    setSelectedChatModelVersion: setSelectedChatModelVersionUuid,
+  } = useChatModelVersionStore();
   return (
     <div
       className={classNames(
