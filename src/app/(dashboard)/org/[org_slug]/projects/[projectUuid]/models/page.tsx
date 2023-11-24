@@ -10,7 +10,6 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PencilSimple, Plus } from "@phosphor-icons/react";
-import { CreateDevModal } from "@/components/modals/CreateDevModal";
 import { useChatModel } from "@/hooks/useChatModel";
 import { ModelNode } from "@/components/nodes/ModelNode";
 import { GroupNode } from "@/components/nodes/GroupNode";

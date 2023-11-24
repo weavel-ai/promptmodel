@@ -3,11 +3,9 @@ import { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 export async function fetchChatLogSessions({
   supabaseClient,
   versionUuid,
-  devUuid,
 }: {
   supabaseClient: SupabaseClient;
   versionUuid: string;
-  devUuid?: string;
 }) {
   const res = await supabaseClient
     .from("chat_log_session")

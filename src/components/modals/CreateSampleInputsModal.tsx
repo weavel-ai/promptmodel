@@ -6,13 +6,13 @@ import { Modal } from "./Modal";
 import classNames from "classnames";
 import { ArrowFatUp, KeyReturn } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import { createSampleInput } from "@/apis/devCloud";
 import { useSupabaseClient } from "@/apis/base";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Editor } from "@monaco-editor/react";
 import { registerCustomTheme } from "@/lib/promptLanguage";
 import { IKeyboardEvent, editor } from "monaco-editor";
+import { createSampleInput } from "@/apis/sampleInput";
 
 interface Input {
   id: string;
@@ -125,8 +125,7 @@ export const CreateSampleInputModal = ({
         <p className="text-muted-content text-sm mb-1">
           Sample inputs will be used to test your PromptModel.
           <br />
-          These inputs will be shared throughout the current project's cloud
-          development branches.
+          These inputs will be shared throughout this current project.
           <br />
           You must write your inputs as a{" "}
           <Link

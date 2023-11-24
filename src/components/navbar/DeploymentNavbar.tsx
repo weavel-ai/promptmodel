@@ -68,14 +68,12 @@ export const DeploymentNavbar = (props: NavbarProps) => {
   }, [params?.promptModelUuid, params?.chatModelUuid]);
 
   useEffect(() => {
-    if (pathname.includes("dev/")) return;
     if (isMobile) {
       setShowDropdown(false);
     }
   }, [pathname]);
 
   useEffect(() => {
-    if (pathname.includes("dev/")) return;
     if (organization?.name && organization?.slug && orgData) {
       createSupabaseClient().then(async (supabase) => {
         if (
@@ -99,8 +97,6 @@ export const DeploymentNavbar = (props: NavbarProps) => {
       });
     }
   }, [orgData, organization?.name, organization?.slug]);
-
-  if (pathname.includes("dev/")) return null;
 
   return (
     <div
