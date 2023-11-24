@@ -81,7 +81,7 @@ async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
         # Find local server websocket
         project = (
             supabase.table("project")
-            .select("cli_access_key")
+            .select("cli_access_key, version")
             .eq("uuid", project_uuid)
             .execute()
             .data
@@ -137,6 +137,92 @@ async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
             run_config_dict["function_schemas"] = function_schemas.data
 
             new_messages = run_config.new_messages
+
+            if chat_model_version_config["uuid"] is None:
+                # find latest version
+                latest_version = (
+                    supabase.table("chat_model_version")
+                    .select("version")
+                    .eq("project_uuid", chat_model_version_config["project_uuid"])
+                    .order("created_at", desc=True)
+                    .execute()
+                    .data
+                )
+                if len(latest_version) == 0:
+                    chat_model_version_config["is_published"] = True
+                    chat_model_version_config["version"] = 1
+
+                    res = (
+                        supabase.table("chat_model_version")
+                        .insert(chat_model_version_config)
+                        .execute()
+                    )
+
+                    # update project version
+                    (
+                        supabase.table("project")
+                        .update({"version": project["version"] + 1})
+                        .eq("uuid", project_uuid)
+                        .execute()
+                    )
+                    (
+                        supabase.table("project_changelog")
+                        .insert(
+                            [
+                                {
+                                    "subject": "chat_model_version",
+                                    "identifier": [res.data[0]["uuid"]],
+                                    "action": "ADD",
+                                },
+                                {
+                                    "subject": "chat_model_version",
+                                    "identifier": [res.data[0]["uuid"]],
+                                    "action": "PUBLISH",
+                                },
+                            ]
+                        )
+                        .execute()
+                    )
+                else:
+                    chat_model_version_config = latest_version[0]["version"] + 1
+
+                    res = (
+                        supabase.table("chat_model_version")
+                        .insert(chat_model_version_config)
+                        .execute()
+                    )
+                    (
+                        supabase.table("project_changelog")
+                        .insert(
+                            {
+                                "subject": "chat_model_version",
+                                "identifier": [res.data[0]["uuid"]],
+                                "action": "ADD",
+                            }
+                        )
+                        .execute()
+                    )
+
+                chat_model_version_config["uuid"] = res.data[0]["uuid"]
+
+            # make session
+            if session_uuid is None:
+                res = (
+                    supabase.table("chat_log_session")
+                    .insert(
+                        {
+                            "version_uuid": chat_model_version_config["uuid"],
+                        }
+                    )
+                    .execute()
+                )
+                session_uuid = res.data[0]["uuid"]
+
+            # save new messages
+            for message in new_messages:
+                message["session_uuid"] = session_uuid
+            supabase.table("chat_log").insert(new_messages).execute()
+
             response_messages = []
             current_message = {
                 "role": "assistant",

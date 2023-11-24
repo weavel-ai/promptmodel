@@ -112,6 +112,7 @@ def validate_variable_matching(run_config, project_uuid) -> MessagesWithInputs:
 
 
 def update_db_in_prompt_model_run(
+    project: Dict,
     prompt_model_version_config: Optional[Dict[str, Any]] = None,
     run_log: Optional[Dict[str, Any]] = None,
     prompts: Optional[List[Dict[str, Any]]] = None,
@@ -140,16 +141,60 @@ def update_db_in_prompt_model_run(
                     .data
                 )
                 if len(latest_version) == 0:
-                    latest_version = 0
                     prompt_model_version_config["is_published"] = True
-                else:
-                    latest_version = latest_version[0]["version"]
+                    prompt_model_version_config["version"] = 1
+                    res = (
+                        supabase.table("prompt_model_version")
+                        .insert(prompt_model_version_config)
+                        .execute()
+                    )
 
-                res = (
-                    supabase.table("prompt_model_version")
-                    .insert(prompt_model_version_config)
-                    .execute()
-                )
+                    # update project version
+                    (
+                        supabase.table("project")
+                        .update({"version": project["version"] + 1})
+                        .eq("uuid", project["uuid"])
+                        .execute()
+                    )
+                    (
+                        supabase.table("project_changelog")
+                        .insert(
+                            [
+                                {
+                                    "subject": "prompt_model_version",
+                                    "identifier": [res.data[0]["uuid"]],
+                                    "action": "ADD",
+                                },
+                                {
+                                    "subject": "prompt_model_version",
+                                    "identifier": [res.data[0]["uuid"]],
+                                    "action": "PUBLISH",
+                                },
+                            ]
+                        )
+                        .execute()
+                    )
+                else:
+                    prompt_model_version_config = latest_version[0]["version"] + 1
+
+                    res = (
+                        supabase.table("prompt_model_version")
+                        .insert(prompt_model_version_config)
+                        .execute()
+                    )
+                    (
+                        supabase.table("project_changelog")
+                        .insert(
+                            [
+                                {
+                                    "subject": "prompt_model_version",
+                                    "identifier": [res.data[0]["uuid"]],
+                                    "action": "ADD",
+                                }
+                            ]
+                        )
+                        .execute()
+                    )
 
                 # add res.data[0]["uuid"] for each prompt
                 for prompt in prompts:
@@ -228,48 +273,6 @@ def update_db_in_chat_model_run(
             local_task_error_type == LocalTaskErrorType.FUNCTION_CALL_FAILED_ERROR.value
             or local_task_error_type == LocalTaskErrorType.PARSING_FAILED_ERROR.value
         ):
-            if chat_model_version_config["uuid"] is None:
-                # find latest version
-                latest_version = (
-                    supabase.table("prompt_model_version")
-                    .select("version")
-                    .eq("project_uuid", chat_model_version_config["project_uuid"])
-                    .order("created_at", desc=True)
-                    .execute()
-                    .data
-                )
-                if len(latest_version) == 0:
-                    latest_version = 0
-                    chat_model_version_config["is_published"] = True
-                else:
-                    latest_version = latest_version[0]["version"]
-
-                res = (
-                    supabase.table("prompt_model_version")
-                    .insert(chat_model_version_config)
-                    .execute()
-                )
-
-                chat_model_version_config["uuid"] = res.data[0]["uuid"]
-
-            # make session
-            if session_uuid is None:
-                res = (
-                    supabase.table("chat_log_session")
-                    .insert(
-                        {
-                            "version_uuid": chat_model_version_config["uuid"],
-                        }
-                    )
-                    .execute()
-                )
-                session_uuid = res.data[0]["uuid"]
-
-            # save new messages
-            for message in new_messages:
-                message["session_uuid"] = session_uuid
-            supabase.table("chat_log").insert(new_messages).execute()
-
             # save response messages
             for message in response_messages:
                 message["session_uuid"] = session_uuid
@@ -284,41 +287,10 @@ def update_db_in_chat_model_run(
             return
 
     else:
-        if chat_model_version_config["uuid"] is None:
-            # find latest version
-            latest_version = (
-                supabase.table("prompt_model_version")
-                .select("version")
-                .eq("project_uuid", chat_model_version_config["project_uuid"])
-                .order("created_at", desc=True)
-                .execute()
-                .data
-            )
-            if len(latest_version) == 0:
-                latest_version = 0
-                chat_model_version_config["is_published"] = True
-            else:
-                latest_version = latest_version[0]["version"]
-
-            res = (
-                supabase.table("prompt_model_version")
-                .insert(chat_model_version_config)
-                .execute()
-            )
-
-            chat_model_version_config["uuid"] = res.data[0]["uuid"]
-
-        # make session
-        if session_uuid is None:
-            res = (
-                supabase.table("chat_log_session")
-                .insert(
-                    {
-                        "version_uuid": chat_model_version_config["uuid"],
-                    }
-                )
-                .execute()
-            )
+        # save new messages
+        for message in new_messages:
+            message["session_uuid"] = session_uuid
+        supabase.table("chat_log").insert(new_messages).execute()
 
         # save new messages
         for message in new_messages:

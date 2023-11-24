@@ -100,7 +100,7 @@ async def run_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
         # Find local server websocket
         project = (
             supabase.table("project")
-            .select("cli_access_key")
+            .select("cli_access_key, version, uuid")
             .eq("uuid", project_uuid)
             .execute()
             .data
@@ -187,6 +187,7 @@ async def run_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
                 if "status" in chunk:
                     if chunk["status"] in ["completed", "failed"]:
                         update_db_in_prompt_model_run(
+                            project,
                             prompt_model_version_config,
                             run_log,
                             prompts,
