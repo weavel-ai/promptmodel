@@ -13,6 +13,7 @@ type NewVersionCache = {
   version?: number | null;
   systemPrompt: string | null;
   model: string | null;
+  // TODO: Add functions
 };
 
 type Store = {

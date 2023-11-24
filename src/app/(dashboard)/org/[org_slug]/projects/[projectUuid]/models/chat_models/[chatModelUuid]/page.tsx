@@ -194,11 +194,9 @@ const VersionsPage = () => {
   const {
     isCreateVariantOpen,
     selectedChatModelVersion,
-    setFullScreenChatVersion,
     setSelectedChatModelVersion,
     setOriginalVersionData,
   } = useChatModelVersionStore();
-  const { projectData } = useProject();
   const nodeTypes = useMemo(() => ({ modelVersion: ModelVersionNode }), []);
 
   const queryClient = useQueryClient();
@@ -213,7 +211,6 @@ const VersionsPage = () => {
     selectedChatModelVersionUuid
   );
   const [windowWidth, windowHeight] = useWindowSize();
-  const [centerNodePosition, setCenterNodePosition] = useState(null);
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
   useEffect(() => {
@@ -247,7 +244,7 @@ const VersionsPage = () => {
     const maxNodesAtDepth = Math.max(
       ...root.descendants().map((d: any) => d.depth)
     );
-    const requiredWidth = maxNodesAtDepth * 140;
+    const requiredWidth = maxNodesAtDepth * 300;
     const layout = tree().size([requiredWidth, root.height * 160]);
     const nodes = layout(root).descendants();
 
@@ -261,7 +258,6 @@ const VersionsPage = () => {
     if (publishedNodePosition) {
       const centerX = windowWidth / 2;
       const centerY = (windowHeight - 48) / 2;
-      setCenterNodePosition({ x: centerX, y: centerY });
       const offsetX = centerX - publishedNodePosition.x;
       const offsetY = centerY - publishedNodePosition.y;
       nodes.forEach((node) => {
@@ -567,7 +563,6 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                   {!chatModelVersionData?.is_published && (
                     <button
                       className="flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 bg-secondary-content hover:bg-secondary group"
-                      // className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
                       onClick={handleClickPublish}
                     >
                       <RocketLaunch
@@ -621,11 +616,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     )}
                     <p className="text-base-content text-sm">
                       From&nbsp;
-                      <u>
-                        V
-                        {originalVersionData?.version ??
-                          originalVersionData?.uuid?.slice(0, 6)}
-                      </u>
+                      <u>V{originalVersionData?.version}</u>
                     </p>
                   </div>
                 </div>

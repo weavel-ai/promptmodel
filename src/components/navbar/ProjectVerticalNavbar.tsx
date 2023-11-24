@@ -2,6 +2,7 @@
 
 import { useOrgData } from "@/hooks/useOrgData";
 import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
+import { usePromptModelVersionStore } from "@/stores/promptModelVersionStore";
 import {
   DiscordLogo,
   GearSix,
@@ -16,9 +17,13 @@ import { useParams, usePathname } from "next/navigation";
 
 export const ProjectVerticalNavbar = () => {
   const pathname = usePathname();
-  const { isCreateVariantOpen } = useChatModelVersionStore();
+  const { isCreateVariantOpen: isCreateChatModelVariantOpen } =
+    useChatModelVersionStore();
+  const { isCreateVariantOpen: isCreatePromptModelVariantOpen } =
+    usePromptModelVersionStore();
 
-  if (pathname.includes("dev/") || isCreateVariantOpen) return null;
+  if (isCreateChatModelVariantOpen || isCreatePromptModelVariantOpen)
+    return null;
 
   return (
     <div

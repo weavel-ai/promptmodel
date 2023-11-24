@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
 import { fetchPromptModels } from "@/apis/promptModel";
+import { useMemo } from "react";
 
 export const usePromptModel = () => {
   const params = useParams();
@@ -21,8 +22,19 @@ export const usePromptModel = () => {
     enabled: projectUuid != undefined && projectUuid != null,
   });
 
+  const promptModelData = useMemo(() => {
+    if (promptModelListData == undefined) {
+      return undefined;
+    }
+    return promptModelListData.find(
+      (promptModel: { uuid: string }) =>
+        promptModel.uuid == params?.promptModelUuid
+    );
+  }, [promptModelListData, params?.promptModelUuid]);
+
   return {
     promptModelUuid: params?.promptModelUuid as string,
+    promptModelData,
     promptModelListData,
   };
 };

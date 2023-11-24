@@ -2,10 +2,10 @@ import { useSupabaseClient } from "@/apis/base";
 import { fetchVersionRunLogs } from "@/apis/runlog";
 import { useQuery } from "@tanstack/react-query";
 
-export const useRunLog = (versionUuid: string) => {
+export const useRunLogs = (versionUuid: string) => {
   const { createSupabaseClient } = useSupabaseClient();
 
-  const { data: runLogData } = useQuery({
+  const { data: runLogData, refetch: refetchRunLogData } = useQuery({
     queryKey: ["runLogData", { uuid: versionUuid }],
     queryFn: async () =>
       await fetchVersionRunLogs(await createSupabaseClient(), versionUuid),
@@ -14,5 +14,6 @@ export const useRunLog = (versionUuid: string) => {
 
   return {
     runLogData,
+    refetchRunLogData,
   };
 };
