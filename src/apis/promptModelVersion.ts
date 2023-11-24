@@ -32,7 +32,7 @@ export async function updatePublishedPromptModelVersion(
   supabaseClient: SupabaseClient,
   uuid: string,
   previousPublishedVersionUuid: string | null,
-  projectVersion: string,
+  projectVersion: number,
   projectUuid: string
 ) {
   if (previousPublishedVersionUuid) {
@@ -47,17 +47,10 @@ export async function updatePublishedPromptModelVersion(
     .eq("uuid", uuid)
     .single();
 
-  // Update project version
-  const projectVersionLevel3: number = parseInt(projectVersion.split(".")[2]);
-  const newProjectVersion =
-    projectVersion.split(".").slice(0, 2).join(".") +
-    "." +
-    (projectVersionLevel3 + 1).toString();
-
   await supabaseClient
     .from("project")
     .update({
-      version: newProjectVersion,
+      version: projectVersion + 1,
     })
     .eq("uuid", projectUuid);
 

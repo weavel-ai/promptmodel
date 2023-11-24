@@ -1,6 +1,7 @@
 "use client";
 
 import { useOrgData } from "@/hooks/useOrgData";
+import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
 import {
   DiscordLogo,
   GearSix,
@@ -15,8 +16,9 @@ import { useParams, usePathname } from "next/navigation";
 
 export const ProjectVerticalNavbar = () => {
   const pathname = usePathname();
+  const { isCreateVariantOpen } = useChatModelVersionStore();
 
-  if (pathname.includes("dev/")) return null;
+  if (pathname.includes("dev/") || isCreateVariantOpen) return null;
 
   return (
     <div
@@ -51,7 +53,7 @@ export const ProjectVerticalNavbar = () => {
         </VerticalNavbarItem>
         <VerticalNavbarItem
           label="Discord"
-          href="https://discord.gg/JrwzhSUW"
+          href="https://discord.gg/2Y36M36tZf"
           external
         >
           <DiscordLogo weight="fill" className="text-base-content" size={20} />

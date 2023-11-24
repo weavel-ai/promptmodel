@@ -1,35 +1,32 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { InputField } from "../InputField";
 import { Modal } from "./Modal";
 import classNames from "classnames";
-import { ArrowSquareOut } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
 import { useSupabaseClient } from "@/apis/base";
 import { useParams, useRouter } from "next/navigation";
-import { SelectField } from "../select/SelectField";
 import Link from "next/link";
-import { useDevBranch } from "@/hooks/useDevBranch";
 import { createPromptModel } from "@/apis/promptModel";
 import { createChatModel } from "@/apis/chatModel";
 
 export const CreateModelModal = ({
   isOpen,
   setIsOpen,
+  type: modelType,
   onCreated,
 }: {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  type: "PromptModel" | "ChatModel";
   onCreated: () => void;
 }) => {
   const { createSupabaseClient } = useSupabaseClient();
   const params = useParams();
   const router = useRouter();
-  const { devBranchData } = useDevBranch();
   const [name, setName] = useState("");
   const [createDisabled, setCreateDisabled] = useState(true);
-  const [type, setType] = useState<"PromptModel" | "ChatModel">("PromptModel");
 
   useEffect(() => {
     setName("");
@@ -40,13 +37,13 @@ export const CreateModelModal = ({
     // TODO: Add PromptModel / ChatModel types
     const toastId = toast.loading("Creating...");
     let resData;
-    if (type == "PromptModel") {
+    if (modelType == "PromptModel") {
       resData = await createPromptModel({
         supabaseClient: await createSupabaseClient(),
         name,
         projectUuid: params.projectUuid as string,
       });
-    } else if (type == "ChatModel") {
+    } else if (modelType == "ChatModel") {
       resData = await createChatModel({
         supabaseClient: await createSupabaseClient(),
         name,
@@ -61,11 +58,11 @@ export const CreateModelModal = ({
     });
     setIsOpen(false);
     onCreated();
-    if (type == "PromptModel")
+    if (modelType == "PromptModel")
       router.push(
         `/org/${params.org_slug}/projects/${params.projectUuid}/models/prompt_models/${resData.uuid}`
       );
-    else if (type == "ChatModel") {
+    else if (modelType == "ChatModel") {
       router.push(
         `/org/${params.org_slug}/projects/${params.projectUuid}/models/chat_models/${resData.uuid}`
       );
@@ -93,18 +90,26 @@ export const CreateModelModal = ({
     <Modal isOpen={isOpen} setIsOpen={setIsOpen}>
       <div className="bg-popover shadow-lg p-6 rounded-box flex flex-col gap-y-2 justify-start items-start min-w-[360px] max-w-[80vw]">
         <p className="text-popover-content font-bold text-2xl mb-2">
-          Create PromptModel / ChatModel
+          Create {modelType}
         </p>
-        <p className="text-muted-content text-sm">
-          A <strong>PromptModel</strong> is a blend of system, user, assistant
-          prompts, and LLM type, designed to work as a universal semantic
-          function.
-          <br />A <strong>ChatModel</strong> is a blend of system prompt and LLM
-          type, designed to work as a chatbot with a specific purpose and
-          personality.
-        </p>
+        {modelType == "PromptModel" && (
+          <p className="text-muted-content text-sm">
+            A <strong>PromptModel</strong> is a blend of system, user, assistant
+            prompts, and LLM type, designed to work as a universal semantic
+            function.
+          </p>
+        )}
+        {modelType == "ChatModel" && (
+          <p className="text-muted-content text-sm">
+            A <strong>ChatModel</strong> is a blend of system prompt and LLM
+            type, designed to work as a chatbot with a specific purpose and
+            personality.
+          </p>
+        )}
         <Link
-          href="https://www.promptmodel.run/docs/integrations/python-sdk/chatmodel"
+          href={`https://www.promptmodel.run/docs/integrations/python-sdk/${
+            modelType == "PromptModel" ? "promptmodel" : "chatmodel"
+          }`}
           target="_blank"
           className="text-muted-content link link-accent"
         >
@@ -119,18 +124,6 @@ export const CreateModelModal = ({
           type="text"
           autoComplete="off"
         />
-        <p className="label-text">Type</p>
-        <select
-          value={type}
-          onChange={
-            (e) => setType(e.target.value as "PromptModel" | "ChatModel")
-            // setType("PromptModel")
-          }
-          className="select bg-base-100 active:outline-none focus:outline-none"
-        >
-          <option>PromptModel</option>
-          <option>ChatModel</option>
-        </select>
         <div className="flex flex-row w-full justify-end">
           <button
             className={classNames(

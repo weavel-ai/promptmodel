@@ -1,30 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { InputField } from "../InputField";
 import { Modal } from "./Modal";
 import classNames from "classnames";
-import {
-  ArrowFatUp,
-  ArrowSquareOut,
-  DotsSix,
-  DotsSixVertical,
-  KeyReturn,
-  Plus,
-  Trash,
-} from "@phosphor-icons/react";
+import { ArrowFatUp, KeyReturn } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import {
-  createDevBranch,
-  createPromptModel,
-  createSampleInput,
-} from "@/apis/devCloud";
+import { createSampleInput } from "@/apis/devCloud";
 import { useSupabaseClient } from "@/apis/base";
-import { useParams, useRouter } from "next/navigation";
-import { SelectField } from "../select/SelectField";
+import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useDevBranch } from "@/hooks/useDevBranch";
-import { ReactSortable } from "react-sortablejs";
 import { Editor } from "@monaco-editor/react";
 import { registerCustomTheme } from "@/lib/promptLanguage";
 import { IKeyboardEvent, editor } from "monaco-editor";

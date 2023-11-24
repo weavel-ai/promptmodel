@@ -4,7 +4,6 @@ import classNames from "classnames";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ModalPortal } from "./ModalPortal";
 import { motion } from "framer-motion";
-import { useDevBranch } from "@/hooks/useDevBranch";
 import { CreateSampleInputModal } from "./modals/CreateSampleInputsModal";
 import ReactJson from "react-json-view";
 
@@ -15,7 +14,6 @@ interface SampleSelectorProps {
 
 export const SampleSelector = (props: SampleSelectorProps) => {
   const { sampleList, refetchSampleList } = useSamples();
-  const { isCloudDev } = useDevBranch();
   const [isOpen, setIsOpen] = useState(false);
   const [showCreateSampleInputsModal, setShowCreateSampleInputsModal] =
     useState(false);
@@ -192,15 +190,13 @@ export const SampleSelector = (props: SampleSelectorProps) => {
                         </div>
                       );
                     })}
-                    {isCloudDev && (
-                      <button
-                        className="flex flex-row w-full justify-start gap-x-2 hover:bg-base-content/20 rounded-xl px-4 py-2 transition-colors text-secondary font-medium items-center"
-                        onClick={() => setShowCreateSampleInputsModal(true)}
-                      >
-                        <Plus size={20} weight="bold" />
-                        <p>Add sample inputs</p>
-                      </button>
-                    )}
+                    <button
+                      className="flex flex-row w-full justify-start gap-x-2 hover:bg-base-content/20 rounded-xl px-4 py-2 transition-colors text-secondary font-medium items-center"
+                      onClick={() => setShowCreateSampleInputsModal(true)}
+                    >
+                      <Plus size={20} weight="bold" />
+                      <p>Add sample inputs</p>
+                    </button>
                   </div>
                 </div>
                 <motion.div

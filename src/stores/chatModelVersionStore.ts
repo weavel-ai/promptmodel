@@ -9,12 +9,14 @@ export type RunLog = {
 };
 
 type NewVersionCache = {
-  uuid: string | null;
+  uuid?: string | null;
+  version?: number | null;
   systemPrompt: string | null;
   model: string | null;
 };
 
 type Store = {
+  isCreateVariantOpen: boolean;
   selectedChatModelVersion: number | null;
   chatModelVersionLists: Record<string, any>;
   originalVersionData: Record<string, any> | null;
@@ -29,6 +31,7 @@ type Store = {
 };
 
 type Actions = {
+  setIsCreateVariantOpen: (isOpen: boolean) => void;
   setSelectedChatModelVersion: (version: number) => void;
   setOriginalVersionData: (data: Record<string, any> | null) => void;
   setSelectedModel: (model: string) => void;
@@ -44,6 +47,7 @@ type Actions = {
 };
 
 export const useChatModelVersionStore = create<Store & Actions>((set) => ({
+  isCreateVariantOpen: false,
   selectedChatModelVersion: null,
   chatModelVersionLists: {},
   originalVersionData: null,
@@ -55,6 +59,7 @@ export const useChatModelVersionStore = create<Store & Actions>((set) => ({
   newVersionCache: null,
   focusedEditor: null,
   fullScreenChatVersion: null,
+  setIsCreateVariantOpen: (isOpen) => set({ isCreateVariantOpen: isOpen }),
   setSelectedChatModelVersion: (version) =>
     set({ selectedChatModelVersion: version }),
   setOriginalVersionData: (data) => set({ originalVersionData: data }),

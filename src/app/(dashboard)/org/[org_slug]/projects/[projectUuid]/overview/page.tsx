@@ -1,7 +1,6 @@
 "use client";
 
 import { useChangeLog } from "@/hooks/useChangelog";
-import { useDevBranch } from "@/hooks/useDevBranch";
 import { useProject } from "@/hooks/useProject";
 import {
   ArrowSquareOut,
@@ -21,7 +20,6 @@ import classNames from "classnames";
 export default function Page() {
   const params = useParams();
   const { projectData } = useProject();
-  const { devBranchListData } = useDevBranch();
   const { changeLogListData } = useChangeLog();
 
   dayjs.extend(relativeTime);
@@ -50,61 +48,21 @@ export default function Page() {
             </div>
           </div>
           <div className="w-1/2 h-fit flex flex-col">
-            <p className="text-xl font-bold pb-4">
-              Active Development Branches
-            </p>
+            <p className="text-xl font-bold pb-4">Changelog</p>
             {/* TODO */}
-            <div className="w-full h-fit max-h-[20vh] overflow-auto">
-              <div className="w-full flex flex-col">
-                {devBranchListData?.map((branch) => {
+            <div className="w-full h-fit max-h-[50vh] overflow-auto">
+              <div className="w-full h-full flex flex-col gap-y-2">
+                {changeLogListData?.length == 0 && (
+                  <p className="text-muted-content">Changelog is empty.</p>
+                )}
+                {changeLogListData?.map((changeLog) => {
                   return (
-                    <Link
-                      key={branch.name}
-                      href={`/org/${params?.org_slug}/projects/${params?.projectUuid}/dev/${branch.name}`}
-                      // target="_blank"
-                      className="w-full flex flex-row items-center gap-x-4 transition-all hover:bg-base-300/50 rounded-lg py-1 pr-2 group"
+                    <div
+                      key={changeLog.previous_version}
+                      className="flex flex-row bg-base-200 w-full p-1 px-4 rounded place-content-between"
                     >
-                      <div className="bg-base-300 text-base-content px-2 py-1 flex-shrink-0 h-fit text-center rounded flex flex-row gap-x-2">
-                        {branch.cloud ? (
-                          <Cloud size={20} weight="fill" />
-                        ) : (
-                          <GlobeHemisphereWest size={20} weight="fill" />
-                        )}
-                        {branch.name}
-                      </div>
-                      <div className="flex-grow h-fit text-left">
-                        <p className="text-sm text-muted-content">
-                          Last updated {dayjs(branch.created_at).fromNow()}
-                        </p>
-                      </div>
-                      <ArrowSquareOut
-                        size={20}
-                        weight="fill"
-                        className="text-muted-content group-hover:text-base-content"
-                      />
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="w-full h-fit flex flex-col">
-          <p className="text-xl font-bold pb-4">Changelog</p>
-          {/* TODO */}
-          <div className="w-full h-fit max-h-[50vh] overflow-auto">
-            <div className="w-full h-full flex flex-col gap-y-2">
-              {changeLogListData?.length == 0 && (
-                <p className="text-muted-content">Changelog is empty.</p>
-              )}
-              {changeLogListData?.map((changeLog) => {
-                return (
-                  <div
-                    key={changeLog.previous_version}
-                    className="flex flex-row bg-base-200 w-full p-1 px-4 rounded place-content-between"
-                  >
-                    <div className="place-self-start text-base-content flex flex-col">
-                      {/* {changeLog.logs.action} : {changeLog.logs.object} }
+                      <div className="place-self-start text-base-content flex flex-col">
+                        {/* {changeLog.logs.action} : {changeLog.logs.object} }
                       <ReactJson
                         src={changeLog.logs}
                         name={false}
@@ -113,19 +71,21 @@ export default function Page() {
                         enableClipboard={false}
                 theme="harmonic"
                 />*/}
-                      <div className="flex flex-col gap-y-2">
-                        <ChangeLogComponent changeLog={changeLog} />
+                        <div className="flex flex-col gap-y-2">
+                          <ChangeLogComponent changeLog={changeLog} />
+                        </div>
                       </div>
+                      <p className="text-gray-400 text-sm">
+                        {dayjs(changeLog.created_at).fromNow()}
+                      </p>
                     </div>
-                    <p className="text-gray-400 text-sm">
-                      {dayjs(changeLog.created_at).fromNow()}
-                    </p>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
+        <div className="w-full h-fit flex flex-col"></div>
       </div>
     </div>
   );

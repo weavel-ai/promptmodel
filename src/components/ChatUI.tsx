@@ -6,7 +6,6 @@ import { ModalPortal } from "./ModalPortal";
 import dayjs from "dayjs";
 import { ChatSessionSelector } from "./select/ChatSessionSelector";
 import { firstLetterToUppercase } from "@/utils";
-import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -40,8 +39,8 @@ export function ChatUI({
     selectedFunctions,
     originalVersionData,
     modifiedSystemPrompt,
-    selectedChatModelVersion: selectedChatModelVersionUuid,
-    setSelectedChatModelVersion: setSelectedChatModelVersionUuid,
+    selectedChatModelVersion,
+    setSelectedChatModelVersion,
     setNewVersionCache,
     setFullScreenChatVersion,
   } = useChatModelVersionStore();
@@ -64,7 +63,7 @@ export function ChatUI({
     } else {
       setSelectedSessionUuid(null);
     }
-  }, [chatLogSessionListData, selectedChatModelVersionUuid]);
+  }, [chatLogSessionListData, selectedChatModelVersion]);
 
   // Scroll to bottom whenever chatLogListData changes
   useEffect(() => {
@@ -105,15 +104,14 @@ export function ChatUI({
 
     const args = {
       chatModelUuid: chatModelUuid,
-      sessionUuid: selectedSessionUuid,
       userInput: userInput,
       systemPrompt: systemPrompt,
       model: isNew ? selectedModel : originalVersionData.model,
-      fromUuid: isNew ? originalVersionData?.uuid ?? null : null,
+      fromVersion: isNew ? originalVersionData?.version : null,
+      sessionUuid: selectedSessionUuid,
       versionUuid: isNew ? null : originalVersionData?.uuid,
       functions: isNew ? selectedFunctions : originalVersionData?.functions,
       onNewData: async (data) => {
-        console.log(data);
         switch (data?.status) {
           case "completed":
             await refetchChatLogListData();
@@ -132,6 +130,7 @@ export function ChatUI({
         if (data?.chat_model_version_uuid && isNew) {
           setNewVersionCache({
             uuid: data?.chat_model_version_uuid,
+            version: data?.version,
             systemPrompt: systemPrompt,
             model: selectedModel,
           });
@@ -153,7 +152,7 @@ export function ChatUI({
     if (isNew) {
       await refetchChatModelVersionListData();
       if (!originalVersionData?.uuid) {
-        setSelectedChatModelVersionUuid(newVersionCache?.uuid);
+        setSelectedChatModelVersion(1);
       }
     }
   }

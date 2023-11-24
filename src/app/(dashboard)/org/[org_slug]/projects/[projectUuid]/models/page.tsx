@@ -17,6 +17,7 @@ import { GroupNode } from "@/components/nodes/GroupNode";
 import { useWindowSize } from "@react-hook/window-size";
 import { CreateModelModal } from "@/components/modals/CreateModelModal";
 import { useQueryClient } from "@tanstack/react-query";
+import { SelectTab } from "@/components/SelectTab";
 
 dayjs.extend(relativeTime);
 
@@ -27,6 +28,13 @@ const NODE_PADDING = 32;
 const initialNodes = [];
 const initialEdges = [];
 
+enum Tab {
+  PROMPT_MODEL = "PromptModel",
+  CHAT_MODEL = "ChatModel",
+}
+
+const TABS = [Tab.PROMPT_MODEL, Tab.CHAT_MODEL];
+
 export default function Page() {
   const [windowWidth, windowHeight] = useWindowSize();
   const [nodes, setNodes] = useState(initialNodes);
@@ -34,6 +42,7 @@ export default function Page() {
   const { chatModelListData } = useChatModel();
   const { promptModelListData } = usePromptModel();
   const [showCreateModelModal, setShowCreateModelModal] = useState(false);
+  const [selectedTab, setSelectedTab] = useState(Tab.PROMPT_MODEL);
   const queryClient = useQueryClient();
 
   const nodeTypes = useMemo(
@@ -43,154 +52,60 @@ export default function Page() {
 
   // Build nodes
   useEffect(() => {
-    if (!promptModelListData || !chatModelListData) return;
+    if (selectedTab === Tab.PROMPT_MODEL && !promptModelListData) return;
+    if (selectedTab === Tab.CHAT_MODEL && !chatModelListData) return;
 
-    // Calculations for PromptModel
-    const promptModelTotalNodes = promptModelListData.length;
-    let maxPromptNodesPerRow = Math.floor(
+    // Calculations
+    const totalNodes =
+      selectedTab === Tab.PROMPT_MODEL
+        ? promptModelListData.length
+        : chatModelListData.length;
+
+    let maxNodesPerRow = Math.floor(
       (windowWidth - NODE_PADDING) / (NODE_WIDTH + NODE_PADDING)
     );
-    maxPromptNodesPerRow = Math.min(
-      maxPromptNodesPerRow,
-      promptModelTotalNodes
-    );
-    const promptNumRows = Math.ceil(
-      promptModelTotalNodes / maxPromptNodesPerRow
-    );
-    const promptTotalHeight =
-      promptNumRows * NODE_HEIGHT + (promptNumRows - 1) * NODE_PADDING;
-    const promptTopPadding = (windowHeight - promptTotalHeight) / 2;
+    maxNodesPerRow = Math.min(maxNodesPerRow, totalNodes);
+    const numRows = Math.ceil(totalNodes / maxNodesPerRow);
+    const totalHeight = numRows * NODE_HEIGHT + (numRows - 1) * NODE_PADDING;
+    const topPadding = (windowHeight - totalHeight) / 2;
 
-    // Calculations for ChatModel
-    const chatModelTotalNodes = chatModelListData.length;
-    let maxChatNodesPerRow = Math.floor(
-      (windowWidth - NODE_PADDING) / (NODE_WIDTH + NODE_PADDING)
-    );
-    maxChatNodesPerRow = Math.min(maxChatNodesPerRow, chatModelTotalNodes);
-    const chatNumRows = Math.ceil(chatModelTotalNodes / maxChatNodesPerRow);
-    const chatTotalHeight =
-      chatNumRows * NODE_HEIGHT + (chatNumRows - 1) * NODE_PADDING;
-    const chatTopPadding = promptTopPadding + promptTotalHeight + 30 + 80 + 20; // Adjust the spacing between two groups
+    const modelListData =
+      selectedTab === Tab.PROMPT_MODEL
+        ? promptModelListData
+        : chatModelListData;
+    const newNodes = modelListData.map((model, index) => {
+      const row = Math.floor(index / maxNodesPerRow);
+      const col = index % maxNodesPerRow;
+      const x =
+        (windowWidth -
+          NODE_WIDTH * maxNodesPerRow -
+          NODE_PADDING * (maxNodesPerRow - 1)) /
+          2 +
+        col * (NODE_WIDTH + NODE_PADDING);
+      const y = topPadding + row * (NODE_HEIGHT + NODE_PADDING);
 
-    // Initialize nodes array
-    const newNodes = [];
-
-    if (promptModelListData.length > 0) {
-      // Add group for PromptModels
-      newNodes.push({
-        id: "PromptModels",
-        type: "groupLabel",
-        position: {
-          x:
-            (windowWidth -
-              NODE_WIDTH * maxPromptNodesPerRow -
-              NODE_PADDING * (maxPromptNodesPerRow - 1)) /
-              2 -
-            28,
-          y: promptTopPadding - 80,
-        },
-        style: {
-          width:
-            NODE_WIDTH * maxPromptNodesPerRow +
-            NODE_PADDING * (maxPromptNodesPerRow - 1) +
-            56,
-          height: promptTotalHeight + 30 + 80,
-        },
+      return {
+        id: model.uuid,
+        type: "model",
+        position: { x, y },
         data: {
-          label: "PromptModels",
+          label: model.name,
+          name: model.name,
+          uuid: model.uuid,
+          created_at: model.created_at,
+          type: selectedTab,
         },
-      });
-
-      // Add PromptModel nodes
-      newNodes.push(
-        ...promptModelListData.map((model, index) => {
-          const row = Math.floor(index / maxPromptNodesPerRow);
-          const col = index % maxPromptNodesPerRow;
-          const x =
-            (windowWidth -
-              NODE_WIDTH * maxPromptNodesPerRow -
-              NODE_PADDING * (maxPromptNodesPerRow - 1)) /
-              2 +
-            col * (NODE_WIDTH + NODE_PADDING);
-          const y = promptTopPadding + row * (NODE_HEIGHT + NODE_PADDING);
-
-          return {
-            id: model.uuid,
-            type: "model",
-            position: { x, y },
-            data: {
-              label: model.name,
-              name: model.name,
-              uuid: model.uuid,
-              created_at: model.created_at,
-              type: "PromptModel",
-            },
-          };
-        })
-      );
-    }
-
-    if (chatModelListData.length > 0) {
-      // Add group for ChatModels
-      newNodes.push({
-        id: "ChatModels",
-        type: "groupLabel",
-        position: {
-          x:
-            (windowWidth -
-              NODE_WIDTH * maxChatNodesPerRow -
-              NODE_PADDING * (maxChatNodesPerRow - 1)) /
-              2 -
-            28,
-          y: chatTopPadding - 80,
-        },
-        style: {
-          width:
-            NODE_WIDTH * maxChatNodesPerRow +
-            NODE_PADDING * (maxChatNodesPerRow - 1) +
-            56,
-          height: chatTotalHeight + 30 + 80,
-        },
-        data: {
-          label: "ChatModels",
-        },
-      });
-
-      // Add ChatModel nodes
-      newNodes.push(
-        ...chatModelListData.map((model, index) => {
-          const row = Math.floor(index / maxChatNodesPerRow);
-          const col = index % maxChatNodesPerRow;
-          const x =
-            (windowWidth -
-              NODE_WIDTH * maxChatNodesPerRow -
-              NODE_PADDING * (maxChatNodesPerRow - 1)) /
-              2 +
-            col * (NODE_WIDTH + NODE_PADDING);
-          const y = chatTopPadding + row * (NODE_HEIGHT + NODE_PADDING);
-
-          return {
-            id: model.uuid,
-            type: "model",
-            position: { x, y },
-            data: {
-              label: model.name,
-              name: model.name,
-              uuid: model.uuid,
-              created_at: model.created_at,
-              type: "ChatModel",
-            },
-          };
-        })
-      );
-    }
+      };
+    });
 
     setNodes(newNodes);
-  }, [promptModelListData, chatModelListData]);
+  }, [selectedTab, promptModelListData, chatModelListData]);
 
   function handleModelCreated() {
     queryClient.invalidateQueries({
-      predicate: (query) => query.queryKey[0] === "modelListData",
+      predicate: (query) =>
+        query.queryKey[0] === "modelListData" &&
+        query.queryKey[1]["type"] === selectedTab,
     });
   }
 
@@ -204,10 +119,18 @@ export default function Page() {
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+        <div className="fixed top-16 left-24 z-50">
+          <SelectTab
+            tabs={TABS}
+            selectedTab={selectedTab}
+            onSelect={(newTab) => setSelectedTab(newTab as Tab)}
+          />
+        </div>
         <CreateNewButton onClick={() => setShowCreateModelModal(true)} />
         <CreateModelModal
           isOpen={showCreateModelModal}
           setIsOpen={setShowCreateModelModal}
+          type={selectedTab}
           onCreated={handleModelCreated}
         />
       </ReactFlow>

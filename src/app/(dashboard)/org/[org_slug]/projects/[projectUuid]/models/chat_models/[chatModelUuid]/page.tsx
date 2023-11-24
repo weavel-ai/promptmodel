@@ -10,38 +10,28 @@ import ReactFlow, {
   Position,
 } from "reactflow";
 import { motion } from "framer-motion";
-import {
-  ArrowsOut,
-  CaretDown,
-  CornersOut,
-  RocketLaunch,
-  XCircle,
-} from "@phosphor-icons/react";
+import { GitBranch, RocketLaunch, XCircle } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
 import { useSupabaseClient } from "@/apis/base";
 import "reactflow/dist/style.css";
-import { useRunLog } from "@/hooks/useRunLog";
-import { RunLog } from "@/apis/runlog";
 import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
 import { tree, stratify } from "d3-hierarchy";
 import { useQueryClient } from "@tanstack/react-query";
 import { ResizableSeparator } from "@/components/ResizableSeparator";
 import { useProject } from "@/hooks/useProject";
-import ReactJson from "react-json-view";
 import { SelectTab } from "@/components/SelectTab";
-import {
-  useDailyChatLogMetrics,
-  useDailyRunLogMetrics,
-} from "@/hooks/analytics";
+import { useDailyChatLogMetrics } from "@/hooks/analytics";
 import { CustomAreaChart } from "@/components/charts/CustomAreaChart";
 import { DatePickerWithRange } from "@/components/ui/DatePickerWithRange";
 import { DateRange } from "react-day-picker";
 import { subDays } from "date-fns";
 import dayjs from "dayjs";
 import { Badge } from "@/components/ui/badge";
-import { PromptEditor } from "@/components/editor/PromptEditor";
-import { ModalPortal } from "@/components/ModalPortal";
+import {
+  PromptDiffEditor,
+  PromptEditor,
+} from "@/components/editor/PromptEditor";
 import { useChatModelVersion } from "@/hooks/useChatModelVersion";
 import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
 import { useChatModelVersionDetails } from "@/hooks/useChatModelVersionDetails";
@@ -51,6 +41,7 @@ import { ChatUI } from "@/components/ChatUI";
 import { useWindowHeight, useWindowSize } from "@react-hook/window-size";
 import { FunctionSelector } from "@/components/select/FunctionSelector";
 import { useChatModel } from "@/hooks/useChatModel";
+import { Monaco, MonacoDiffEditor } from "@monaco-editor/react";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -65,9 +56,10 @@ const TABS = [Tab.Analytics, Tab.Versions];
 export default function Page() {
   const [tab, setTab] = useState(Tab.Versions);
   const { chatModelVersionListData } = useChatModelVersion();
+  const { isCreateVariantOpen } = useChatModelVersionStore();
   return (
     <div className="w-full h-full">
-      {chatModelVersionListData?.length > 0 && (
+      {chatModelVersionListData?.length > 0 && !isCreateVariantOpen && (
         <div className="fixed top-16 left-24 z-50">
           <SelectTab
             tabs={TABS}
@@ -200,7 +192,7 @@ const VersionsPage = () => {
   const [edges, setEdges] = useState(initialEdges);
 
   const {
-    fullScreenChatVersion,
+    isCreateVariantOpen,
     selectedChatModelVersion,
     setFullScreenChatVersion,
     setSelectedChatModelVersion,
@@ -221,22 +213,8 @@ const VersionsPage = () => {
     selectedChatModelVersionUuid
   );
   const [windowWidth, windowHeight] = useWindowSize();
+  const [centerNodePosition, setCenterNodePosition] = useState(null);
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
-
-  useHotkeys(
-    "esc",
-    () => {
-      if (fullScreenChatVersion) {
-        setFullScreenChatVersion(null);
-      } else {
-        setSelectedChatModelVersion(null);
-      }
-    },
-    {
-      enableOnFormTags: true,
-      preventDefault: true,
-    }
-  );
 
   useEffect(() => {
     setSelectedChatModelVersion(null);
@@ -247,6 +225,80 @@ const VersionsPage = () => {
     setOriginalVersionData(chatModelVersionData);
   }, [chatModelVersionData]);
 
+  // Build nodes
+  useEffect(() => {
+    if (!chatModelVersionListData || chatModelVersionListData.length === 0)
+      return;
+
+    const generatedEdges = [];
+    const dataWithSyntheticRoot = [
+      { version: "synthetic-root", from_version: null },
+      ...chatModelVersionListData.map((item) => ({
+        ...item,
+        from_version: item.from_version || "synthetic-root",
+      })),
+    ];
+
+    const root = stratify()
+      .id((d) => d.version)
+      .parentId((d) => d.from_version)(dataWithSyntheticRoot);
+
+    // Calculate the maximum number of nodes at any depth.
+    const maxNodesAtDepth = Math.max(
+      ...root.descendants().map((d: any) => d.depth)
+    );
+    const requiredWidth = maxNodesAtDepth * 140;
+    const layout = tree().size([requiredWidth, root.height * 160]);
+    const nodes = layout(root).descendants();
+
+    let publishedNodePosition = null;
+    nodes.forEach((node) => {
+      if (node.data.is_published) {
+        publishedNodePosition = { x: node.x, y: node.y };
+      }
+    });
+
+    if (publishedNodePosition) {
+      const centerX = windowWidth / 2;
+      const centerY = (windowHeight - 48) / 2;
+      setCenterNodePosition({ x: centerX, y: centerY });
+      const offsetX = centerX - publishedNodePosition.x;
+      const offsetY = centerY - publishedNodePosition.y;
+      nodes.forEach((node) => {
+        node.x += offsetX;
+        node.y += offsetY;
+      });
+    }
+
+    const generatedNodes = nodes
+      .filter((node) => node.data.version !== "synthetic-root")
+      .map((node) => {
+        const item = node.data;
+
+        if (item.from_version && item.from_version !== "synthetic-root") {
+          generatedEdges.push({
+            id: `e${item.version}-${item.from_version}`,
+            source: item.from_version.toString(),
+            target: item.version.toString(),
+          });
+        }
+
+        return {
+          id: item.version.toString(),
+          type: "modelVersion",
+          data: {
+            label: item.version,
+            version: item.version,
+            isPublished: item.is_published,
+          },
+          position: { x: node.x, y: node.y },
+        };
+      });
+
+    setNodes(generatedNodes);
+    setEdges(generatedEdges);
+  }, [chatModelVersionListData, windowWidth]);
+
   return (
     <>
       <ReactFlow
@@ -254,7 +306,12 @@ const VersionsPage = () => {
         nodes={nodes}
         edges={edges}
         proOptions={{ hideAttribution: true }}
-        fitView={true}
+        defaultViewport={{
+          x: -windowWidth / 3 + 80,
+          y: -windowHeight / 3 + 48,
+          zoom: 1.5,
+        }}
+        // fitView={true}
         onPaneClick={() => {
           setSelectedChatModelVersion(null);
         }}
@@ -264,6 +321,9 @@ const VersionsPage = () => {
           <InitialVersionDrawer open={chatModelVersionListData?.length == 0} />
         )}
         <VersionDetailsDrawer open={selectedChatModelVersion != null} />
+        <VersionListDrawer
+          open={isCreateVariantOpen && selectedChatModelVersion != null}
+        />
       </ReactFlow>
     </>
   );
@@ -332,102 +392,110 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
 
 function VersionDetailsDrawer({ open }: { open: boolean }) {
   const { createSupabaseClient } = useSupabaseClient();
+  const [windowWidth, windowHeight] = useWindowSize();
+  const queryClient = useQueryClient();
+  const { projectData } = useProject();
+  const { chatModelData } = useChatModel();
   const { chatModelVersionListData, refetchChatModelVersionListData } =
     useChatModelVersion();
-  const [nodes, setNodes] = useState(initialNodes);
-  const [edges, setEdges] = useState(initialEdges);
-
   const {
-    fullScreenChatVersion,
+    isCreateVariantOpen,
     selectedChatModelVersion,
-    setFullScreenChatVersion,
-    setSelectedChatModelVersion,
+    originalVersionData,
+    modifiedSystemPrompt,
+    selectedModel,
+    selectedFunctions,
+    fullScreenChatVersion,
+    newVersionCache,
+    setIsCreateVariantOpen,
+    setSelectedModel,
+    setSelectedFunctions,
     setOriginalVersionData,
+    setModifiedSystemPrompt,
+    setSelectedChatModelVersion,
+    setFullScreenChatVersion,
   } = useChatModelVersionStore();
-  const { projectData } = useProject();
-  const nodeTypes = useMemo(() => ({ modelVersion: ModelVersionNode }), []);
-
-  const queryClient = useQueryClient();
   const selectedChatModelVersionUuid = useMemo(() => {
     if (!chatModelVersionListData || !selectedChatModelVersion) return null;
     return chatModelVersionListData.find(
       (v) => v.version == selectedChatModelVersion
     )?.uuid;
   }, [chatModelVersionListData, selectedChatModelVersion]);
-
   const { chatModelVersionData } = useChatModelVersionDetails(
     selectedChatModelVersionUuid
   );
-  const [windowWidth, windowHeight] = useWindowSize();
+
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
-  // Build nodes
   useEffect(() => {
-    if (!chatModelVersionListData || chatModelVersionListData.length === 0)
-      return;
+    setSelectedChatModelVersion(null);
+  }, []);
 
-    const generatedEdges = [];
-    // Before passing your data to stratify, preprocess it:
-    const dataWithSyntheticRoot = [
-      {
-        version: "synthetic-root",
-        from_version: null,
-      },
-      ...chatModelVersionListData.map((item) => {
-        if (!item.from_version) {
-          return {
-            ...item,
-            from_version: "synthetic-root",
-          };
-        }
-        return item;
-      }),
-    ];
-
-    const root = stratify()
-      .id((d: any) => d.version)
-      .parentId((d: any) => d.from_version)(dataWithSyntheticRoot);
-
-    // Calculate the maximum number of nodes at any depth.
-    const maxNodesAtDepth = Math.max(
-      ...root.descendants().map((d: any) => d.depth)
+  useEffect(() => {
+    if (originalVersionData?.version === selectedChatModelVersion) return;
+    const data = chatModelVersionListData?.find(
+      (version) => version.version === selectedChatModelVersion
     );
-    const requiredWidth = maxNodesAtDepth * 320;
+    if (data?.model) {
+      setSelectedModel(data?.model);
+    }
+    setOriginalVersionData(data);
+  }, [selectedChatModelVersion, chatModelVersionListData]);
 
-    // Use the smaller of window width and version width.
-    const layoutWidth = Math.min(windowWidth, requiredWidth);
-    const layout = tree().size([layoutWidth, root.height * 160]);
+  useEffect(() => {
+    if (originalVersionData) {
+      setModifiedSystemPrompt(originalVersionData.system_prompt);
+    } else {
+      setModifiedSystemPrompt("");
+    }
+  }, [selectedChatModelVersion, originalVersionData]);
 
-    const nodes = layout(root).descendants();
+  const isNewVersionReady = useMemo(() => {
+    if (!isCreateVariantOpen) return false;
+    if (
+      originalVersionData?.system_prompt == modifiedSystemPrompt &&
+      originalVersionData?.model == selectedModel &&
+      originalVersionData?.functions == selectedFunctions
+    )
+      return false;
 
-    const generatedNodes = nodes
-      .filter((node: any) => node.data.version !== "synthetic-root")
-      .map((node: any) => {
-        const item = node.data;
+    if (newVersionCache) {
+      if (
+        newVersionCache?.systemPrompt == modifiedSystemPrompt &&
+        newVersionCache?.model == selectedModel
+      )
+        return false;
+    }
+    return true;
+  }, [
+    isCreateVariantOpen,
+    originalVersionData,
+    newVersionCache,
+    selectedModel,
+    modifiedSystemPrompt,
+    selectedFunctions,
+  ]);
 
-        if (item.from_version && item.from_version !== "synthetic-root") {
-          generatedEdges.push({
-            id: `e${item.version}-${item.from_version}`,
-            source: item.from_version,
-            target: item.version,
-          });
-        }
+  useHotkeys(
+    "esc",
+    () => {
+      if (fullScreenChatVersion) {
+        setFullScreenChatVersion(null);
+      } else if (isCreateVariantOpen) {
+        setIsCreateVariantOpen(false);
+      } else if (selectedChatModelVersion) {
+        setSelectedChatModelVersion(null);
+      }
+    },
+    {
+      enableOnFormTags: true,
+      preventDefault: true,
+    }
+  );
 
-        return {
-          id: item.version,
-          type: "modelVersion",
-          data: {
-            label: item.version,
-            version: item.version,
-            isPublished: item.is_published,
-          },
-          position: { x: node.x, y: node.depth * 150 },
-        };
-      });
-
-    setNodes(generatedNodes);
-    setEdges(generatedEdges);
-  }, [chatModelVersionListData]);
+  function handleClickCreateVariant() {
+    setIsCreateVariantOpen(true);
+  }
 
   async function handleClickPublish() {
     const toastId = toast.loading("Publishing...");
@@ -445,11 +513,9 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     );
     await refetchChatModelVersionListData();
     queryClient.invalidateQueries({
-      predicate: (query: any) =>
-        query.queryKey[0] === "chatModelVersionData" &&
-        (query.queryKey[1]?.uuid === selectedChatModelVersion ||
-          query.queryKey[1]?.uuid == previousPublishedUuid),
+      predicate: (query: any) => query.queryKey[0] === "chatModelVersionData",
     });
+    setSelectedChatModelVersion(null);
     toast.update(toastId, {
       render: "Published successfully!",
       type: "success",
@@ -459,122 +525,385 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
   }
 
   return (
-    <Drawer open={open} direction="right" classNames="!w-[45vw]">
-      <div className="w-full h-full bg-transparent p-4 flex flex-col justify-start">
-        <div className="flex flex-row justify-between items-center mb-2">
-          <div className="flex flex-row gap-x-2 justify-start items-center">
-            <p className="text-base-content font-bold text-lg">
-              ChatModel V{chatModelVersionData?.version}
-            </p>
-            {chatModelVersionData?.is_published && (
-              <div className="flex flex-row gap-x-2 items-center px-2 justify-self-start">
-                <div className="w-2 h-2 rounded-full bg-secondary" />
-                <p className="text-base-content font-medium text-sm">
-                  Published
-                </p>
-              </div>
-            )}
-          </div>
-          <div className="flex flex-row gap-x-2 items-center">
-            <ModelDisplay modelName={chatModelVersionData?.model} />
-
-            {!chatModelVersionData?.is_published && (
-              <button
-                className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
-                onClick={handleClickPublish}
-              >
-                <RocketLaunch
-                  className="text-secondary"
-                  size={20}
-                  weight="fill"
-                />
-                <p className="text-base-content">Publish</p>
-              </button>
-            )}
-
-            <button
-              className={classNames(
-                "flex flex-col gap-y-2 pt-1 items-center",
-                "btn btn-sm bg-transparent border-transparent h-10 hover:bg-neutral-content/20",
-                "normal-case font-normal"
-              )}
-              onClick={() => {
-                setSelectedChatModelVersion(null);
-              }}
-            >
-              <div className="flex flex-col">
-                <XCircle size={22} />
-                <p className="text-base-content text-xs">Esc</p>
-              </div>
-            </button>
-          </div>
-        </div>
+    <Drawer
+      open={open}
+      direction="right"
+      style={{ width: isCreateVariantOpen ? "calc(100vw - 5rem)" : "auto" }}
+      classNames={classNames(
+        isCreateVariantOpen ? "backdrop-blur-md" : "!w-[60vw]",
+        "mr-4"
+      )}
+    >
+      {open && (
         <div
-          className="flex flex-col justify-between"
-          style={{
-            height: windowHeight - 120,
-          }}
+          className={classNames(
+            "w-full h-full bg-transparent p-4 flex flex-col justify-start",
+            isCreateVariantOpen && "pr-0"
+          )}
         >
-          <motion.div
-            className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow-0"
-            style={{
-              height: windowHeight - lowerBoxHeight - 120,
-            }}
-          >
-            <div className="flex flex-wrap justify-start gap-x-4 items-start mb-2">
-              <div className="flex flex-col items-start justify-start">
-                <label className="label text-xs font-medium">
-                  <span className="label-text">Functions</span>
-                </label>
-                {chatModelVersionData?.functions && (
-                  <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
-                    {chatModelVersionData?.functions?.map((funcName) => (
-                      <Badge
-                        key={funcName}
-                        className="text-sm"
-                        variant="default"
-                      >
-                        {funcName}
-                      </Badge>
-                    ))}
+          {/* Header */}
+          <div className="flex flex-row justify-between items-center mb-2 w-full">
+            <div
+              className={classNames(
+                "flex flex-row items-center justify-between",
+                isCreateVariantOpen ? "w-1/2" : "w-full"
+              )}
+            >
+              <div className="flex flex-row gap-x-2 justify-start items-center">
+                <p className="text-base-content font-bold text-lg">
+                  {chatModelData?.name} <i>V</i> {chatModelVersionData?.version}
+                </p>
+                {chatModelVersionData?.is_published && !isCreateVariantOpen && (
+                  <div className="flex flex-row gap-x-2 items-center px-2 justify-self-start">
+                    <div className="w-2 h-2 rounded-full bg-secondary" />
+                    <p className="text-base-content font-medium text-sm">
+                      Published
+                    </p>
                   </div>
                 )}
-                {(!chatModelVersionData?.functions ||
-                  chatModelVersionData?.functions?.length == 0) && (
-                  <Badge className="text-sm" variant="muted">
-                    No functions
-                  </Badge>
+              </div>
+              {!isCreateVariantOpen && (
+                <div className="flex flex-row gap-x-2 items-center justify-end">
+                  {!chatModelVersionData?.is_published && (
+                    <button
+                      className="flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 bg-secondary-content hover:bg-secondary group"
+                      // className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
+                      onClick={handleClickPublish}
+                    >
+                      <RocketLaunch
+                        className="text-secondary group-hover:text-secondary-content transition-colors"
+                        size={20}
+                        weight="fill"
+                      />
+                      <p className="text-base-100 group-hover:text-secondary-content transition-colors">
+                        Publish
+                      </p>
+                    </button>
+                  )}
+                  <button
+                    className="flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content bg-transparent hover:bg-neutral-content/20"
+                    onClick={handleClickCreateVariant}
+                  >
+                    <GitBranch
+                      className="text-secondary"
+                      size={20}
+                      weight="fill"
+                    />
+                    <p className="text-base-content">Create Variant</p>
+                  </button>
+                  <button
+                    className="flex flex-col gap-y-2 pt-1 items-center btn btn-sm normal-case font-normal bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
+                    onClick={() => {
+                      setSelectedChatModelVersion(null);
+                    }}
+                  >
+                    <div className="flex flex-col">
+                      <XCircle size={22} />
+                      <p className="text-base-content text-xs">Esc</p>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+            {isCreateVariantOpen && (
+              <div className="flex flex-row w-1/2 justify-between items-center mb-2">
+                <div className="flex flex-row justify-start items-center gap-x-3">
+                  <div className="flex flex-col items-start justify-center">
+                    {isNewVersionReady ? (
+                      <p className="text-base-content font-medium text-lg">
+                        New Version
+                      </p>
+                    ) : (
+                      <p className="text-base-content font-medium text-lg">
+                        {chatModelData?.name} <i>V</i>{" "}
+                        {newVersionCache?.version}
+                      </p>
+                    )}
+                    <p className="text-base-content text-sm">
+                      From&nbsp;
+                      <u>
+                        V
+                        {originalVersionData?.version ??
+                          originalVersionData?.uuid?.slice(0, 6)}
+                      </u>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          {/* <div
+            className="flex flex-col justify-between"
+            style={{
+              height: windowHeight - 120,
+            }}
+          >
+            <motion.div
+              className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow-0"
+              style={{
+                height: windowHeight - lowerBoxHeight - 120,
+              }}
+            >
+              <div className="flex flex-wrap justify-start gap-x-4 items-start mb-2">
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Model</span>
+                  </label>
+                  <ModelDisplay modelName={chatModelVersionData?.model} />
+                </div>
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Functions</span>
+                  </label>
+                  {chatModelVersionData?.functions && (
+                    <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
+                      {chatModelVersionData?.functions?.map((funcName) => (
+                        <Badge
+                          key={funcName}
+                          className="text-sm"
+                          variant="default"
+                        >
+                          {funcName}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  {(!chatModelVersionData?.functions ||
+                    chatModelVersionData?.functions?.length == 0) && (
+                    <Badge className="text-sm" variant="muted">
+                      No functions
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col gap-y-2 justify-start items-start">
+                {chatModelVersionData && (
+                  <PromptComponent
+                    systemPrompt={chatModelVersionData.system_prompt}
+                  />
+                )}
+              </div>
+            </motion.div>
+            <div className="min-h-[120px] backdrop-blur-md">
+              <ResizableSeparator
+                height={lowerBoxHeight}
+                setHeight={(height) => {
+                  if (height < 160) return;
+                  setLowerBoxHeight(height);
+                }}
+                className="mx-4"
+              />
+              <div
+                className="my-4 backdrop-blur-sm"
+                style={{ height: lowerBoxHeight }}
+              >
+                {selectedChatModelVersion && (
+                  <ChatUI versionUuid={selectedChatModelVersionUuid} />
                 )}
               </div>
             </div>
-            <div className="flex flex-col gap-y-2 justify-start items-start">
-              {chatModelVersionData && (
-                <PromptComponent
-                  systemPrompt={chatModelVersionData.system_prompt}
-                />
-              )}
+          </div> */}
+          {/* Prompt editor */}
+          <motion.div className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow">
+            {isCreateVariantOpen ? (
+              <div className="flex flex-row justify-between items-start mb-2">
+                <div className="flex flex-col w-1/2 justify-start gap-y-2 items-start mb-2">
+                  <div className="flex flex-row justify-start gap-x-4 items-start">
+                    <div className="flex flex-col items-start justify-start">
+                      <label className="label text-xs font-medium">
+                        <span className="label-text">Model</span>
+                      </label>
+                      <ModelDisplay modelName={chatModelVersionData?.model} />
+                    </div>
+                    <div className="w-auto flex flex-col items-start justify-start">
+                      <label className="label text-xs font-medium">
+                        <span className="label-text">Functions</span>
+                      </label>
+                      {originalVersionData?.functions && (
+                        <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
+                          {originalVersionData?.functions?.map(
+                            (functionName) => (
+                              <Badge
+                                key={functionName}
+                                className="text-sm"
+                                variant="default"
+                              >
+                                {functionName}
+                              </Badge>
+                            )
+                          )}
+                        </div>
+                      )}
+                      {(!originalVersionData?.functions ||
+                        originalVersionData?.functions?.length == 0) && (
+                        <Badge className="text-sm" variant="muted">
+                          No functions
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col w-1/2 justify-start gap-y-2 items-start mb-2">
+                  <div className="flex flex-row justify-start gap-x-4 items-start">
+                    <div className="flex flex-col items-start justify-start">
+                      <label className="label text-xs font-medium">
+                        <span className="label-text">Model</span>
+                      </label>
+                      <div className="flex flex-row justify-end gap-x-3 items-center">
+                        <ModelSelector
+                          modelName={selectedModel}
+                          setModel={setSelectedModel}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-start justify-start">
+                      <label className="label text-xs font-medium">
+                        <span className="label-text">Functions</span>
+                      </label>
+                      <FunctionSelector
+                        selectedFunctions={selectedFunctions}
+                        setSelectedFunctions={setSelectedFunctions}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap justify-start gap-x-4 items-start mb-6">
+                <div className="w-auto flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Functions</span>
+                  </label>
+                  {originalVersionData?.functions && (
+                    <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
+                      {originalVersionData?.functions?.map((functionName) => (
+                        <Badge
+                          key={functionName}
+                          className="text-sm"
+                          variant="default"
+                        >
+                          {functionName}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  {(!originalVersionData?.functions ||
+                    originalVersionData?.functions?.length == 0) && (
+                    <Badge className="text-sm" variant="muted">
+                      No functions
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="flex flex-col gap-y-2 justify-start items-end">
+              {originalVersionData?.system_prompt &&
+                (isCreateVariantOpen ? (
+                  <PromptDiffComponent
+                    systemPrompt={originalVersionData?.system_prompt}
+                    setSystemPrompt={setModifiedSystemPrompt}
+                  />
+                ) : (
+                  <PromptComponent
+                    systemPrompt={originalVersionData?.system_prompt}
+                  />
+                ))}
             </div>
           </motion.div>
-          <div className="min-h-[120px] backdrop-blur-md">
+          <div className="relative backdrop-blur-md h-fit">
             <ResizableSeparator
               height={lowerBoxHeight}
-              setHeight={(height) => {
-                if (height < 160) return;
-                setLowerBoxHeight(height);
-              }}
-              className="mx-4"
+              setHeight={setLowerBoxHeight}
             />
             <div
-              className="my-4 backdrop-blur-sm"
+              className="flex flex-row justify-between items-start mt-4 gap-x-4"
               style={{ height: lowerBoxHeight }}
             >
-              {selectedChatModelVersion && (
-                <ChatUI versionUuid={selectedChatModelVersionUuid} />
+              <ChatUI
+                versionUuid={selectedChatModelVersionUuid}
+                className={classNames(isCreateVariantOpen && "!w-1/2")}
+              />
+              {isCreateVariantOpen && (
+                <ChatUI
+                  versionUuid={
+                    isNewVersionReady ? "new" : newVersionCache?.uuid ?? "new"
+                  }
+                  className="!w-1/2"
+                />
               )}
             </div>
           </div>
         </div>
-      </div>
+      )}
+    </Drawer>
+  );
+}
+
+function VersionListDrawer({ open }: { open: boolean }) {
+  const { chatModelVersionListData } = useChatModelVersion();
+  const {
+    isCreateVariantOpen,
+    selectedChatModelVersion,
+    newVersionCache,
+    setIsCreateVariantOpen,
+    setSelectedChatModelVersion,
+    setNewVersionCache,
+  } = useChatModelVersionStore();
+  return (
+    <Drawer open={open} direction="left" classNames="!w-[5rem] pl-2 relative">
+      {isCreateVariantOpen && selectedChatModelVersion != null && (
+        <div className="w-full h-full bg-transparent flex flex-col justify-center items-start gap-y-3">
+          <button
+            className="absolute top-6 left-2 flex flex-col gap-y-2 pt-1 items-center btn btn-sm normal-case font-normal bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
+            onClick={() => {
+              setIsCreateVariantOpen(false);
+            }}
+          >
+            <div className="flex flex-col">
+              <XCircle size={22} />
+              <p className="text-base-content text-xs">Esc</p>
+            </div>
+          </button>
+          <div className="h-full overflow-auto mt-20">
+            {chatModelVersionListData?.map((versionData) => {
+              return (
+                <div
+                  className={classNames(
+                    "flex flex-row items-center gap-x-2 rounded-lg p-2 backdrop-blur-sm hover:bg-base-content/10 transition-all cursor-pointer relative",
+                    "active:scale-90",
+                    selectedChatModelVersion === versionData.version
+                      ? "bg-base-content/10"
+                      : "bg-transparent",
+                    newVersionCache?.version == versionData.version &&
+                      "tooltip tooltip-bottom tooltip-info"
+                  )}
+                  data-tip="New!"
+                  key={versionData.version}
+                  onClick={() => {
+                    setNewVersionCache(null);
+                    setSelectedChatModelVersion(versionData.version);
+                  }}
+                >
+                  <div
+                    className={classNames(
+                      "absolute h-2 w-2 bg-info top-0 right-0 rounded-full z-50",
+                      newVersionCache?.version == versionData.version
+                        ? "animate-pulse"
+                        : "hidden"
+                    )}
+                  />
+                  <p className="text-base-content font-semibold text-lg">
+                    V{versionData.version}
+                  </p>
+                  {versionData?.is_published && (
+                    <div className="w-2 h-2 rounded-full bg-secondary" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </Drawer>
   );
 }
@@ -639,6 +968,78 @@ const PromptComponent = ({
         height={height}
       />
     </motion.div>
+  );
+};
+
+const PromptDiffComponent = ({
+  systemPrompt,
+  setSystemPrompt,
+}: {
+  systemPrompt: string;
+  setSystemPrompt: (prompt: string) => void;
+}) => {
+  const windowHeight = useWindowHeight();
+  const [open, setOpen] = useState(true);
+  const [height, setHeight] = useState(30);
+  const originalEditorRef = useRef(null);
+  const modifiedEditorRef = useRef(null);
+  const { setFocusedEditor } = useChatModelVersionStore();
+
+  const handleEditorDidMount = (editor: MonacoDiffEditor, monaco: Monaco) => {
+    originalEditorRef.current = editor.getOriginalEditor();
+    modifiedEditorRef.current = editor.getModifiedEditor();
+    const originalHeight = originalEditorRef.current?.getContentHeight();
+    const maxHeight = windowHeight * 0.7;
+    if (originalHeight) {
+      setHeight(Math.min(originalHeight, maxHeight));
+    }
+    modifiedEditorRef.current?.onDidFocusEditorWidget(() => {
+      setFocusedEditor(modifiedEditorRef.current);
+    });
+
+    modifiedEditorRef.current.onDidChangeModelContent(() => {
+      setSystemPrompt(modifiedEditorRef.current?.getValue());
+      const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
+      const maxHeight = windowHeight * 0.7;
+      if (modifiedHeight) {
+        setHeight(Math.min(modifiedHeight, maxHeight));
+      }
+    });
+  };
+
+  useEffect(() => {
+    const originalHeight = originalEditorRef.current?.getContentHeight();
+    const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
+    const maxHeight = windowHeight * 0.7;
+    if (modifiedHeight > originalHeight) {
+      setHeight(Math.min(modifiedHeight, maxHeight));
+    } else {
+      setHeight(Math.min(originalHeight, maxHeight));
+    }
+  }, [originalEditorRef.current, modifiedEditorRef.current]);
+
+  return (
+    <div className="w-full h-fit flex flex-col justify-start items-center bg-base-100 rounded-box">
+      <div
+        className={classNames(
+          "w-full h-10 min-h-[2.5rem] flex flex-row justify-start items-center py-1 px-3 cursor-pointer"
+        )}
+      >
+        <p className="text-base-content font-semibold">
+          System prompt (Custom instructions)
+        </p>
+      </div>
+      {open && (
+        <PromptDiffEditor
+          className="gap-x-8"
+          original={systemPrompt}
+          modified={systemPrompt}
+          loading={<div className="loading loading-xs loading-dots" />}
+          onMount={handleEditorDidMount}
+          height={height}
+        />
+      )}
+    </div>
   );
 };
 

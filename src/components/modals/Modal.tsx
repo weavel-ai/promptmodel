@@ -46,7 +46,7 @@ export const Modal = ({
     <ModalPortal>
       <motion.div
         className={classNames(
-          "w-full h-full fixed inset-0 flex justify-center items-center",
+          "w-full h-full fixed inset-0 flex justify-center items-center backdrop-blur-sm",
           `z-[${zIndex}]`
         )}
         initial={{ opacity: 0 }}

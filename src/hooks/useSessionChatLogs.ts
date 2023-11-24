@@ -1,9 +1,5 @@
-import { fetchRunLogs as fetchLocalRunLogs } from "@/apis/dev";
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "next/navigation";
-import { useDevBranch } from "./useDevBranch";
 import { useSupabaseClient } from "@/apis/base";
-import { fetchRunLogs } from "@/apis/devCloud";
 import { ChatLog, fetchSessionChatLogs } from "@/apis/chatLog";
 import { useEffect, useState } from "react";
 
