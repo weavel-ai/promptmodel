@@ -147,6 +147,7 @@ def update_db_in_prompt_model_run(
                         supabase.table("prompt_model_version")
                         .insert(prompt_model_version_config)
                         .execute()
+                        .data
                     )
 
                     # update project version
@@ -181,6 +182,7 @@ def update_db_in_prompt_model_run(
                         supabase.table("prompt_model_version")
                         .insert(prompt_model_version_config)
                         .execute()
+                        .data
                     )
                     (
                         supabase.table("project_changelog")
@@ -237,6 +239,7 @@ def update_db_in_prompt_model_run(
                 supabase.table("prompt_model_version")
                 .insert(prompt_model_version_config)
                 .execute()
+                .data
             )
 
             # add res.data[0]["uuid"] for each prompt

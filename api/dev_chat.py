@@ -133,6 +133,7 @@ async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
                 .eq("project_uuid", project_uuid)
                 .in_("name", run_config.functions)
                 .execute()
+                .data
             )
             run_config_dict["function_schemas"] = function_schemas.data
 
@@ -156,12 +157,13 @@ async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
                         supabase.table("chat_model_version")
                         .insert(chat_model_version_config)
                         .execute()
+                        .data
                     )
 
                     # update project version
                     (
                         supabase.table("project")
-                        .update({"version": project["version"] + 1})
+                        .update({"version": project[0]["version"] + 1})
                         .eq("uuid", project_uuid)
                         .execute()
                     )
@@ -190,6 +192,7 @@ async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
                         supabase.table("chat_model_version")
                         .insert(chat_model_version_config)
                         .execute()
+                        .data
                     )
                     (
                         supabase.table("project_changelog")
@@ -215,6 +218,7 @@ async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
                         }
                     )
                     .execute()
+                    .data
                 )
                 session_uuid = res.data[0]["uuid"]
 

@@ -93,7 +93,7 @@ class ConnectionManager:
             if not online:
                 res = (
                     supabase.table("project")
-                    .update({"cli_access_key": None})
+                    .update({"cli_access_key": None, "online": False})
                     .eq("cli_access_key", token)
                     .execute()
                     .data
@@ -118,13 +118,19 @@ class ConnectionManager:
                     .execute()
                 )
                 (
-                    supabase.table("sample_output")
+                    supabase.table("function_schema")
                     .update({"online": False})
                     .eq("project_uuid", project_uuid)
                     .execute()
                 )
             else:
-                pass
+                res = (
+                    supabase.table("project")
+                    .update({"online": True})
+                    .eq("cli_access_key", token)
+                    .execute()
+                    .data
+                )
         except Exception as error:
             logger.error(f"Error updating online status for token {token}: {error}")
 
@@ -308,6 +314,7 @@ class ConnectionManager:
                         supabase.table("prompt_model")
                         .insert(new_prompt_models)
                         .execute()
+                        .data
                     )
                     changelogs.append(
                         {
@@ -342,7 +349,10 @@ class ConnectionManager:
                 # insert new chat_models
                 if len(new_chat_models) > 0:
                     new_versions = (
-                        supabase.table("chat_model").insert(new_chat_models).execute()
+                        supabase.table("chat_model")
+                        .insert(new_chat_models)
+                        .execute()
+                        .data
                     )
                     changelogs.append(
                         {
@@ -384,7 +394,10 @@ class ConnectionManager:
                 # insert new samples
                 if len(new_samples) > 0:
                     new_samples = (
-                        supabase.table("sample_input").insert(new_samples).execute()
+                        supabase.table("sample_input")
+                        .insert(new_samples)
+                        .execute()
+                        .data
                     )
                     changelogs.append(
                         {
@@ -411,6 +424,7 @@ class ConnectionManager:
                             .eq("project_uuid", project_uuid)
                             .eq("name", sample["name"])
                             .execute()
+                            .data
                         )
                         update_sample_uuids.append(res[0]["uuid"])
                     changelogs.append(
@@ -455,7 +469,10 @@ class ConnectionManager:
                 # insert new schemas
                 if len(new_schemas) > 0:
                     res = (
-                        supabase.table("function_schema").insert(new_schemas).execute()
+                        supabase.table("function_schema")
+                        .insert(new_schemas)
+                        .execute()
+                        .data
                     )
                     changelogs.append(
                         {
@@ -486,6 +503,7 @@ class ConnectionManager:
                             .eq("project_uuid", project_uuid)
                             .eq("name", schema["name"])
                             .execute()
+                            .data
                         )
                         update_schema_uuids.append(res[0]["uuid"])
                     changelogs.append(

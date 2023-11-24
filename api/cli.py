@@ -478,7 +478,7 @@ async def connect_cli_project(project_uuid: str, api_key: str = Depends(get_api_
                         "cli_access_key": api_key,
                     }
                 )
-                .eq("id", project["id"])
+                .eq("uuid", project_uuid)
                 .execute()
             )
             # return true, connected
@@ -605,13 +605,13 @@ async def make_session(
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.post("save_instances_in_code")
+@router.post("/save_instances_in_code")
 async def save_instances_in_code(
     project_uuid: str,
-    prompt_models: List[str],
-    chat_models: List[str],
-    samples: List[Dict],
-    function_schemas: List[Dict],
+    prompt_models: list[str],
+    chat_models: list[str],
+    samples: list[dict],
+    function_schemas: list[dict],
     project: dict = Depends(get_project),
 ):
     try:
@@ -632,7 +632,7 @@ async def save_instances_in_code(
         # insert new prompt_models
         if len(new_prompt_models) > 0:
             new_versions = (
-                supabase.table("prompt_model").insert(new_prompt_models).execute()
+                supabase.table("prompt_model").insert(new_prompt_models).execute().data
             )
             changelogs.append(
                 {
@@ -660,7 +660,7 @@ async def save_instances_in_code(
         # insert new chat_models
         if len(new_chat_models) > 0:
             new_versions = (
-                supabase.table("chat_model").insert(new_chat_models).execute()
+                supabase.table("chat_model").insert(new_chat_models).execute().data
             )
             changelogs.append(
                 {
@@ -696,7 +696,9 @@ async def save_instances_in_code(
         ]
         # insert new samples
         if len(new_samples) > 0:
-            new_samples = supabase.table("sample_input").insert(new_samples).execute()
+            new_samples = (
+                supabase.table("sample_input").insert(new_samples).execute().data
+            )
             changelogs.append(
                 {
                     "subject": f"sample_input",
@@ -722,6 +724,7 @@ async def save_instances_in_code(
                     .eq("project_uuid", project_uuid)
                     .eq("name", sample["name"])
                     .execute()
+                    .data
                 )
                 update_sample_uuids.append(res[0]["uuid"])
             changelogs.append(
@@ -760,7 +763,7 @@ async def save_instances_in_code(
         ]
         # insert new schemas
         if len(new_schemas) > 0:
-            res = supabase.table("function_schema").insert(new_schemas).execute()
+            res = supabase.table("function_schema").insert(new_schemas).execute().data
             changelogs.append(
                 {
                     "subject": f"function_schema",
@@ -788,6 +791,7 @@ async def save_instances_in_code(
                     .eq("project_uuid", project_uuid)
                     .eq("name", schema["name"])
                     .execute()
+                    .data
                 )
                 update_schema_uuids.append(res[0]["uuid"])
             changelogs.append(

@@ -187,7 +187,7 @@ async def run_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
                 if "status" in chunk:
                     if chunk["status"] in ["completed", "failed"]:
                         update_db_in_prompt_model_run(
-                            project,
+                            project[0],
                             prompt_model_version_config,
                             run_log,
                             prompts,
