@@ -39,7 +39,7 @@ export const SelectTab = ({ tabs, selectedTab, onSelect }: SelectTabProps) => {
           key={tab}
           ref={(el) => (tabRefs.current[index] = el)}
           className={classNames(
-            "rounded-full w-full h-full px-3 flex justify-center items-center cursor-pointer transition-colors",
+            "rounded-full w-full h-full px-3 flex justify-center items-center cursor-pointer transition-colors bg-transparent z-0",
             tab === selectedTab ? "text-neutral" : "text-base-content"
           )}
           onClick={() => onSelect(tab)}
@@ -48,7 +48,7 @@ export const SelectTab = ({ tabs, selectedTab, onSelect }: SelectTabProps) => {
         </div>
       ))}
       <motion.div
-        className="absolute top-0 left-0 h-full bg-base-content/90 rounded-full -z-10"
+        className="absolute top-0 left-0 h-full bg-base-content/90 rounded-full -z-20"
         initial={{ x: 0 }}
         animate={{ x: xPosition, width: tabWidth }}
       />

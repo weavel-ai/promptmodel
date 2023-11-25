@@ -64,18 +64,17 @@ export const DeploymentNavbar = (props: NavbarProps) => {
   const modelType = useMemo(() => {
     if (params?.promptModelUuid) return "PromptModel";
     if (params?.chatModelUuid) return "ChatModel";
+
     return null;
   }, [params?.promptModelUuid, params?.chatModelUuid]);
 
   useEffect(() => {
-    if (pathname.includes("dev/")) return;
     if (isMobile) {
       setShowDropdown(false);
     }
   }, [pathname]);
 
   useEffect(() => {
-    if (pathname.includes("dev/")) return;
     if (organization?.name && organization?.slug && orgData) {
       createSupabaseClient().then(async (supabase) => {
         if (
@@ -99,8 +98,6 @@ export const DeploymentNavbar = (props: NavbarProps) => {
       });
     }
   }, [orgData, organization?.name, organization?.slug]);
-
-  if (pathname.includes("dev/")) return null;
 
   return (
     <div

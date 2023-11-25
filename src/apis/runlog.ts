@@ -10,7 +10,6 @@ export async function fetchVersionRunLogs(
       "created_at, inputs, raw_output, parsed_outputs, function_call, latency, cost, token_usage, run_from_deployment"
     )
     .eq("version_uuid", versionUuid)
-    .filter("dev_branch_uuid", "is", null)
     .order("created_at", { ascending: false });
   return res.data;
 }

@@ -1,10 +1,9 @@
-import { EMPTY_INPUTS_LABEL, useSamples } from "@/hooks/dev/useSample";
+import { EMPTY_INPUTS_LABEL, useSamples } from "@/hooks/useSample";
 import { CaretDown, Plus } from "@phosphor-icons/react";
 import classNames from "classnames";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ModalPortal } from "./ModalPortal";
 import { motion } from "framer-motion";
-import { useDevBranch } from "@/hooks/useDevBranch";
 import { CreateSampleInputModal } from "./modals/CreateSampleInputsModal";
 import ReactJson from "react-json-view";
 
@@ -14,8 +13,7 @@ interface SampleSelectorProps {
 }
 
 export const SampleSelector = (props: SampleSelectorProps) => {
-  const { sampleList, refetchSampleList } = useSamples();
-  const { isCloudDev } = useDevBranch();
+  const { sampleInputListData, refetchSampleInputListData } = useSamples();
   const [isOpen, setIsOpen] = useState(false);
   const [showCreateSampleInputsModal, setShowCreateSampleInputsModal] =
     useState(false);
@@ -32,12 +30,12 @@ export const SampleSelector = (props: SampleSelectorProps) => {
   const isOpenRef = useRef(isOpen);
 
   const filteredOptions = useMemo(() => {
-    if (!sampleList) return [];
-    if (!inputValue) return sampleList;
-    return sampleList.filter((sample: any) =>
+    if (!sampleInputListData) return [];
+    if (!inputValue) return sampleInputListData;
+    return sampleInputListData.filter((sample: any) =>
       sample.name?.includes(inputValue?.toLowerCase())
     );
-  }, [inputValue, sampleList]);
+  }, [inputValue, sampleInputListData]);
 
   useEffect(() => {
     isOpenRef.current = isOpen; // Always keep it updated with the latest state
@@ -66,8 +64,10 @@ export const SampleSelector = (props: SampleSelectorProps) => {
   }, []);
 
   const selectedSample = useMemo(() => {
-    return sampleList?.find((sample) => sample.name === props.sampleName);
-  }, [props.sampleName, sampleList]);
+    return sampleInputListData?.find(
+      (sample) => sample.name === props.sampleName
+    );
+  }, [props.sampleName, sampleInputListData]);
 
   const hoveredSampleContent = useMemo(() => {
     if (!hoveredSample) return null;
@@ -97,7 +97,7 @@ export const SampleSelector = (props: SampleSelectorProps) => {
   }
 
   async function handleNewSampleCreated(name: string) {
-    await refetchSampleList();
+    await refetchSampleInputListData();
     props.setSample(name);
     setIsOpen(false);
   }
@@ -192,15 +192,13 @@ export const SampleSelector = (props: SampleSelectorProps) => {
                         </div>
                       );
                     })}
-                    {isCloudDev && (
-                      <button
-                        className="flex flex-row w-full justify-start gap-x-2 hover:bg-base-content/20 rounded-xl px-4 py-2 transition-colors text-secondary font-medium items-center"
-                        onClick={() => setShowCreateSampleInputsModal(true)}
-                      >
-                        <Plus size={20} weight="bold" />
-                        <p>Add sample inputs</p>
-                      </button>
-                    )}
+                    <button
+                      className="flex flex-row w-full justify-start gap-x-2 hover:bg-base-content/20 rounded-xl px-4 py-2 transition-colors text-secondary font-medium items-center"
+                      onClick={() => setShowCreateSampleInputsModal(true)}
+                    >
+                      <Plus size={20} weight="bold" />
+                      <p>Add sample inputs</p>
+                    </button>
                   </div>
                 </div>
                 <motion.div

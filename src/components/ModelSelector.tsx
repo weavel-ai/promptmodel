@@ -95,7 +95,7 @@ export const ModelDisplay = ({ modelName }) => {
   );
 
   return (
-    <div className="p-2 flex flex-row gap-x-2 items-center justify-between bg-base-content/10 rounded-md max-w-[11rem]">
+    <div className="p-2 flex flex-row gap-x-2 items-center justify-between bg-base-300 rounded-md max-w-[11rem]">
       {PROVIDER_LOGO_PATHS[model?.provider]?.endsWith(".svg") ? (
         <ReactSVG
           src={PROVIDER_LOGO_PATHS[model?.provider]}
@@ -120,7 +120,7 @@ export const ModelSelector = (props: ModelSelectorProps) => {
   const [inputValue, setInputValue] = useState<string>();
   const [modalPosition, setModalPosition] = useState({
     top: 0,
-    right: 0,
+    left: 0,
   });
   const selectorRef = useRef(null);
   const optionsRef = useRef(null);
@@ -168,7 +168,7 @@ export const ModelSelector = (props: ModelSelectorProps) => {
       const selectorRect = selectorRef.current?.getBoundingClientRect();
       setModalPosition({
         top: selectorRect.top + selectorRect.height,
-        right: windowWidth - selectorRect.right,
+        left: selectorRect.left,
       });
     }
     setIsOpen(!isOpen);
@@ -207,13 +207,13 @@ export const ModelSelector = (props: ModelSelectorProps) => {
               opacity: 0,
               height: 0,
               top: modalPosition?.top + 30,
-              right: modalPosition?.right,
+              left: modalPosition?.left,
             }}
             animate={{
               opacity: isOpen ? 1 : 0,
               height: isOpen ? "auto" : 0,
               top: modalPosition?.top,
-              right: modalPosition?.right,
+              left: modalPosition?.left,
             }}
             className={classNames(
               `fixed z-[999999]`,
