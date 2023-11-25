@@ -243,10 +243,10 @@ const VersionsPage = () => {
 
     const requiredWidth = countStretchNodes(root) * 160;
     const layout = tree().size([requiredWidth, root.height * 160]);
-    const nodes = layout(root).descendants();
+    const allNodes: any = layout(root).descendants();
 
     let publishedNodePosition = null;
-    nodes.forEach((node) => {
+    allNodes.forEach((node) => {
       // @ts-ignore
       if (node.data.is_published) {
         publishedNodePosition = { x: node.x, y: node.y };
@@ -258,13 +258,13 @@ const VersionsPage = () => {
       const centerY = (windowHeight - 48) / 2;
       const offsetX = centerX - publishedNodePosition.x;
       const offsetY = centerY - publishedNodePosition.y;
-      nodes.forEach((node) => {
+      allNodes.forEach((node) => {
         node.x += offsetX;
         node.y += offsetY;
       });
     }
 
-    const generatedNodes = nodes
+    const generatedNodes = allNodes
       // @ts-ignore
       .filter((node) => node.data.version !== "synthetic-root")
       .map((node) => {
