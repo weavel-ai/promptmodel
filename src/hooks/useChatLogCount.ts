@@ -1,5 +1,4 @@
 import { useSupabaseClient } from "@/apis/base";
-import { fetchRunLogsCount, fetchVersionRunLogs } from "@/apis/runlog";
 import { useQuery } from "@tanstack/react-query";
 import { useProject } from "./useProject";
 import { fetchChatLogsCount } from "@/apis/chatLog";

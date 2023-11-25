@@ -2,18 +2,11 @@
 
 import { useChangeLog } from "@/hooks/useChangelog";
 import { useProject } from "@/hooks/useProject";
-import {
-  ArrowSquareOut,
-  CaretLeft,
-  Cloud,
-  GlobeHemisphereWest,
-} from "@phosphor-icons/react";
+import { CaretLeft } from "@phosphor-icons/react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import ReactJson from "react-json-view";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import classNames from "classnames";
 import { useRunLogCount } from "@/hooks/useRunLogCount";

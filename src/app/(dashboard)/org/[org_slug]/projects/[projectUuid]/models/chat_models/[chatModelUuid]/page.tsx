@@ -265,6 +265,7 @@ const VersionsPage = () => {
     }
 
     const generatedNodes = nodes
+      // @ts-ignore
       .filter((node) => node.data.version !== "synthetic-root")
       .map((node) => {
         const item = node.data;
