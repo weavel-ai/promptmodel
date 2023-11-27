@@ -16,50 +16,12 @@ from utils.prompt_utils import update_dict
 from utils.logger import logger
 from base.database import supabase
 from base.websocket_connection import websocket_manager, LocalTask
-from modules.websocket.run_model_functions import (
-    validate_variable_matching,
-    update_db_in_prompt_model_run,
-    MessagesWithInputs,
-)
+from modules.websocket.run_model_generators import run_local_prompt_model_generator
 from .dev_chat import router as chat_router
+from modules.types import PromptConfig, PromptModelRunConfig, MessagesWithInputs
 
 router = APIRouter()
 router.include_router(chat_router)
-
-
-class PromptConfig(BaseModel):
-    role: str
-    step: int
-    content: str
-
-
-class PromptModelRunConfig(BaseModel):
-    prompt_model_uuid: str
-    prompts: List[PromptConfig]
-    model: Optional[str] = "gpt-3.5-turbo"
-    from_version: Optional[int] = None
-    version_uuid: Optional[str] = None
-    sample_name: Optional[str] = None
-    parsing_type: Optional[str] = None
-    output_keys: Optional[List[str]] = None
-    functions: Optional[List[str]] = []
-
-
-class ChatModelRunConfig(BaseModel):
-    chat_model_uuid: str
-    system_prompt: str
-    user_input: str
-    model: Optional[str] = "gpt-3.5-turbo"
-    from_version: Optional[int] = None
-    session_uuid: Optional[str] = None
-    version_uuid: Optional[str] = None
-    functions: Optional[List[str]] = []
-
-
-class RunLog(BaseModel):
-    inputs: Dict[str, Any]
-    raw_output: str
-    parsed_outputs: Dict[str, Any]
 
 
 @router.post("/run_prompt_model")
@@ -72,15 +34,15 @@ async def run_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
         <li><b>project_uuid:</b> project uuid</li>
         <li><b>run_config:</b></li>
         <ul>
-            <li>prompt_model_uuid: prompt_model uuid</li>
-            <li>output_keys: List[str] | None (Optional)</li>
-            <li>model: model name</li>
-            <li>sample_name : sample name (Optional)  </li>
-            <li>prompts : list of prompts (type, step, content)  </li>
-            <li>from_uuid : previous version uuid (Optional) </li>
-            <li>uuid : current uuid (optional if run_previous)  </li>
-            <li>parsing_type: parsing type (colon, square_bracket, double_square_bracket, html, None)  </li>
-            <li>functions : list of function names (Optional[List[str]])  </li>
+            prompt_model_uuid: str
+            prompts: List of prompts (type, step, content)
+            model: str
+            from_version: previous version number (Optional)
+            version_uuid: current version uuid (Optional if from_version is provided)
+            sample_name: Sample name (Optional)
+            parsing_type: ParsingType (colon, square_bracket, double_square_bracket, html)
+            output_keys: List of output keys (Optional)
+            functions: List of function schemas (Optional)
         </ul>
     </ul>
 
@@ -111,95 +73,10 @@ async def run_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
             raise ValueError("There is no connection")
 
         cli_access_key = project[0]["cli_access_key"]
-        run_config_dict = run_config.model_dump()
-
-        # Validate Variable Matching
-        messages_with_inputs: MessagesWithInputs = validate_variable_matching(
-            run_config_dict, project_uuid
-        )
-        if messages_with_inputs.error:
-            raise ValueError(messages_with_inputs.error_message)
-
-        async def run_prompt_model_generator(
-            cli_access_key: str, run_config: PromptModelRunConfig
-        ):
-            run_config_dict = run_config.model_dump()
-            run_config_dict["messages_for_run"] = messages_with_inputs.messages
-
-            # add function schemas
-            function_schemas = (
-                supabase.table("function_schema")
-                .select("*")
-                .eq("project_uuid", project_uuid)
-                .in_("name", run_config.functions)
-                .execute()
-            )  # function_schemas includes mock_response
-            run_config_dict["function_schemas"] = function_schemas.data
-
-            run_log: Dict[str, Any] = {
-                "inputs": messages_with_inputs.inputs,
-                "raw_output": "",
-                "parsed_outputs": {},
-                "function_call": None,
-                "input_register_name": run_config.sample_name,
-                "version_uuid": run_config.uuid,
-                "token_usage": None,  # TODO: add token usage, latency, cost on testing
-                "latency": None,
-                "cost": None,
-                "metadata": None,
-                "run_from_deployment": False,
-            }
-
-            prompt_model_version_config: Dict[str, Any] = {
-                "version": 0,
-                "uuid": run_config.uuid,
-                "prompt_model_uuid": run_config.prompt_model_uuid,
-                "model": run_config.model,
-                "from_uuid": run_config.from_uuid,
-                "parsing_type": run_config.parsing_type,
-                "output_keys": run_config.output_keys,
-                "functions": run_config.functions,
-            }
-
-            prompts: List[Dict[str, Any]] = run_config.prompts
-
-            res = websocket_manager.stream(
-                cli_access_key, LocalTask.RUN_PROMPT_MODEL, run_config_dict
-            )
-            async for chunk in res:
-                # check output and update DB
-                if "raw_output" in chunk:
-                    run_log["raw_output"] += chunk["raw_output"]
-
-                if "parsed_outputs" in chunk:
-                    run_log["parsed_outputs"] = update_dict(
-                        run_log["parsed_outputs"], chunk["parsed_outputs"]
-                    )
-
-                if "function_call" in chunk:
-                    run_log["function_call"] = chunk["function_call"]
-
-                if "function_response" in chunk:
-                    run_log["function_call"]["response"] = chunk["function_response"][
-                        "response"
-                    ]  # TODO: if add tool call, change this to use chunk["function_response"]["name"] to find each call-response pair
-
-                if "status" in chunk:
-                    if chunk["status"] in ["completed", "failed"]:
-                        update_db_in_prompt_model_run(
-                            project[0],
-                            prompt_model_version_config,
-                            run_log,
-                            prompts,
-                            chunk["error_type"],
-                            chunk["log"],
-                        )
-
-                yield json.dumps(chunk)
 
         try:
             return StreamingResponse(
-                run_prompt_model_generator(cli_access_key, run_config)
+                run_local_prompt_model_generator(cli_access_key, run_config)
             )
         except Exception as exc:
             logger.error(exc)

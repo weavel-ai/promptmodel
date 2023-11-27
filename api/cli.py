@@ -52,8 +52,9 @@ async def list_orgs(user_id: str = Depends(get_cli_user_id)):
             .select("name, slug, organization_id")
             .eq("user_id", user_id)
             .execute()
+            .data
         )
-        return JSONResponse(res.data, status_code=HTTP_200_OK)
+        return JSONResponse(res, status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
@@ -68,8 +69,9 @@ async def list_projects(organization_id: str, user_id: str = Depends(get_cli_use
             .select("uuid, name, description, version")
             .eq("organization_id", organization_id)
             .execute()
+            .data
         )
-        return JSONResponse(res.data, status_code=HTTP_200_OK)
+        return JSONResponse(res, status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
@@ -86,57 +88,12 @@ async def get_project_version(
             .select("version")
             .eq("uuid", project_uuid)
             .execute()
+            .data
         )
-        return JSONResponse(res.data, status_code=HTTP_200_OK)
+        return JSONResponse(res, status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
-# @router.get("/get_changelog")
-# async def get_changelog(
-#     project_uuid: str,
-#     local_project_version: str,
-#     levels: List[int] = Query(...),
-#     user_id: str = Depends(get_cli_user_id),
-# ):
-#     """Get changelog of project after a certain version
-
-#     Args:
-#         - project_uuid (str): uuid of project
-#         - local_project_version (str): version of local project
-#         - levels (list[int]): levels of changelog to fetch
-
-#     """
-#     try:
-#         # changelog가 없을 수 있음
-#         start_point = (
-#             supabase.table("project_changelog")
-#             .select("id")
-#             .eq("project_uuid", project_uuid)
-#             .eq("previous_version", local_project_version)
-#             .execute()
-#             .data
-#         )
-
-#         if (len(start_point)) == 0:
-#             return JSONResponse([], status_code=HTTP_200_OK)
-
-#         current_version_id = start_point[0]["id"]
-
-#         res = (
-#             supabase.table("project_changelog")
-#             .select("previous_version, logs, level")
-#             .eq("project_uuid", project_uuid)
-#             .gte("id", current_version_id)
-#             .in_("level", levels)
-#             .order("created_at", desc=False)
-#             .execute()
-#         )
-#         return JSONResponse(res.data, status_code=HTTP_200_OK)
-#     except Exception as exc:
-#         logger.error(exc)
-#         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
 @router.get("/check_update")
