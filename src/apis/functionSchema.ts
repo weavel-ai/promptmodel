@@ -1,4 +1,4 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 
 export async function fetchFunctions(
   supabaseClient: SupabaseClient,
@@ -26,4 +26,28 @@ export async function fetchFunctionSchema(
     .single();
 
   return res.data;
+}
+
+export async function subscribeFunctions(
+  supabaseClient: SupabaseClient,
+  projectUuid: string,
+  onUpdate: () => void
+): Promise<RealtimeChannel> {
+  const functionsStream = supabaseClient
+    .channel("any")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "function_schema",
+        filter: `project_uuid=eq.${projectUuid}`,
+      },
+      (payload) => {
+        onUpdate();
+      }
+    )
+    .subscribe();
+
+  return functionsStream;
 }

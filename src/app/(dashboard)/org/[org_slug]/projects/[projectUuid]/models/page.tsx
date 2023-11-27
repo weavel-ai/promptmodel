@@ -93,6 +93,7 @@ export default function Page() {
           uuid: model.uuid,
           created_at: model.created_at,
           type: selectedTab,
+          online: model.online,
         },
       };
     });

@@ -58,6 +58,7 @@ import { SlashCommandOptions } from "@/components/select/SlashCommandOptions";
 import { usePromptModel } from "@/hooks/usePromptModel";
 import { Monaco, MonacoDiffEditor } from "@monaco-editor/react";
 import { arePrimitiveListsEqual, countStretchNodes } from "@/utils";
+import { OnlineStatus } from "@/components/OnlineStatus";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -71,6 +72,7 @@ const TABS = [Tab.Analytics, Tab.Versions];
 
 export default function Page() {
   const [tab, setTab] = useState(Tab.Versions);
+  const { promptModelData } = usePromptModel();
   const { promptModelVersionListData } = usePromptModelVersion();
   const { isCreateVariantOpen } = usePromptModelVersionStore();
 
@@ -78,11 +80,14 @@ export default function Page() {
     <div className="w-full h-full">
       {promptModelVersionListData?.length > 0 && !isCreateVariantOpen && (
         <div className="fixed top-16 left-24 z-50">
-          <SelectTab
-            tabs={TABS}
-            selectedTab={tab}
-            onSelect={(newTab) => setTab(newTab as Tab)}
-          />
+          <div className="flex flex-row gap-x-4 items-center">
+            <SelectTab
+              tabs={TABS}
+              selectedTab={tab}
+              onSelect={(newTab) => setTab(newTab as Tab)}
+            />
+            <OnlineStatus online={promptModelData?.online} />
+          </div>
         </div>
       )}
       {tab == Tab.Analytics && <AnalyticsPage />}
@@ -393,7 +398,10 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
       {open && (
         <div className="flex flex-col justify-start w-full max-w-4xl h-full">
           <div className="flex flex-row justify-between items-center mb-2">
-            <p className="text-2xl font-bold">{promptModelData?.name} V1</p>
+            <div className="flex flex-row justify-start items-center gap-x-4">
+              <p className="text-2xl font-bold">{promptModelData?.name} V1</p>
+              <OnlineStatus online={promptModelData?.online} />
+            </div>
             <div className="flex flex-row w-fit justify-end items-center gap-x-2">
               <SampleSelector
                 sampleName={selectedSample}
@@ -505,7 +513,7 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
               className="mt-4 backdrop-blur-sm"
               style={{ height: lowerBoxHeight }}
             >
-              <RunLogUI versionUuid="new" />
+              <RunLogUI versionUuid={null} />
             </div>
           </div>
         </div>
@@ -676,7 +684,9 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                   {promptModelData?.name} <i>V</i>{" "}
                   {originalPromptModelVersionData?.version}
                 </p>
-
+                {isCreateVariantOpen && (
+                  <OnlineStatus online={promptModelData?.online} />
+                )}
                 {originalPromptModelVersionData?.is_published &&
                   !isCreateVariantOpen && (
                     <div className="flex flex-row gap-x-2 items-center">

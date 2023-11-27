@@ -34,6 +34,7 @@ import { useProject } from "@/hooks/useProject";
 import { usePromptModel } from "@/hooks/usePromptModel";
 import { SelectNavigator } from "../SelectNavigator";
 import { useChatModel } from "@/hooks/useChatModel";
+import { OnlineStatus } from "../OnlineStatus";
 
 const michroma = Michroma({
   weight: ["400"],
@@ -42,7 +43,6 @@ const michroma = Michroma({
 
 interface NavbarProps {
   title?: string;
-  trailingComponent?: React.ReactElement;
 }
 
 export const DeploymentNavbar = (props: NavbarProps) => {
@@ -54,7 +54,7 @@ export const DeploymentNavbar = (props: NavbarProps) => {
   const { isSignedIn, userId } = useAuth();
   const { organization } = useOrganization();
   const { orgData, refetchOrgData } = useOrgData();
-  const { projectListData } = useProject();
+  const { projectData, projectListData } = useProject();
   const { promptModelListData } = usePromptModel();
   const { chatModelListData } = useChatModel();
   // Mobile
@@ -161,11 +161,15 @@ export const DeploymentNavbar = (props: NavbarProps) => {
                   label: projectListData?.find(
                     (project) => project.uuid == params?.projectUuid
                   )?.name,
+                  online: projectListData?.find(
+                    (project) => project.uuid == params?.projectUuid
+                  )?.online,
                   href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models`,
                 }}
                 options={projectListData?.map((project) => {
                   return {
                     label: project.name,
+                    online: project.online,
                     href: `/org/${params?.org_slug}/projects/${project?.uuid}/models`,
                   };
                 })}
@@ -190,11 +194,16 @@ export const DeploymentNavbar = (props: NavbarProps) => {
                       (promptModel) =>
                         promptModel.uuid == params?.promptModelUuid
                     )?.name,
+                    online: promptModelListData?.find(
+                      (promptModel) =>
+                        promptModel.uuid == params?.promptModelUuid
+                    )?.online,
                     href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/prompt_models/${params?.promptModelUuid}`,
                   }}
                   options={promptModelListData?.map((promptModel) => {
                     return {
                       label: promptModel.name,
+                      online: promptModel.online,
                       href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/prompt_models/${promptModel.uuid}`,
                     };
                   })}
@@ -207,11 +216,15 @@ export const DeploymentNavbar = (props: NavbarProps) => {
                     label: chatModelListData?.find(
                       (chatModel) => chatModel.uuid == params?.chatModelUuid
                     )?.name,
+                    online: chatModelListData?.find(
+                      (chatModel) => chatModel.uuid == params?.chatModelUuid
+                    )?.online,
                     href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/chat_models/${params?.chatModelUuid}`,
                   }}
                   options={chatModelListData?.map((chatModel) => {
                     return {
                       label: chatModel.name,
+                      online: chatModel.online,
                       href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/chat_models/${chatModel.uuid}`,
                     };
                   })}
@@ -219,19 +232,9 @@ export const DeploymentNavbar = (props: NavbarProps) => {
               )}
             </div>
           </div>
-          {props.trailingComponent}
-          {pathname == "/" && isSignedIn && (
-            <div className="px-6 pt-1 group justify-center">
-              <Link
-                href="/org/redirect"
-                target="_blank"
-                className={classNames("relative")}
-              >
-                <p className="font-semibold">Dashboard</p>
-                <AnimatedUnderline />
-              </Link>
-            </div>
-          )}
+          <div className="mr-2">
+            <OnlineStatus online={projectData?.online} />
+          </div>
           {!pathname.includes("sign-in") && !pathname.includes("sign-up") && (
             <SignInButton />
           )}

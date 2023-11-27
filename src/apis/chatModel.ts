@@ -1,4 +1,4 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 
 export async function fetchChatModels(
   supabaseClient: SupabaseClient,
@@ -6,9 +6,33 @@ export async function fetchChatModels(
 ) {
   const res = await supabaseClient
     .from("chat_model")
-    .select("uuid, name, created_at")
+    .select("uuid, name, created_at, online")
     .eq("project_uuid", projectUuid);
   return res.data;
+}
+
+export async function subscribeChatModel(
+  supabaseClient: SupabaseClient,
+  projectUuid: string,
+  onUpdate: () => void
+): Promise<RealtimeChannel> {
+  const chatModelStream = supabaseClient
+    .channel("any")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "chat_model",
+        filter: `project_uuid=eq.${projectUuid}`,
+      },
+      (payload) => {
+        onUpdate();
+      }
+    )
+    .subscribe();
+
+  return chatModelStream;
 }
 
 export async function createChatModel({
