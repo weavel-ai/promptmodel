@@ -362,6 +362,7 @@ async def run_cloud_prompt_model(project_uuid: str, run_config: PromptModelRunCo
                 "inputs": sample_input,
                 "raw_output": output["raw_output"],
                 "parsed_outputs": output["parsed_outputs"],
+                "function_call" : function_call,
                 "run_from_deployment": False,
             }
         ).execute()
