@@ -632,7 +632,7 @@ async def run_cloud_chat_model(
                 "session_uuid": session_uuid,
                 "role": "assistant",
                 "content": raw_output,
-                "function_call": function_call,
+                "tool_calls": [function_call],
             }
         ).execute()
 

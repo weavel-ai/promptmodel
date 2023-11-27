@@ -161,12 +161,12 @@ async def run_local_prompt_model_generator(
             changelogs += [
                 {
                     "subject": "prompt_model_version",
-                    "identifier": [res[0]["uuid"]],
+                    "identifier": [prompt_model_version[0]["uuid"]],
                     "action": "ADD",
                 },
                 {
                     "subject": "prompt_model_version",
-                    "identifier": [res[0]["uuid"]],
+                    "identifier": [prompt_model_version[0]["uuid"]],
                     "action": "PUBLISH",
                 },
             ]
@@ -242,7 +242,7 @@ async def run_local_prompt_model_generator(
             )
 
         if "function_call" in chunk:
-            run_log["function_call"] = chunk["function_call"]
+            run_log["function_call"]: Dict = chunk["function_call"]
 
         if "function_response" in chunk:
             run_log["function_call"]["response"] = chunk["function_response"][
@@ -304,7 +304,9 @@ async def run_local_chat_model_generator(
             .execute()
             .data
         )
-        old_messages.extend(chat_logs)
+        old_messages.extend(
+            [{"role": log["role"], "content": log["content"]} for log in chat_logs]
+        )
         # delete None values
         old_messages = [
             {k: v for k, v in message.items() if v is not None}
@@ -426,7 +428,10 @@ async def run_local_chat_model_generator(
 
     websocket_message = {
         "old_messages": old_messages,
-        "new_messages": new_messages,
+        "new_messages": [
+            {"role": message["role"], "content": message["content"]}
+            for message in new_messages
+        ],
         "function_schemas": function_schemas,
         "model": run_config.model,
     }
@@ -554,6 +559,7 @@ def save_chat_logs(
 
             # save response messages
             for message in response_messages:
+                message["tool_calls"] = None
                 if "function_call" in message:
                     message["tool_calls"] = message["function_call"]
                     del message["function_call"]
@@ -575,8 +581,11 @@ def save_chat_logs(
         # save response messages
         for message in response_messages:
             message["session_uuid"] = session_uuid
+            message["tool_calls"] = None
+            message["name"] = None
             if "function_call" in message:
                 message["tool_calls"] = message["function_call"]
                 del message["function_call"]
+        print(response_messages)
         supabase.table("chat_log").insert(response_messages).execute()
         return

@@ -63,7 +63,7 @@ async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
         # Find local server websocket
         project = (
             supabase.table("project")
-            .select("cli_access_key, version")
+            .select("uuid, cli_access_key, version")
             .eq("uuid", project_uuid)
             .execute()
             .data

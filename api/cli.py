@@ -149,9 +149,9 @@ async def check_update(cached_version: int, project: dict = Depends(get_project)
         deployed_prompt_model_versions = (
             supabase.table("deployed_prompt_model_version")
             .select(
-                "uuid, from_uuid, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+                "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
             )
-            # .select("uuid, from_uuid, prompt_model_uuid, model, is_published, is_ab_test, ratio")
+            # .select("uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio")
             .in_("prompt_model_uuid", [x["uuid"] for x in prompt_models])
             .execute()
             .data
@@ -216,7 +216,7 @@ async def fetch_prompt_model_version(
             deployed_prompt_model_versions = (
                 supabase.table("deployed_prompt_model_version")
                 .select(
-                    "uuid, from_uuid, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+                    "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
                 )
                 .eq("prompt_model_uuid", prompt_model["uuid"])
                 .execute()
@@ -242,7 +242,7 @@ async def fetch_prompt_model_version(
                 prompt_model_versions = (
                     supabase.table("prompt_model_version")
                     .select(
-                        "uuid, from_uuid, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+                        "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
                     )
                     .eq("prompt_model_uuid", prompt_model["uuid"])
                     .eq("version", version)
@@ -253,7 +253,7 @@ async def fetch_prompt_model_version(
                 prompt_model_versions = (
                     supabase.table("prompt_model_version")
                     .select(
-                        "uuid, from_uuid, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+                        "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
                     )
                     .eq("prompt_model_uuid", prompt_model["uuid"])
                     .order("version", desc=True)
@@ -319,7 +319,7 @@ async def fetch_chat_model_version_with_chat_log(
             session_chat_model_version = (
                 supabase.table("chat_model_version")
                 .select(
-                    "uuid, from_uuid, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
+                    "uuid, from_version, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
                 )
                 .eq("uuid", session["version_uuid"])
                 .execute()
@@ -354,7 +354,7 @@ async def fetch_chat_model_version_with_chat_log(
             chat_model_version = (
                 supabase.table("chat_model_version")
                 .select(
-                    "uuid, from_uuid, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
+                    "uuid, from_version, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
                 )
                 .eq("chat_model_uuid", chat_model["uuid"])
                 .eq("version", version)
@@ -376,7 +376,7 @@ async def fetch_chat_model_version_with_chat_log(
             deployed_chat_model_versions = (
                 supabase.table("deployed_chat_model_version")
                 .select(
-                    "uuid, from_uuid, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
+                    "uuid, from_version, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
                 )
                 .eq("chat_model_uuid", chat_model["uuid"])
                 .execute()
