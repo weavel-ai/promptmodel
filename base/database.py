@@ -8,9 +8,9 @@ load_dotenv()
 
 deployment_stage: str = os.environ.get("DEPLOYMENT_STAGE")
 if deployment_stage == "local":
-    url: str = os.environ.get("SUPABASE_COLAB_URL")
-    key: str = os.environ.get("SUPABASE_COLAB_API_KEY")
+    url: str = os.environ.get("PROMPTMODEL_SUPABASE_URL")
+    key: str = os.environ.get("PROMPTMODEL_SUPABASE_KEY")
 else:
-    url: str = os.environ.get("SUPABASE_COLAB_URL")
-    key: str = os.environ.get("SUPABASE_COLAB_API_KEY")
+    url: str = os.environ.get("SUPABASE_URL")
+    key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
