@@ -26,9 +26,15 @@ export function RunLogUI({
   const [runLogList, setRunLogList] = useState<RunLog[]>([]);
 
   useEffect(() => {
-    if (runTasksCount == null || runLogData == undefined || runLogData == null)
+    if (
+      runTasksCount == null ||
+      runLogData == undefined ||
+      runLogData == null ||
+      !versionUuid
+    ) {
+      setRunLogList([]);
       return;
-
+    }
     let updatedRunLogList = [];
 
     if (runLogData?.length > 0) {
@@ -59,12 +65,12 @@ export function RunLogUI({
     }
 
     setRunLogList(updatedRunLogList);
-  }, [runLogData, runLogs[versionUuid]]);
+  }, [versionUuid, runLogData, runLogs[versionUuid]]);
 
   const mainUI = (
     <div className="w-full h-full flex flex-col gap-y-2">
       <div className="w-full flex flex-row justify-between items-center">
-        <p className="text-xl font-semibold ps-2">Run Log</p>
+        <p className="text-xl font-semibold ps-2">Run Log {versionUuid}</p>
         {versionUuid != null && (
           <button
             className="btn btn-sm bg-transparent border-transparent items-center hover:bg-neutral-content/20"
@@ -216,7 +222,11 @@ const RunLogComponent = ({
           <p>{runLogData?.function_call?.toString()}</p>
         ) : (
           <ReactJson
-            src={runLogData?.function_call as Record<string, any>}
+            src={{
+              name: runLogData?.function_call?.name,
+              arguments: JSON.parse(runLogData?.function_call?.arguments),
+              response: runLogData?.function_call?.response,
+            }}
             name={false}
             displayDataTypes={false}
             displayObjectSize={false}

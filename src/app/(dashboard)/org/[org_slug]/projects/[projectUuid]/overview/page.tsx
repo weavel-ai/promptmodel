@@ -52,15 +52,15 @@ export default function Page() {
           <div className="w-1/2 h-fit flex flex-col">
             <p className="text-xl font-bold pb-4">Changelog</p>
             {/* TODO */}
-            <div className="w-full h-fit max-h-[50vh] overflow-auto">
+            <div className="w-full h-fit max-h-[20vh] overflow-auto">
               <div className="w-full h-full flex flex-col gap-y-2">
                 {changeLogListData?.length == 0 && (
                   <p className="text-muted-content">Changelog is empty.</p>
                 )}
-                {changeLogListData?.map((changeLog) => {
+                {changeLogListData?.map((changeLog, idx) => {
                   return (
                     <div
-                      key={changeLog.previous_version}
+                      key={idx}
                       className="flex flex-row bg-base-200 w-full p-1 px-4 rounded place-content-between"
                     >
                       <div className="place-self-start text-base-content flex flex-col">
@@ -88,51 +88,17 @@ const ChangeLogComponent = ({ changeLog }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <motion.div
-      className="bg-base-100 flex flex-row gap-x-2"
-      animate={{ height: isOpen ? "auto" : "fit" }}
-    >
-      <div className="flex flex-col gap-y-2">
-        {changeLog.logs?.map((log) => {
-          return (
-            <div className="flex flex-col px-2 py-1 rounded gap-y-2">
-              <div className="flex flex-row gap-x-32">
-                <p className="text-sm">Action: {log.action}</p>
-                <p className="text-sm">Subject: {log.subject}</p>
-              </div>
-              {isOpen && (
-                <div className="flex flex-row text-sm">
-                  <div>Identifier: </div>
-                  {
-                    <div className="flex flex-col">
-                      {log.identifiers?.map((identifier, index) => {
-                        return (
-                          <div key={index} className="indent-4 text-gray-500">
-                            {index + 1}. {identifier}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  }
-                </div>
-              )}
+    <div className="flex flex-col gap-y-2">
+      {changeLog.logs?.map((log) => {
+        return (
+          <div className="flex flex-col px-2 py-1 rounded gap-y-2">
+            <div className="flex flex-row justify-start gap-x-6">
+              <p className="text-sm font-semibold">{log.action}</p>
+              <p className="text-sm">{log.subject}</p>
             </div>
-          );
-        })}
-      </div>
-      <button
-        className="self-start p-1"
-        onClick={() => {
-          setIsOpen(!isOpen);
-        }}
-      >
-        <CaretLeft
-          className={classNames(
-            "text-base-content transition-transform",
-            isOpen && "transform -rotate-90"
-          )}
-        />
-      </button>
-    </motion.div>
+          </div>
+        );
+      })}
+    </div>
   );
 };

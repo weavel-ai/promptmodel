@@ -17,14 +17,16 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { useEffect, useMemo } from "react";
 import { fetchPrompts } from "@/apis/prompt";
-import { streamPromptModelRun } from "@/apis/stream";
+import { streamLocalPromptModelRun, streamPromptModelRun } from "@/apis/stream";
 import { useRunLogs } from "./useRunLog";
 import { cloneDeep } from "@/utils";
+import { usePromptModel } from "./usePromptModel";
 
 export const usePromptModelVersion = () => {
   const params = useParams();
   const queryClient = useQueryClient();
   const { createSupabaseClient } = useSupabaseClient();
+  const { promptModelData } = usePromptModel();
   const {
     newVersionCache,
     selectedPromptModelVersion,
@@ -43,6 +45,7 @@ export const usePromptModelVersion = () => {
     removeRunLog,
     setSelectedPromptModelVersion,
     setNewVersionCache,
+    setSelectedFunctions,
   } = usePromptModelVersionStore();
 
   const {
@@ -115,6 +118,11 @@ export const usePromptModelVersion = () => {
       setSelectedParser(null);
       setOutputKeys([]);
     }
+    if (originalPromptModelVersionData?.functions != null) {
+      setSelectedFunctions(originalPromptModelVersionData?.functions);
+    } else {
+      setSelectedFunctions([]);
+    }
   }, [originalPromptModelVersionData]);
 
   // Run LLM call
@@ -134,6 +142,7 @@ export const usePromptModelVersion = () => {
 
     const uuid = uuidv4();
     const args: any = {
+      projectUuid: params?.projectUuid as string,
       promptModelUuid: params?.promptModelUuid as string,
       prompts: prompts,
       model: isNew ? selectedModel : originalPromptModelVersionData.model,
@@ -150,6 +159,7 @@ export const usePromptModelVersion = () => {
         ? selectedFunctions
         : originalPromptModelVersionData?.functions,
       onNewData: async (data) => {
+        console.log(data);
         switch (data?.status) {
           case "completed":
             queryClient.invalidateQueries([
@@ -263,8 +273,12 @@ export const usePromptModelVersion = () => {
         }
       },
     };
+    if (promptModelData?.online) {
+      await streamLocalPromptModelRun(args);
+    } else {
+      await streamPromptModelRun(args);
+    }
 
-    await streamPromptModelRun(args);
     if (isNew) {
       refetchPromptModelVersionListData();
       if (!originalPromptModelVersionData?.uuid) {

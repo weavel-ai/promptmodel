@@ -14,6 +14,7 @@ import { useChatLogSessions } from "@/hooks/useChatLogSession";
 import { useSessionChatLogs } from "@/hooks/useSessionChatLogs";
 import { streamChatModelRun } from "@/apis/stream";
 import { useChatModel } from "@/hooks/useChatModel";
+import { useProject } from "@/hooks/useProject";
 dayjs.extend(relativeTime);
 
 export function ChatUI({
@@ -27,6 +28,7 @@ export function ChatUI({
   const [isLoading, setIsLoading] = useState(false);
   const [generatedMessage, setGeneratedMessage] = useState(null);
   const [selectedSessionUuid, setSelectedSessionUuid] = useState(null);
+  const { projectUuid } = useProject();
   const { chatModelUuid } = useChatModel();
   const { chatModelVersionListData, refetchChatModelVersionListData } =
     useChatModelVersion();
@@ -104,6 +106,7 @@ export function ChatUI({
     let cacheFunctionCallData = {};
 
     const args = {
+      projectUuid: projectUuid as string,
       chatModelUuid: chatModelUuid,
       userInput: userInput,
       systemPrompt: systemPrompt,
