@@ -78,7 +78,6 @@ class ConnectionManager:
                 break
         # Cleanup when the reader ends (because the websocket closed or there was an error)
         self.disconnect(token)
-        self._set_local_online_status(token, False)
 
     def disconnect(self, token: str):
         if token in self.connected_locals:
@@ -91,38 +90,7 @@ class ConnectionManager:
         """Update agent's online status in the Supabase database."""
         try:
             if not online:
-                res = (
-                    supabase.table("project")
-                    .update({"cli_access_key": None, "online": False})
-                    .eq("cli_access_key", token)
-                    .execute()
-                    .data
-                )
-                project_uuid = res[0]["uuid"]
-                (
-                    supabase.table("prompt_model")
-                    .update({"online": False})
-                    .eq("project_uuid", project_uuid)
-                    .execute()
-                )
-                (
-                    supabase.table("chat_model")
-                    .update({"online": False})
-                    .eq("project_uuid", project_uuid)
-                    .execute()
-                )
-                (
-                    supabase.table("sample_input")
-                    .update({"online": False})
-                    .eq("project_uuid", project_uuid)
-                    .execute()
-                )
-                (
-                    supabase.table("function_schema")
-                    .update({"online": False})
-                    .eq("project_uuid", project_uuid)
-                    .execute()
-                )
+                supabase.rpc("disconnect_local", {"token": token}).execute()
             else:
                 res = (
                     supabase.table("project")
@@ -252,10 +220,6 @@ class ConnectionManager:
 
     async def task_handler(self, token: str, data: dict):
         """Handles the message received from the agent."""
-        # UPDATE_PROMPT_MODEL = "UPDATE_PROMPT_MODEL"
-        # UPDATE_CHAT_MODEL = "UPDATE_CHAT_MODEL"
-        # UPDATE_SAMPLES = "UPDATE_SAMPLES"
-        # UPDATE_FUNCTIONS = "UPDATE_FUNCTIONS"
         if data["type"] == ServerTask.LOCAL_UPDATE_ALERT:
             try:
                 project = (
@@ -274,7 +238,6 @@ class ConnectionManager:
 
             except Exception as error:
                 logger.error(f"Error updating Dev branch sync columm: {error}")
-        # TODO: ADD theses ServerTasks
         elif data["type"] == ServerTask.SYNC_CODE:
             try:
                 project = (
@@ -290,99 +253,42 @@ class ConnectionManager:
 
                 project_uuid = project[0]["uuid"]
                 changelogs = []
+                instances_in_db = (
+                    supabase.rpc("pull_instances", {"project_uuid": project_uuid})
+                    .execute()
+                    .data[0]
+                )
+                prompt_models_in_db = instances_in_db["prompt_model_data"]
+                chat_models_in_db = instances_in_db["chat_model_data"]
+                samples_in_db = instances_in_db["sample_input_data"]
+                schemas_in_db = instances_in_db["function_schema_data"]
+
+                prompt_models_to_add = []
+                chat_models_to_add = []
+                samples_to_add = []
+                schemas_to_add = []
 
                 new_prompt_model_name_list = data["new_prompt_model"]
                 new_chat_model_name_list = data["new_chat_model"]
                 new_samples = data["new_samples"]
                 new_function_schemas = data["new_schemas"]
 
-                prompt_models_in_db = (
-                    supabase.table("prompt_model")
-                    .select("uuid, name")
-                    .eq("project_uuid", project_uuid)
-                    .execute()
-                    .data
-                )
                 old_names = [x["name"] for x in prompt_models_in_db]
                 new_names = list(set(new_prompt_model_name_list) - set(old_names))
-                new_prompt_models = [
+                prompt_models_to_add = [
                     {"name": x, "project_uuid": project_uuid} for x in new_names
                 ]
-                # insert new prompt_models
-                if len(new_prompt_models) > 0:
-                    new_versions = (
-                        supabase.table("prompt_model")
-                        .insert(new_prompt_models)
-                        .execute()
-                        .data
-                    )
-                    changelogs.append(
-                        {
-                            "subject": f"prompt_model",
-                            "identifiers": [
-                                version["uuid"] for version in new_versions
-                            ],
-                            "action": "ADD",
-                        }
-                    )
-                supabase.table("prompt_model").update({"online": False}).eq(
-                    "project_uuid", project_uuid
-                ).execute()
-                if len(new_prompt_model_name_list) > 0:
-                    supabase.table("prompt_model").update({"online": True}).eq(
-                        "project_uuid", project_uuid
-                    ).in_("name", new_prompt_model_name_list).execute()
 
-                # for ChatModel
-                chat_models_in_db = (
-                    supabase.table("chat_model")
-                    .select("uuid, name")
-                    .eq("project_uuid", project_uuid)
-                    .execute()
-                    .data
-                )
                 old_names = [x["name"] for x in chat_models_in_db]
                 new_names = list(set(new_chat_model_name_list) - set(old_names))
-                new_chat_models = [
+                chat_models_to_add = [
                     {"name": x, "project_uuid": project_uuid} for x in new_names
                 ]
-                # insert new chat_models
-                if len(new_chat_models) > 0:
-                    new_versions = (
-                        supabase.table("chat_model")
-                        .insert(new_chat_models)
-                        .execute()
-                        .data
-                    )
-                    changelogs.append(
-                        {
-                            "subject": f"chat_model",
-                            "identifiers": [
-                                version["uuid"] for version in new_versions
-                            ],
-                            "action": "ADD",
-                        }
-                    )
-                supabase.table("chat_model").update({"online": False}).eq(
-                    "project_uuid", project_uuid
-                ).execute()
-                if len(new_chat_model_name_list) > 0:
-                    supabase.table("chat_model").update({"online": True}).eq(
-                        "project_uuid", project_uuid
-                    ).in_("name", new_chat_model_name_list).execute()
 
-                # For Sample
-                samples_in_db = (
-                    supabase.table("sample_input")
-                    .select("*")
-                    .eq("project_uuid", project_uuid)
-                    .execute()
-                    .data
-                )
                 old_names = [x["name"] for x in samples_in_db]
                 names_in_code = [x["name"] for x in new_samples]
                 new_names = list(set(names_in_code) - set(old_names))
-                new_samples = [
+                samples_to_add = [
                     {
                         "name": x["name"],
                         "content": x["content"],
@@ -391,21 +297,6 @@ class ConnectionManager:
                     for x in new_samples
                     if x["name"] in new_names
                 ]
-                # insert new samples
-                if len(new_samples) > 0:
-                    new_samples = (
-                        supabase.table("sample_input")
-                        .insert(new_samples)
-                        .execute()
-                        .data
-                    )
-                    changelogs.append(
-                        {
-                            "subject": f"sample_input",
-                            "identifiers": [sample["uuid"] for sample in new_samples],
-                            "action": "ADD",
-                        }
-                    )
 
                 # sample to update
                 samples_to_update = [
@@ -415,49 +306,16 @@ class ConnectionManager:
                     and sample["content"]
                     != samples_in_db[old_names.index(sample["name"])]["content"]
                 ]
-                if len(samples_to_update) > 0:
-                    update_sample_uuids = []
-                    for sample in samples_to_update:
-                        res = (
-                            supabase.table("sample_input")
-                            .update({"content": sample["content"]})
-                            .eq("project_uuid", project_uuid)
-                            .eq("name", sample["name"])
-                            .execute()
-                            .data
-                        )
-                        update_sample_uuids.append(res[0]["uuid"])
-                    changelogs.append(
-                        {
-                            "subject": f"sample_input",
-                            "identifiers": update_sample_uuids,
-                            "action": "UPDATE",
-                        }
-                    )
-                supabase.table("sample_input").update({"online": False}).eq(
-                    "project_uuid", project_uuid
-                ).execute()
-                if len(new_samples) > 0:
-                    supabase.table("sample_input").update({"online": True}).eq(
-                        "project_uuid", project_uuid
-                    ).in_("name", names_in_code).execute()
 
                 # For FunctionSchema
-                schemas_in_db = (
-                    supabase.table("function_schema")
-                    .select("*")
-                    .eq("project_uuid", project_uuid)
-                    .execute()
-                    .data
-                )
                 old_names = [x["name"] for x in schemas_in_db]
                 names_in_code = [x["name"] for x in new_function_schemas]
                 new_names = list(set(names_in_code) - set(old_names))
-                new_schemas = [
+                schemas_to_add = [
                     {
                         "name": x["name"],
                         "description": x["description"],
-                        "parameter": x["parameter"],
+                        "parameters": x["parameters"],
                         "mock_response": x["mock_response"]
                         if "mock_response" in x
                         else None,
@@ -466,62 +324,117 @@ class ConnectionManager:
                     for x in new_function_schemas
                     if x["name"] in new_names
                 ]
-                # insert new schemas
-                if len(new_schemas) > 0:
-                    res = (
-                        supabase.table("function_schema")
-                        .insert(new_schemas)
-                        .execute()
-                        .data
-                    )
-                    changelogs.append(
-                        {
-                            "subject": f"function_schema",
-                            "identifiers": [schema["uuid"] for schema in res],
-                            "action": "ADD",
-                        }
-                    )
 
                 # update schemas
-                schema_to_update = [
+                schemas_to_update = [
                     schema
                     for schema in new_function_schemas
                     if schema["name"] not in new_names
                 ]
-                if len(schema_to_update) > 0:
-                    update_schema_uuids = []
-                    for schema in schema_to_update:
-                        res = (
-                            supabase.table("function_schema")
-                            .update(
-                                {
-                                    "description": schema["description"],
-                                    "parameter": schema["parameter"],
-                                    "mock_response": schema["mock_response"],
-                                }
-                            )
-                            .eq("project_uuid", project_uuid)
-                            .eq("name", schema["name"])
-                            .execute()
-                            .data
-                        )
-                        update_schema_uuids.append(res[0]["uuid"])
-                    changelogs.append(
+
+                # save instances
+                new_instances = (
+                    supabase.rpc(
+                        "save_instances",
                         {
-                            "subject": f"function_schema",
-                            "identifiers": update_schema_uuids,
-                            "action": "UPDATE",
-                        }
+                            "prompt_models": prompt_models_to_add,
+                            "chat_models": chat_models_to_add,
+                            "sample_inputs": samples_to_add,
+                            "function_schemas": schemas_to_add,
+                        },
                     )
+                    .execute()
+                    .data[0]
+                )
+                new_prompt_models = (
+                    new_instances["prompt_model_rows"]
+                    if new_instances["prompt_model_rows"]
+                    else []
+                )
+                new_chat_models = (
+                    new_instances["chat_model_rows"]
+                    if new_instances["chat_model_rows"]
+                    else []
+                )
+                new_samples = (
+                    new_instances["sample_input_rows"]
+                    if new_instances["sample_input_rows"]
+                    else []
+                )
+                new_schemas = (
+                    new_instances["function_schema_rows"]
+                    if new_instances["function_schema_rows"]
+                    else []
+                )
 
-                supabase.table("function_schema").update({"online": False}).eq(
-                    "project_uuid", project_uuid
-                ).execute()
-                if len(new_function_schemas) > 0:
-                    supabase.table("function_schema").update({"online": True}).eq(
-                        "project_uuid", project_uuid
-                    ).in_("name", names_in_code).execute()
+                prompt_model_name_list_to_update = new_prompt_model_name_list
+                chat_model_name_list_to_update = new_chat_model_name_list
+                # update instances
+                updated_instances = (
+                    supabase.rpc(
+                        "update_instances",
+                        {
+                            "input_project_uuid": project_uuid,
+                            "prompt_model_names": prompt_model_name_list_to_update,
+                            "chat_model_names": chat_model_name_list_to_update,
+                            "sample_input_names": [x["name"] for x in new_samples],
+                            "function_schema_names": [
+                                x["name"] for x in new_function_schemas
+                            ],
+                            "sample_inputs": samples_to_update,
+                            "function_schemas": schemas_to_update,
+                        },
+                    )
+                    .execute()
+                    .data[0]
+                )
 
+                updated_samples = (
+                    updated_instances["sample_input_rows"]
+                    if updated_instances["sample_input_rows"]
+                    else []
+                )
+                updated_schemas = (
+                    updated_instances["function_schema_rows"]
+                    if updated_instances["function_schema_rows"]
+                    else []
+                )
+
+                # make changelog
+                changelogs = [
+                    {
+                        "subject": f"prompt_model",
+                        "identifiers": [x["uuid"] for x in new_prompt_models],
+                        "action": "ADD",
+                    },
+                    {
+                        "subject": f"chat_model",
+                        "identifiers": [x["uuid"] for x in new_chat_models],
+                        "action": "ADD",
+                    },
+                    {
+                        "subject": f"sample_input",
+                        "identifiers": [x["uuid"] for x in new_samples],
+                        "action": "ADD",
+                    },
+                    {
+                        "subject": f"function_schema",
+                        "identifiers": [x["uuid"] for x in new_schemas],
+                        "action": "ADD",
+                    },
+                    {
+                        "subject": f"sample_input",
+                        "identifiers": [x["uuid"] for x in updated_samples],
+                        "action": "UPDATE",
+                    },
+                    {
+                        "subject": f"function_schema",
+                        "identifiers": [x["uuid"] for x in updated_schemas],
+                        "action": "UPDATE",
+                    },
+                ]
+                # delete if len(identifiers) == 0
+                changelogs = [x for x in changelogs if len(x["identifiers"]) > 0]
                 # save changelog
                 if len(changelogs) > 0:
                     (
@@ -534,7 +447,6 @@ class ConnectionManager:
                         )
                         .execute()
                     )
-
             except Exception as error:
                 logger.error(f"Error in Syncing with code: {error}")
 

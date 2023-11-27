@@ -77,7 +77,9 @@ async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
 
         try:
             return StreamingResponse(
-                run_local_chat_model_generator(cli_access_key, run_config)
+                run_local_chat_model_generator(
+                    project[0], start_timestampz_iso, cli_access_key, run_config
+                )
             )
         except Exception as exc:
             logger.error(exc)

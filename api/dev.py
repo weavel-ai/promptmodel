@@ -18,7 +18,7 @@ from base.database import supabase
 from base.websocket_connection import websocket_manager, LocalTask
 from modules.websocket.run_model_generators import run_local_prompt_model_generator
 from .dev_chat import router as chat_router
-from modules.types import PromptConfig, PromptModelRunConfig, MessagesWithInputs
+from modules.types import PromptConfig, PromptModelRunConfig
 
 router = APIRouter()
 router.include_router(chat_router)
@@ -76,7 +76,7 @@ async def run_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
 
         try:
             return StreamingResponse(
-                run_local_prompt_model_generator(cli_access_key, run_config)
+                run_local_prompt_model_generator(project[0], cli_access_key, run_config)
             )
         except Exception as exc:
             logger.error(exc)

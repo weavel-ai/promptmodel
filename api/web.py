@@ -338,7 +338,12 @@ async def run_cloud_prompt_model(project_uuid: str, run_config: PromptModelRunCo
             yield data
 
             if len(changelogs) > 0:
-                supabase.table("project_changelog").insert(changelogs).execute()
+                supabase.table("project_changelog").insert(
+                    {
+                        "logs": changelogs,
+                        "project_uuid": project_uuid,
+                    }
+                ).execute()
             if need_project_version_update:
                 project_version = (
                     supabase.table("project")
@@ -362,7 +367,7 @@ async def run_cloud_prompt_model(project_uuid: str, run_config: PromptModelRunCo
                 "inputs": sample_input,
                 "raw_output": output["raw_output"],
                 "parsed_outputs": output["parsed_outputs"],
-                "function_call" : function_call,
+                "function_call": function_call,
                 "run_from_deployment": False,
             }
         ).execute()
@@ -372,7 +377,12 @@ async def run_cloud_prompt_model(project_uuid: str, run_config: PromptModelRunCo
         }
 
         if len(changelogs) > 0:
-            supabase.table("project_changelog").insert(changelogs).execute()
+            supabase.table("project_changelog").insert(
+                {
+                    "logs": changelogs,
+                    "project_uuid": project_uuid,
+                }
+            ).execute()
         if need_project_version_update:
             project_version = (
                 supabase.table("project")
@@ -631,7 +641,12 @@ async def run_cloud_chat_model(
         }
 
         if len(changelogs) > 0:
-            supabase.table("project_changelog").insert(changelogs).execute()
+            supabase.table("project_changelog").insert(
+                {
+                    "logs": changelogs,
+                    "project_uuid": project_uuid,
+                }
+            ).execute()
         if need_project_version_update:
             project_version = (
                 supabase.table("project")
