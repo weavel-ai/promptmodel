@@ -19,8 +19,9 @@ from promptmodel.llms.llm_dev import LLMDev
 from promptmodel.types.response import LLMStreamResponse
 
 from utils.logger import logger
+from utils.prompt_utils import update_dict
 from base.database import supabase
-from api.dev import PromptModelRunConfig, ChatModelRunConfig
+from modules.types import PromptModelRunConfig, ChatModelRunConfig
 
 router = APIRouter()
 
@@ -57,7 +58,7 @@ async def create_project(project: Project):
 
 
 @router.post("/run_prompt_model")
-async def run_prompt_model(run_config: PromptModelRunConfig):
+async def run_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
     """Run PromptModel for cloud development environment.
 
     Args:
@@ -79,7 +80,9 @@ async def run_prompt_model(run_config: PromptModelRunConfig):
     """
 
     async def stream_run():
-        async for chunk in run_cloud_llm(run_config=run_config):
+        async for chunk in run_cloud_prompt_model(
+            project_uuid=project_uuid, run_config=run_config
+        ):
             yield json.dumps(chunk)
 
     try:
@@ -93,7 +96,7 @@ async def run_prompt_model(run_config: PromptModelRunConfig):
         ) from exc
 
 
-async def run_cloud_llm(run_config: PromptModelRunConfig):
+async def run_cloud_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
     """Run PromptModel on the cloud, request from web."""
     sample_input: Dict[str, Any] = {}
     # get sample from db
@@ -109,9 +112,25 @@ async def run_cloud_llm(run_config: PromptModelRunConfig):
     # Validate Variable Matching
     prompt_variables = []
     for prompt in run_config.prompts:
-        fstring_input_pattern = r"(?<!\\)(?<!{{)\{([^}]+)\}(?!\\)(?!}})"
-        prompt_variables += re.findall(fstring_input_pattern, prompt.content)
+        prompt_content = prompt.content
+        # Replace
+        escaped_patterns = re.findall(r"\{\{.*?\}\}", prompt_content)
+        for i, pattern in enumerate(escaped_patterns):
+            prompt_content = prompt_content.replace(pattern, f"__ESCAPED{i}__")
+
+        # find f-string input variables
+        fstring_input_pattern = r"(?<!\\)\{([^}]+)\}(?<!\\})"
+        prompt_variables_in_prompt = re.findall(fstring_input_pattern, prompt_content)
+
+        # Replace back
+        for i, pattern in enumerate(escaped_patterns):
+            prompt_content = prompt_content.replace(f"__ESCAPED{i}__", pattern)
+
+        prompt_variables_in_prompt = list(set(prompt_variables_in_prompt))
+        prompt_variables += prompt_variables_in_prompt
+
     prompt_variables = list(set(prompt_variables))
+
     if len(prompt_variables) != 0:
         if sample_input is None:
             data = {
@@ -134,16 +153,20 @@ async def run_cloud_llm(run_config: PromptModelRunConfig):
             return
     # Start PromptModel Running
     output = {"raw_output": "", "parsed_outputs": {}}
+    function_call = None
     try:
         # create prompt_model_dev_instance
         prompt_model_dev = LLMDev()
         # find prompt_model_uuid from local db
         prompt_model_version_uuid: Optional[str] = run_config.version_uuid
         # If prompt_model_version_uuid is None, create new version & prompt
+        changelogs = []
+        need_project_version_update = False
+
         if prompt_model_version_uuid is None:
-            version: int
             if run_config.from_version is None:
                 version = 1
+                need_project_version_update = True
             else:
                 latest_version = (
                     supabase.table("prompt_model_version")
@@ -173,6 +196,23 @@ async def run_cloud_llm(run_config: PromptModelRunConfig):
                 .execute()
                 .data[0]
             )
+
+            changelogs.append(
+                {
+                    "subject": "prompt_model_version",
+                    "identifier": [prompt_model_version["uuid"]],
+                    "action": "ADD",
+                }
+            )
+
+            if need_project_version_update:
+                changelogs.append(
+                    {
+                        "subject": "prompt_model_version",
+                        "identifier": [prompt_model_version["uuid"]],
+                        "action": "PUBLISH",
+                    }
+                )
 
             prompt_model_version_uuid: str = prompt_model_version["uuid"]
 
@@ -216,12 +256,23 @@ async def run_cloud_llm(run_config: PromptModelRunConfig):
 
         parsing_success = True
         error_log = None
+
         # NOTE : Function call is not supported yet in cloud development environment
+
+        # add function schemas
+        function_schemas = (
+            supabase.table("function_schema")
+            .select("*")
+            .eq("project_uuid", project_uuid)
+            .in_("name", run_config.functions)
+            .execute()
+            .data
+        )  # function_schemas includes mock_response
 
         res: AsyncGenerator[LLMStreamResponse, None] = prompt_model_dev.dev_run(
             messages=messages,
             parsing_type=parsing_type,
-            functions=run_config.functions,
+            functions=function_schemas,
             model=model,
         )
         async for item in res:
@@ -245,6 +296,13 @@ async def run_cloud_llm(run_config: PromptModelRunConfig):
                     "parsed_outputs": item.parsed_outputs,
                 }
 
+            if item.function_call is not None:
+                data = {
+                    "status": "running",
+                    "function_call": item.function_call.model_dump(),
+                }
+                function_call = item.function_call.model_dump()
+
             if item.error and parsing_success is True:
                 parsing_success = not item.error
                 error_log = item.error_log
@@ -252,7 +310,8 @@ async def run_cloud_llm(run_config: PromptModelRunConfig):
             yield data
 
         if (
-            run_config.output_keys is not None
+            function_call is not None
+            and run_config.output_keys is not None
             and run_config.parsing_type is not None
             and set(output["parsed_outputs"].keys()) != set(run_config.output_keys)
             or (parsing_success is False)
@@ -277,6 +336,28 @@ async def run_cloud_llm(run_config: PromptModelRunConfig):
             ).execute()
 
             yield data
+
+            if len(changelogs) > 0:
+                supabase.table("project_changelog").insert(
+                    {
+                        "logs": changelogs,
+                        "project_uuid": project_uuid,
+                    }
+                ).execute()
+            if need_project_version_update:
+                project_version = (
+                    supabase.table("project")
+                    .select("version")
+                    .eq("uuid", project_uuid)
+                    .execute()
+                    .data[0]["version"]
+                )
+                (
+                    supabase.table("project")
+                    .update({"version": project_version + 1})
+                    .eq("uuid", project_uuid)
+                    .execute()
+                )
             return
 
         # Create run log
@@ -286,6 +367,7 @@ async def run_cloud_llm(run_config: PromptModelRunConfig):
                 "inputs": sample_input,
                 "raw_output": output["raw_output"],
                 "parsed_outputs": output["parsed_outputs"],
+                "function_call": function_call,
                 "run_from_deployment": False,
             }
         ).execute()
@@ -293,6 +375,28 @@ async def run_cloud_llm(run_config: PromptModelRunConfig):
         data = {
             "status": "completed",
         }
+
+        if len(changelogs) > 0:
+            supabase.table("project_changelog").insert(
+                {
+                    "logs": changelogs,
+                    "project_uuid": project_uuid,
+                }
+            ).execute()
+        if need_project_version_update:
+            project_version = (
+                supabase.table("project")
+                .select("version")
+                .eq("uuid", project_uuid)
+                .execute()
+                .data[0]["version"]
+            )
+            (
+                supabase.table("project")
+                .update({"version": project_version + 1})
+                .eq("uuid", project_uuid)
+                .execute()
+            )
 
         yield data
     except Exception as error:
@@ -306,7 +410,7 @@ async def run_cloud_llm(run_config: PromptModelRunConfig):
 
 
 @router.post("/run_chat_model")
-async def run_chat_model(chat_config: ChatModelRunConfig):
+async def run_chat_model(project_uuid: str, chat_config: ChatModelRunConfig):
     """Run ChatModel from web.
 
     Args:
@@ -330,7 +434,9 @@ async def run_chat_model(chat_config: ChatModelRunConfig):
     """
 
     async def stream_run():
-        async for chunk in run_cloud_chat(chat_config=chat_config):
+        async for chunk in run_cloud_chat_model(
+            project_uuid=project_uuid, chat_config=chat_config
+        ):
             yield json.dumps(chunk)
 
     try:
@@ -344,7 +450,8 @@ async def run_chat_model(chat_config: ChatModelRunConfig):
         ) from exc
 
 
-async def run_cloud_chat(
+async def run_cloud_chat_model(
+    project_uuid: str,
     chat_config: ChatModelRunConfig,
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """Run ChatModel from cloud deployment environment.
@@ -373,12 +480,15 @@ async def run_cloud_chat(
         chat_model_version_uuid: Union[str, None] = chat_config.version_uuid
         session_uuid: Union[str, None] = chat_config.session_uuid
         messages = [{"role": "system", "content": chat_config.system_prompt}]
+        need_project_version_update = False
+        changelogs = []
 
         # If chat_model_version_uuid is None, create new version
         if chat_model_version_uuid is None:
             version: int
             if chat_config.from_version is None:
                 version = 1
+                need_project_version_update = True
             else:
                 latest_version = (
                     supabase.table("chat_model_version")
@@ -408,6 +518,21 @@ async def run_cloud_chat(
                 .execute()
                 .data[0]
             )
+            changelogs.append(
+                {
+                    "subject": "chat_model_version",
+                    "identifier": [chat_model_version["uuid"]],
+                    "action": "ADD",
+                }
+            )
+            if need_project_version_update:
+                changelogs.append(
+                    {
+                        "subject": "chat_model_version",
+                        "identifier": [chat_model_version["uuid"]],
+                        "action": "PUBLISH",
+                    }
+                )
 
             chat_model_version_uuid: str = chat_model_version["uuid"]
 
@@ -447,16 +572,28 @@ async def run_cloud_chat(
                 .data
             )
             messages.extend(session_chat_logs)
+
+        # function_schemas = (
+        #     supabase.table("function_schema")
+        #     .select("*")
+        #     .eq("project_uuid", project_uuid)
+        #     .in_("name", chat_config.functions)
+        #     .execute()
+        #     .data
+        # )
+
         # Append user input to messages
         messages.append({"role": "user", "content": chat_config.user_input})
         # Stream chat
         res: AsyncGenerator[LLMStreamResponse, None] = chat_model_dev.dev_chat(
             messages=messages,
             model=chat_config.model,
+            # functions=function_schemas,
         )
 
         # TODO: Add function call support
         raw_output = ""
+        function_call = None
         async for item in res:
             if item.raw_output is not None:
                 raw_output += item.raw_output
@@ -464,6 +601,17 @@ async def run_cloud_chat(
                     "status": "running",
                     "raw_output": item.raw_output,
                 }
+
+            if item.function_call is not None:
+                if function_call is None:
+                    function_call = {}
+                data = {
+                    "status": "running",
+                    "function_call": item.function_call.model_dump(),
+                }
+                function_call = update_dict(
+                    function_call, item.function_call.model_dump()
+                )
 
             if item.error:
                 error_log = item.error_log
@@ -484,12 +632,35 @@ async def run_cloud_chat(
                 "session_uuid": session_uuid,
                 "role": "assistant",
                 "content": raw_output,
+                "tool_calls": [function_call],
             }
         ).execute()
 
         data = {
             "status": "completed",
         }
+
+        if len(changelogs) > 0:
+            supabase.table("project_changelog").insert(
+                {
+                    "logs": changelogs,
+                    "project_uuid": project_uuid,
+                }
+            ).execute()
+        if need_project_version_update:
+            project_version = (
+                supabase.table("project")
+                .select("version")
+                .eq("uuid", project_uuid)
+                .execute()
+                .data[0]["version"]
+            )
+            (
+                supabase.table("project")
+                .update({"version": project_version + 1})
+                .eq("uuid", project_uuid)
+                .execute()
+            )
 
         yield data
 

@@ -28,7 +28,7 @@ api_key_header = APIKeyHeader(name=API_KEY_HEADER, auto_error=False)
 #     except Exception as error:
 #         logger.error(f"Error validating token: {error}")
 #         raise HTTPException(status_code=400, detail="Invalid token!")
-    
+
 
 async def get_user_id(authorization: str = Depends(api_key_header)):
     if not authorization:
@@ -68,14 +68,14 @@ async def get_websocket_token(websocket: WebSocket):
 
     token = authorization.split(" ")[1]
     try:
-        dev_branch = (
-            supabase.table("dev_branch")
+        project = (
+            supabase.table("project")
             .select("id, name")
             .eq("cli_access_key", token)
             .execute()
             .data
         )
-        if not dev_branch:
+        if not project:
             # await websocket.close(code=4000)
             raise HTTPException(status_code=400, detail="Token is required!")
         return token
