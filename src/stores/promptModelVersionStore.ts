@@ -17,6 +17,7 @@ type NewVersionCache = {
   prompts: Prompt[];
   model: string;
   parsing_type: ParsingType;
+  functions: string[] | null;
   // TODO: Add functions
 };
 
