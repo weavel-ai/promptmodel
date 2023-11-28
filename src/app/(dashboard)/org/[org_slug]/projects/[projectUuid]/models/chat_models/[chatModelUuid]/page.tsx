@@ -36,13 +36,17 @@ import { useChatModelVersion } from "@/hooks/useChatModelVersion";
 import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
 import { useChatModelVersionDetails } from "@/hooks/useChatModelVersionDetails";
 import { ModelDisplay, ModelSelector } from "@/components/ModelSelector";
-import { updatePublishedChatModelVersion } from "@/apis/chatModelVersion";
+import {
+  updateChatModelVersionMemo,
+  updatePublishedChatModelVersion,
+} from "@/apis/chatModelVersion";
 import { ChatUI } from "@/components/ChatUI";
 import { useWindowHeight, useWindowSize } from "@react-hook/window-size";
 import { FunctionSelector } from "@/components/select/FunctionSelector";
 import { useChatModel } from "@/hooks/useChatModel";
 import { Monaco, MonacoDiffEditor } from "@monaco-editor/react";
 import { countStretchNodes } from "@/utils";
+import { ClickToEditInput } from "@/components/inputs/ClickToEditInput";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -410,6 +414,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     setSelectedChatModelVersion,
     setFullScreenChatVersion,
   } = useChatModelVersionStore();
+  const [memo, setMemo] = useState("");
 
   const selectedChatModelVersionUuid = useMemo(() => {
     if (!chatModelVersionListData || !selectedChatModelVersion) return null;
@@ -518,6 +523,18 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
       isLoading: false,
       autoClose: 2000,
     });
+  }
+
+  async function handleSetMemo(newMemo: string) {
+    await updateChatModelVersionMemo(
+      await createSupabaseClient(),
+      selectedChatModelVersionUuid,
+      newMemo
+    );
+    queryClient.invalidateQueries([
+      "chatModelVersionData",
+      { uuid: selectedChatModelVersionUuid },
+    ]);
   }
 
   return (
@@ -662,6 +679,12 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                       )}
                     </div>
                   </div>
+                  <ClickToEditInput
+                    textarea
+                    value={originalVersionData?.memo}
+                    setValue={handleSetMemo}
+                    placeholder="Memo"
+                  />
                 </div>
                 <div className="flex flex-col w-1/2 justify-start gap-y-2 items-start mb-2">
                   <div className="flex flex-row justify-start gap-x-4 items-start">
@@ -714,6 +737,12 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     </Badge>
                   )}
                 </div>
+                <ClickToEditInput
+                  textarea
+                  value={originalVersionData?.memo}
+                  setValue={handleSetMemo}
+                  placeholder="Memo"
+                />
               </div>
             )}
             <div className="flex flex-col gap-y-2 justify-start items-end">

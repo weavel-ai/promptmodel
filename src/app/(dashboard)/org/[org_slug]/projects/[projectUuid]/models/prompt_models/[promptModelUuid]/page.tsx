@@ -25,7 +25,10 @@ import {
   XCircle,
 } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import { updatePublishedPromptModelVersion } from "@/apis/promptModelVersion";
+import {
+  updatePromptModelVersionMemo,
+  updatePublishedPromptModelVersion,
+} from "@/apis/promptModelVersion";
 import { useSupabaseClient } from "@/apis/base";
 import "reactflow/dist/style.css";
 import { editor } from "monaco-editor";
@@ -61,6 +64,7 @@ import { arePrimitiveListsEqual, countStretchNodes } from "@/utils";
 import { OnlineStatus } from "@/components/OnlineStatus";
 import { AddTagsButton } from "@/components/buttons/AddTagsButton";
 import { TagsSelector } from "@/components/select/TagsSelector";
+import { ClickToEditInput } from "@/components/inputs/ClickToEditInput";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -560,6 +564,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     setModifiedPrompts,
   } = usePromptModelVersionStore();
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
+  const [memo, setMemo] = useState("");
 
   const isNewVersionReady = useMemo(() => {
     if (isCreateVariantOpen) {
@@ -657,6 +662,18 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
       isLoading: false,
       autoClose: 2000,
     });
+  }
+
+  async function handleSetMemo(newMemo: string) {
+    await updatePromptModelVersionMemo(
+      await createSupabaseClient(),
+      selectedPromptModelVersionUuid,
+      newMemo
+    );
+    queryClient.invalidateQueries([
+      "promptModelVersionData",
+      { uuid: selectedPromptModelVersionUuid },
+    ]);
   }
 
   return (
@@ -883,6 +900,17 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                       </Badge>
                     )}
                   </div>
+                  <div className="w-auto flex flex-col items-start justify-start">
+                    <label className="label text-xs font-medium">
+                      <span className="label-text">Memo</span>
+                    </label>
+                    <ClickToEditInput
+                      textarea
+                      value={originalPromptModelVersionData?.memo}
+                      setValue={handleSetMemo}
+                      placeholder="Memo"
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-wrap w-1/2 justify-start gap-4 items-start">
                   <div className="flex flex-col items-start justify-start">
@@ -1008,6 +1036,17 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                       No functions
                     </Badge>
                   )}
+                </div>
+                <div className="w-auto flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Memo</span>
+                  </label>
+                  <ClickToEditInput
+                    textarea
+                    value={originalPromptModelVersionData?.memo}
+                    setValue={handleSetMemo}
+                    placeholder="Memo"
+                  />
                 </div>
               </div>
             )}

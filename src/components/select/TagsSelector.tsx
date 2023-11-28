@@ -67,10 +67,6 @@ export function TagsSelector({
   // Use useEffect to add an event listener to the document
   useEffect(() => {
     function handleOutsideClick(event) {
-      console.log(optionsRef.current);
-      console.log(selectorRef.current);
-      console.log(optionsRef.current?.contains(event.target));
-      console.log(selectorRef.current?.contains(event.target));
       if (
         optionsRef.current &&
         !optionsRef.current.contains(event.target) &&
@@ -78,6 +74,7 @@ export function TagsSelector({
       ) {
         if (isOpenRef.current) {
           setIsOpen(false);
+          setSelectedTags(cloneDeep(previousTags ?? []));
         }
       }
       if (
@@ -160,7 +157,7 @@ export function TagsSelector({
     } else {
       return (
         <div
-          className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2 tooltip tooltip-top tooltip-secondary cursor-pointer"
+          className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2 tooltip tooltip-bottom tooltip-secondary cursor-pointer"
           data-tip="Click to edit"
           onClick={() => setIsInputShown(true)}
         >
@@ -209,7 +206,8 @@ export function TagsSelector({
       />
       <button
         onClick={handleClickSave}
-        className="transition-all p-2 rounded-full hover:bg-base-content/20 text-green-500 disabled:text-muted-content"
+        className="transition-all p-2 rounded-full hover:bg-base-content/20 text-green-500 disabled:text-muted-content tooltip tooltip-bottom tooltip-success"
+        data-tip="Click to save"
         disabled={arePrimitiveListsEqual(selectedTags, previousTags)}
       >
         <Check weight="bold" size={20} />
