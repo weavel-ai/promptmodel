@@ -70,7 +70,7 @@ export function RunLogUI({
   const mainUI = (
     <div className="w-full h-full flex flex-col gap-y-2">
       <div className="w-full flex flex-row justify-between items-center">
-        <p className="text-xl font-semibold ps-2">Run Log {versionUuid}</p>
+        <p className="text-xl font-semibold ps-2">Run Log</p>
         {versionUuid != null && (
           <button
             className="btn btn-sm bg-transparent border-transparent items-center hover:bg-neutral-content/20"

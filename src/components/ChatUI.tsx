@@ -5,14 +5,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ModalPortal } from "./ModalPortal";
 import dayjs from "dayjs";
 import { ChatSessionSelector } from "./select/ChatSessionSelector";
-import { firstLetterToUppercase } from "@/utils";
+import { arePrimitiveListsEqual, firstLetterToUppercase } from "@/utils";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useChatModelVersion } from "@/hooks/useChatModelVersion";
 import { useChatLogSessions } from "@/hooks/useChatLogSession";
 import { useSessionChatLogs } from "@/hooks/useSessionChatLogs";
-import { streamChatModelRun } from "@/apis/stream";
+import { streamChatModelRun, streamLocalChatModelRun } from "@/apis/stream";
 import { useChatModel } from "@/hooks/useChatModel";
 import { useProject } from "@/hooks/useProject";
 dayjs.extend(relativeTime);
@@ -29,7 +29,7 @@ export function ChatUI({
   const [generatedMessage, setGeneratedMessage] = useState(null);
   const [selectedSessionUuid, setSelectedSessionUuid] = useState(null);
   const { projectUuid } = useProject();
-  const { chatModelUuid } = useChatModel();
+  const { chatModelUuid, chatModelData } = useChatModel();
   const { chatModelVersionListData, refetchChatModelVersionListData } =
     useChatModelVersion();
   const { chatLogSessionListData, refetchChatLogSessionListData } =
@@ -137,6 +137,7 @@ export function ChatUI({
             version: data?.version,
             systemPrompt: systemPrompt,
             model: selectedModel,
+            functions: selectedFunctions,
           });
         }
         if (data?.chat_log_session_uuid) {
@@ -150,7 +151,11 @@ export function ChatUI({
       },
     };
 
-    await streamChatModelRun(args);
+    if (chatModelData?.online) {
+      await streamLocalChatModelRun(args);
+    } else {
+      await streamChatModelRun(args);
+    }
     setIsLoading(false);
 
     if (isNew) {
@@ -298,6 +303,7 @@ const ChatInput = ({
     originalVersionData,
     modifiedSystemPrompt,
     selectedModel,
+    selectedFunctions,
     newVersionCache,
   } = useChatModelVersionStore();
 
@@ -309,14 +315,19 @@ const ChatInput = ({
         return "Please enter a system prompt";
       if (
         originalVersionData?.system_prompt == modifiedSystemPrompt &&
-        selectedModel == originalVersionData?.model
+        selectedModel == originalVersionData?.model &&
+        arePrimitiveListsEqual(
+          selectedFunctions,
+          originalVersionData?.functions
+        )
       )
-        return "System prompt & model is equal to original version";
+        return "Prompt & model config is equal to original version";
       if (
         newVersionCache?.systemPrompt == modifiedSystemPrompt &&
-        newVersionCache?.model == selectedModel
+        newVersionCache?.model == selectedModel &&
+        arePrimitiveListsEqual(selectedFunctions, newVersionCache?.functions)
       )
-        return "System prompt & model is equal to previous version";
+        return "Prompt & model config is equal to previous version";
     }
     return false;
   }, [

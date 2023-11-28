@@ -210,6 +210,7 @@ export const usePromptModelVersion = () => {
             prompts: cloneDeep(prompts),
             model: originalPromptModelVersionData?.model,
             parsing_type: originalPromptModelVersionData?.parsing_type,
+            functions: originalPromptModelVersionData?.functions,
           });
         }
         if (data?.inputs) {

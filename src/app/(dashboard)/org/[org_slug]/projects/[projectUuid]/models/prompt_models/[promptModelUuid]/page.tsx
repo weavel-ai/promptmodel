@@ -584,16 +584,18 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
         (!newVersionCache || newVersionCache?.parsing_type != selectedParser)
       )
         return true;
-      // TODO: Implement function diff
-      // if (
-      //   !arePrimitiveListsEqual(
-      //     originalPromptModelVersionData?.functions,
-      //     selectedFunctions
-      //   ) &&
-      //   (!newVersionCache ||
-      //     !arePrimitiveListsEqual(newVersionCache.functions, selectedFunctions))
-      // )
-      //   return true;
+      if (
+        !arePrimitiveListsEqual(
+          originalPromptModelVersionData?.functions,
+          selectedFunctions
+        ) &&
+        (!newVersionCache ||
+          !arePrimitiveListsEqual(
+            newVersionCache?.functions,
+            selectedFunctions
+          ))
+      )
+        return true;
     }
     return false;
   }, [
