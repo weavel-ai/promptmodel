@@ -7,7 +7,8 @@ export async function fetchChatModels(
   const res = await supabaseClient
     .from("chat_model")
     .select("uuid, name, created_at, online")
-    .eq("project_uuid", projectUuid);
+    .eq("project_uuid", projectUuid)
+    .order("created_at", { ascending: false });
   return res.data;
 }
 
@@ -50,6 +51,44 @@ export async function createChatModel({
       project_uuid: projectUuid,
       name: name,
     })
+    .select("uuid")
+    .single();
+
+  return res.data;
+}
+
+export async function editChatModelName({
+  supabaseClient,
+  chatModelUuid,
+  name,
+}: {
+  supabaseClient: SupabaseClient;
+  chatModelUuid: string;
+  name: string;
+}) {
+  const res = await supabaseClient
+    .from("chat_model")
+    .update({
+      name: name,
+    })
+    .eq("uuid", chatModelUuid)
+    .select("uuid")
+    .single();
+
+  return res.data;
+}
+
+export async function deleteChatModel({
+  supabaseClient,
+  chatModelUuid,
+}: {
+  supabaseClient: SupabaseClient;
+  chatModelUuid: string;
+}) {
+  const res = await supabaseClient
+    .from("chat_model")
+    .delete()
+    .eq("uuid", chatModelUuid)
     .select("uuid")
     .single();
 

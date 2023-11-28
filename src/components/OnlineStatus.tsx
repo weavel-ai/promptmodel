@@ -16,7 +16,7 @@ export function OnlineStatus({ online, mini }: OnlineStatusProps) {
       />
       {!mini && (
         <p className="text-sm text-neutral-content">
-          {online ? "Online" : "Offline"}
+          {online ? "Developer Mode" : "Cloud"}
         </p>
       )}
     </div>

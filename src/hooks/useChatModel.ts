@@ -34,7 +34,7 @@ export const useChatModel = () => {
 
   // Subscribe to ChatModel changes
   useEffect(() => {
-    if (!params?.chatModelUuid) return;
+    if (!projectUuid) return;
     createSupabaseClient().then(async (client) => {
       const chatModelStream = await subscribeChatModel(
         client,
@@ -51,7 +51,7 @@ export const useChatModel = () => {
         }
       };
     });
-  }, [params?.chatModelUuid]);
+  }, [projectUuid]);
 
   return {
     chatModelUuid: params?.chatModelUuid as string,
