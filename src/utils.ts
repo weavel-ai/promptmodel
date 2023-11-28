@@ -17,6 +17,29 @@ export function arePrimitiveListsEqual(list1, list2) {
   return sortedList1.every((value, index) => value === sortedList2[index]);
 }
 
+export function generateRandomPastelColor(): string {
+  // Function to generate a light color component
+  const lightColor = (): number => {
+    // Pastel colors are often represented with high lightness and saturation.
+    // Here we generate a color component in the range of 150 to 255.
+    return Math.floor(Math.random() * 106) + 150;
+  };
+
+  // Generating each color component separately
+  const red = lightColor();
+  const green = lightColor();
+  const blue = lightColor();
+
+  // Converting the color components to a hex string
+  const rgbToHex = (color: number): string => {
+    const hex = color.toString(16);
+    return hex.length === 1 ? `0${hex}` : hex;
+  };
+
+  // Constructing the final hex color string
+  return `#${rgbToHex(red)}${rgbToHex(green)}${rgbToHex(blue)}`;
+}
+
 // Recursive function to count stretch nodes
 export function countStretchNodes(node: any): number {
   // Start count from 1 if it's the root node, else 0

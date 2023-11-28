@@ -18,7 +18,7 @@ export async function fetchChatModelVersion(
   const res = await supabaseClient
     .from("chat_model_version")
     .select(
-      "uuid, version, from_version, model, is_published, is_ab_test, ratio, system_prompt, functions"
+      "uuid, version, from_version, model, is_published, is_ab_test, ratio, system_prompt, functions, tags"
     )
     .eq("uuid", uuid)
     .single();
@@ -50,6 +50,20 @@ export async function updatePublishedChatModelVersion(
       version: projectVersion + 1,
     })
     .eq("uuid", projectUuid);
+
+  return res.data;
+}
+
+export async function updateChatModelVersionTags(
+  supabaseClient: SupabaseClient,
+  versionUuid: string,
+  tags: string[]
+) {
+  const res = await supabaseClient
+    .from("chat_model_version")
+    .update({ tags: tags })
+    .eq("uuid", versionUuid)
+    .single();
 
   return res.data;
 }

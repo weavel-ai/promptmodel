@@ -59,6 +59,8 @@ import { usePromptModel } from "@/hooks/usePromptModel";
 import { Monaco, MonacoDiffEditor } from "@monaco-editor/react";
 import { arePrimitiveListsEqual, countStretchNodes } from "@/utils";
 import { OnlineStatus } from "@/components/OnlineStatus";
+import { AddTagsButton } from "@/components/buttons/AddTagsButton";
+import { TagsSelector } from "@/components/select/TagsSelector";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -492,8 +494,9 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
             </div>
             <div className="divider" />
             <div className="flex flex-col h-full gap-y-2 justify-start items-center">
-              {modifiedPrompts?.map?.((prompt) => (
+              {modifiedPrompts?.map?.((prompt, idx) => (
                 <PromptComponent
+                  key={idx}
                   prompt={prompt}
                   setPrompts={setModifiedPrompts}
                 />
@@ -698,6 +701,13 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                       </p>
                     </div>
                   )}
+                <div className="ml-2">
+                  <TagsSelector
+                    modelType="PromptModel"
+                    versionUuid={selectedPromptModelVersionUuid}
+                    previousTags={originalPromptModelVersionData?.tags}
+                  />
+                </div>
               </div>
               {isCreateVariantOpen ? (
                 <div className="flex flex-row justify-end items-center gap-x-3">
@@ -829,7 +839,11 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                       <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
                         {originalPromptModelVersionData?.output_keys?.map(
                           (key) => (
-                            <Badge className="text-sm" variant="secondary">
+                            <Badge
+                              key={key}
+                              className="text-sm"
+                              variant="secondary"
+                            >
                               {key}
                             </Badge>
                           )
@@ -952,7 +966,11 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
                       {originalPromptModelVersionData?.output_keys?.map(
                         (key) => (
-                          <Badge className="text-sm" variant="secondary">
+                          <Badge
+                            key={key}
+                            className="text-sm"
+                            variant="secondary"
+                          >
                             {key}
                           </Badge>
                         )
@@ -1010,18 +1028,19 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
               {originalPromptListData?.map((prompt, idx) =>
                 isCreateVariantOpen ? (
                   <PromptDiffComponent
+                    key={idx}
                     prompt={prompt}
                     setPrompts={setModifiedPrompts}
                   />
                 ) : (
-                  <PromptComponent prompt={prompt} />
+                  <PromptComponent key={idx} prompt={prompt} />
                 )
               )}
               {isCreateVariantOpen &&
                 modifiedPrompts
                   ?.slice?.(originalPromptListData?.length)
-                  .map?.((prompt) => (
-                    <div className="w-1/2">
+                  .map?.((prompt, idx) => (
+                    <div key={idx} className="w-1/2">
                       <PromptComponent
                         prompt={prompt}
                         setPrompts={setModifiedPrompts}
