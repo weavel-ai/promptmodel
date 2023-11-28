@@ -1,7 +1,14 @@
 "use client";
 import { usePromptModel } from "@/hooks/usePromptModel";
 import classNames from "classnames";
-import { useEffect, useMemo, useState } from "react";
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import dayjs from "dayjs";
 import ReactFlow, { Background, BackgroundVariant } from "reactflow";
 
@@ -9,7 +16,7 @@ import "reactflow/dist/style.css";
 import relativeTime from "dayjs/plugin/relativeTime";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PencilSimple, Plus } from "@phosphor-icons/react";
+import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import { useChatModel } from "@/hooks/useChatModel";
 import { ModelNode } from "@/components/nodes/ModelNode";
 import { GroupNode } from "@/components/nodes/GroupNode";
@@ -17,6 +24,13 @@ import { useWindowSize } from "@react-hook/window-size";
 import { CreateModelModal } from "@/components/modals/CreateModelModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { SelectTab } from "@/components/SelectTab";
+import { ContextMenu, ContextMenuItem } from "@/components/menu/ContextMenu";
+import { Modal } from "@/components/modals/Modal";
+import { InputField } from "@/components/InputField";
+import { toast } from "react-toastify";
+import { deletePromptModel, editPromptModelName } from "@/apis/promptModel";
+import { useSupabaseClient } from "@/apis/base";
+import { deleteChatModel, editChatModelName } from "@/apis/chatModel";
 
 dayjs.extend(relativeTime);
 
@@ -36,18 +50,43 @@ const TABS = [Tab.PROMPT_MODEL, Tab.CHAT_MODEL];
 
 export default function Page() {
   const [windowWidth, windowHeight] = useWindowSize();
+  const queryClient = useQueryClient();
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
   const { chatModelListData } = useChatModel();
   const { promptModelListData } = usePromptModel();
   const [showCreateModelModal, setShowCreateModelModal] = useState(false);
   const [selectedTab, setSelectedTab] = useState(Tab.PROMPT_MODEL);
-  const queryClient = useQueryClient();
+  const [menuData, setMenuData] = useState(null);
+  const ref = useRef(null);
 
   const nodeTypes = useMemo(
     () => ({ model: ModelNode, groupLabel: GroupNode }),
     []
   );
+
+  const onNodeContextMenu = useCallback(
+    (event, node) => {
+      // Prevent native context menu from showing
+      event.preventDefault();
+
+      // Calculate position of the context menu. We want to make sure it
+      // doesn't get positioned off-screen.
+      const pane = ref.current.getBoundingClientRect();
+      setMenuData({
+        id: node.id,
+        top: event.clientY < pane.height - 200 && event.clientY,
+        left: event.clientX < pane.width - 200 && event.clientX,
+        right: event.clientX >= pane.width - 200 && pane.width - event.clientX,
+        bottom:
+          event.clientY >= pane.height - 200 && pane.height - event.clientY,
+      });
+    },
+    [setMenuData]
+  );
+
+  // Close the context menu if it's open whenever the window is clicked.
+  const onPaneClick = useCallback(() => setMenuData(null), [setMenuData]);
 
   // Build nodes
   useEffect(() => {
@@ -112,11 +151,14 @@ export default function Page() {
   return (
     <div className="w-full h-full">
       <ReactFlow
+        ref={ref}
         nodesDraggable={false}
         nodeTypes={nodeTypes}
         nodes={nodes}
         edges={edges}
         proOptions={{ hideAttribution: true }}
+        onPaneClick={onPaneClick}
+        onNodeContextMenu={onNodeContextMenu}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         <div className="fixed top-16 left-24 z-50">
@@ -134,6 +176,14 @@ export default function Page() {
           onCreated={handleModelCreated}
         />
       </ReactFlow>
+      {menuData && (
+        <ModelContextMenu
+          onPaneClick={onPaneClick}
+          menuData={menuData}
+          setMenuData={setMenuData}
+          modelType={selectedTab}
+        />
+      )}
     </div>
   );
 }
@@ -150,5 +200,213 @@ function CreateNewButton({ onClick }: { onClick: () => void }) {
       <Plus className="text-secondary" size={20} weight="fill" />
       <p className="text-base-content">Create new</p>
     </button>
+  );
+}
+
+function ModelContextMenu({ onPaneClick, menuData, setMenuData, modelType }) {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  return (
+    <>
+      <ContextMenu onClick={onPaneClick} menuData={menuData}>
+        {
+          (
+            <ContextMenuItem
+              icon={
+                (
+                  <PencilSimple className="text-secondary" size={20} />
+                ) as ReactNode
+              }
+              label="Edit"
+              onClick={() => {
+                setIsEditModalOpen(true);
+                // onPaneClick();
+              }}
+            />
+          ) as ReactNode
+        }
+        {
+          (
+            <ContextMenuItem
+              icon={(<Trash className="text-red-500" size={20} />) as ReactNode}
+              label="Delete"
+              onClick={() => {
+                setIsDeleteModalOpen(true);
+                // onPaneClick();
+              }}
+            />
+          ) as ReactNode
+        }
+      </ContextMenu>
+      <EditModelNameModal
+        isOpen={isEditModalOpen}
+        setIsOpen={setIsEditModalOpen}
+        setMenuData={setMenuData}
+        modelType={modelType}
+        modelUuid={menuData.id}
+      />
+      <DeleteModelModal
+        isOpen={isDeleteModalOpen}
+        setIsOpen={setIsDeleteModalOpen}
+        setMenuData={setMenuData}
+        modelType={modelType}
+        modelUuid={menuData.id}
+      />
+    </>
+  );
+}
+
+function EditModelNameModal({
+  isOpen,
+  setIsOpen,
+  setMenuData,
+  modelType,
+  modelUuid,
+}) {
+  const { createSupabaseClient } = useSupabaseClient();
+  const { promptModelListData } = usePromptModel();
+  const { chatModelListData } = useChatModel();
+
+  const previousName = useMemo(() => {
+    if (modelType === Tab.PROMPT_MODEL) {
+      const model = promptModelListData.find(
+        (model) => model?.uuid === modelUuid
+      );
+      return model.name;
+    } else if (modelType == Tab.CHAT_MODEL) {
+      const model = chatModelListData.find((model) => model.uuid === modelUuid);
+      return model?.name;
+    }
+  }, [modelType, modelUuid, promptModelListData, chatModelListData]);
+
+  const [name, setName] = useState(previousName);
+
+  useEffect(() => {
+    setName(previousName);
+  }, [previousName]);
+
+  const isDisabled = useMemo(() => {
+    if (name?.length === 0) return true;
+    if (name === previousName) return true;
+  }, [name]);
+
+  async function handleSaveName() {
+    const toastId = toast.loading("Saving...");
+    const supabaseClient = await createSupabaseClient();
+    if (modelType === Tab.PROMPT_MODEL) {
+      await editPromptModelName({
+        supabaseClient: supabaseClient,
+        promptModelUuid: modelUuid,
+        name: name,
+      });
+    } else {
+      await editChatModelName({
+        supabaseClient: supabaseClient,
+        chatModelUuid: modelUuid,
+        name: name,
+      });
+    }
+    setIsOpen(false);
+    setMenuData(null);
+    toast.update(toastId, {
+      render: "Saved!",
+      type: "success",
+      isLoading: false,
+      autoClose: 1000,
+    });
+  }
+
+  return (
+    <Modal isOpen={isOpen} setIsOpen={setIsOpen}>
+      <div className="bg-popover p-6 rounded-box flex flex-col gap-y-4 items-start">
+        <p className="text-base-content text-xl font-semibold">
+          Edit {modelType} name
+        </p>
+        <InputField label={`Name`} value={name} setValue={setName} />
+        <div className="flex flex-row w-full justify-end">
+          <button
+            className={classNames(
+              "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
+              "disabled:bg-neutral-content"
+            )}
+            onClick={handleSaveName}
+            disabled={isDisabled}
+          >
+            <p className="text-base-100">Save</p>
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function DeleteModelModal({
+  isOpen,
+  setIsOpen,
+  setMenuData,
+  modelType,
+  modelUuid,
+}) {
+  const { createSupabaseClient } = useSupabaseClient();
+  const { promptModelListData } = usePromptModel();
+  const { chatModelListData } = useChatModel();
+
+  const model = useMemo(() => {
+    if (modelType === Tab.PROMPT_MODEL) {
+      return promptModelListData.find((model) => model.uuid === modelUuid);
+    } else if (modelType === Tab.CHAT_MODEL) {
+      return chatModelListData.find((model) => model.uuid === modelUuid);
+    }
+  }, [modelUuid, promptModelListData, chatModelListData, modelType]);
+
+  async function handleDeleteModel() {
+    const toastId = toast.loading("Deleting...");
+    const supabaseClient = await createSupabaseClient();
+    if (modelType === Tab.PROMPT_MODEL) {
+      await deletePromptModel({
+        supabaseClient: supabaseClient,
+        promptModelUuid: modelUuid,
+      });
+    } else if (modelType === Tab.CHAT_MODEL) {
+      await deleteChatModel({
+        supabaseClient: supabaseClient,
+        chatModelUuid: modelUuid,
+      });
+    }
+    setIsOpen(false);
+    setMenuData(null);
+    toast.update(toastId, {
+      render: "Deleted!",
+      type: "success",
+      isLoading: false,
+      autoClose: 1000,
+    });
+  }
+
+  return (
+    <Modal isOpen={isOpen} setIsOpen={setIsOpen}>
+      <div className="bg-popover p-6 rounded-box flex flex-col gap-y-4 items-start">
+        <p className="text-base-content text-xl font-semibold">
+          Delete {modelType}
+        </p>
+        <p className="text-base-content">
+          Are you sure you want to delete {modelType}{" "}
+          <span className="font-semibold">{model?.name}</span>? This action
+          cannot be undone.
+        </p>
+        <div className="flex flex-row w-full justify-end">
+          <button
+            className={classNames(
+              "flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 bg-red-500 hover:bg-red-500/80",
+              "disabled:bg-neutral-content outline-none active:outline-none focus:outline-none"
+            )}
+            onClick={handleDeleteModel}
+          >
+            <p className="text-base-content">Delete</p>
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }

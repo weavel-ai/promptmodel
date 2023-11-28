@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
 import { fetchPromptModels, subscribePromptModel } from "@/apis/promptModel";
 import { useEffect, useMemo } from "react";
+import { toast } from "react-toastify";
 
 export const usePromptModel = () => {
   const params = useParams();
@@ -35,7 +36,7 @@ export const usePromptModel = () => {
 
   // Subscribe to PromptModel changes
   useEffect(() => {
-    if (!params?.promptModelUuid) return;
+    if (!projectUuid) return;
     createSupabaseClient().then(async (client) => {
       const promptModelStream = await subscribePromptModel(
         client,
@@ -52,7 +53,7 @@ export const usePromptModel = () => {
         }
       };
     });
-  }, [params?.promptModelUuid]);
+  }, [projectUuid]);
 
   return {
     promptModelUuid: params?.promptModelUuid as string,

@@ -8,7 +8,9 @@ export async function fetchPromptModels(
   const res = await supabaseClient
     .from("prompt_model")
     .select("uuid, name, created_at, online")
-    .eq("project_uuid", projectUuid);
+    .eq("project_uuid", projectUuid)
+    .order("created_at", { ascending: false });
+
   return res.data;
 }
 
@@ -51,6 +53,42 @@ export async function createPromptModel({
       project_uuid: projectUuid,
       name: name,
     })
+    .select("uuid")
+    .single();
+
+  return res.data;
+}
+
+export async function editPromptModelName({
+  supabaseClient,
+  promptModelUuid,
+  name,
+}: {
+  supabaseClient: SupabaseClient;
+  promptModelUuid: string;
+  name: string;
+}) {
+  const res = await supabaseClient
+    .from("prompt_model")
+    .update({ name: name })
+    .eq("uuid", promptModelUuid)
+    .select("uuid")
+    .single();
+
+  return res.data;
+}
+
+export async function deletePromptModel({
+  supabaseClient,
+  promptModelUuid,
+}: {
+  supabaseClient: SupabaseClient;
+  promptModelUuid: string;
+}) {
+  const res = await supabaseClient
+    .from("prompt_model")
+    .delete()
+    .eq("uuid", promptModelUuid)
     .select("uuid")
     .single();
 

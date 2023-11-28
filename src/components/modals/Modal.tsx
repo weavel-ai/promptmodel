@@ -42,6 +42,8 @@ export const Modal = ({
     };
   }, []);
 
+  if (!isOpen) return null;
+
   return (
     <ModalPortal>
       <motion.div
