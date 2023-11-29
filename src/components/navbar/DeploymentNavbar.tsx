@@ -34,7 +34,7 @@ import { useProject } from "@/hooks/useProject";
 import { usePromptModel } from "@/hooks/usePromptModel";
 import { SelectNavigator } from "../SelectNavigator";
 import { useChatModel } from "@/hooks/useChatModel";
-import { OnlineStatus } from "../OnlineStatus";
+import { LocalConnectionStatus } from "../LocalConnectionStatus";
 
 const michroma = Michroma({
   weight: ["400"],
@@ -231,9 +231,6 @@ export const DeploymentNavbar = (props: NavbarProps) => {
                 />
               )}
             </div>
-          </div>
-          <div className="mr-2">
-            <OnlineStatus online={projectData?.online} />
           </div>
           {!pathname.includes("sign-in") && !pathname.includes("sign-up") && (
             <SignInButton />

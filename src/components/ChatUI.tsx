@@ -21,7 +21,7 @@ export function ChatUI({
   versionUuid,
   className,
 }: {
-  versionUuid: string | "new";
+  versionUuid: string | "new" | null;
   className?: string;
 }) {
   const [chatInput, setChatInput] = useState("");
@@ -92,11 +92,11 @@ export function ChatUI({
     setChatInput("");
     setGeneratedMessage("");
     setIsLoading(true);
-    const isNew = versionUuid === "new";
+    const isNewVersion = versionUuid === "new";
     let systemPrompt: string;
     let newVersionUuid: string;
 
-    if (isNew) {
+    if (isNewVersion) {
       systemPrompt = modifiedSystemPrompt;
     } else {
       systemPrompt = originalVersionData.system_prompt;
@@ -110,15 +110,17 @@ export function ChatUI({
       chatModelUuid: chatModelUuid,
       userInput: userInput,
       systemPrompt: systemPrompt,
-      model: isNew ? selectedModel : originalVersionData.model,
-      fromVersion: isNew ? originalVersionData?.version : null,
+      model: isNewVersion ? selectedModel : originalVersionData.model,
+      fromVersion: isNewVersion ? originalVersionData?.version : null,
       sessionUuid: selectedSessionUuid,
-      versionUuid: isNew ? null : originalVersionData?.uuid,
-      functions: isNew ? selectedFunctions : originalVersionData?.functions,
+      versionUuid: isNewVersion ? null : originalVersionData?.uuid,
+      functions: isNewVersion
+        ? selectedFunctions
+        : originalVersionData?.functions,
       onNewData: async (data) => {
         switch (data?.status) {
           case "completed":
-            await refetchChatLogListData();
+            refetchChatLogListData();
             setGeneratedMessage(null);
             setIsLoading(false);
             break;
@@ -131,7 +133,7 @@ export function ChatUI({
             setIsLoading(false);
             break;
         }
-        if (data?.chat_model_version_uuid && isNew) {
+        if (data?.chat_model_version_uuid && isNewVersion) {
           setNewVersionCache({
             uuid: data?.chat_model_version_uuid,
             version: data?.version,
@@ -158,7 +160,7 @@ export function ChatUI({
     }
     setIsLoading(false);
 
-    if (isNew) {
+    if (isNewVersion) {
       await refetchChatModelVersionListData();
       if (!originalVersionData?.uuid) {
         setSelectedChatModelVersion(1);
@@ -310,6 +312,7 @@ const ChatInput = ({
   const disabledMessage = useMemo(() => {
     if (isLoading) return true;
     if (chatInput.length == 0) return true;
+    console.log(isNewVersion);
     if (isNewVersion) {
       if (modifiedSystemPrompt?.length == 0)
         return "Please enter a system prompt";
@@ -318,7 +321,7 @@ const ChatInput = ({
         selectedModel == originalVersionData?.model &&
         arePrimitiveListsEqual(
           selectedFunctions,
-          originalVersionData?.functions
+          originalVersionData?.functions ?? []
         )
       )
         return "Prompt & model config is equal to original version";

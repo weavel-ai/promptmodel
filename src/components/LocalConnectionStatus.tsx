@@ -1,11 +1,14 @@
 import classNames from "classnames";
 
-interface OnlineStatusProps {
+interface LocalConnectionStatusProps {
   online: boolean;
   mini?: boolean;
 }
 
-export function OnlineStatus({ online, mini }: OnlineStatusProps) {
+export function LocalConnectionStatus({
+  online,
+  mini,
+}: LocalConnectionStatusProps) {
   return (
     <div className="flex flex-row gap-x-2 items-center">
       <div
@@ -16,7 +19,7 @@ export function OnlineStatus({ online, mini }: OnlineStatusProps) {
       />
       {!mini && (
         <p className="text-sm text-neutral-content">
-          {online ? "Developer Mode" : "Cloud"}
+          {online ? "Connected" : "Cloud"}
         </p>
       )}
     </div>

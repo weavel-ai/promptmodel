@@ -5,7 +5,7 @@ import { ModalPortal } from "@/components/ModalPortal";
 import { motion } from "framer-motion";
 import { TagsInput } from "react-tag-input-component";
 import { useFunctions } from "@/hooks/useFunction";
-import { OnlineStatus } from "../OnlineStatus";
+import { LocalConnectionStatus } from "../LocalConnectionStatus";
 
 interface FunctionSelectorProps {
   selectedFunctions: string[];
@@ -158,7 +158,10 @@ export const FunctionSelector = ({
                       setIsOpen(false);
                     }}
                   >
-                    <OnlineStatus online={functionOption.online} mini />
+                    <LocalConnectionStatus
+                      online={functionOption.online}
+                      mini
+                    />
                     <p>{functionOption.name}</p>
                   </div>
                 );
