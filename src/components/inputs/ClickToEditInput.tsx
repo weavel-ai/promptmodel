@@ -25,6 +25,10 @@ export function ClickToEditInput({
     isEditingRef.current = isEditing; // Always keep it updated with the latest state
   }, [isEditing]);
 
+  useEffect(() => {
+    setCacheValue(value);
+  }, [value]);
+
   // Use useEffect to add an event listener to the document
   useEffect(() => {
     function handleOutsideClick(event) {
@@ -64,7 +68,7 @@ export function ClickToEditInput({
     </button>
   ) : (
     <div
-      ref={isEditingRef}
+      ref={inputRef}
       className={classNames(
         "flex flex-row gap-x-1 items-center bg-input rounded-md !outline-none",
         textarea ? "textarea w-full flex-grow" : "input w-fit"

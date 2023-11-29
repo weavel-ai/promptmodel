@@ -7,7 +7,7 @@ export async function fetchChatModelVersions(
   const res = await supabaseClient
     .from("chat_model_version")
     .select(
-      "uuid, version, from_version, model, is_published, system_prompt, tags, memo"
+      "uuid, created_at, version, from_version, model, is_published, system_prompt, tags, memo"
     )
     .eq("chat_model_uuid", chatModelUuid)
     .order("version", { ascending: true });

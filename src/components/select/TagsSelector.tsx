@@ -18,6 +18,8 @@ import { updateChatModelVersionTags } from "@/apis/chatModelVersion";
 import { Badge } from "../ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
+import { usePromptModel } from "@/hooks/usePromptModel";
+import { useChatModel } from "@/hooks/useChatModel";
 
 interface TagsSelectorProps {
   modelType: "PromptModel" | "ChatModel";
@@ -34,6 +36,8 @@ export function TagsSelector({
   const { createSupabaseClient } = useSupabaseClient();
   const { tagsListData } = useTags();
   const { projectUuid } = useProject();
+  const { promptModelUuid } = usePromptModel();
+  const { chatModelUuid } = useChatModel();
   const [isInputShown, setIsInputShown] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState<string | null>(null);
@@ -141,14 +145,26 @@ export function TagsSelector({
         { projectUuid: projectUuid },
       ]);
     }
-    await queryClient.invalidateQueries([
-      modelType == "PromptModel"
-        ? "promptModelVersionData"
-        : "chatModelVersionData",
-      { uuid: versionUuid },
-    ]);
+    if (modelType === "PromptModel") {
+      await queryClient.invalidateQueries([
+        "promptModelVersionData",
+        { uuid: versionUuid },
+      ]);
+      await queryClient.invalidateQueries([
+        "promptModelVersionListData",
+        { promptModelUuid: promptModelUuid },
+      ]);
+    } else if (modelType === "ChatModel") {
+      await queryClient.invalidateQueries([
+        "chatModelVersionData",
+        { uuid: versionUuid },
+      ]);
+      await queryClient.invalidateQueries([
+        "chatModelVersionListData",
+        { chatModelUuid: chatModelUuid },
+      ]);
+    }
     setIsInputShown(false);
-    toast.success("Tags updated!");
   }
 
   if (!isInputShown) {
@@ -208,7 +224,7 @@ export function TagsSelector({
         onClick={handleClickSave}
         className="transition-all p-2 rounded-full hover:bg-base-content/20 text-green-500 disabled:text-muted-content tooltip tooltip-bottom tooltip-success"
         data-tip="Click to save"
-        disabled={arePrimitiveListsEqual(selectedTags, previousTags)}
+        disabled={arePrimitiveListsEqual(selectedTags, previousTags ?? [])}
       >
         <Check weight="bold" size={20} />
       </button>

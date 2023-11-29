@@ -52,7 +52,10 @@ export const usePromptModelVersion = () => {
     data: promptModelVersionListData,
     refetch: refetchPromptModelVersionListData,
   } = useQuery({
-    queryKey: ["versionListData", { promptModelUuid: params?.promptModelUuid }],
+    queryKey: [
+      "promptModelVersionListData",
+      { promptModelUuid: params?.promptModelUuid },
+    ],
     queryFn: async () =>
       await fetchPromptModelVersions(
         await createSupabaseClient(),

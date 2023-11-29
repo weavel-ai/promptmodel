@@ -7,7 +7,7 @@ import {
   usePromptModelVersionStore,
 } from "@/stores/promptModelVersionStore";
 import classNames from "classnames";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
   Background,
   BackgroundVariant,
@@ -62,9 +62,11 @@ import { usePromptModel } from "@/hooks/usePromptModel";
 import { Monaco, MonacoDiffEditor } from "@monaco-editor/react";
 import { arePrimitiveListsEqual, countStretchNodes } from "@/utils";
 import { OnlineStatus } from "@/components/OnlineStatus";
-import { AddTagsButton } from "@/components/buttons/AddTagsButton";
 import { TagsSelector } from "@/components/select/TagsSelector";
 import { ClickToEditInput } from "@/components/inputs/ClickToEditInput";
+import { VersionTag } from "@/components/VersionTag";
+import relativeTime from "dayjs/plugin/relativeTime";
+dayjs.extend(relativeTime);
 
 const initialNodes = [];
 const initialEdges = [];
@@ -216,9 +218,8 @@ const VersionsPage = () => {
   const { promptModelVersionListData } = usePromptModelVersion();
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
-
+  const [hoveredVersionData, setHoveredVersionData] = useState(null);
   const nodeTypes = useMemo(() => ({ modelVersion: ModelVersionNode }), []);
-
   const {
     focusedEditor,
     isCreateVariantOpen,
@@ -230,6 +231,7 @@ const VersionsPage = () => {
     showSlashOptions,
     setShowSlashOptions,
   } = usePromptModelVersionStore();
+  const reactFlowRef = useRef(null);
 
   useEffect(() => {
     setSelectedPromptModelVersion(null);
@@ -258,8 +260,7 @@ const VersionsPage = () => {
     const allNodes: any = layout(root).descendants();
 
     let publishedNodePosition = null;
-    allNodes.forEach((node) => {
-      // @ts-ignore
+    allNodes.forEach((node: any) => {
       if (node.data.is_published) {
         publishedNodePosition = { x: node.x, y: node.y };
       }
@@ -277,8 +278,8 @@ const VersionsPage = () => {
     }
 
     const generatedNodes = allNodes
-      .filter((node) => node.data.version !== "synthetic-root")
-      .map((node) => {
+      .filter((node: any) => node.data.version !== "synthetic-root")
+      .map((node: any) => {
         const item = node.data;
 
         if (item.from_version && item.from_version !== "synthetic-root") {
@@ -305,9 +306,29 @@ const VersionsPage = () => {
     setEdges(generatedEdges);
   }, [promptModelVersionListData, windowWidth]);
 
+  const onNodeMouseEnter = useCallback((event, node) => {
+    const pane = reactFlowRef.current.getBoundingClientRect();
+
+    if (node?.data?.version) {
+      setHoveredVersionData({
+        version: node.data.version,
+        top: event.clientY < pane.height - 200 && event.clientY,
+        left: event.clientX < pane.width - 200 && event.clientX,
+        right: event.clientX >= pane.width - 200 && pane.width - event.clientX,
+        bottom:
+          event.clientY >= pane.height - 200 && pane.height - event.clientY,
+      });
+    }
+  }, []);
+
+  const onNodeMouseLeave = useCallback((event, node) => {
+    setHoveredVersionData(null);
+  }, []);
+
   return (
     <>
       <ReactFlow
+        ref={reactFlowRef}
         nodeTypes={nodeTypes}
         nodes={nodes}
         edges={edges}
@@ -317,10 +338,11 @@ const VersionsPage = () => {
           y: -windowHeight / 3 + 48,
           zoom: 1.5,
         }}
-        // fitView={true}
         onPaneClick={() => {
           setSelectedPromptModelVersion(null);
         }}
+        onNodeMouseEnter={onNodeMouseEnter}
+        onNodeMouseLeave={onNodeMouseLeave}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         {promptModelVersionListData && (
@@ -364,9 +386,55 @@ const VersionsPage = () => {
           }}
         />
       </ReactFlow>
+      {hoveredVersionData && (
+        <VersionInfoOverlay versionData={hoveredVersionData} />
+      )}
     </>
   );
 };
+
+function VersionInfoOverlay({ versionData }) {
+  const { promptModelData } = usePromptModel();
+  const { promptModelVersionListData } = usePromptModelVersion();
+  const hoveredVersionData = useMemo(() => {
+    return promptModelVersionListData?.find(
+      (version) => version.version == versionData.version
+    );
+  }, [versionData, promptModelVersionListData]);
+
+  return (
+    <div
+      className={classNames(
+        "fixed rounded-lg flex flex-col bg-popover/80 backdrop-blur-sm text-base-content h-10 w-10 z-[100]",
+        "w-fit h-fit p-4 gap-y-2"
+      )}
+      style={{
+        left: versionData.left ? versionData.left + 10 : "auto",
+        right: versionData.right ? versionData.right + 10 : "auto",
+        top: versionData.top ? versionData.top + 10 : "auto",
+        bottom: versionData.bottom ? versionData.bottom + 10 : "auto",
+      }}
+    >
+      <p className="text-lg font-medium">
+        {promptModelData?.name}{" "}
+        <span className="font-semibold text-xl">
+          <i>V</i> {hoveredVersionData?.version}
+        </span>
+      </p>
+      <p className="text-sm text-muted-content">
+        Created {dayjs(hoveredVersionData?.created_at).fromNow()}
+      </p>
+      <div className="flex flex-row gap-x-1">
+        {hoveredVersionData?.tags?.map((tag: string) => (
+          <VersionTag key={tag} name={tag} />
+        ))}
+      </div>
+      {hoveredVersionData?.memo && (
+        <p className="p-1 bg-input rounded-md">{hoveredVersionData?.memo}</p>
+      )}
+    </div>
+  );
+}
 
 function InitialVersionDrawer({ open }: { open: boolean }) {
   const { promptModelData } = usePromptModel();

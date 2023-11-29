@@ -6,7 +6,7 @@ export function cloneDeep(obj: any): any {
   return JSON.parse(JSON.stringify(obj));
 }
 
-export function arePrimitiveListsEqual(list1, list2) {
+export function arePrimitiveListsEqual(list1: Array<any>, list2: Array<any>) {
   if (list1.length !== list2.length) {
     return false;
   }

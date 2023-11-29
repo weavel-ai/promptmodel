@@ -6,7 +6,7 @@ export async function fetchPromptModelVersions(
 ) {
   const res = await supabaseClient
     .from("prompt_model_version")
-    .select("uuid, version, from_version, is_published, tags, memo")
+    .select("uuid, created_at, version, from_version, is_published, tags, memo")
     .match({
       prompt_model_uuid: promptModelUuid,
     })
