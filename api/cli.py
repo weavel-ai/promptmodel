@@ -238,6 +238,11 @@ async def fetch_prompt_model_version(
                 "prompts": prompts,
             }
         else:
+            try:
+                version = int(version)
+            except ValueError:
+                version = version
+
             if isinstance(version, int):
                 prompt_model_versions = (
                     supabase.table("prompt_model_version")
@@ -305,6 +310,11 @@ async def fetch_chat_model_version_with_chat_log(
             -
     """
     try:
+        try:
+            version = int(version)
+        except ValueError:
+            version = version
+
         # find chat_model
         if session_uuid:
             # find session's chat_model & version
@@ -328,7 +338,7 @@ async def fetch_chat_model_version_with_chat_log(
             # find chat logs
             chat_logs = (
                 supabase.table("chat_log")
-                .select("*")
+                .select("role, name, content, tool_calls")
                 .eq("session_uuid", session_uuid)
                 .order("created_at", desc=False)
                 .execute()
@@ -477,6 +487,7 @@ async def log_deployment_run(
             )
             .execute()
         )
+        return Response(status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
@@ -493,7 +504,7 @@ async def log_deployment_chat(
     try:
         # check session
         session = (
-            supabase.table("session")
+            supabase.table("chat_log_session")
             .select("*")
             .eq("uuid", session_uuid)
             .single()
@@ -505,13 +516,22 @@ async def log_deployment_chat(
         # make logs
         logs = []
         for message, meta in zip(messages, metadata):
-            token_usage = meta["token_usage"] if meta else None
-            latency = meta["response_ms"] if meta else None
+            token_usage = {}
+            latency = 0
             cost = completion_cost(meta["api_response"]) if meta else None
             if "token_usage" in meta:
+                token_usage = meta["token_usage"]
                 del meta["token_usage"]
             if "response_ms" in meta:
+                latency = meta["response_ms"]
                 del meta["response_ms"]
+            if "_response_ms" in meta:
+                latency = meta["_response_ms"]
+                del meta["_response_ms"]
+            if "latency" in meta:
+                latency = meta["latency"]
+                del meta["latency"]
+
             logs.append(
                 {
                     "session_uuid": session_uuid,
@@ -529,6 +549,7 @@ async def log_deployment_chat(
             )
         # save logs
         (supabase.table("chat_log").insert(logs).execute())
+        return Response(status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
