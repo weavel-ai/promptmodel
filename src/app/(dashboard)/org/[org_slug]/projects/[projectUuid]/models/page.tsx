@@ -58,7 +58,7 @@ export default function Page() {
   const [showCreateModelModal, setShowCreateModelModal] = useState(false);
   const [selectedTab, setSelectedTab] = useState(Tab.PROMPT_MODEL);
   const [menuData, setMenuData] = useState(null);
-  const ref = useRef(null);
+  const reactFlowRef = useRef(null);
 
   const nodeTypes = useMemo(
     () => ({ model: ModelNode, groupLabel: GroupNode }),
@@ -72,7 +72,7 @@ export default function Page() {
 
       // Calculate position of the context menu. We want to make sure it
       // doesn't get positioned off-screen.
-      const pane = ref.current.getBoundingClientRect();
+      const pane = reactFlowRef.current.getBoundingClientRect();
       setMenuData({
         id: node.id,
         top: event.clientY < pane.height - 200 && event.clientY,
@@ -151,7 +151,7 @@ export default function Page() {
   return (
     <div className="w-full h-full">
       <ReactFlow
-        ref={ref}
+        ref={reactFlowRef}
         nodesDraggable={false}
         nodeTypes={nodeTypes}
         nodes={nodes}

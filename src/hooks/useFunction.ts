@@ -1,6 +1,7 @@
 import { useSupabaseClient } from "@/apis/base";
 import { fetchFunctions, subscribeFunctions } from "@/apis/functionSchema";
 import { fetchVersionRunLogs } from "@/apis/runlog";
+import { useRealtimeStore } from "@/stores/realtimeStore";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useEffect } from "react";
@@ -8,6 +9,7 @@ import { useEffect } from "react";
 export const useFunctions = () => {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
+  const { functionStream, setFunctionStream } = useRealtimeStore();
 
   const { data: functionListData, refetch: refetchFunctionListData } = useQuery(
     {
@@ -24,22 +26,27 @@ export const useFunctions = () => {
   // Subscribe to function changes
   useEffect(() => {
     if (!params?.projectUuid) return;
-    createSupabaseClient().then(async (client) => {
-      const functionsStream = await subscribeFunctions(
-        client,
-        params?.projectUuid as string,
-        () => {
-          refetchFunctionListData();
-        }
-      );
-      // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
-      return () => {
-        if (functionsStream) {
-          functionsStream.unsubscribe();
-          client.removeChannel(functionsStream);
-        }
-      };
-    });
+    if (!functionStream) {
+      createSupabaseClient().then(async (client) => {
+        const newStream = await subscribeFunctions(
+          client,
+          params?.projectUuid as string,
+          () => {
+            refetchFunctionListData();
+          }
+        );
+        setFunctionStream(newStream);
+      });
+    }
+    // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
+    return () => {
+      if (functionStream) {
+        functionStream.unsubscribe();
+        createSupabaseClient().then((client) => {
+          client.removeChannel(functionStream);
+        });
+      }
+    };
   }, [params?.projectUuid]);
 
   return {

@@ -2,7 +2,7 @@
 
 import { Drawer } from "@/components/Drawer";
 import classNames from "classnames";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
   Background,
   BackgroundVariant,
@@ -36,13 +36,19 @@ import { useChatModelVersion } from "@/hooks/useChatModelVersion";
 import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
 import { useChatModelVersionDetails } from "@/hooks/useChatModelVersionDetails";
 import { ModelDisplay, ModelSelector } from "@/components/ModelSelector";
-import { updatePublishedChatModelVersion } from "@/apis/chatModelVersion";
+import {
+  updateChatModelVersionMemo,
+  updatePublishedChatModelVersion,
+} from "@/apis/chatModelVersion";
 import { ChatUI } from "@/components/ChatUI";
 import { useWindowHeight, useWindowSize } from "@react-hook/window-size";
 import { FunctionSelector } from "@/components/select/FunctionSelector";
 import { useChatModel } from "@/hooks/useChatModel";
 import { Monaco, MonacoDiffEditor } from "@monaco-editor/react";
-import { countStretchNodes } from "@/utils";
+import { cloneDeep, countStretchNodes } from "@/utils";
+import { ClickToEditInput } from "@/components/inputs/ClickToEditInput";
+import { VersionTag } from "@/components/VersionTag";
+import { TagsSelector } from "@/components/select/TagsSelector";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -191,6 +197,7 @@ const VersionsPage = () => {
     useChatModelVersion();
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
+  const [hoveredVersionData, setHoveredVersionData] = useState(null);
 
   const {
     isCreateVariantOpen,
@@ -213,6 +220,7 @@ const VersionsPage = () => {
   );
   const [windowWidth, windowHeight] = useWindowSize();
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
+  const reactFlowRef = useRef(null);
 
   useEffect(() => {
     setSelectedChatModelVersion(null);
@@ -294,9 +302,29 @@ const VersionsPage = () => {
     setEdges(generatedEdges);
   }, [chatModelVersionListData, windowWidth]);
 
+  const onNodeMouseEnter = useCallback((event, node) => {
+    const pane = reactFlowRef.current.getBoundingClientRect();
+
+    if (node?.data?.version) {
+      setHoveredVersionData({
+        version: node.data.version,
+        top: event.clientY < pane.height - 200 && event.clientY,
+        left: event.clientX < pane.width - 200 && event.clientX,
+        right: event.clientX >= pane.width - 200 && pane.width - event.clientX,
+        bottom:
+          event.clientY >= pane.height - 200 && pane.height - event.clientY,
+      });
+    }
+  }, []);
+
+  const onNodeMouseLeave = useCallback((event, node) => {
+    setHoveredVersionData(null);
+  }, []);
+
   return (
     <>
       <ReactFlow
+        ref={reactFlowRef}
         nodeTypes={nodeTypes}
         nodes={nodes}
         edges={edges}
@@ -306,10 +334,11 @@ const VersionsPage = () => {
           y: -windowHeight / 3 + 48,
           zoom: 1.5,
         }}
-        // fitView={true}
         onPaneClick={() => {
           setSelectedChatModelVersion(null);
         }}
+        onNodeMouseEnter={onNodeMouseEnter}
+        onNodeMouseLeave={onNodeMouseLeave}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         {chatModelVersionListData && (
@@ -320,9 +349,55 @@ const VersionsPage = () => {
           open={isCreateVariantOpen && selectedChatModelVersion != null}
         />
       </ReactFlow>
+      {hoveredVersionData && (
+        <VersionInfoOverlay versionData={hoveredVersionData} />
+      )}
     </>
   );
 };
+
+function VersionInfoOverlay({ versionData }) {
+  const { chatModelData } = useChatModel();
+  const { chatModelVersionListData } = useChatModelVersion();
+  const hoveredVersionData = useMemo(() => {
+    return chatModelVersionListData?.find(
+      (version) => version.version == versionData.version
+    );
+  }, [versionData, chatModelVersionListData]);
+
+  return (
+    <div
+      className={classNames(
+        "fixed rounded-lg flex flex-col bg-popover/80 backdrop-blur-sm text-base-content h-10 w-10 z-[100]",
+        "w-fit h-fit p-4 gap-y-2"
+      )}
+      style={{
+        left: versionData.left ? versionData.left + 10 : "auto",
+        right: versionData.right ? versionData.right + 10 : "auto",
+        top: versionData.top ? versionData.top + 10 : "auto",
+        bottom: versionData.bottom ? versionData.bottom + 10 : "auto",
+      }}
+    >
+      <p className="text-lg font-medium">
+        {chatModelData?.name}{" "}
+        <span className="font-semibold text-xl">
+          <i>V</i> {hoveredVersionData?.version}
+        </span>
+      </p>
+      <p className="text-sm text-muted-content">
+        Created {dayjs(hoveredVersionData?.created_at).fromNow()}
+      </p>
+      <div className="flex flex-row gap-x-1">
+        {hoveredVersionData?.tags?.map((tag: string) => (
+          <VersionTag key={tag} name={tag} />
+        ))}
+      </div>
+      {hoveredVersionData?.memo && (
+        <p className="p-1 bg-input rounded-md">{hoveredVersionData?.memo}</p>
+      )}
+    </div>
+  );
+}
 
 function InitialVersionDrawer({ open }: { open: boolean }) {
   const windowHeight = useWindowHeight();
@@ -410,6 +485,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     setSelectedChatModelVersion,
     setFullScreenChatVersion,
   } = useChatModelVersionStore();
+  const [memo, setMemo] = useState("");
 
   const selectedChatModelVersionUuid = useMemo(() => {
     if (!chatModelVersionListData || !selectedChatModelVersion) return null;
@@ -428,7 +504,6 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
   }, []);
 
   useEffect(() => {
-    if (originalVersionData?.version === selectedChatModelVersion) return;
     const data = chatModelVersionListData?.find(
       (version) => version.version === selectedChatModelVersion
     );
@@ -520,6 +595,18 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     });
   }
 
+  async function handleSetMemo(newMemo: string) {
+    await updateChatModelVersionMemo(
+      await createSupabaseClient(),
+      selectedChatModelVersionUuid,
+      newMemo
+    );
+    queryClient.invalidateQueries([
+      "chatModelVersionData",
+      { uuid: selectedChatModelVersionUuid },
+    ]);
+  }
+
   return (
     <Drawer
       open={open}
@@ -557,6 +644,13 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     </p>
                   </div>
                 )}
+                <div className="ml-2">
+                  <TagsSelector
+                    modelType="ChatModel"
+                    versionUuid={selectedChatModelVersionUuid}
+                    previousTags={chatModelVersionData?.tags}
+                  />
+                </div>
               </div>
               {!isCreateVariantOpen && (
                 <div className="flex flex-row gap-x-2 items-center justify-end">
@@ -662,6 +756,12 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                       )}
                     </div>
                   </div>
+                  <ClickToEditInput
+                    textarea
+                    value={originalVersionData?.memo}
+                    setValue={handleSetMemo}
+                    placeholder="Memo"
+                  />
                 </div>
                 <div className="flex flex-col w-1/2 justify-start gap-y-2 items-start mb-2">
                   <div className="flex flex-row justify-start gap-x-4 items-start">
@@ -690,6 +790,12 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
               </div>
             ) : (
               <div className="flex flex-wrap justify-start gap-x-4 items-start mb-6">
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Model</span>
+                  </label>
+                  <ModelDisplay modelName={chatModelVersionData?.model} />
+                </div>
                 <div className="w-auto flex flex-col items-start justify-start">
                   <label className="label text-xs font-medium">
                     <span className="label-text">Functions</span>
@@ -714,6 +820,12 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     </Badge>
                   )}
                 </div>
+                <ClickToEditInput
+                  textarea
+                  value={originalVersionData?.memo}
+                  setValue={handleSetMemo}
+                  placeholder="Memo"
+                />
               </div>
             )}
             <div className="flex flex-col gap-y-2 justify-start items-end">

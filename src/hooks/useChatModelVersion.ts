@@ -2,6 +2,7 @@ import { useSupabaseClient } from "@/apis/base";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { fetchChatModelVersions } from "@/apis/chatModelVersion";
+import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
 
 export const useChatModelVersion = () => {
   const params = useParams();

@@ -7,11 +7,13 @@ import { useProject } from "./useProject";
 import { fetchPromptModels, subscribePromptModel } from "@/apis/promptModel";
 import { useEffect, useMemo } from "react";
 import { toast } from "react-toastify";
+import { useRealtimeStore } from "@/stores/realtimeStore";
 
 export const usePromptModel = () => {
   const params = useParams();
   const { projectUuid } = useProject();
   const { createSupabaseClient } = useSupabaseClient();
+  const { promptModelStream, setPromptModelStream } = useRealtimeStore();
 
   const { data: promptModelListData, refetch: refetchPromptModelListData } =
     useQuery({
@@ -37,22 +39,27 @@ export const usePromptModel = () => {
   // Subscribe to PromptModel changes
   useEffect(() => {
     if (!projectUuid) return;
-    createSupabaseClient().then(async (client) => {
-      const promptModelStream = await subscribePromptModel(
-        client,
-        projectUuid,
-        () => {
-          refetchPromptModelListData();
-        }
-      );
-      // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
-      return () => {
-        if (promptModelStream) {
-          promptModelStream.unsubscribe();
+    if (!promptModelStream) {
+      createSupabaseClient().then(async (client) => {
+        const newStream = await subscribePromptModel(
+          client,
+          projectUuid,
+          () => {
+            refetchPromptModelListData();
+          }
+        );
+        setPromptModelStream(newStream);
+      });
+    }
+    // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
+    return () => {
+      if (promptModelStream) {
+        promptModelStream.unsubscribe();
+        createSupabaseClient().then((client) => {
           client.removeChannel(promptModelStream);
-        }
-      };
-    });
+        });
+      }
+    };
   }, [projectUuid]);
 
   return {

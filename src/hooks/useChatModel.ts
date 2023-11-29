@@ -6,11 +6,13 @@ import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
 import { fetchChatModels, subscribeChatModel } from "@/apis/chatModel";
 import { useEffect, useMemo } from "react";
+import { useRealtimeStore } from "@/stores/realtimeStore";
 
 export const useChatModel = () => {
   const params = useParams();
   const { projectUuid } = useProject();
   const { createSupabaseClient } = useSupabaseClient();
+  const { chatModelStream, setChatModelStream } = useRealtimeStore();
 
   const { data: chatModelListData, refetch: refetchChatModelListData } =
     useQuery({
@@ -35,22 +37,23 @@ export const useChatModel = () => {
   // Subscribe to ChatModel changes
   useEffect(() => {
     if (!projectUuid) return;
-    createSupabaseClient().then(async (client) => {
-      const chatModelStream = await subscribeChatModel(
-        client,
-        projectUuid,
-        () => {
+    if (!chatModelStream) {
+      createSupabaseClient().then(async (client) => {
+        const newStream = await subscribeChatModel(client, projectUuid, () => {
           refetchChatModelListData();
-        }
-      );
-      // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
-      return () => {
-        if (chatModelStream) {
-          chatModelStream.unsubscribe();
+        });
+        setChatModelStream(newStream);
+      });
+    }
+    // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
+    return () => {
+      if (chatModelStream) {
+        chatModelStream.unsubscribe();
+        createSupabaseClient().then((client) => {
           client.removeChannel(chatModelStream);
-        }
-      };
-    });
+        });
+      }
+    };
   }, [projectUuid]);
 
   return {
