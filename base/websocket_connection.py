@@ -463,6 +463,17 @@ class ConnectionManager:
                         )
                         .execute()
                     )
+                ws = self.connected_locals.get(token)
+                await ws.send_text(
+                    json.dumps(
+                        {
+                            "type": "SYNC_CODE",
+                            "status": "completed",
+                            "correlation_id": data["correlation_id"],
+                        }
+                    )
+                )
+
             except Exception as error:
                 logger.error(f"Error in Syncing with code: {error}")
 
