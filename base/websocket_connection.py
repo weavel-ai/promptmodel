@@ -464,14 +464,14 @@ class ConnectionManager:
                         .execute()
                     )
                 ws = self.connected_locals.get(token)
-                await ws.send_text(
-                    json.dumps(
-                        {
-                            "type": "SYNC_CODE",
-                            "status": "completed",
-                            "correlation_id": data["correlation_id"],
-                        }
-                    )
+                response_data = {
+                    "type": "SYNC_CODE",
+                    "status": "completed",
+                    "correlation_id": data["correlation_id"],
+                }
+                await ws.send_text(json.dumps(response_data))
+                logger.info(
+                    f"Send response message to local for SYNC_CODE : {response_data}"
                 )
 
             except Exception as error:

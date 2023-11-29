@@ -105,6 +105,7 @@ async def run_cloud_prompt_model(project_uuid: str, run_config: PromptModelRunCo
             supabase.table("sample_input")
             .select("content")
             .eq("name", run_config.sample_name)
+            .eq("project_uuid", project_uuid)
             .single()
             .execute()
             .data["content"]
