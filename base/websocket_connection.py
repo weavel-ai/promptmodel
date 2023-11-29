@@ -258,10 +258,26 @@ class ConnectionManager:
                     .execute()
                     .data[0]
                 )
-                prompt_models_in_db = instances_in_db["prompt_model_data"]
-                chat_models_in_db = instances_in_db["chat_model_data"]
-                samples_in_db = instances_in_db["sample_input_data"]
-                schemas_in_db = instances_in_db["function_schema_data"]
+                prompt_models_in_db = (
+                    instances_in_db["prompt_model_data"]
+                    if instances_in_db["prompt_model_data"]
+                    else []
+                )
+                chat_models_in_db = (
+                    instances_in_db["chat_model_data"]
+                    if instances_in_db["chat_model_data"]
+                    else []
+                )
+                samples_in_db = (
+                    instances_in_db["sample_input_data"]
+                    if instances_in_db["sample_input_data"]
+                    else []
+                )
+                schemas_in_db = (
+                    instances_in_db["function_schema_data"]
+                    if instances_in_db["function_schema_data"]
+                    else []
+                )
 
                 prompt_models_to_add = []
                 chat_models_to_add = []

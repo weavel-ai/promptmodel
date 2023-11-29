@@ -579,10 +579,26 @@ async def save_instances_in_code(
             .execute()
             .data[0]
         )
-        prompt_models_in_db = instances_in_db["prompt_model_data"]
-        chat_models_in_db = instances_in_db["chat_model_data"]
-        samples_in_db = instances_in_db["sample_input_data"]
-        schemas_in_db = instances_in_db["function_schema_data"]
+        prompt_models_in_db = (
+            instances_in_db["prompt_model_data"]
+            if instances_in_db["prompt_model_data"]
+            else []
+        )
+        chat_models_in_db = (
+            instances_in_db["chat_model_data"]
+            if instances_in_db["chat_model_data"]
+            else []
+        )
+        samples_in_db = (
+            instances_in_db["sample_input_data"]
+            if instances_in_db["sample_input_data"]
+            else []
+        )
+        schemas_in_db = (
+            instances_in_db["function_schema_data"]
+            if instances_in_db["function_schema_data"]
+            else []
+        )
 
         prompt_models_to_add = []
         chat_models_to_add = []
@@ -627,13 +643,6 @@ async def save_instances_in_code(
         ]
 
         # For FunctionSchema
-        schemas_in_db = (
-            supabase.table("function_schema")
-            .select("*")
-            .eq("project_uuid", project_uuid)
-            .execute()
-            .data
-        )
         old_names = [x["name"] for x in schemas_in_db]
         names_in_code = [x["name"] for x in function_schemas]
         new_names = list(set(names_in_code) - set(old_names))
