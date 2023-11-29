@@ -65,6 +65,7 @@ import { TagsSelector } from "@/components/select/TagsSelector";
 import { ClickToEditInput } from "@/components/inputs/ClickToEditInput";
 import { VersionTag } from "@/components/VersionTag";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { LocalConnectionStatus } from "@/components/LocalConnectionStatus";
 dayjs.extend(relativeTime);
 
 const initialNodes = [];
