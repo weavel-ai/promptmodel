@@ -4,7 +4,7 @@ import classNames from "classnames";
 import dayjs from "dayjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { OnlineStatus } from "../OnlineStatus";
+import { LocalConnectionStatus } from "../LocalConnectionStatus";
 
 export function ModelNode({ data }) {
   const pathname = usePathname();
@@ -21,7 +21,7 @@ export function ModelNode({ data }) {
     >
       <div className="flex flex-col justify-start gap-y-2 items-start">
         <p className="text-base-content font-bold text-lg">{data.name}</p>
-        <OnlineStatus online={data?.online} />
+        <LocalConnectionStatus online={data?.online} />
       </div>
       <p className="text-neutral-content text-sm">
         Created {dayjs(data.created_at).fromNow()}

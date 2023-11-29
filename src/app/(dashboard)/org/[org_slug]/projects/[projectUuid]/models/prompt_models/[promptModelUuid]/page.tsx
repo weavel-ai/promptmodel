@@ -61,11 +61,11 @@ import { SlashCommandOptions } from "@/components/select/SlashCommandOptions";
 import { usePromptModel } from "@/hooks/usePromptModel";
 import { Monaco, MonacoDiffEditor } from "@monaco-editor/react";
 import { arePrimitiveListsEqual, countStretchNodes } from "@/utils";
-import { OnlineStatus } from "@/components/OnlineStatus";
 import { TagsSelector } from "@/components/select/TagsSelector";
 import { ClickToEditInput } from "@/components/inputs/ClickToEditInput";
 import { VersionTag } from "@/components/VersionTag";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { LocalConnectionStatus } from "@/components/LocalConnectionStatus";
 dayjs.extend(relativeTime);
 
 const initialNodes = [];
@@ -88,14 +88,11 @@ export default function Page() {
     <div className="w-full h-full">
       {promptModelVersionListData?.length > 0 && !isCreateVariantOpen && (
         <div className="fixed top-16 left-24 z-50">
-          <div className="flex flex-row gap-x-4 items-center">
-            <SelectTab
-              tabs={TABS}
-              selectedTab={tab}
-              onSelect={(newTab) => setTab(newTab as Tab)}
-            />
-            <OnlineStatus online={promptModelData?.online} />
-          </div>
+          <SelectTab
+            tabs={TABS}
+            selectedTab={tab}
+            onSelect={(newTab) => setTab(newTab as Tab)}
+          />
         </div>
       )}
       {tab == Tab.Analytics && <AnalyticsPage />}
@@ -474,7 +471,7 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
           <div className="flex flex-row justify-between items-center mb-2">
             <div className="flex flex-row justify-start items-center gap-x-4">
               <p className="text-2xl font-bold">{promptModelData?.name} V1</p>
-              <OnlineStatus online={promptModelData?.online} />
+              <LocalConnectionStatus online={promptModelData?.online} />
             </div>
             <div className="flex flex-row w-fit justify-end items-center gap-x-2">
               <SampleSelector
@@ -609,6 +606,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     promptModelVersionListData,
     refetchPromptModelVersionListData,
     selectedPromptModelVersionUuid,
+    isNewVersionReady,
   } = usePromptModelVersion();
   const {
     newVersionCache,
@@ -632,57 +630,6 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     setModifiedPrompts,
   } = usePromptModelVersionStore();
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
-  const [memo, setMemo] = useState("");
-
-  const isNewVersionReady = useMemo(() => {
-    if (isCreateVariantOpen) {
-      if (
-        !originalPromptListData?.every((prompt, index) =>
-          Object.keys(prompt)?.every(
-            (key) => prompt[key] == modifiedPrompts[index][key]
-          )
-        ) &&
-        (!newVersionCache ||
-          !newVersionCache?.prompts.every((prompt, index) =>
-            Object.keys(prompt).every(
-              (key) => prompt[key] == modifiedPrompts[index][key]
-            )
-          ))
-      )
-        return true;
-      if (
-        originalPromptModelVersionData?.model != selectedModel &&
-        (!newVersionCache || newVersionCache?.model != selectedModel)
-      )
-        return true;
-      if (
-        originalPromptModelVersionData?.parsing_type != selectedParser &&
-        (!newVersionCache || newVersionCache?.parsing_type != selectedParser)
-      )
-        return true;
-      if (
-        !arePrimitiveListsEqual(
-          originalPromptModelVersionData?.functions,
-          selectedFunctions
-        ) &&
-        (!newVersionCache ||
-          !arePrimitiveListsEqual(
-            newVersionCache?.functions,
-            selectedFunctions
-          ))
-      )
-        return true;
-    }
-    return false;
-  }, [
-    isCreateVariantOpen,
-    originalPromptModelVersionData,
-    newVersionCache,
-    selectedModel,
-    selectedParser,
-    selectedFunctions,
-    modifiedPrompts,
-  ]);
 
   useHotkeys(
     "esc",
@@ -775,7 +722,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                   {originalPromptModelVersionData?.version}
                 </p>
                 {isCreateVariantOpen && (
-                  <OnlineStatus online={promptModelData?.online} />
+                  <LocalConnectionStatus online={promptModelData?.online} />
                 )}
                 {originalPromptModelVersionData?.is_published &&
                   !isCreateVariantOpen && (
@@ -886,7 +833,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     onClick={() => {
                       handleRun(true);
                     }}
-                    disabled={!isNewVersionReady}
+                    // disabled={!isNewVersionReady}
                   >
                     <p>Run</p>
                     <Play size={20} weight="fill" />

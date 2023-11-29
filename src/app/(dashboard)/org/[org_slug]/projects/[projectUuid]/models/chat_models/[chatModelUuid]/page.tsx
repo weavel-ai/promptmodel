@@ -45,7 +45,7 @@ import { useWindowHeight, useWindowSize } from "@react-hook/window-size";
 import { FunctionSelector } from "@/components/select/FunctionSelector";
 import { useChatModel } from "@/hooks/useChatModel";
 import { Monaco, MonacoDiffEditor } from "@monaco-editor/react";
-import { cloneDeep, countStretchNodes } from "@/utils";
+import { arePrimitiveListsEqual, cloneDeep, countStretchNodes } from "@/utils";
 import { ClickToEditInput } from "@/components/inputs/ClickToEditInput";
 import { VersionTag } from "@/components/VersionTag";
 import { TagsSelector } from "@/components/select/TagsSelector";
@@ -485,7 +485,6 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     setSelectedChatModelVersion,
     setFullScreenChatVersion,
   } = useChatModelVersionStore();
-  const [memo, setMemo] = useState("");
 
   const selectedChatModelVersionUuid = useMemo(() => {
     if (!chatModelVersionListData || !selectedChatModelVersion) return null;
@@ -510,6 +509,9 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     if (data?.model) {
       setSelectedModel(data?.model);
     }
+    if (data?.functions) {
+      setSelectedFunctions(data?.functions);
+    }
     setOriginalVersionData(data);
   }, [selectedChatModelVersion, chatModelVersionListData]);
 
@@ -526,14 +528,15 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     if (
       originalVersionData?.system_prompt == modifiedSystemPrompt &&
       originalVersionData?.model == selectedModel &&
-      originalVersionData?.functions == selectedFunctions
+      arePrimitiveListsEqual(originalVersionData?.functions, selectedFunctions)
     )
       return false;
 
     if (newVersionCache) {
       if (
         newVersionCache?.systemPrompt == modifiedSystemPrompt &&
-        newVersionCache?.model == selectedModel
+        newVersionCache?.model == selectedModel &&
+        arePrimitiveListsEqual(newVersionCache?.functions, selectedFunctions)
       )
         return false;
     }
@@ -698,7 +701,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
               <div className="flex flex-row w-1/2 justify-between items-center mb-2">
                 <div className="flex flex-row justify-start items-center gap-x-3">
                   <div className="flex flex-col items-start justify-center">
-                    {isNewVersionReady ? (
+                    {isNewVersionReady || !newVersionCache ? (
                       <p className="text-base-content font-medium text-lg">
                         New Version
                       </p>

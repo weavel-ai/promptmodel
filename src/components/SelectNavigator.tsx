@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ModalPortal } from "./ModalPortal";
-import { OnlineStatus } from "./OnlineStatus";
+import { LocalConnectionStatus } from "./LocalConnectionStatus";
 
 type LinkDisplay = {
   label: string;
@@ -66,7 +66,7 @@ export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
             "bg-base-content/10 w-full h-full rounded-md px-2 py-1 transition-colors hover:bg-base-content/20 flex flex-row items-center gap-x-2"
           )}
         >
-          <OnlineStatus online={current.online} mini />
+          <LocalConnectionStatus online={current.online} mini />
           <p>{current.label}</p>
         </Link>
         <button
@@ -114,7 +114,7 @@ export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
                       "transition-all hover:bg-popover-content/20 rounded-md p-2"
                     )}
                   >
-                    <OnlineStatus online={optionValue.online} mini />
+                    <LocalConnectionStatus online={optionValue.online} mini />
                     <p className="text-sm text-popover-content">
                       {optionValue.label}
                     </p>

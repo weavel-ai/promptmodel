@@ -19,7 +19,7 @@ import { useEffect, useMemo } from "react";
 import { fetchPrompts } from "@/apis/prompt";
 import { streamLocalPromptModelRun, streamPromptModelRun } from "@/apis/stream";
 import { useRunLogs } from "./useRunLog";
-import { cloneDeep } from "@/utils";
+import { arePrimitiveListsEqual, cloneDeep } from "@/utils";
 import { usePromptModel } from "./usePromptModel";
 
 export const usePromptModelVersion = () => {
@@ -29,6 +29,7 @@ export const usePromptModelVersion = () => {
   const { promptModelData } = usePromptModel();
   const {
     newVersionCache,
+    isCreateVariantOpen,
     selectedPromptModelVersion,
     modifiedPrompts,
     setModifiedPrompts,
@@ -128,13 +129,63 @@ export const usePromptModelVersion = () => {
     }
   }, [originalPromptModelVersionData]);
 
+  const isNewVersionReady = useMemo(() => {
+    if (isCreateVariantOpen) {
+      if (
+        !originalPromptListData?.every((prompt, index) =>
+          Object.keys(prompt)?.every(
+            (key) => prompt[key] == modifiedPrompts[index][key]
+          )
+        ) &&
+        (!newVersionCache ||
+          !newVersionCache?.prompts.every((prompt, index) =>
+            Object.keys(prompt).every(
+              (key) => prompt[key] == modifiedPrompts[index][key]
+            )
+          ))
+      )
+        return true;
+      if (
+        originalPromptModelVersionData?.model != selectedModel &&
+        (!newVersionCache || newVersionCache?.model != selectedModel)
+      )
+        return true;
+      if (
+        originalPromptModelVersionData?.parsing_type != selectedParser &&
+        (!newVersionCache || newVersionCache?.parsing_type != selectedParser)
+      )
+        return true;
+      if (
+        !arePrimitiveListsEqual(
+          originalPromptModelVersionData?.functions,
+          selectedFunctions
+        ) &&
+        (!newVersionCache ||
+          !arePrimitiveListsEqual(
+            newVersionCache?.functions,
+            selectedFunctions
+          ))
+      )
+        return true;
+    }
+    return false;
+  }, [
+    isCreateVariantOpen,
+    originalPromptModelVersionData,
+    newVersionCache,
+    selectedModel,
+    selectedParser,
+    selectedFunctions,
+    modifiedPrompts,
+  ]);
+
   // Run LLM call
-  async function handleRun(isNew: boolean) {
+  async function handleRun(onRightSide: boolean) {
     const toastId = toast.loading("Running...");
     let prompts: Prompt[];
     let newVersionUuid: string;
 
-    if (isNew) {
+    if (onRightSide) {
       prompts = modifiedPrompts;
     } else {
       prompts = originalPromptListData;
@@ -148,17 +199,19 @@ export const usePromptModelVersion = () => {
       projectUuid: params?.projectUuid as string,
       promptModelUuid: params?.promptModelUuid as string,
       prompts: prompts,
-      model: isNew ? selectedModel : originalPromptModelVersionData.model,
-      fromVersion: isNew ? originalPromptModelVersionData?.version : null,
-      versionUuid: isNew ? null : originalPromptModelVersionData?.uuid,
+      model: onRightSide ? selectedModel : originalPromptModelVersionData.model,
+      fromVersion: onRightSide ? originalPromptModelVersionData?.version : null,
+      versionUuid: onRightSide
+        ? (isNewVersionReady ? null : newVersionCache?.uuid) ?? null
+        : originalPromptModelVersionData?.uuid,
       sampleName: selectedSample,
-      parsingType: isNew
+      parsingType: onRightSide
         ? selectedParser
         : originalPromptModelVersionData?.parsing_type,
-      outputKeys: isNew
+      outputKeys: onRightSide
         ? outputKeys
         : originalPromptModelVersionData?.output_keys,
-      functions: isNew
+      functions: onRightSide
         ? selectedFunctions
         : originalPromptModelVersionData?.functions,
       onNewData: async (data) => {
@@ -168,13 +221,19 @@ export const usePromptModelVersion = () => {
             queryClient.invalidateQueries([
               "runLogData",
               {
-                versionUuid: isNew
-                  ? newVersionUuid
+                versionUuid: onRightSide
+                  ? isNewVersionReady
+                    ? newVersionUuid
+                    : newVersionCache?.uuid
                   : originalPromptModelVersionData?.uuid,
               },
             ]);
             removeRunLog(
-              isNew ? newVersionUuid : originalPromptModelVersionData?.uuid,
+              onRightSide
+                ? isNewVersionReady
+                  ? newVersionUuid
+                  : newVersionCache?.uuid
+                : originalPromptModelVersionData?.uuid,
               uuid
             );
             toast.update(toastId, {
@@ -188,13 +247,19 @@ export const usePromptModelVersion = () => {
             queryClient.invalidateQueries([
               "runLogData",
               {
-                versionUuid: isNew
-                  ? newVersionUuid
+                versionUuid: onRightSide
+                  ? isNewVersionReady
+                    ? newVersionUuid
+                    : newVersionCache?.uuid
                   : originalPromptModelVersionData?.uuid,
               },
             ]);
             removeRunLog(
-              isNew ? newVersionUuid : originalPromptModelVersionData?.uuid,
+              onRightSide
+                ? isNewVersionReady
+                  ? newVersionUuid
+                  : newVersionCache?.uuid
+                : originalPromptModelVersionData?.uuid,
               uuid
             );
             toast.update(toastId, {
@@ -218,7 +283,11 @@ export const usePromptModelVersion = () => {
         }
         if (data?.inputs) {
           updateRunLogs(
-            isNew ? newVersionUuid : originalPromptModelVersionData?.uuid,
+            onRightSide
+              ? isNewVersionReady
+                ? newVersionUuid
+                : newVersionCache?.uuid
+              : originalPromptModelVersionData?.uuid,
             uuid,
             {
               inputs: data?.inputs,
@@ -228,7 +297,11 @@ export const usePromptModelVersion = () => {
         if (data?.raw_output) {
           cacheRawOutput += data?.raw_output;
           updateRunLogs(
-            isNew ? newVersionUuid : originalPromptModelVersionData?.uuid,
+            onRightSide
+              ? isNewVersionReady
+                ? newVersionUuid
+                : newVersionCache?.uuid
+              : originalPromptModelVersionData?.uuid,
             uuid,
             {
               raw_output: cacheRawOutput,
@@ -245,7 +318,11 @@ export const usePromptModelVersion = () => {
             }
           }
           updateRunLogs(
-            isNew ? newVersionUuid : originalPromptModelVersionData?.uuid,
+            onRightSide
+              ? isNewVersionReady
+                ? newVersionUuid
+                : newVersionCache?.uuid
+              : originalPromptModelVersionData?.uuid,
             uuid,
             {
               parsed_outputs: cacheParsedOutputs,
@@ -256,7 +333,11 @@ export const usePromptModelVersion = () => {
           cacheFunctionCallData = data?.function_call;
           // functionCallData["initial_raw_output"] = cacheRawOutput;
           updateRunLogs(
-            isNew ? newVersionUuid : originalPromptModelVersionData?.uuid,
+            onRightSide
+              ? isNewVersionReady
+                ? newVersionUuid
+                : newVersionCache?.uuid
+              : originalPromptModelVersionData?.uuid,
             uuid,
             {
               // raw_output: "",
@@ -268,7 +349,11 @@ export const usePromptModelVersion = () => {
         if (data?.function_response) {
           cacheFunctionCallData["response"] = data?.function_response;
           updateRunLogs(
-            isNew ? newVersionUuid : originalPromptModelVersionData?.uuid,
+            onRightSide
+              ? isNewVersionReady
+                ? newVersionUuid
+                : newVersionCache?.uuid
+              : originalPromptModelVersionData?.uuid,
             uuid,
             {
               function_call: cacheFunctionCallData,
@@ -283,7 +368,7 @@ export const usePromptModelVersion = () => {
       await streamPromptModelRun(args);
     }
 
-    if (isNew) {
+    if (onRightSide) {
       refetchPromptModelVersionListData();
       if (!originalPromptModelVersionData?.uuid) {
         setSelectedPromptModelVersion(newVersionCache?.version);
@@ -299,5 +384,6 @@ export const usePromptModelVersion = () => {
     originalPromptModelVersionData,
     refetchPromptModelVersionListData,
     handleRun,
+    isNewVersionReady,
   };
 };
