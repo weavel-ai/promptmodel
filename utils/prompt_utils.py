@@ -28,3 +28,16 @@ def gen_input_schema_details(input_params: List[Dict[str, Any]]):
             content += f"   choices: {param['choices']}\n"
 
     return content
+
+
+def update_dict(
+    target: Dict[str, str],
+    source: Dict[str, str],
+):
+    for key, value in source.items():
+        if value is not None:
+            if key not in target:
+                target[key] = value
+            else:
+                target[key] += value
+    return target

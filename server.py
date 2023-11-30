@@ -22,6 +22,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# @app.middleware("http")
+# async def log_requests(request, call_next):
+#     # 요청 본문을 읽기
+#     body = await request.body()
+#     print(f"Request: {request.method} {request.url} Body: {body.decode()}")
+
+#     # 원래의 요청 복원
+#     async def override_receive():
+#         return {"type": "http.request", "body": body}
+
+#     request._receive = override_receive
+
+#     # 요청 처리 및 응답 로깅
+#     response = await call_next(request)
+#     print(f"Response: {response.status_code}")
+#     return response
+
+
 app.include_router(cli.router, prefix="/api/cli", tags=["cli"])
 app.include_router(web.router, prefix="/api/web", tags=["web"])
 app.include_router(dev.router, prefix="/api/dev", tags=["dev"])

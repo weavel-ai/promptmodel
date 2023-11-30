@@ -1,6 +1,7 @@
 """APIs for package management"""
 import asyncio
 from operator import truediv
+from uuid import UUID
 
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from pydantic import BaseModel
@@ -20,6 +21,7 @@ from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_403_FORBIDDEN,
     HTTP_500_INTERNAL_SERVER_ERROR,
+    HTTP_404_NOT_FOUND,
 )
 
 from utils.security import get_api_key, get_project, get_cli_user_id
@@ -52,8 +54,9 @@ async def list_orgs(user_id: str = Depends(get_cli_user_id)):
             .select("name, slug, organization_id")
             .eq("user_id", user_id)
             .execute()
+            .data
         )
-        return JSONResponse(res.data, status_code=HTTP_200_OK)
+        return JSONResponse(res, status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
@@ -68,47 +71,9 @@ async def list_projects(organization_id: str, user_id: str = Depends(get_cli_use
             .select("uuid, name, description, version")
             .eq("organization_id", organization_id)
             .execute()
-        )
-        return JSONResponse(res.data, status_code=HTTP_200_OK)
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
-@router.get("/check_dev_branch_name")
-async def check_dev_branch_name(name: str, user_id: str = Depends(get_cli_user_id)):
-    """Check if dev branch name is available"""
-    try:
-        # TODO: optimize these queries
-        # TODO: add project_id to input params
-        organization_id = (
-            supabase.table("user_organizations")
-            .select("organization_id")
-            .eq("user_id", user_id)
-            .execute()
-        ).data[0]["organization_id"]
-
-        project_rows = (
-            supabase.table("project")
-            .select("uuid")
-            .eq("organization_id", organization_id)
-            .execute()
             .data
         )
-        project_uuid_list = [x["uuid"] for x in project_rows]
-
-        res = (
-            supabase.table("dev_branch")
-            .select("name")
-            .eq("name", name)
-            .in_("project_uuid", project_uuid_list)
-            .execute()
-        )
-        if res.data:
-            print(res.data)
-            return False
-        else:
-            return True
+        return JSONResponse(res, status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
@@ -125,167 +90,8 @@ async def get_project_version(
             .select("version")
             .eq("uuid", project_uuid)
             .execute()
-        )
-        return JSONResponse(res.data, status_code=HTTP_200_OK)
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
-@router.get("/get_changelog")
-async def get_changelog(
-    project_uuid: str,
-    local_project_version: str,
-    levels: List[int] = Query(...),
-    user_id: str = Depends(get_cli_user_id),
-):
-    """Get changelog of project after a certain version
-
-    Args:
-        - project_uuid (str): uuid of project
-        - local_project_version (str): version of local project
-        - levels (list[int]): levels of changelog to fetch
-
-    """
-    try:
-        # changelog가 없을 수 있음
-        start_point = (
-            supabase.table("project_changelog")
-            .select("id")
-            .eq("project_uuid", project_uuid)
-            .eq("previous_version", local_project_version)
-            .execute()
             .data
         )
-
-        if (len(start_point)) == 0:
-            return JSONResponse([], status_code=HTTP_200_OK)
-
-        current_version_id = start_point[0]["id"]
-
-        res = (
-            supabase.table("project_changelog")
-            .select("previous_version, logs, level")
-            .eq("project_uuid", project_uuid)
-            .gte("id", current_version_id)
-            .in_("level", levels)
-            .order("created_at", desc=False)
-            .execute()
-        )
-        return JSONResponse(res.data, status_code=HTTP_200_OK)
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
-@router.get("/pull_project")
-async def pull_project(project_uuid: str, user_id: str = Depends(get_cli_user_id)):
-    """Pull project from cloud
-
-    Return
-        - version : project version
-        - prompt_models : prompt model list
-        - prompt_model_versions : prompt model version list
-        - prompts : prompt list
-        - run_logs : run log list
-        - chat_models : chat model list
-        - chat_model_versions : chat model version list
-
-    """
-    try:
-        # get project version
-        project_version = (
-            supabase.table("project")
-            .select("version")
-            .eq("uuid", project_uuid)
-            .single()
-            .execute()
-            .data["version"]
-        )
-        # get prompt_models
-        prompt_models = (
-            supabase.table("prompt_model")
-            .select("uuid, created_at, name, project_uuid")
-            .eq("project_uuid", project_uuid)
-            .is_("dev_branch_uuid", "null")
-            .execute()
-            .data
-        )
-
-        # get prompt_model versions
-        prompt_model_versions = (
-            supabase.table("prompt_model_version")
-            .select(
-                "uuid, created_at, version, from_uuid, prompt_model_uuid, model, is_deployed, is_published, is_ab_test, parsing_type, output_keys"
-            )
-            .in_("prompt_model_uuid", [x["uuid"] for x in prompt_models])
-            .eq("is_deployed", True)
-            .execute()
-            .data
-        )
-        for prompt_model_version in prompt_model_versions:
-            if prompt_model_version["is_ab_test"] is True:
-                prompt_model_version["is_published"] = True
-            del prompt_model_version["is_ab_test"]
-
-        versions_uuid_list = [x["uuid"] for x in prompt_model_versions]
-        # get prompts
-        prompts = (
-            supabase.table("prompt")
-            .select("created_at, version_uuid, role, step, content")
-            .in_("version_uuid", versions_uuid_list)
-            .execute()
-            .data
-        )
-
-        # get run_logs
-        run_logs = (
-            supabase.table("run_log")
-            .select(
-                "created_at, version_uuid, inputs, raw_output, parsed_outputs, run_from_deployment"
-            )
-            .in_("version_uuid", versions_uuid_list)
-            .eq("run_from_deployment", "False")
-            .is_("dev_branch_uuid", "null")
-            .execute()
-            .data
-        )
-
-        # get chat_models
-        chat_models = (
-            supabase.table("chat_model")
-            .select("uuid, created_at, name, project_uuid")
-            .eq("project_uuid", project_uuid)
-            .is_("dev_branch_uuid", "null")
-            .execute()
-            .data
-        )
-        # get chat_model versions
-        chat_model_versions = (
-            supabase.table("chat_model_version")
-            .select(
-                "uuid, from_uuid, chat_model_uuid, model, is_published, is_ab_test, system_prompt"
-            )
-            .in_("chat_model_uuid", [x["uuid"] for x in chat_models])
-            .eq("is_deployed", True)
-            .execute()
-            .data
-        )
-        for chat_model_version in chat_model_versions:
-            if chat_model_version["is_ab_test"] is True:
-                chat_model_version["is_published"] = True
-            del chat_model_version["is_ab_test"]
-
-        res = {
-            "project_version": project_version,
-            "prompt_models": prompt_models,
-            "prompt_model_versions": prompt_model_versions,
-            "prompts": prompts,
-            "run_logs": run_logs,
-            "chat_models": chat_models,
-            "chat_model_versions": chat_model_versions,
-        }
-
         return JSONResponse(res, status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
@@ -293,7 +99,7 @@ async def pull_project(project_uuid: str, user_id: str = Depends(get_cli_user_id
 
 
 @router.get("/check_update")
-async def check_update(cached_version: str, project: dict = Depends(get_project)):
+async def check_update(cached_version: int, project: dict = Depends(get_project)):
     """
     Check version between local Cache and cloud,
     If local version is lower than cloud, return (True, New Version, project_status)
@@ -304,7 +110,7 @@ async def check_update(cached_version: str, project: dict = Depends(get_project)
 
     Return:
         - need_update: bool
-        - version : str
+        - version : int
         - project_status : dict
     """
     try:
@@ -336,7 +142,6 @@ async def check_update(cached_version: str, project: dict = Depends(get_project)
             supabase.table("prompt_model")
             .select("uuid, name")
             .eq("project_uuid", project["uuid"])
-            .is_("dev_branch_uuid", "null")
             .execute()
             .data
         )
@@ -345,9 +150,9 @@ async def check_update(cached_version: str, project: dict = Depends(get_project)
         deployed_prompt_model_versions = (
             supabase.table("deployed_prompt_model_version")
             .select(
-                "uuid, from_uuid, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+                "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
             )
-            # .select("uuid, from_uuid, prompt_model_uuid, model, is_published, is_ab_test, ratio")
+            # .select("uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio")
             .in_("prompt_model_uuid", [x["uuid"] for x in prompt_models])
             .execute()
             .data
@@ -379,9 +184,11 @@ async def check_update(cached_version: str, project: dict = Depends(get_project)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.get("/fetch_published_prompt_model_version")
-async def fetch_published_prompt_model_version(
-    prompt_model_name: str, project: dict = Depends(get_project)
+@router.get("/fetch_prompt_model_version")
+async def fetch_prompt_model_version(
+    prompt_model_name: str,
+    version: Optional[Union[str, int]] = "deploy",
+    project: dict = Depends(get_project),
 ):
     """
     Only use when use_cache = False.
@@ -396,114 +203,225 @@ async def fetch_published_prompt_model_version(
     """
     try:
         # find_prompt_model
-        prompt_model = (
-            supabase.table("prompt_model")
-            .select("uuid, name")
-            .eq("project_uuid", project["uuid"])
-            .eq("name", prompt_model_name)
-            .is_("dev_branch_uuid", "null")
-            .single()
-            .execute()
-            .data
-        )
-        # get published, ab_test prompt_model_versions
-        deployed_prompt_model_versions = (
-            supabase.table("deployed_prompt_model_version")
-            .select(
-                "uuid, from_uuid, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+        try:
+            prompt_model = (
+                supabase.table("prompt_model")
+                .select("uuid, name")
+                .eq("project_uuid", project["uuid"])
+                .eq("name", prompt_model_name)
+                .single()
+                .execute()
+                .data
             )
-            .eq("prompt_model_uuid", prompt_model["uuid"])
-            .execute()
-            .data
-        )
+        except:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND, detail="Prompt Model not found"
+            )
+        try:
+            if version == "deploy":
+                # get published, ab_test prompt_model_versions
+                deployed_prompt_model_versions = (
+                    supabase.table("deployed_prompt_model_version")
+                    .select(
+                        "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+                    )
+                    .eq("prompt_model_uuid", prompt_model["uuid"])
+                    .execute()
+                    .data
+                )
 
-        versions_uuid_list = [x["uuid"] for x in deployed_prompt_model_versions]
-        # get prompts
-        prompts = (
-            supabase.table("prompt")
-            .select("version_uuid, role, step, content")
-            .in_("version_uuid", versions_uuid_list)
-            .execute()
-            .data
-        )
+                versions_uuid_list = [x["uuid"] for x in deployed_prompt_model_versions]
+                # get prompts
+                prompts = (
+                    supabase.table("prompt")
+                    .select("version_uuid, role, step, content")
+                    .in_("version_uuid", versions_uuid_list)
+                    .execute()
+                    .data
+                )
 
-        res = {
-            "prompt_model_versions": deployed_prompt_model_versions,
-            "prompts": prompts,
-        }
+                res = {
+                    "prompt_model_versions": deployed_prompt_model_versions,
+                    "prompts": prompts,
+                }
+            else:
+                try:
+                    version = int(version)
+                except ValueError:
+                    version = version
 
-        return JSONResponse(res, status_code=HTTP_200_OK)
+                if isinstance(version, int):
+                    prompt_model_versions = (
+                        supabase.table("prompt_model_version")
+                        .select(
+                            "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+                        )
+                        .eq("prompt_model_uuid", prompt_model["uuid"])
+                        .eq("version", version)
+                        .execute()
+                        .data
+                    )
+                elif version == "latest":
+                    prompt_model_versions = (
+                        supabase.table("prompt_model_version")
+                        .select(
+                            "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+                        )
+                        .eq("prompt_model_uuid", prompt_model["uuid"])
+                        .order("version", desc=True)
+                        .limit(1)
+                        .execute()
+                        .data
+                    )
+
+                versions_uuid_list = [x["uuid"] for x in prompt_model_versions]
+                # get prompts
+                prompts = (
+                    supabase.table("prompt")
+                    .select("version_uuid, role, step, content")
+                    .in_("version_uuid", versions_uuid_list)
+                    .execute()
+                    .data
+                )
+
+                res = {
+                    "prompt_model_versions": prompt_model_versions,
+                    "prompts": prompts,
+                }
+
+            return JSONResponse(res, status_code=HTTP_200_OK)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND, detail="PromptModel Version Not Found"
+            ) from exc
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.get("/fetch_published_chat_model_version")
-async def fetch_published_chat_model_version(
+@router.get("/fetch_chat_model_version_with_chat_log")
+async def fetch_chat_model_version_with_chat_log(
     chat_model_name: str,
     session_uuid: Optional[str] = None,
+    version: Optional[Union[str, int]] = "deploy",
     project: dict = Depends(get_project),
 ):
     """
     ChatModel Always use this function when use_cache = True or False
-    Find published version of chat_model_version
+    Find version of chat_model_version
 
     Input:
         - chat_model_name: name of chat_model
         - session_uuid: uuid of session
+        - version
 
     Return:
-        - chat_model_versions : List[Dict]
+        - Dict
+            - chat_model_versions : List[Dict]
+            -
     """
     try:
+        try:
+            version = int(version)
+        except ValueError:
+            version = version
+
         # find chat_model
         if session_uuid:
             # find session's chat_model & version
-            session = (
-                supabase.table("chat_log_session")
-                .select("version_uuid")
-                .eq("uuid", session_uuid)
-                .single()
-                .execute()
-                .data
-            )
+            try:
+                session = (
+                    supabase.table("chat_log_session")
+                    .select("version_uuid")
+                    .eq("uuid", session_uuid)
+                    .single()
+                    .execute()
+                    .data
+                )
+            except:
+                raise HTTPException(
+                    status_code=HTTP_404_NOT_FOUND, detail="Session not found"
+                )
+
             session_chat_model_version = (
                 supabase.table("chat_model_version")
                 .select(
-                    "uuid, from_uuid, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
+                    "uuid, from_version, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
                 )
                 .eq("uuid", session["version_uuid"])
                 .execute()
                 .data
             )
-            res = {
-                "chat_model_versions": session_chat_model_version,
-            }
-        else:
-            chat_model = (
-                supabase.table("chat_model")
-                .select("uuid, name")
-                .eq("project_uuid", project["uuid"])
-                .eq("name", chat_model_name)
-                .is_("dev_branch_uuid", "null")
-                .single()
+            # find chat logs
+            chat_logs = (
+                supabase.table("chat_log")
+                .select("role, name, content, tool_calls")
+                .eq("session_uuid", session_uuid)
+                .order("created_at", desc=False)
                 .execute()
                 .data
             )
-            # get published, ab_test prompt_model_versions
+
+            res = {
+                "chat_model_versions": session_chat_model_version,
+                "chat_logs": chat_logs,
+            }
+        elif isinstance(version, int):
+            # find chat_model_version
+            try:
+                chat_model = (
+                    supabase.table("chat_model")
+                    .select("uuid, name")
+                    .eq("project_uuid", project["uuid"])
+                    .eq("name", chat_model_name)
+                    .single()
+                    .execute()
+                    .data
+                )
+            except:
+                raise HTTPException(
+                    status_code=HTTP_404_NOT_FOUND, detail="Chat Model not found"
+                )
+
+            chat_model_version = (
+                supabase.table("chat_model_version")
+                .select(
+                    "uuid, from_version, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
+                )
+                .eq("chat_model_uuid", chat_model["uuid"])
+                .eq("version", version)
+                .execute()
+                .data
+            )
+            res = {"chat_model_versions": chat_model_version, "chat_logs": []}
+        else:
+            try:
+                chat_model = (
+                    supabase.table("chat_model")
+                    .select("uuid, name")
+                    .eq("project_uuid", project["uuid"])
+                    .eq("name", chat_model_name)
+                    .single()
+                    .execute()
+                    .data
+                )
+            except:
+                raise HTTPException(
+                    status_code=HTTP_404_NOT_FOUND, detail="Chat Model not found"
+                )
+
+            # get published, ab_test chat_model_versions
             deployed_chat_model_versions = (
                 supabase.table("deployed_chat_model_version")
                 .select(
-                    "uuid, from_uuid, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
+                    "uuid, from_version, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
                 )
                 .eq("chat_model_uuid", chat_model["uuid"])
                 .execute()
                 .data
             )
 
-            res = {
-                "chat_model_versions": deployed_chat_model_versions,
-            }
+            res = {"chat_model_versions": deployed_chat_model_versions, "chat_logs": []}
 
         return JSONResponse(res, status_code=HTTP_200_OK)
     except Exception as exc:
@@ -511,71 +429,12 @@ async def fetch_published_chat_model_version(
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.get("/fetch_chat_logs")
-async def fetch_chat_logs(session_uuid: str, project: dict = Depends(get_project)):
-    """
-    Fetch chat logs from cloud
-
-    Input:
-        - session_uuid: uuid of session
-
-    Return:
-        - chat_logs : List[Dict]
-    """
-    try:
-        # find chat_model
-        chat_logs = (
-            supabase.table("chat_log")
-            .select("*")
-            .eq("session_uuid", session_uuid)
-            .order("created_at", desc=False)
-            .execute()
-            .data
-        )
-
-        res = {
-            "chat_logs": chat_logs,
-        }
-
-        return JSONResponse(res, status_code=HTTP_200_OK)
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
-# Create APIs
-@router.post("/create_dev_branch")
-async def create_dev_branch(
-    name: str, project_uuid: str, user_id: str = Depends(get_cli_user_id)
-):
-    """
-    Args:
-        name (str): name of dev branch
-        project_uuid (str): uuid of project
-    """
-    try:
-        res = (
-            supabase.table("dev_branch")
-            .insert(
-                {
-                    "name": name,
-                    "project_uuid": project_uuid,
-                }
-            )
-            .execute()
-        )
-        return JSONResponse(status_code=HTTP_200_OK, content=res.data[0])
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
-# promptmodel library local dev server websocket endpoint
+# promptmodel library local websocket connection endpoint
 @router.websocket("/open_websocket")
 async def open_websocket(
     websocket: WebSocket, token: str = Depends(get_websocket_token)
 ):
-    """Initializes a websocket connection with the local dev server."""
+    """Initializes a websocket connection with the local server."""
     # websocket_connection = await websocket_manager.connect(websocket, token)
     try:
         connection = await websocket_manager.connect(websocket, token)
@@ -586,42 +445,36 @@ async def open_websocket(
         #         5
         #     )  # This is an arbitrary sleep value, adjust as needed.
     except Exception as error:
-        logger.error(f"Error in local dev server websocket for token {token}: {error}")
+        logger.error(f"Error in local server websocket for token {token}: {error}")
         websocket_manager.disconnect(token)
 
 
-@router.post("/connect_cli_dev")
-async def connect_cli_dev(
-    project_uuid: str, branch_name: str, api_key: str = Depends(get_api_key)
-):
-    """Update cli token for dev branch."""
+@router.post("/connect_cli_project")
+async def connect_cli_project(project_uuid: str, api_key: str = Depends(get_api_key)):
+    """Update cli token for project."""
     try:
-        print(project_uuid, branch_name, api_key)
-        dev_branch_data = (
-            supabase.table("dev_branch")
-            .select("*")
-            .eq("name", branch_name)
-            .eq("project_uuid", project_uuid)
-            .single()
+        project = (
+            supabase.table("project")
+            .select("cli_access_key")
+            .eq("uuid", project_uuid)
             .execute()
             .data
         )
-        if dev_branch_data["online"] is True:
-            # return false, already connected
+
+        if project[0]["cli_access_key"] is not None:
             return HTTPException(
                 status_code=HTTP_403_FORBIDDEN, detail="Already connected"
             )
         else:
-            # update dev_branch_data
+            # update project
             res = (
-                supabase.table("dev_branch")
+                supabase.table("project")
                 .update(
                     {
                         "cli_access_key": api_key,
-                        "online": False,
                     }
                 )
-                .eq("id", dev_branch_data["id"])
+                .eq("uuid", project_uuid)
                 .execute()
             )
             # return true, connected
@@ -662,6 +515,7 @@ async def log_deployment_run(
             )
             .execute()
         )
+        return Response(status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
@@ -678,7 +532,7 @@ async def log_deployment_chat(
     try:
         # check session
         session = (
-            supabase.table("session")
+            supabase.table("chat_log_session")
             .select("*")
             .eq("uuid", session_uuid)
             .single()
@@ -686,33 +540,32 @@ async def log_deployment_chat(
             .data
         )
         if len(session) == 0:
-            # make session
-            session = (
-                supabase.table("session")
-                .insert(
-                    {
-                        "uuid": session_uuid,
-                        "version_uuid": version_uuid,
-                        "run_from_deployment": True,
-                    }
-                )
-                .execute()
-            )
+            raise ValueError("Session not found")
         # make logs
         logs = []
         for message, meta in zip(messages, metadata):
-            token_usage = meta["token_usage"] if meta else None
-            latency = meta["response_ms"] if meta else None
+            token_usage = {}
+            latency = 0
             cost = completion_cost(meta["api_response"]) if meta else None
             if "token_usage" in meta:
+                token_usage = meta["token_usage"]
                 del meta["token_usage"]
             if "response_ms" in meta:
+                latency = meta["response_ms"]
                 del meta["response_ms"]
+            if "_response_ms" in meta:
+                latency = meta["_response_ms"]
+                del meta["_response_ms"]
+            if "latency" in meta:
+                latency = meta["latency"]
+                del meta["latency"]
+
             logs.append(
                 {
                     "session_uuid": session_uuid,
                     "role": message["role"],
                     "content": message["content"],
+                    "name": message["name"] if "name" in message else None,
                     "tool_calls": message["tool_calls"]
                     if "tool_calls" in message
                     else None,
@@ -724,6 +577,254 @@ async def log_deployment_chat(
             )
         # save logs
         (supabase.table("chat_log").insert(logs).execute())
+        return Response(status_code=HTTP_200_OK)
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+
+
+@router.post("/make_session")
+async def make_session(
+    session_uuid: str,
+    version_uuid: str,
+    project: dict = Depends(get_project),
+):
+    try:
+        # check version
+        version = (
+            supabase.table("chat_model_version")
+            .select("*")
+            .eq("uuid", version_uuid)
+            .single()
+            .execute()
+            .data
+        )
+        if len(version) == 0:
+            raise ValueError("Chat Model Version not found")
+        # make Session
+        (
+            supabase.table("chat_log_session")
+            .insert({"uuid": session_uuid, "version_uuid": version_uuid})
+            .execute()
+        )
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+
+
+@router.post("/save_instances_in_code")
+async def save_instances_in_code(
+    project_uuid: str,
+    prompt_models: list[str],
+    chat_models: list[str],
+    samples: list[dict],
+    function_schemas: list[dict],
+    project: dict = Depends(get_project),
+):
+    try:
+        changelogs = []
+        instances_in_db = (
+            supabase.rpc("pull_instances", {"project_uuid": project_uuid})
+            .execute()
+            .data[0]
+        )
+        prompt_models_in_db = (
+            instances_in_db["prompt_model_data"]
+            if instances_in_db["prompt_model_data"]
+            else []
+        )
+        chat_models_in_db = (
+            instances_in_db["chat_model_data"]
+            if instances_in_db["chat_model_data"]
+            else []
+        )
+        samples_in_db = (
+            instances_in_db["sample_input_data"]
+            if instances_in_db["sample_input_data"]
+            else []
+        )
+        schemas_in_db = (
+            instances_in_db["function_schema_data"]
+            if instances_in_db["function_schema_data"]
+            else []
+        )
+
+        prompt_models_to_add = []
+        chat_models_to_add = []
+        samples_to_add = []
+        schemas_to_add = []
+
+        samples_to_update = []
+        schemas_to_update = []
+
+        old_names = [x["name"] for x in prompt_models_in_db]
+        new_names = list(set(prompt_models) - set(old_names))
+        prompt_models_to_add = [
+            {"name": x, "project_uuid": project_uuid} for x in new_names
+        ]
+
+        old_names = [x["name"] for x in chat_models_in_db]
+        new_names = list(set(chat_models) - set(old_names))
+        chat_models_to_add = [
+            {"name": x, "project_uuid": project_uuid} for x in new_names
+        ]
+
+        old_names = [x["name"] for x in samples_in_db]
+        names_in_code = [x["name"] for x in samples]
+        new_names = list(set(names_in_code) - set(old_names))
+        samples_to_add = [
+            {
+                "name": x["name"],
+                "content": x["content"],
+                "project_uuid": project_uuid,
+            }
+            for x in samples
+            if x["name"] in new_names
+        ]
+
+        # sample to update
+        samples_to_update = [
+            sample
+            for sample in samples
+            if sample["name"] not in new_names
+            and sample["content"]
+            != samples_in_db[old_names.index(sample["name"])]["content"]
+        ]
+
+        # For FunctionSchema
+        old_names = [x["name"] for x in schemas_in_db]
+        names_in_code = [x["name"] for x in function_schemas]
+        new_names = list(set(names_in_code) - set(old_names))
+        schemas_to_add = [
+            {
+                "name": x["name"],
+                "description": x["description"],
+                "parameters": x["parameters"],
+                "mock_response": x["mock_response"] if "mock_response" in x else None,
+                "project_uuid": project_uuid,
+            }
+            for x in function_schemas
+            if x["name"] in new_names
+        ]
+
+        # update schemas
+        schemas_to_update = [
+            schema for schema in function_schemas if schema["name"] not in new_names
+        ]
+
+        # save instances
+        new_instances = (
+            supabase.rpc(
+                "save_instances",
+                {
+                    "prompt_models": prompt_models_to_add,
+                    "chat_models": chat_models_to_add,
+                    "sample_inputs": samples_to_add,
+                    "function_schemas": schemas_to_add,
+                },
+            )
+            .execute()
+            .data[0]
+        )
+        new_prompt_models = (
+            new_instances["prompt_model_rows"]
+            if new_instances["prompt_model_rows"]
+            else []
+        )
+        new_chat_models = (
+            new_instances["chat_model_rows"] if new_instances["chat_model_rows"] else []
+        )
+        new_samples = (
+            new_instances["sample_input_rows"]
+            if new_instances["sample_input_rows"]
+            else []
+        )
+        new_schemas = (
+            new_instances["function_schema_rows"]
+            if new_instances["function_schema_rows"]
+            else []
+        )
+
+        prompt_model_name_list_to_update = prompt_models
+        chat_model_name_list_to_update = chat_models
+
+        # update instances
+        updated_instances = (
+            supabase.rpc(
+                "update_instances",
+                {
+                    "input_project_uuid": project_uuid,
+                    "prompt_model_names": prompt_model_name_list_to_update,
+                    "chat_model_names": chat_model_name_list_to_update,
+                    "sample_input_names": [x["name"] for x in samples],
+                    "function_schema_names": [x["name"] for x in function_schemas],
+                    "sample_inputs": samples_to_update,
+                    "function_schemas": schemas_to_update,
+                },
+            )
+            .execute()
+            .data[0]
+        )
+
+        updated_samples = (
+            updated_instances["sample_input_rows"]
+            if updated_instances["sample_input_rows"]
+            else []
+        )
+        updated_schemas = (
+            updated_instances["function_schema_rows"]
+            if updated_instances["function_schema_rows"]
+            else []
+        )
+
+        # make changelog
+        changelogs = [
+            {
+                "subject": f"prompt_model",
+                "identifiers": [x["uuid"] for x in new_prompt_models],
+                "action": "ADD",
+            },
+            {
+                "subject": f"chat_model",
+                "identifiers": [x["uuid"] for x in new_chat_models],
+                "action": "ADD",
+            },
+            {
+                "subject": f"sample_input",
+                "identifiers": [x["uuid"] for x in new_samples],
+                "action": "ADD",
+            },
+            {
+                "subject": f"function_schema",
+                "identifiers": [x["uuid"] for x in new_schemas],
+                "action": "ADD",
+            },
+            {
+                "subject": f"sample_input",
+                "identifiers": [x["uuid"] for x in updated_samples],
+                "action": "UPDATE",
+            },
+            {
+                "subject": f"function_schema",
+                "identifiers": [x["uuid"] for x in updated_schemas],
+                "action": "UPDATE",
+            },
+        ]
+        # delete if len(identifiers) == 0
+        changelogs = [x for x in changelogs if len(x["identifiers"]) > 0]
+        # save changelog
+        if len(changelogs) > 0:
+            (
+                supabase.table("project_changelog")
+                .insert(
+                    {
+                        "logs": changelogs,
+                        "project_uuid": project_uuid,
+                    }
+                )
+                .execute()
+            )
+
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
