@@ -1,6 +1,6 @@
 fastapi
 supabase
-openai==1.0.0
+openai>=1.0.0
 uvicorn[standard]
 termcolor
 tiktoken
@@ -16,5 +16,5 @@ pytest
 pytest-asyncio
 pytest-mock
 pytest-cov
-promptmodel==0.1.0
+promptmodel>=0.1.0
 
