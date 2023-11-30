@@ -362,22 +362,22 @@ class ConnectionManager:
                     .execute()
                     .data[0]
                 )
-                new_prompt_models = (
+                created_prompt_models = (
                     new_instances["prompt_model_rows"]
                     if new_instances["prompt_model_rows"]
                     else []
                 )
-                new_chat_models = (
+                created_chat_models = (
                     new_instances["chat_model_rows"]
                     if new_instances["chat_model_rows"]
                     else []
                 )
-                new_samples = (
+                created_samples = (
                     new_instances["sample_input_rows"]
                     if new_instances["sample_input_rows"]
                     else []
                 )
-                new_schemas = (
+                created_schemas = (
                     new_instances["function_schema_rows"]
                     if new_instances["function_schema_rows"]
                     else []
@@ -420,22 +420,22 @@ class ConnectionManager:
                 changelogs = [
                     {
                         "subject": f"prompt_model",
-                        "identifiers": [x["uuid"] for x in new_prompt_models],
+                        "identifiers": [x["uuid"] for x in created_prompt_models],
                         "action": "ADD",
                     },
                     {
                         "subject": f"chat_model",
-                        "identifiers": [x["uuid"] for x in new_chat_models],
+                        "identifiers": [x["uuid"] for x in created_chat_models],
                         "action": "ADD",
                     },
                     {
                         "subject": f"sample_input",
-                        "identifiers": [x["uuid"] for x in new_samples],
+                        "identifiers": [x["uuid"] for x in created_samples],
                         "action": "ADD",
                     },
                     {
                         "subject": f"function_schema",
-                        "identifiers": [x["uuid"] for x in new_schemas],
+                        "identifiers": [x["uuid"] for x in created_schemas],
                         "action": "ADD",
                     },
                     {
