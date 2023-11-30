@@ -155,8 +155,9 @@ export const DeploymentNavbar = (props: NavbarProps) => {
               </div>
             )}
             {/* Project navigator */}
-            {params?.projectUuid && organization && (
+            {params?.projectUuid && (
               <SelectNavigator
+                statusType="connection"
                 current={{
                   label: projectListData?.find(
                     (project) => project.uuid == params?.projectUuid
@@ -187,8 +188,9 @@ export const DeploymentNavbar = (props: NavbarProps) => {
                 </div>
               )}
               {/* PromptModel navigator */}
-              {params?.promptModelUuid && organization && (
+              {params?.promptModelUuid && (
                 <SelectNavigator
+                  statusType="usage"
                   current={{
                     label: promptModelListData?.find(
                       (promptModel) =>
@@ -210,8 +212,9 @@ export const DeploymentNavbar = (props: NavbarProps) => {
                 />
               )}
               {/* ChatModel navigator */}
-              {params?.chatModelUuid && organization && (
+              {params?.chatModelUuid && (
                 <SelectNavigator
+                  statusType="usage"
                   current={{
                     label: chatModelListData?.find(
                       (chatModel) => chatModel.uuid == params?.chatModelUuid
@@ -231,6 +234,12 @@ export const DeploymentNavbar = (props: NavbarProps) => {
                 />
               )}
             </div>
+          </div>
+          <div className="mr-2">
+            <LocalConnectionStatus
+              online={projectData?.online}
+              statusType="connection"
+            />
           </div>
           {!pathname.includes("sign-in") && !pathname.includes("sign-up") && (
             <SignInButton />
