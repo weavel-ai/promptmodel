@@ -1,7 +1,6 @@
 fastapi
 supabase
-# openai==0.28.1
-openai
+openai==1.0.0
 uvicorn[standard]
 termcolor
 tiktoken
@@ -17,5 +16,5 @@ pytest
 pytest-asyncio
 pytest-mock
 pytest-cov
-# promptmodel
-git+https://github.com/weavel-ai/promptmodel.git#egg=promptmodel
+promptmodel==0.1.0
+
