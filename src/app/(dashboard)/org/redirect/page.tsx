@@ -31,11 +31,11 @@ export default function Page() {
   useEffect(() => {
     if (!isLoaded) return;
     if (organization?.id != null) {
-      createSupabaseClient().then((supabase) => {
-        fetchOrganization(supabase, organization.id)
-          .then((data) => {
+      createSupabaseClient().then(async (supabase) => {
+        await fetchOrganization(supabase, organization.id)
+          .then(async (data) => {
             if (data?.length == 0) {
-              createOrganization(
+              await createOrganization(
                 supabase,
                 organization.id,
                 organization?.slug,
@@ -47,7 +47,7 @@ export default function Page() {
             }
           })
           .then(() => {
-            router.push(`/org/${organization.slug}`);
+            router.push(`/org/${organization?.slug}`);
           });
       });
     } else {

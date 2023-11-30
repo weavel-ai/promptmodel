@@ -7,6 +7,7 @@ import { useProject } from "./useProject";
 import { fetchChatModels, subscribeChatModel } from "@/apis/chatModel";
 import { useEffect, useMemo } from "react";
 import { useRealtimeStore } from "@/stores/realtimeStore";
+import { toast } from "react-toastify";
 
 export const useChatModel = () => {
   const params = useParams();
@@ -40,6 +41,7 @@ export const useChatModel = () => {
     if (!chatModelStream) {
       createSupabaseClient().then(async (client) => {
         const newStream = await subscribeChatModel(client, projectUuid, () => {
+          toast("Syncing ChatModel...");
           refetchChatModelListData();
         });
         setChatModelStream(newStream);
@@ -54,7 +56,7 @@ export const useChatModel = () => {
         });
       }
     };
-  }, [projectUuid]);
+  }, [projectUuid, chatModelStream]);
 
   return {
     chatModelUuid: params?.chatModelUuid as string,

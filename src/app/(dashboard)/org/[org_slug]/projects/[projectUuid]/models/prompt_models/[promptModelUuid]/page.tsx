@@ -626,13 +626,17 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     setFullScreenRunVersionUuid,
     modifiedPrompts,
     setModifiedPrompts,
+    showSlashOptions,
+    setShowSlashOptions,
   } = usePromptModelVersionStore();
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
   useHotkeys(
     "esc",
     () => {
-      if (fullScreenRunVersionUuid) {
+      if (showSlashOptions) {
+        setShowSlashOptions(false);
+      } else if (fullScreenRunVersionUuid) {
         setFullScreenRunVersionUuid(null);
       } else if (isCreateVariantOpen) {
         setIsCreateVariantOpen(false);
@@ -828,7 +832,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     onClick={() => {
                       handleRun(true);
                     }}
-                    // disabled={!isNewVersionReady}
+                    disabled={!isNewVersionReady && !newVersionCache}
                   >
                     <p>Run</p>
                     <Play size={20} weight="fill" />
@@ -1212,18 +1216,11 @@ const PromptComponent = ({
   const windowHeight = useWindowHeight();
   const [open, setOpen] = useState(true);
   const [height, setHeight] = useState(30);
-  const editorRef = useRef(null);
+  const editorRef = useRef<editor.IStandaloneCodeEditor>(null);
   const { modifiedPrompts, setFocusedEditor, setShowSlashOptions } =
     usePromptModelVersionStore();
 
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
-    const contentHeight = editor.getContentHeight();
-    editorRef.current = editor;
-
-    if (contentHeight) {
-      setHeight(contentHeight);
-    }
-
     editor.onKeyDown((e) => {
       if (e.code === "Slash" && (e.ctrlKey || e.metaKey)) {
         setShowSlashOptions(true);
@@ -1320,19 +1317,14 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
   const windowHeight = useWindowHeight();
   const [open, setOpen] = useState(true);
   const [height, setHeight] = useState(30);
-  const originalEditorRef = useRef(null);
-  const modifiedEditorRef = useRef(null);
+  const originalEditorRef = useRef<editor.IStandaloneCodeEditor>(null);
+  const modifiedEditorRef = useRef<editor.IStandaloneCodeEditor>(null);
   const { setFocusedEditor, modifiedPrompts, setShowSlashOptions } =
     usePromptModelVersionStore();
 
   const handleEditorDidMount = (editor: MonacoDiffEditor, monaco: Monaco) => {
     originalEditorRef.current = editor.getOriginalEditor();
     modifiedEditorRef.current = editor.getModifiedEditor();
-    const originalHeight = originalEditorRef.current?.getContentHeight();
-    const maxHeight = windowHeight * 0.7;
-    if (originalHeight) {
-      setHeight(Math.min(originalHeight, maxHeight));
-    }
     modifiedEditorRef.current?.onKeyDown((e) => {
       if (e.code === "Slash" && (e.ctrlKey || e.metaKey)) {
         setShowSlashOptions(true);
@@ -1355,19 +1347,22 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
           modifiedEditorRef.current?.getValue();
       }
       setPrompts(newPrompts);
+      const originalHeight = originalEditorRef.current?.getContentHeight();
+      const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
+      const maxHeight = windowHeight * 0.7;
+      if (modifiedHeight > originalHeight) {
+        setHeight(Math.min(modifiedHeight, maxHeight));
+      } else {
+        setHeight(Math.min(originalHeight, maxHeight));
+      }
     });
   };
 
   useEffect(() => {
     const originalHeight = originalEditorRef.current?.getContentHeight();
-    const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
     const maxHeight = windowHeight * 0.7;
-    if (modifiedHeight > originalHeight) {
-      setHeight(Math.min(modifiedHeight, maxHeight));
-    } else {
-      setHeight(Math.min(originalHeight, maxHeight));
-    }
-  }, [originalEditorRef.current, modifiedEditorRef.current]);
+    setHeight(Math.min(originalHeight, maxHeight));
+  }, []);
 
   return (
     <motion.div
@@ -1406,8 +1401,17 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
 };
 
 function ModelVersionNode({ data }) {
-  const { selectedPromptModelVersion, setSelectedPromptModelVersion } =
-    usePromptModelVersionStore();
+  const {
+    selectedPromptModelVersion,
+    setSelectedPromptModelVersion,
+    setNewVersionCache,
+  } = usePromptModelVersionStore();
+
+  function handleNodeClick() {
+    setNewVersionCache(null);
+    setSelectedPromptModelVersion(data.version);
+  }
+
   return (
     <div
       className={classNames(
@@ -1421,7 +1425,7 @@ function ModelVersionNode({ data }) {
           ? "bg-secondary/80 hover:bg-secondary/50"
           : "bg-base-200 hover:bg-blue-500/30"
       )}
-      onClick={() => setSelectedPromptModelVersion(data.version)}
+      onClick={handleNodeClick}
     >
       <Handle type="target" position={Position.Top} />
       <p className="text-base-content font-medium italic">
