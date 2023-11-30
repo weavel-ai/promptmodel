@@ -21,6 +21,7 @@ from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_403_FORBIDDEN,
     HTTP_500_INTERNAL_SERVER_ERROR,
+    HTTP_404_NOT_FOUND,
 )
 
 from utils.security import get_api_key, get_project, get_cli_user_id
@@ -202,87 +203,97 @@ async def fetch_prompt_model_version(
     """
     try:
         # find_prompt_model
-        prompt_model = (
-            supabase.table("prompt_model")
-            .select("uuid, name")
-            .eq("project_uuid", project["uuid"])
-            .eq("name", prompt_model_name)
-            .single()
-            .execute()
-            .data
-        )
-        if version == "deploy":
-            # get published, ab_test prompt_model_versions
-            deployed_prompt_model_versions = (
-                supabase.table("deployed_prompt_model_version")
-                .select(
-                    "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
-                )
-                .eq("prompt_model_uuid", prompt_model["uuid"])
+        try:
+            prompt_model = (
+                supabase.table("prompt_model")
+                .select("uuid, name")
+                .eq("project_uuid", project["uuid"])
+                .eq("name", prompt_model_name)
+                .single()
                 .execute()
                 .data
             )
-
-            versions_uuid_list = [x["uuid"] for x in deployed_prompt_model_versions]
-            # get prompts
-            prompts = (
-                supabase.table("prompt")
-                .select("version_uuid, role, step, content")
-                .in_("version_uuid", versions_uuid_list)
-                .execute()
-                .data
+        except:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND, detail="Prompt Model not found"
             )
-
-            res = {
-                "prompt_model_versions": deployed_prompt_model_versions,
-                "prompts": prompts,
-            }
-        else:
-            try:
-                version = int(version)
-            except ValueError:
-                version = version
-
-            if isinstance(version, int):
-                prompt_model_versions = (
-                    supabase.table("prompt_model_version")
+        try:
+            if version == "deploy":
+                # get published, ab_test prompt_model_versions
+                deployed_prompt_model_versions = (
+                    supabase.table("deployed_prompt_model_version")
                     .select(
                         "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
                     )
                     .eq("prompt_model_uuid", prompt_model["uuid"])
-                    .eq("version", version)
                     .execute()
                     .data
                 )
-            elif version == "latest":
-                prompt_model_versions = (
-                    supabase.table("prompt_model_version")
-                    .select(
-                        "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+
+                versions_uuid_list = [x["uuid"] for x in deployed_prompt_model_versions]
+                # get prompts
+                prompts = (
+                    supabase.table("prompt")
+                    .select("version_uuid, role, step, content")
+                    .in_("version_uuid", versions_uuid_list)
+                    .execute()
+                    .data
+                )
+
+                res = {
+                    "prompt_model_versions": deployed_prompt_model_versions,
+                    "prompts": prompts,
+                }
+            else:
+                try:
+                    version = int(version)
+                except ValueError:
+                    version = version
+
+                if isinstance(version, int):
+                    prompt_model_versions = (
+                        supabase.table("prompt_model_version")
+                        .select(
+                            "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+                        )
+                        .eq("prompt_model_uuid", prompt_model["uuid"])
+                        .eq("version", version)
+                        .execute()
+                        .data
                     )
-                    .eq("prompt_model_uuid", prompt_model["uuid"])
-                    .order("version", desc=True)
-                    .limit(1)
+                elif version == "latest":
+                    prompt_model_versions = (
+                        supabase.table("prompt_model_version")
+                        .select(
+                            "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+                        )
+                        .eq("prompt_model_uuid", prompt_model["uuid"])
+                        .order("version", desc=True)
+                        .limit(1)
+                        .execute()
+                        .data
+                    )
+
+                versions_uuid_list = [x["uuid"] for x in prompt_model_versions]
+                # get prompts
+                prompts = (
+                    supabase.table("prompt")
+                    .select("version_uuid, role, step, content")
+                    .in_("version_uuid", versions_uuid_list)
                     .execute()
                     .data
                 )
 
-            versions_uuid_list = [x["uuid"] for x in prompt_model_versions]
-            # get prompts
-            prompts = (
-                supabase.table("prompt")
-                .select("version_uuid, role, step, content")
-                .in_("version_uuid", versions_uuid_list)
-                .execute()
-                .data
-            )
+                res = {
+                    "prompt_model_versions": prompt_model_versions,
+                    "prompts": prompts,
+                }
 
-            res = {
-                "prompt_model_versions": prompt_model_versions,
-                "prompts": prompts,
-            }
-
-        return JSONResponse(res, status_code=HTTP_200_OK)
+            return JSONResponse(res, status_code=HTTP_200_OK)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND, detail="PromptModel Version Not Found"
+            ) from exc
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
@@ -318,14 +329,20 @@ async def fetch_chat_model_version_with_chat_log(
         # find chat_model
         if session_uuid:
             # find session's chat_model & version
-            session = (
-                supabase.table("chat_log_session")
-                .select("version_uuid")
-                .eq("uuid", session_uuid)
-                .single()
-                .execute()
-                .data
-            )
+            try:
+                session = (
+                    supabase.table("chat_log_session")
+                    .select("version_uuid")
+                    .eq("uuid", session_uuid)
+                    .single()
+                    .execute()
+                    .data
+                )
+            except:
+                raise HTTPException(
+                    status_code=HTTP_404_NOT_FOUND, detail="Session not found"
+                )
+
             session_chat_model_version = (
                 supabase.table("chat_model_version")
                 .select(
@@ -351,15 +368,20 @@ async def fetch_chat_model_version_with_chat_log(
             }
         elif isinstance(version, int):
             # find chat_model_version
-            chat_model = (
-                supabase.table("chat_model")
-                .select("uuid, name")
-                .eq("project_uuid", project["uuid"])
-                .eq("name", chat_model_name)
-                .single()
-                .execute()
-                .data
-            )
+            try:
+                chat_model = (
+                    supabase.table("chat_model")
+                    .select("uuid, name")
+                    .eq("project_uuid", project["uuid"])
+                    .eq("name", chat_model_name)
+                    .single()
+                    .execute()
+                    .data
+                )
+            except:
+                raise HTTPException(
+                    status_code=HTTP_404_NOT_FOUND, detail="Chat Model not found"
+                )
 
             chat_model_version = (
                 supabase.table("chat_model_version")
@@ -373,15 +395,21 @@ async def fetch_chat_model_version_with_chat_log(
             )
             res = {"chat_model_versions": chat_model_version, "chat_logs": []}
         else:
-            chat_model = (
-                supabase.table("chat_model")
-                .select("uuid, name")
-                .eq("project_uuid", project["uuid"])
-                .eq("name", chat_model_name)
-                .single()
-                .execute()
-                .data
-            )
+            try:
+                chat_model = (
+                    supabase.table("chat_model")
+                    .select("uuid, name")
+                    .eq("project_uuid", project["uuid"])
+                    .eq("name", chat_model_name)
+                    .single()
+                    .execute()
+                    .data
+                )
+            except:
+                raise HTTPException(
+                    status_code=HTTP_404_NOT_FOUND, detail="Chat Model not found"
+                )
+
             # get published, ab_test chat_model_versions
             deployed_chat_model_versions = (
                 supabase.table("deployed_chat_model_version")
