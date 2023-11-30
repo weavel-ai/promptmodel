@@ -45,6 +45,7 @@ export const usePromptModel = () => {
           client,
           projectUuid,
           () => {
+            toast("Syncing PromptModel...");
             refetchPromptModelListData();
           }
         );
@@ -60,7 +61,7 @@ export const usePromptModel = () => {
         });
       }
     };
-  }, [projectUuid]);
+  }, [projectUuid, promptModelStream]);
 
   return {
     promptModelUuid: params?.promptModelUuid as string,

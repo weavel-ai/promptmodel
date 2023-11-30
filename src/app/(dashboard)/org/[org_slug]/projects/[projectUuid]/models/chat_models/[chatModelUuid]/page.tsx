@@ -1079,8 +1079,17 @@ const PromptDiffComponent = ({
 };
 
 function ModelVersionNode({ data }) {
-  const { selectedChatModelVersion, setSelectedChatModelVersion } =
-    useChatModelVersionStore();
+  const {
+    selectedChatModelVersion,
+    setSelectedChatModelVersion,
+    setNewVersionCache,
+  } = useChatModelVersionStore();
+
+  function handleNodeClick() {
+    setSelectedChatModelVersion(data.version);
+    setNewVersionCache(null);
+  }
+
   return (
     <div
       className={classNames(
@@ -1094,7 +1103,7 @@ function ModelVersionNode({ data }) {
           ? "bg-secondary/80 hover:bg-secondary/50"
           : "bg-base-200 hover:bg-blue-500/30"
       )}
-      onClick={() => setSelectedChatModelVersion(data.version)}
+      onClick={handleNodeClick}
     >
       <Handle type="target" position={Position.Top} />
       <p className="text-base-content font-medium italic">

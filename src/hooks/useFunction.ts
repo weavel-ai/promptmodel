@@ -5,6 +5,7 @@ import { useRealtimeStore } from "@/stores/realtimeStore";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useEffect } from "react";
+import { toast } from "react-toastify";
 
 export const useFunctions = () => {
   const params = useParams();
@@ -32,6 +33,7 @@ export const useFunctions = () => {
           client,
           params?.projectUuid as string,
           () => {
+            toast("Syncing functions...");
             refetchFunctionListData();
           }
         );
@@ -47,7 +49,7 @@ export const useFunctions = () => {
         });
       }
     };
-  }, [params?.projectUuid]);
+  }, [params?.projectUuid, functionStream]);
 
   return {
     functionListData,

@@ -2,6 +2,7 @@ import { useSupabaseClient } from "@/apis/base";
 import { fetchOrganization } from "@/apis/organization";
 import { useOrganization } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 export const useOrgData = () => {
   const { organization } = useOrganization();
@@ -22,6 +23,10 @@ export const useOrgData = () => {
     },
     enabled: organization != undefined && organization != null,
   });
+
+  useEffect(() => {
+    refetchOrgData();
+  }, [organization?.id]);
 
   return {
     orgData,

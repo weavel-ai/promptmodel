@@ -1,4 +1,4 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 
 export async function fetchSampleInputs(
   supabaseClient: SupabaseClient,
@@ -11,6 +11,30 @@ export async function fetchSampleInputs(
     .order("created_at", { ascending: false });
 
   return res.data;
+}
+
+export async function subscribeSampleInputs(
+  supabaseClient: SupabaseClient,
+  projectUuid: string,
+  onUpdate: () => void
+): Promise<RealtimeChannel> {
+  const sampleInputStream = supabaseClient
+    .channel("any")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "sample_input",
+        filter: `project_uuid=eq.${projectUuid}`,
+      },
+      (payload) => {
+        onUpdate();
+      }
+    )
+    .subscribe();
+
+  return sampleInputStream;
 }
 
 export async function createSampleInput(

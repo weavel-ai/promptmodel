@@ -7,6 +7,7 @@ import { useOrganization } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useEffect } from "react";
+import { toast } from "react-toastify";
 
 export const useProject = () => {
   const params = useParams();
@@ -40,6 +41,7 @@ export const useProject = () => {
           client,
           organization?.id,
           () => {
+            toast("Syncing project...");
             refetchProjectListData();
           }
         );
@@ -55,7 +57,7 @@ export const useProject = () => {
         });
       }
     };
-  }, [params?.projectUuid]);
+  }, [params?.projectUuid, projectStream]);
 
   return {
     projectData,
