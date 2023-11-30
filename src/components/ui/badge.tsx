@@ -30,6 +30,7 @@ export interface BadgeProps
 
 function Badge({ className, variant, ...props }: BadgeProps) {
   return (
+    // @ts-ignore
     <div className={cn(badgeVariants({ variant }), className)} {...props} />
   );
 }
