@@ -65,7 +65,6 @@ import { TagsSelector } from "@/components/select/TagsSelector";
 import { ClickToEditInput } from "@/components/inputs/ClickToEditInput";
 import { VersionTag } from "@/components/VersionTag";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { LocalConnectionStatus } from "@/components/LocalConnectionStatus";
 dayjs.extend(relativeTime);
 
 const initialNodes = [];
@@ -471,7 +470,6 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
           <div className="flex flex-row justify-between items-center mb-2">
             <div className="flex flex-row justify-start items-center gap-x-4">
               <p className="text-2xl font-bold">{promptModelData?.name} V1</p>
-              <LocalConnectionStatus online={promptModelData?.online} />
             </div>
             <div className="flex flex-row w-fit justify-end items-center gap-x-2">
               <SampleSelector
@@ -721,9 +719,6 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                   {promptModelData?.name} <i>V</i>{" "}
                   {originalPromptModelVersionData?.version}
                 </p>
-                {isCreateVariantOpen && (
-                  <LocalConnectionStatus online={promptModelData?.online} />
-                )}
                 {originalPromptModelVersionData?.is_published &&
                   !isCreateVariantOpen && (
                     <div className="flex flex-row gap-x-2 items-center">

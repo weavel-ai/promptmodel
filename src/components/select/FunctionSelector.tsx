@@ -160,6 +160,7 @@ export const FunctionSelector = ({
                   >
                     <LocalConnectionStatus
                       online={functionOption.online}
+                      statusType="connection"
                       mini
                     />
                     <p>{functionOption.name}</p>
