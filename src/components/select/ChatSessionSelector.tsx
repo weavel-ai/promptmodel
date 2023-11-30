@@ -1,7 +1,4 @@
-import {
-  NEW_CHAT_LABEL,
-  useChatLogSessions,
-} from "@/hooks/dev/useChatLogSession";
+import { NEW_CHAT_LABEL, useChatLogSessions } from "@/hooks/useChatLogSession";
 import classNames from "classnames";
 import dayjs from "dayjs";
 

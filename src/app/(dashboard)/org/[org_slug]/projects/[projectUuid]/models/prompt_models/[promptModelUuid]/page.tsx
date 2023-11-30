@@ -2,9 +2,12 @@
 
 import { Drawer } from "@/components/Drawer";
 import { usePromptModelVersion } from "@/hooks/usePromptModelVersion";
-import { usePromptModelVersionStore } from "@/stores/promptModelVersionStore";
+import {
+  Prompt,
+  usePromptModelVersionStore,
+} from "@/stores/promptModelVersionStore";
 import classNames from "classnames";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
   Background,
   BackgroundVariant,
@@ -12,27 +15,28 @@ import ReactFlow, {
   Position,
 } from "reactflow";
 import { motion } from "framer-motion";
-import { usePromptModelVersionDetails } from "@/hooks/usePromptModelVersionDetails";
 import {
-  ArrowsOut,
   CaretDown,
-  CornersOut,
+  Command,
+  GitBranch,
+  Play,
   RocketLaunch,
+  Trash,
   XCircle,
 } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import { updatePublishedPromptModelVersion } from "@/apis/promptModelVersion";
+import {
+  updatePromptModelVersionMemo,
+  updatePublishedPromptModelVersion,
+} from "@/apis/promptModelVersion";
 import { useSupabaseClient } from "@/apis/base";
 import "reactflow/dist/style.css";
-import { useRunLog } from "@/hooks/useRunLog";
-import { RunLog } from "@/apis/runlog";
 import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
 import { tree, stratify } from "d3-hierarchy";
 import { useQueryClient } from "@tanstack/react-query";
 import { ResizableSeparator } from "@/components/ResizableSeparator";
 import { useProject } from "@/hooks/useProject";
-import ReactJson from "react-json-view";
 import { SelectTab } from "@/components/SelectTab";
 import { useDailyRunLogMetrics } from "@/hooks/analytics";
 import { CustomAreaChart } from "@/components/charts/CustomAreaChart";
@@ -42,13 +46,26 @@ import { subDays } from "date-fns";
 import dayjs from "dayjs";
 import { ParserTypeSelector } from "@/components/select/ParserTypeSelector";
 import { Badge } from "@/components/ui/badge";
-import { PromptEditor } from "@/components/editor/PromptEditor";
-import { ModalPortal } from "@/components/ModalPortal";
 import {
-  useWindowHeight,
-  useWindowSize,
-  useWindowWidth,
-} from "@react-hook/window-size";
+  PromptDiffEditor,
+  PromptEditor,
+} from "@/components/editor/PromptEditor";
+import { useWindowHeight, useWindowSize } from "@react-hook/window-size";
+import { SampleSelector } from "@/components/SampleSelector";
+import { ModelDisplay, ModelSelector } from "@/components/ModelSelector";
+import { TagsInput } from "react-tag-input-component";
+import { FunctionSelector } from "@/components/select/FunctionSelector";
+import { NewPromptButton } from "@/components/buttons/NewPromptButton";
+import { RunLogUI } from "@/components/RunLogUI";
+import { SlashCommandOptions } from "@/components/select/SlashCommandOptions";
+import { usePromptModel } from "@/hooks/usePromptModel";
+import { Monaco, MonacoDiffEditor } from "@monaco-editor/react";
+import { arePrimitiveListsEqual, countStretchNodes } from "@/utils";
+import { TagsSelector } from "@/components/select/TagsSelector";
+import { ClickToEditInput } from "@/components/inputs/ClickToEditInput";
+import { VersionTag } from "@/components/VersionTag";
+import relativeTime from "dayjs/plugin/relativeTime";
+dayjs.extend(relativeTime);
 
 const initialNodes = [];
 const initialEdges = [];
@@ -62,16 +79,21 @@ const TABS = [Tab.Analytics, Tab.Versions];
 
 export default function Page() {
   const [tab, setTab] = useState(Tab.Versions);
+  const { promptModelData } = usePromptModel();
+  const { promptModelVersionListData } = usePromptModelVersion();
+  const { isCreateVariantOpen } = usePromptModelVersionStore();
 
   return (
     <div className="w-full h-full">
-      <div className="fixed top-16 left-24 z-50">
-        <SelectTab
-          tabs={TABS}
-          selectedTab={tab}
-          onSelect={(newTab) => setTab(newTab as Tab)}
-        />
-      </div>
+      {promptModelVersionListData?.length > 0 && !isCreateVariantOpen && (
+        <div className="fixed top-16 left-24 z-50">
+          <SelectTab
+            tabs={TABS}
+            selectedTab={tab}
+            onSelect={(newTab) => setTab(newTab as Tab)}
+          />
+        </div>
+      )}
       {tab == Tab.Analytics && <AnalyticsPage />}
       {tab == Tab.Versions && <VersionsPage />}
     </div>
@@ -188,115 +210,454 @@ const AnalyticsPage = () => {
 
 // Versions Tab Page
 const VersionsPage = () => {
-  const { createSupabaseClient } = useSupabaseClient();
   const [windowWidth, windowHeight] = useWindowSize();
-  const { versionListData, refetchVersionListData } = usePromptModelVersion();
+  const { promptModelVersionListData } = usePromptModelVersion();
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
-
-  const { selectedPromptModelVersionUuid, setSelectedPromptModelVersionUuid } =
-    usePromptModelVersionStore();
-  const { projectData } = useProject();
+  const [hoveredVersionData, setHoveredVersionData] = useState(null);
   const nodeTypes = useMemo(() => ({ modelVersion: ModelVersionNode }), []);
-
-  const queryClient = useQueryClient();
-  const { promptListData, promptModelVersionData } =
-    usePromptModelVersionDetails(selectedPromptModelVersionUuid);
-
-  const { runLogData } = useRunLog(selectedPromptModelVersionUuid);
-
-  const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
-
-  const [isFullScreen, setIsFullScreen] = useState(false);
-
-  useHotkeys(
-    "esc",
-    () => {
-      if (isFullScreen) {
-        setIsFullScreen(false);
-      } else {
-        setSelectedPromptModelVersionUuid(null);
-      }
-    },
-    {
-      preventDefault: true,
-    }
-  );
+  const {
+    focusedEditor,
+    isCreateVariantOpen,
+    selectedPromptModelVersion,
+    setSelectedPromptModelVersion,
+    selectedParser,
+    outputKeys,
+    setOutputKeys,
+    showSlashOptions,
+    setShowSlashOptions,
+  } = usePromptModelVersionStore();
+  const reactFlowRef = useRef(null);
 
   useEffect(() => {
-    setSelectedPromptModelVersionUuid(null);
+    setSelectedPromptModelVersion(null);
   }, []);
 
   // Build nodes
   useEffect(() => {
-    if (!versionListData || versionListData.length === 0) return;
+    if (!promptModelVersionListData || promptModelVersionListData?.length === 0)
+      return;
+
     const generatedEdges = [];
-    // Before passing your data to stratify, preprocess it:
     const dataWithSyntheticRoot = [
-      {
-        uuid: "synthetic-root",
-        from_uuid: null,
-      },
-      ...versionListData.map((item) => {
-        if (!item.from_uuid) {
-          return {
-            ...item,
-            from_uuid: "synthetic-root",
-          };
-        }
-        return item;
-      }),
+      { version: "synthetic-root", from_version: null },
+      ...promptModelVersionListData.map((item) => ({
+        ...item,
+        from_version: item.from_version || "synthetic-root",
+      })),
     ];
 
     const root = stratify()
-      .id((d: any) => d.uuid)
-      .parentId((d: any) => d.from_uuid)(dataWithSyntheticRoot);
+      .id((d: any) => d.version)
+      .parentId((d: any) => d.from_version)(dataWithSyntheticRoot);
 
-    // Calculate the maximum number of nodes at any depth.
-    const maxNodesAtDepth = Math.max(
-      ...root.descendants().map((d: any) => d.depth)
-    );
-    const requiredWidth = maxNodesAtDepth * 320;
+    const requiredWidth = countStretchNodes(root) * 160;
+    const layout = tree().size([requiredWidth, root.height * 160]);
+    const allNodes: any = layout(root).descendants();
 
-    // Use the smaller of window width and required width.
-    const layoutWidth = Math.min(windowWidth, requiredWidth);
-    const layout = tree().size([layoutWidth, root.height * 160]);
+    let publishedNodePosition = null;
+    allNodes.forEach((node: any) => {
+      if (node.data.is_published) {
+        publishedNodePosition = { x: node.x, y: node.y };
+      }
+    });
 
-    const nodes = layout(root).descendants();
+    if (publishedNodePosition) {
+      const centerX = windowWidth / 2;
+      const centerY = (windowHeight - 48) / 2;
+      const offsetX = centerX - publishedNodePosition.x;
+      const offsetY = centerY - publishedNodePosition.y;
+      allNodes.forEach((node) => {
+        node.x += offsetX;
+        node.y += offsetY;
+      });
+    }
 
-    const generatedNodes = nodes
-      .filter((node: any) => node.data.uuid !== "synthetic-root")
+    const generatedNodes = allNodes
+      .filter((node: any) => node.data.version !== "synthetic-root")
       .map((node: any) => {
         const item = node.data;
 
-        if (item.from_uuid && item.from_uuid !== "synthetic-root") {
+        if (item.from_version && item.from_version !== "synthetic-root") {
           generatedEdges.push({
-            id: `e${item.uuid}-${item.from_uuid}`,
-            source: item.from_uuid,
-            target: item.uuid,
+            id: `e${item.version}-${item.from_version}`,
+            source: item.from_version.toString(),
+            target: item.version.toString(),
           });
         }
 
         return {
-          id: item.uuid.toString(),
+          id: item.version.toString(),
           type: "modelVersion",
           data: {
             label: item.version,
-            uuid: item.uuid,
+            version: item.version,
             isPublished: item.is_published,
           },
-          position: { x: node.x, y: node.depth * 150 },
+          position: { x: node.x, y: node.y },
         };
       });
 
     setNodes(generatedNodes);
     setEdges(generatedEdges);
-  }, [versionListData]);
+  }, [promptModelVersionListData, windowWidth]);
+
+  const onNodeMouseEnter = useCallback((event, node) => {
+    const pane = reactFlowRef.current.getBoundingClientRect();
+
+    if (node?.data?.version) {
+      setHoveredVersionData({
+        version: node.data.version,
+        top: event.clientY < pane.height - 200 && event.clientY,
+        left: event.clientX < pane.width - 200 && event.clientX,
+        right: event.clientX >= pane.width - 200 && pane.width - event.clientX,
+        bottom:
+          event.clientY >= pane.height - 200 && pane.height - event.clientY,
+      });
+    }
+  }, []);
+
+  const onNodeMouseLeave = useCallback((event, node) => {
+    setHoveredVersionData(null);
+  }, []);
+
+  return (
+    <>
+      <ReactFlow
+        ref={reactFlowRef}
+        nodeTypes={nodeTypes}
+        nodes={nodes}
+        edges={edges}
+        proOptions={{ hideAttribution: true }}
+        defaultViewport={{
+          x: -windowWidth / 3 + 80,
+          y: -windowHeight / 3 + 48,
+          zoom: 1.5,
+        }}
+        onPaneClick={() => {
+          setSelectedPromptModelVersion(null);
+        }}
+        onNodeMouseEnter={onNodeMouseEnter}
+        onNodeMouseLeave={onNodeMouseLeave}
+      >
+        <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+        {promptModelVersionListData && (
+          <InitialVersionDrawer
+            open={promptModelVersionListData?.length == 0}
+          />
+        )}
+        <VersionDetailsDrawer open={selectedPromptModelVersion != null} />
+        <VersionListDrawer
+          open={isCreateVariantOpen && selectedPromptModelVersion != null}
+        />
+        <SlashCommandOptions
+          open={Boolean(showSlashOptions)}
+          setOpen={setShowSlashOptions}
+          parsingType={selectedParser}
+          onInsert={(outputFormatText: string, outputKey: string) => {
+            const position = focusedEditor.getPosition();
+            focusedEditor?.executeEdits("", [
+              {
+                range: {
+                  startLineNumber: position.lineNumber,
+                  startColumn: position.column,
+                  endLineNumber: position.lineNumber,
+                  endColumn: position.column,
+                },
+                text: outputFormatText, // The value you want to insert
+              },
+            ]);
+            setShowSlashOptions(false);
+            // Add output key
+            setOutputKeys([...outputKeys, outputKey]);
+            // Calculate new cursor position
+            const newColumnPosition = position.column + outputFormatText.length;
+            // Set cursor to the end of the inserted value
+            focusedEditor.setPosition({
+              lineNumber: position.lineNumber,
+              column: newColumnPosition,
+            });
+            // Focus the editor
+            focusedEditor.focus();
+          }}
+        />
+      </ReactFlow>
+      {hoveredVersionData && (
+        <VersionInfoOverlay versionData={hoveredVersionData} />
+      )}
+    </>
+  );
+};
+
+function VersionInfoOverlay({ versionData }) {
+  const { promptModelData } = usePromptModel();
+  const { promptModelVersionListData } = usePromptModelVersion();
+  const hoveredVersionData = useMemo(() => {
+    return promptModelVersionListData?.find(
+      (version) => version.version == versionData.version
+    );
+  }, [versionData, promptModelVersionListData]);
+
+  return (
+    <div
+      className={classNames(
+        "fixed rounded-lg flex flex-col bg-popover/80 backdrop-blur-sm text-base-content h-10 w-10 z-[100]",
+        "w-fit h-fit p-4 gap-y-2"
+      )}
+      style={{
+        left: versionData.left ? versionData.left + 10 : "auto",
+        right: versionData.right ? versionData.right + 10 : "auto",
+        top: versionData.top ? versionData.top + 10 : "auto",
+        bottom: versionData.bottom ? versionData.bottom + 10 : "auto",
+      }}
+    >
+      <p className="text-lg font-medium">
+        {promptModelData?.name}{" "}
+        <span className="font-semibold text-xl">
+          <i>V</i> {hoveredVersionData?.version}
+        </span>
+      </p>
+      <p className="text-sm text-muted-content">
+        Created {dayjs(hoveredVersionData?.created_at).fromNow()}
+      </p>
+      <div className="flex flex-row gap-x-1">
+        {hoveredVersionData?.tags?.map((tag: string) => (
+          <VersionTag key={tag} name={tag} />
+        ))}
+      </div>
+      {hoveredVersionData?.memo && (
+        <p className="p-1 bg-input rounded-md">{hoveredVersionData?.memo}</p>
+      )}
+    </div>
+  );
+}
+
+function InitialVersionDrawer({ open }: { open: boolean }) {
+  const { promptModelData } = usePromptModel();
+  const { handleRun } = usePromptModelVersion();
+  const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
+
+  const {
+    modifiedPrompts,
+    setModifiedPrompts,
+    selectedSample,
+    selectedModel,
+    outputKeys,
+    selectedParser,
+    selectedFunctions,
+    setSelectedSample,
+    setOutputKeys,
+    setSelectedModel,
+    setSelectedParser,
+    setSelectedFunctions,
+  } = usePromptModelVersionStore();
+
+  useEffect(() => {
+    if (!open) return;
+    setModifiedPrompts([]);
+    setSelectedSample(null);
+  }, [open]);
+
+  return (
+    <Drawer
+      open={open}
+      direction="right"
+      classNames="!w-[100vw] px-4 flex flex-col justify-start items-center pb-4"
+      duration={200}
+    >
+      {open && (
+        <div className="flex flex-col justify-start w-full max-w-4xl h-full">
+          <div className="flex flex-row justify-between items-center mb-2">
+            <div className="flex flex-row justify-start items-center gap-x-4">
+              <p className="text-2xl font-bold">{promptModelData?.name} V1</p>
+            </div>
+            <div className="flex flex-row w-fit justify-end items-center gap-x-2">
+              <SampleSelector
+                sampleName={selectedSample}
+                setSample={setSelectedSample}
+              />
+              <ModelSelector
+                modelName={selectedModel}
+                setModel={setSelectedModel}
+              />
+              <button
+                className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20 disabled:bg-muted disabled:border-muted-content"
+                onClick={() => handleRun(true)}
+                disabled={
+                  !(modifiedPrompts?.length > 0) ||
+                  modifiedPrompts?.every?.((prompt) => prompt.content === "")
+                }
+              >
+                <p className="text-base-content">Run</p>
+                <Play className="text-base-content" size={20} weight="fill" />
+              </button>
+            </div>
+          </div>
+          <div className="bg-base-200 flex-grow w-full p-4 rounded-t-box overflow-auto">
+            <div className="flex flex-row justify-between gap-x-2 items-start mb-2">
+              <div className="flex flex-wrap justify-start gap-4 items-start w-full">
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Model</span>
+                  </label>
+                  <ModelSelector
+                    modelName={selectedModel}
+                    setModel={setSelectedModel}
+                  />
+                </div>
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Output parser type</span>
+                  </label>
+                  <ParserTypeSelector
+                    parser={selectedParser}
+                    selectParser={setSelectedParser}
+                  />
+                </div>
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Output keys</span>
+                  </label>
+                  {selectedParser && (
+                    <div className="w-full bg-base-content/10 rounded-lg text-sm">
+                      <TagsInput
+                        value={outputKeys}
+                        name="Output Keys"
+                        classNames={{
+                          input:
+                            "text-sm m-0 flex-grow bg-transparent disabled",
+                          tag: "!bg-secondary text-secondary-content text-sm",
+                        }}
+                        placeHolder="Type and press enter"
+                        onChange={setOutputKeys}
+                      />
+                    </div>
+                  )}
+                  {(selectedParser == null || selectedParser == undefined) && (
+                    <Badge className="text-sm" variant="muted">
+                      No output keys
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Functions</span>
+                  </label>
+                  <FunctionSelector
+                    selectedFunctions={selectedFunctions}
+                    setSelectedFunctions={setSelectedFunctions}
+                  />
+                </div>
+              </div>
+              <div
+                className="flex flex-row justify-end items-center tooltip tooltip-left tooltip-info"
+                data-tip="Press Cmd + / to insert output format to your prompt"
+              >
+                <kbd className="kbd text-base-content">
+                  <Command size={16} />
+                </kbd>
+                <kbd className="kbd text-base-content">/</kbd>
+              </div>
+            </div>
+            <div className="divider" />
+            <div className="flex flex-col h-full gap-y-2 justify-start items-center">
+              {modifiedPrompts?.map?.((prompt, idx) => (
+                <PromptComponent
+                  key={idx}
+                  prompt={prompt}
+                  setPrompts={setModifiedPrompts}
+                />
+              ))}
+              <NewPromptButton
+                prompts={modifiedPrompts}
+                setPrompts={setModifiedPrompts}
+              />
+            </div>
+          </div>
+          <div className="relative">
+            <ResizableSeparator
+              height={lowerBoxHeight}
+              setHeight={setLowerBoxHeight}
+            />
+            <div
+              className="mt-4 backdrop-blur-sm"
+              style={{ height: lowerBoxHeight }}
+            >
+              <RunLogUI versionUuid={null} />
+            </div>
+          </div>
+        </div>
+      )}
+    </Drawer>
+  );
+}
+
+function VersionDetailsDrawer({ open }: { open: boolean }) {
+  const { createSupabaseClient } = useSupabaseClient();
+  const queryClient = useQueryClient();
+  const { projectData } = useProject();
+  const { promptModelData } = usePromptModel();
+  const {
+    handleRun,
+    originalPromptListData,
+    originalPromptModelVersionData,
+    promptModelVersionListData,
+    refetchPromptModelVersionListData,
+    selectedPromptModelVersionUuid,
+    isNewVersionReady,
+  } = usePromptModelVersion();
+  const {
+    newVersionCache,
+    fullScreenRunVersionUuid,
+    isCreateVariantOpen,
+    selectedSample,
+    selectedModel,
+    selectedFunctions,
+    selectedParser,
+    outputKeys,
+    selectedPromptModelVersion,
+    setOutputKeys,
+    setSelectedSample,
+    setSelectedFunctions,
+    setSelectedModel,
+    setSelectedParser,
+    setSelectedPromptModelVersion,
+    setIsCreateVariantOpen,
+    setFullScreenRunVersionUuid,
+    modifiedPrompts,
+    setModifiedPrompts,
+    showSlashOptions,
+    setShowSlashOptions,
+  } = usePromptModelVersionStore();
+  const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
+
+  useHotkeys(
+    "esc",
+    () => {
+      if (showSlashOptions) {
+        setShowSlashOptions(false);
+      } else if (fullScreenRunVersionUuid) {
+        setFullScreenRunVersionUuid(null);
+      } else if (isCreateVariantOpen) {
+        setIsCreateVariantOpen(false);
+      } else if (selectedPromptModelVersion) {
+        setSelectedPromptModelVersion(null);
+      }
+    },
+    {
+      enableOnFormTags: true,
+      preventDefault: true,
+    }
+  );
+
+  function handleClickCreateVariant() {
+    setIsCreateVariantOpen(true);
+  }
 
   async function handleClickPublish() {
     const toastId = toast.loading("Publishing...");
 
-    const previousPublishedUuid = versionListData?.find(
+    const previousPublishedUuid = promptModelVersionListData?.find(
       (v) => v.is_published
     )?.uuid;
 
@@ -307,13 +668,11 @@ const VersionsPage = () => {
       projectData?.version,
       projectData?.uuid
     );
-    await refetchVersionListData();
+    await refetchPromptModelVersionListData();
     queryClient.invalidateQueries({
-      predicate: (query: any) =>
-        query.queryKey[0] === "promptModelVersionData" &&
-        (query.queryKey[1]?.uuid === selectedPromptModelVersionUuid ||
-          query.queryKey[1]?.uuid == previousPublishedUuid),
+      predicate: (query: any) => query.queryKey[0] === "promptModelVersionData",
     });
+    setSelectedPromptModelVersion(null);
     toast.update(toastId, {
       render: "Published successfully!",
       type: "success",
@@ -322,225 +681,568 @@ const VersionsPage = () => {
     });
   }
 
+  async function handleSetMemo(newMemo: string) {
+    await updatePromptModelVersionMemo(
+      await createSupabaseClient(),
+      selectedPromptModelVersionUuid,
+      newMemo
+    );
+    queryClient.invalidateQueries([
+      "promptModelVersionData",
+      { uuid: selectedPromptModelVersionUuid },
+    ]);
+  }
+
   return (
-    <>
-      <ReactFlow
-        nodeTypes={nodeTypes}
-        nodes={nodes}
-        edges={edges}
-        proOptions={{ hideAttribution: true }}
-        fitView={true}
-        onPaneClick={() => {
-          setSelectedPromptModelVersionUuid(null);
-        }}
-      >
-        <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-      </ReactFlow>
-      <Drawer
-        open={selectedPromptModelVersionUuid != null}
-        direction="right"
-        classNames="!w-[45vw]"
-      >
-        <div className="w-full h-full bg-transparent p-4 flex flex-col justify-start">
-          <div className="flex flex-row justify-between items-center mb-2">
-            <div className="flex flex-row gap-x-2 justify-start items-center">
-              <p className="text-base-content font-bold text-lg">
-                Prompt V{promptModelVersionData?.version}
-              </p>
-              {promptModelVersionData?.is_published && (
-                <div className="flex flex-row gap-x-2 items-center px-2 justify-self-start">
-                  <div className="w-2 h-2 rounded-full bg-secondary" />
-                  <p className="text-base-content font-medium text-sm">
-                    Published
+    <Drawer
+      open={open}
+      direction="right"
+      style={{ width: isCreateVariantOpen ? "calc(100vw - 5rem)" : "auto" }}
+      classNames={classNames(
+        isCreateVariantOpen ? "backdrop-blur-md" : "!w-[60vw]",
+        "mr-4"
+      )}
+    >
+      {open && (
+        <div
+          className={classNames(
+            "w-full h-full bg-transparent p-4 flex flex-col justify-start",
+            isCreateVariantOpen && "pr-0"
+          )}
+        >
+          {/* Header */}
+          <div className="flex flex-row justify-between items-center mb-2 w-full">
+            <div
+              className={classNames(
+                "flex flex-row items-center justify-between",
+                isCreateVariantOpen ? "w-1/2 pr-4" : "w-full"
+              )}
+            >
+              <div className="flex flex-row gap-x-2 justify-start items-center">
+                <p className="text-base-content font-bold text-lg">
+                  {promptModelData?.name} <i>V</i>{" "}
+                  {originalPromptModelVersionData?.version}
+                </p>
+                {originalPromptModelVersionData?.is_published &&
+                  !isCreateVariantOpen && (
+                    <div className="flex flex-row gap-x-2 items-center">
+                      <div className="w-2 h-2 rounded-full bg-secondary" />
+                      <p className="text-base-content font-medium text-sm">
+                        Published
+                      </p>
+                    </div>
+                  )}
+                <div className="ml-2">
+                  <TagsSelector
+                    modelType="PromptModel"
+                    versionUuid={selectedPromptModelVersionUuid}
+                    previousTags={originalPromptModelVersionData?.tags}
+                  />
+                </div>
+              </div>
+              {isCreateVariantOpen ? (
+                <div className="flex flex-row justify-end items-center gap-x-3">
+                  <SampleSelector
+                    sampleName={selectedSample}
+                    setSample={setSelectedSample}
+                  />
+                  <button
+                    className={classNames(
+                      "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
+                      "text-base-100 disabled:bg-muted disabled:text-muted-content disabled:border-muted-content"
+                    )}
+                    onClick={() => {
+                      handleRun(false);
+                    }}
+                  >
+                    <p>Run</p>
+                    <Play size={20} weight="fill" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-row gap-x-2 items-center justify-end">
+                  {!originalPromptModelVersionData?.is_published && (
+                    <button
+                      className="flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 bg-secondary-content hover:bg-secondary group"
+                      onClick={handleClickPublish}
+                    >
+                      <RocketLaunch
+                        className="text-secondary group-hover:text-secondary-content transition-colors"
+                        size={20}
+                        weight="fill"
+                      />
+                      <p className="text-base-100 group-hover:text-secondary-content transition-colors">
+                        Publish
+                      </p>
+                    </button>
+                  )}
+                  <button
+                    className="flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content bg-transparent hover:bg-neutral-content/20"
+                    onClick={handleClickCreateVariant}
+                  >
+                    <GitBranch
+                      className="text-secondary"
+                      size={20}
+                      weight="fill"
+                    />
+                    <p className="text-base-content">Create Variant</p>
+                  </button>
+                  <button
+                    className="flex flex-col gap-y-2 pt-1 items-center btn btn-sm normal-case font-normal bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
+                    onClick={() => {
+                      setSelectedPromptModelVersion(null);
+                    }}
+                  >
+                    <div className="flex flex-col">
+                      <XCircle size={22} />
+                      <p className="text-base-content text-xs">Esc</p>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+            {isCreateVariantOpen && (
+              <div className="flex flex-row w-1/2 justify-between items-center mb-2">
+                <div className="flex flex-col items-start justify-center">
+                  {isNewVersionReady || !newVersionCache ? (
+                    <p className="text-base-content font-bold text-lg">
+                      New Version
+                    </p>
+                  ) : (
+                    <p className="text-base-content font-bold text-lg">
+                      {promptModelData?.name} <i>V</i>{" "}
+                      {newVersionCache?.version}
+                    </p>
+                  )}
+                  <p className="text-base-content text-sm">
+                    From&nbsp;
+                    <u>V{originalPromptModelVersionData?.version}</u>
                   </p>
                 </div>
-              )}
-            </div>
-            <div className="flex flex-row gap-x-2 items-center">
-              {!promptModelVersionData?.is_published && (
-                <button
-                  className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
-                  onClick={handleClickPublish}
-                >
-                  <RocketLaunch
-                    className="text-secondary"
-                    size={20}
-                    weight="fill"
+                <div className="flex flex-row justify-end items-center gap-x-3">
+                  <SampleSelector
+                    sampleName={selectedSample}
+                    setSample={setSelectedSample}
                   />
-                  <p className="text-base-content">Publish</p>
-                </button>
-              )}
-
-              <button
-                className={classNames(
-                  "flex flex-col gap-y-2 pt-1 items-center",
-                  "btn btn-sm bg-transparent border-transparent h-10 hover:bg-neutral-content/20",
-                  "normal-case font-normal"
-                )}
-                onClick={() => {
-                  setSelectedPromptModelVersionUuid(null);
-                }}
-              >
-                <div className="flex flex-col">
-                  <XCircle size={22} />
-                  <p className="text-base-content text-xs">Esc</p>
+                  <button
+                    className={classNames(
+                      "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
+                      "text-base-100 disabled:bg-muted disabled:text-muted-content disabled:border-muted-content"
+                    )}
+                    onClick={() => {
+                      handleRun(true);
+                    }}
+                    disabled={!isNewVersionReady && !newVersionCache}
+                  >
+                    <p>Run</p>
+                    <Play size={20} weight="fill" />
+                  </button>
                 </div>
-              </button>
-            </div>
+              </div>
+            )}
           </div>
-          <div
-            className="flex flex-col justify-between"
-            style={{
-              height: windowHeight - 120,
-            }}
-          >
-            <motion.div
-              className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow-0"
-              style={{
-                height: windowHeight - lowerBoxHeight - 120,
-              }}
-            >
-              <div className="flex flex-wrap justify-start gap-x-4 items-start mb-2">
+          {/* Prompt editor */}
+          <motion.div className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow">
+            {isCreateVariantOpen ? (
+              <div className="flex flex-row justify-between items-start">
+                <div className="flex flex-wrap w-1/2 justify-start gap-4 items-start">
+                  <div className="flex flex-col items-start justify-start">
+                    <label className="label text-xs font-medium">
+                      <span className="label-text">Model</span>
+                    </label>
+                    <ModelDisplay
+                      modelName={originalPromptModelVersionData?.model}
+                    />
+                  </div>
+                  <div className="min-w-fit flex flex-col items-start justify-start">
+                    <label className="label text-xs font-medium">
+                      <span className="label-text">Output parser type</span>
+                    </label>
+                    <ParserTypeSelector
+                      parser={originalPromptModelVersionData?.parsing_type}
+                    />
+                  </div>
+                  <div className="w-auto flex flex-col items-start justify-start">
+                    <label className="label text-xs font-medium">
+                      <span className="label-text">Output keys</span>
+                    </label>
+                    {originalPromptModelVersionData?.output_keys && (
+                      <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
+                        {originalPromptModelVersionData?.output_keys?.map(
+                          (key) => (
+                            <Badge
+                              key={key}
+                              className="text-sm"
+                              variant="secondary"
+                            >
+                              {key}
+                            </Badge>
+                          )
+                        )}
+                      </div>
+                    )}
+                    {!originalPromptModelVersionData?.output_keys && (
+                      <Badge className="text-sm" variant="muted">
+                        No output keys
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="w-auto flex flex-col items-start justify-start">
+                    <label className="label text-xs font-medium">
+                      <span className="label-text">Functions</span>
+                    </label>
+                    {originalPromptModelVersionData?.functions && (
+                      <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
+                        {originalPromptModelVersionData?.functions?.map(
+                          (functionName) => (
+                            <Badge
+                              key={functionName}
+                              className="text-sm"
+                              variant="default"
+                            >
+                              {functionName}
+                            </Badge>
+                          )
+                        )}
+                      </div>
+                    )}
+                    {(!originalPromptModelVersionData?.functions ||
+                      originalPromptModelVersionData?.functions?.length ==
+                        0) && (
+                      <Badge className="text-sm" variant="muted">
+                        No functions
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="w-auto flex flex-col items-start justify-start">
+                    <label className="label text-xs font-medium">
+                      <span className="label-text">Memo</span>
+                    </label>
+                    <ClickToEditInput
+                      textarea
+                      value={originalPromptModelVersionData?.memo}
+                      setValue={handleSetMemo}
+                      placeholder="Memo"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-wrap w-1/2 justify-start gap-4 items-start">
+                  <div className="flex flex-col items-start justify-start">
+                    <label className="label text-xs font-medium">
+                      <span className="label-text">Model</span>
+                    </label>
+                    <ModelSelector
+                      modelName={selectedModel}
+                      setModel={setSelectedModel}
+                    />
+                  </div>
+                  <div className="flex flex-col items-start justify-start">
+                    <label className="label text-xs font-medium">
+                      <span className="label-text">Output parser type</span>
+                    </label>
+                    <ParserTypeSelector
+                      parser={selectedParser}
+                      selectParser={setSelectedParser}
+                    />
+                  </div>
+                  <div className="flex flex-col items-start justify-start">
+                    <label className="label text-xs font-medium">
+                      <span className="label-text">Output keys</span>
+                    </label>
+                    {selectedParser && (
+                      <div className="w-full bg-base-content/10 rounded-lg text-sm">
+                        <TagsInput
+                          value={outputKeys}
+                          name="Output Keys"
+                          classNames={{
+                            input:
+                              "text-sm m-0 flex-grow bg-transparent disabled",
+                            tag: "!bg-secondary text-secondary-content text-sm",
+                          }}
+                          placeHolder="Type and press enter"
+                          onChange={setOutputKeys}
+                        />
+                      </div>
+                    )}
+                    {(selectedParser == null ||
+                      selectedParser == undefined) && (
+                      <Badge className="text-sm" variant="muted">
+                        No output keys
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-start justify-start">
+                    <label className="label text-xs font-medium">
+                      <span className="label-text">Functions</span>
+                    </label>
+                    <FunctionSelector
+                      selectedFunctions={selectedFunctions}
+                      setSelectedFunctions={setSelectedFunctions}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap justify-start gap-x-4 items-start mb-4">
                 <div className="flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Model</span>
+                  </label>
+                  <ModelDisplay
+                    modelName={originalPromptModelVersionData?.model}
+                  />
+                </div>
+                <div className="min-w-fit flex flex-col items-start justify-start">
                   <label className="label text-xs font-medium">
                     <span className="label-text">Output parser type</span>
                   </label>
                   <ParserTypeSelector
-                    parser={promptModelVersionData?.parsing_type}
+                    parser={originalPromptModelVersionData?.parsing_type}
                   />
                 </div>
-                <div className="flex flex-col items-start justify-start">
+                <div className="w-auto flex flex-col items-start justify-start">
                   <label className="label text-xs font-medium">
                     <span className="label-text">Output keys</span>
                   </label>
-                  {promptModelVersionData?.output_keys && (
+                  {originalPromptModelVersionData?.output_keys && (
                     <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
-                      {promptModelVersionData?.output_keys?.map((key) => (
-                        <Badge
-                          key={key}
-                          className="text-sm"
-                          variant="secondary"
-                        >
-                          {key}
-                        </Badge>
-                      ))}
+                      {originalPromptModelVersionData?.output_keys?.map(
+                        (key) => (
+                          <Badge
+                            key={key}
+                            className="text-sm"
+                            variant="secondary"
+                          >
+                            {key}
+                          </Badge>
+                        )
+                      )}
                     </div>
                   )}
-                  {!promptModelVersionData?.output_keys && (
+                  {!originalPromptModelVersionData?.output_keys && (
                     <Badge className="text-sm" variant="muted">
                       No output keys
                     </Badge>
                   )}
                 </div>
-                <div className="flex flex-col items-start justify-start">
+                <div className="w-auto flex flex-col items-start justify-start">
                   <label className="label text-xs font-medium">
                     <span className="label-text">Functions</span>
                   </label>
-                  {promptModelVersionData?.functions && (
+                  {originalPromptModelVersionData?.functions && (
                     <div className="w-full flex flex-row flex-wrap items-center gap-x-1 gap-y-2">
-                      {promptModelVersionData?.functions?.map((funcName) => (
-                        <Badge
-                          key={funcName}
-                          className="text-sm"
-                          variant="default"
-                        >
-                          {funcName}
-                        </Badge>
-                      ))}
+                      {originalPromptModelVersionData?.functions?.map(
+                        (functionName) => (
+                          <Badge
+                            key={functionName}
+                            className="text-sm"
+                            variant="default"
+                          >
+                            {functionName}
+                          </Badge>
+                        )
+                      )}
                     </div>
                   )}
-                  {(!promptModelVersionData?.functions ||
-                    promptModelVersionData?.functions?.length == 0) && (
+                  {(!originalPromptModelVersionData?.functions ||
+                    originalPromptModelVersionData?.functions?.length == 0) && (
                     <Badge className="text-sm" variant="muted">
                       No functions
                     </Badge>
                   )}
                 </div>
-              </div>
-              <div className="flex flex-col gap-y-2 justify-start items-start">
-                {promptListData?.map((prompt) => (
-                  <PromptComponent prompt={prompt} />
-                ))}
-              </div>
-            </motion.div>
-            <div className="min-h-[120px] backdrop-blur-md">
-              <ResizableSeparator
-                height={lowerBoxHeight}
-                setHeight={setLowerBoxHeight}
-                className="mx-4"
-              />
-              <motion.div>
-                <div
-                  className={classNames(
-                    "flex flex-col items-start gap-y-1 !my-4"
-                  )}
-                  style={{
-                    height: lowerBoxHeight,
-                  }}
-                >
-                  <div className="w-full flex flex-row justify-between">
-                    <p className="text-xl font-bold mb-1">Run Logs</p>
-                    <button
-                      className={classNames(
-                        "items-center",
-                        "btn btn-sm bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
-                      )}
-                      onClick={() => {
-                        setIsFullScreen(!isFullScreen);
-                      }}
-                    >
-                      <CornersOut size={24} />
-                    </button>
-                  </div>
-                  {isFullScreen && (
-                    <ModalPortal>
-                      <motion.div
-                        className="w-screen h-screen fixed z-[999999]"
-                        initial={{ bottom: 4, right: 4 }}
-                        animate={{ top: 4, left: 4, bottom: 4, right: 4 }}
-                      >
-                        <RunLogComponent
-                          runLogData={runLogData}
-                          isFullScreen={isFullScreen}
-                          setIsFullScreen={setIsFullScreen}
-                        />
-                      </motion.div>
-                    </ModalPortal>
-                  )}
-                  <RunLogComponent
-                    runLogData={runLogData}
-                    isFullScreen={isFullScreen}
-                    setIsFullScreen={setIsFullScreen}
+                <div className="w-auto flex flex-col items-start justify-start">
+                  <label className="label text-xs font-medium">
+                    <span className="label-text">Memo</span>
+                  </label>
+                  <ClickToEditInput
+                    textarea
+                    value={originalPromptModelVersionData?.memo}
+                    setValue={handleSetMemo}
+                    placeholder="Memo"
                   />
                 </div>
-              </motion.div>
+              </div>
+            )}
+            {isCreateVariantOpen && (
+              <div className="flex flex-row justify-end items-center w-full my-4">
+                <div
+                  className="flex flex-row justify-end items-center tooltip tooltip-left tooltip-info w-fit"
+                  data-tip="Press Cmd + / to insert output format to your prompt"
+                >
+                  <kbd className="kbd text-base-content">
+                    <Command size={16} />
+                  </kbd>
+                  <kbd className="kbd text-base-content">/</kbd>
+                </div>
+              </div>
+            )}
+            <div className="flex flex-col gap-y-2 justify-start items-end">
+              {originalPromptListData?.map((prompt, idx) =>
+                isCreateVariantOpen ? (
+                  <PromptDiffComponent
+                    key={idx}
+                    prompt={prompt}
+                    setPrompts={setModifiedPrompts}
+                  />
+                ) : (
+                  <PromptComponent key={idx} prompt={prompt} />
+                )
+              )}
+              {isCreateVariantOpen &&
+                modifiedPrompts
+                  ?.slice?.(originalPromptListData?.length)
+                  .map?.((prompt, idx) => (
+                    <div key={idx} className="w-1/2">
+                      <PromptComponent
+                        prompt={prompt}
+                        setPrompts={setModifiedPrompts}
+                      />
+                    </div>
+                  ))}
+              {isCreateVariantOpen && (
+                <div className="w-1/2 flex justify-center items-center">
+                  <NewPromptButton
+                    prompts={modifiedPrompts}
+                    setPrompts={setModifiedPrompts}
+                  />
+                </div>
+              )}
+            </div>
+          </motion.div>
+          <div className="relative backdrop-blur-md h-fit">
+            <ResizableSeparator
+              height={lowerBoxHeight}
+              setHeight={setLowerBoxHeight}
+            />
+            <div
+              className="flex flex-row justify-between items-start mt-4 gap-x-4"
+              style={{ height: lowerBoxHeight }}
+            >
+              <RunLogUI
+                versionUuid={selectedPromptModelVersionUuid}
+                className={classNames(isCreateVariantOpen && "!w-1/2")}
+              />
+              {isCreateVariantOpen && (
+                <RunLogUI
+                  versionUuid={newVersionCache?.uuid}
+                  className="!w-1/2"
+                />
+              )}
             </div>
           </div>
         </div>
-      </Drawer>
-    </>
+      )}
+    </Drawer>
   );
-};
+}
 
-const PromptComponent = ({ prompt }) => {
+function VersionListDrawer({ open }: { open: boolean }) {
+  const { promptModelVersionListData } = usePromptModelVersion();
+  const {
+    isCreateVariantOpen,
+    selectedPromptModelVersion,
+    newVersionCache,
+    setIsCreateVariantOpen,
+    setSelectedPromptModelVersion,
+    setNewVersionCache,
+  } = usePromptModelVersionStore();
+  return (
+    <Drawer open={open} direction="left" classNames="!w-[5rem] pl-2 relative">
+      {isCreateVariantOpen && selectedPromptModelVersion != null && (
+        <div className="w-full h-full bg-transparent flex flex-col justify-center items-start gap-y-3">
+          <button
+            className="absolute top-6 left-2 flex flex-col gap-y-2 pt-1 items-center btn btn-sm normal-case font-normal bg-transparent border-transparent h-10 hover:bg-neutral-content/20"
+            onClick={() => {
+              setIsCreateVariantOpen(false);
+            }}
+          >
+            <div className="flex flex-col">
+              <XCircle size={22} />
+              <p className="text-base-content text-xs">Esc</p>
+            </div>
+          </button>
+          <div className="h-full overflow-auto mt-20">
+            {promptModelVersionListData?.map((versionData) => {
+              return (
+                <div
+                  className={classNames(
+                    "flex flex-row items-center gap-x-2 rounded-lg p-2 backdrop-blur-sm hover:bg-base-content/10 transition-all cursor-pointer relative",
+                    "active:scale-90",
+                    selectedPromptModelVersion === versionData.version
+                      ? "bg-base-content/10"
+                      : "bg-transparent",
+                    newVersionCache?.version == versionData.version &&
+                      "tooltip tooltip-bottom tooltip-info"
+                  )}
+                  data-tip="New!"
+                  key={versionData.version}
+                  onClick={() => {
+                    setNewVersionCache(null);
+                    setSelectedPromptModelVersion(versionData.version);
+                  }}
+                >
+                  <div
+                    className={classNames(
+                      "absolute h-2 w-2 bg-info top-0 right-0 rounded-full z-50",
+                      newVersionCache?.version == versionData.version
+                        ? "animate-pulse"
+                        : "hidden"
+                    )}
+                  />
+                  <p className="text-base-content font-semibold text-lg">
+                    V{versionData.version}
+                  </p>
+                  {versionData?.is_published && (
+                    <div className="w-2 h-2 rounded-full bg-secondary" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </Drawer>
+  );
+}
+
+const PromptComponent = ({
+  prompt,
+  setPrompts,
+}: {
+  prompt: Prompt;
+  setPrompts?: (prompts) => void;
+}) => {
   const windowHeight = useWindowHeight();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [height, setHeight] = useState(30);
-  const editorRef = useRef(null);
+  const editorRef = useRef<editor.IStandaloneCodeEditor>(null);
+  const { modifiedPrompts, setFocusedEditor, setShowSlashOptions } =
+    usePromptModelVersionStore();
 
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
-    const contentHeight = editor.getContentHeight();
-    editorRef.current = editor;
+    editor.onKeyDown((e) => {
+      if (e.code === "Slash" && (e.ctrlKey || e.metaKey)) {
+        setShowSlashOptions(true);
+      }
+    });
+    editor.onDidFocusEditorWidget(() => {
+      setFocusedEditor(editorRef.current);
+    });
+  };
+
+  useEffect(() => {
+    const contentHeight = editorRef.current?.getContentHeight();
     const maxHeight = windowHeight * 0.7;
     if (contentHeight) {
       setHeight(Math.min(contentHeight, maxHeight));
     }
-  };
+  }, [editorRef.current?.getContentHeight()]);
 
   return (
     <motion.div
       key={prompt.step}
-      className="w-full flex flex-col justify-start items-center bg-base-100 rounded-box"
+      className="w-full h-full flex flex-col justify-start items-center bg-base-100 rounded-box"
       animate={{ height: open ? "auto" : "2.5rem" }}
     >
       <div
@@ -552,6 +1254,131 @@ const PromptComponent = ({ prompt }) => {
         <p className="text-base-content font-medium">
           #{prompt.step}. {prompt.role}
         </p>
+        <div className="flex flex-row gap-x-1 items-center">
+          <button
+            className="p-2 group"
+            onClick={() => {
+              const newPrompts = modifiedPrompts.filter(
+                (p) => p.step !== prompt.step
+              );
+              setPrompts(
+                newPrompts?.map((p, index) => ({
+                  ...p,
+                  step: index + 1,
+                }))
+              );
+            }}
+          >
+            <Trash
+              size={24}
+              className="text-base-content transition-all group-hover:text-red-400 hover:font-bold"
+            />
+          </button>
+          <CaretDown
+            size={24}
+            className={classNames(
+              "text-base-content transition-transform shrink-0",
+              open && "transform rotate-180"
+            )}
+          />
+        </div>
+      </div>
+      {open && (
+        <PromptEditor
+          value={prompt.content}
+          onChange={(value) => {
+            if (setPrompts) {
+              const newPrompts = [...modifiedPrompts];
+              if (newPrompts.length < prompt.step) {
+                newPrompts.push({
+                  role: prompt.role,
+                  step: prompt.step,
+                  content: value,
+                });
+              } else {
+                newPrompts[prompt.step - 1].content = value;
+              }
+              setPrompts(newPrompts);
+            }
+          }}
+          options={{
+            readOnly: setPrompts == undefined,
+          }}
+          loading={<div className="loading loading-xs loading-dots" />}
+          onMount={handleEditorDidMount}
+          height={height}
+        />
+      )}
+    </motion.div>
+  );
+};
+
+const PromptDiffComponent = ({ prompt, setPrompts }) => {
+  const windowHeight = useWindowHeight();
+  const [open, setOpen] = useState(true);
+  const [height, setHeight] = useState(30);
+  const originalEditorRef = useRef<editor.IStandaloneCodeEditor>(null);
+  const modifiedEditorRef = useRef<editor.IStandaloneCodeEditor>(null);
+  const { setFocusedEditor, modifiedPrompts, setShowSlashOptions } =
+    usePromptModelVersionStore();
+
+  const handleEditorDidMount = (editor: MonacoDiffEditor, monaco: Monaco) => {
+    originalEditorRef.current = editor.getOriginalEditor();
+    modifiedEditorRef.current = editor.getModifiedEditor();
+    modifiedEditorRef.current?.onKeyDown((e) => {
+      if (e.code === "Slash" && (e.ctrlKey || e.metaKey)) {
+        setShowSlashOptions(true);
+      }
+    });
+    modifiedEditorRef.current?.onDidFocusEditorWidget(() => {
+      setFocusedEditor(modifiedEditorRef.current);
+    });
+
+    modifiedEditorRef.current.onDidChangeModelContent(() => {
+      const newPrompts = [...modifiedPrompts];
+      if (newPrompts.length < prompt.step) {
+        newPrompts.push({
+          role: prompt.role,
+          step: prompt.step,
+          content: modifiedEditorRef.current?.getValue(),
+        });
+      } else {
+        newPrompts[prompt.step - 1].content =
+          modifiedEditorRef.current?.getValue();
+      }
+      setPrompts(newPrompts);
+      const originalHeight = originalEditorRef.current?.getContentHeight();
+      const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
+      const maxHeight = windowHeight * 0.7;
+      if (modifiedHeight > originalHeight) {
+        setHeight(Math.min(modifiedHeight, maxHeight));
+      } else {
+        setHeight(Math.min(originalHeight, maxHeight));
+      }
+    });
+  };
+
+  useEffect(() => {
+    const originalHeight = originalEditorRef.current?.getContentHeight();
+    const maxHeight = windowHeight * 0.7;
+    setHeight(Math.min(originalHeight, maxHeight));
+  }, []);
+
+  return (
+    <motion.div
+      key={prompt.step}
+      className="w-full h-full flex flex-col justify-start items-center bg-base-100 rounded-box"
+      animate={{ height: open ? "auto" : "2.5rem" }}
+    >
+      <div
+        className={classNames(
+          "w-full h-10 min-h-[2.5rem] flex flex-row justify-between items-center py-1 px-3 cursor-pointer"
+        )}
+        onClick={() => setOpen(!open)}
+      >
+        <p className="text-base-content font-semibold">
+          #{prompt.step}. {prompt.role}
+        </p>
         <CaretDown
           className={classNames(
             "text-base-content transition-transform",
@@ -560,14 +1387,12 @@ const PromptComponent = ({ prompt }) => {
         />
       </div>
       {open && (
-        <PromptEditor
-          value={prompt.content}
-          options={{
-            readOnly: true,
-          }}
+        <PromptDiffEditor
+          className="gap-x-8"
+          original={prompt.content}
+          modified={prompt.content}
           loading={<div className="loading loading-xs loading-dots" />}
           onMount={handleEditorDidMount}
-          className="overflow-auto"
           height={height}
         />
       )}
@@ -575,183 +1400,32 @@ const PromptComponent = ({ prompt }) => {
   );
 };
 
-const RunLogComponent = ({ runLogData, isFullScreen, setIsFullScreen }) => {
-  const [showRaw, setShowRaw] = useState(true);
-
-  return (
-    <div
-      className={classNames(
-        "w-full rounded-box items-center bg-base-200 p-4 flex flex-col flex-grow-1 gap-y-2 justify-start",
-        isFullScreen && "h-full"
-      )}
-      style={{ height: !isFullScreen && "calc(100% - 2rem)" }}
-    >
-      <div
-        className={classNames(
-          "w-full max-h-full bg-base-200 rounded",
-          isFullScreen && "px-4 py-2",
-          !isFullScreen && "overflow-auto"
-        )}
-      >
-        {isFullScreen && (
-          <div className="w-full h-fit flex flex-row justify-between">
-            <p className="text-xl font-bold">Run Logs</p>
-            <button
-              className={classNames(
-                "items-center",
-                "btn btn-sm bg-transparent border-transparent h-10 hover:bg-neutral-content/20",
-                "flex flex-row gap-x-4"
-              )}
-              onClick={() => {
-                setIsFullScreen(!isFullScreen);
-              }}
-            >
-              <CornersOut size={24}></CornersOut>
-              <kbd className="kbd">Esc</kbd>
-            </button>
-          </div>
-        )}
-        <div
-          className={classNames(
-            "w-full h-full",
-            isFullScreen && "overflow-auto"
-          )}
-        >
-          <table className="w-full table table-auto table-pin-cols">
-            <thead className="sticky top-0 z-10 bg-base-100 w-full">
-              <tr className="text-base-content border-b-4 border-base-300">
-                <td>
-                  <p className="text-lg font-medium pe-36">Input</p>
-                </td>
-                <td className="flex flex-row gap-x-6 items-center pe-8">
-                  <p className="text-lg font-medium">Output</p>
-                  <div className="join">
-                    <button
-                      className={classNames(
-                        "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                        showRaw && "bg-base-300",
-                        !showRaw && "bg-base-300/40"
-                      )}
-                      onClick={() => setShowRaw(true)}
-                    >
-                      Raw
-                    </button>
-                    <button
-                      className={classNames(
-                        "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                        !showRaw && "bg-base-300",
-                        showRaw && "bg-base-300/40"
-                      )}
-                      onClick={() => setShowRaw(false)}
-                    >
-                      Parsed
-                    </button>
-                  </div>
-                </td>
-                <td>
-                  <p className="text-lg font-medium pe-36">Function call</p>
-                </td>
-                <td>
-                  <p className="text-lg font-medium pe-6">Latency</p>
-                </td>
-                <td>
-                  <p className="text-lg font-medium pe-6">Cost</p>
-                </td>
-                <td>
-                  <p className="text-lg font-medium pe-6">Tokens</p>
-                </td>
-              </tr>
-            </thead>
-            <tbody className="bg-base-100">
-              {runLogData?.map((runLog) => {
-                return (
-                  <tr className="border-b-2 border-base-300">
-                    <td className="align-top">
-                      {runLog?.inputs == null ? (
-                        <p>None</p>
-                      ) : typeof runLog?.inputs == "string" ? (
-                        <p>{runLog?.inputs?.toString()}</p>
-                      ) : (
-                        <ReactJson
-                          src={runLog?.inputs as Record<string, any>}
-                          name={false}
-                          displayDataTypes={false}
-                          displayObjectSize={false}
-                          enableClipboard={false}
-                          theme="google"
-                        />
-                      )}
-                    </td>
-                    <td className="align-top">
-                      {showRaw ? (
-                        <p className="whitespace-break-spaces">
-                          {runLog?.raw_output}
-                        </p>
-                      ) : typeof runLog?.parsed_outputs == "string" ||
-                        runLog?.parsed_outputs == null ? (
-                        <p>{runLog?.parsed_outputs?.toString()}</p>
-                      ) : (
-                        <ReactJson
-                          src={runLog?.parsed_outputs as Record<string, any>}
-                          name={false}
-                          displayDataTypes={false}
-                          displayObjectSize={false}
-                          enableClipboard={false}
-                          theme="google"
-                        />
-                      )}
-                    </td>
-                    <td className="align-top">
-                      {runLog?.function_call == null ? (
-                        <p>None</p>
-                      ) : typeof runLog?.function_call == "string" ? (
-                        <p>{runLog?.function_call?.toString()}</p>
-                      ) : (
-                        <ReactJson
-                          src={runLog?.function_call as Record<string, any>}
-                          name={false}
-                          displayDataTypes={false}
-                          displayObjectSize={false}
-                          enableClipboard={false}
-                          theme="google"
-                        />
-                      )}
-                    </td>
-                    <td className="align-top">{runLog.latency}s</td>
-                    <td className="align-top">${runLog.cost}</td>
-                    <td className="align-top">
-                      {runLog.token_usage.total_tokens}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 function ModelVersionNode({ data }) {
   const {
-    selectedPromptModelVersionUuid: selectedVersionUuid,
-    setSelectedPromptModelVersionUuid: setSelectedVersionUuid,
+    selectedPromptModelVersion,
+    setSelectedPromptModelVersion,
+    setNewVersionCache,
   } = usePromptModelVersionStore();
+
+  function handleNodeClick() {
+    setNewVersionCache(null);
+    setSelectedPromptModelVersion(data.version);
+  }
+
   return (
     <div
       className={classNames(
         "bg-base-200 p-2 rounded-full flex justify-center items-center",
         "w-20 h-20 visible cursor-pointer",
         "transition-colors",
-        selectedVersionUuid == data.uuid
+        selectedPromptModelVersion == data.version
           ? "border-neutral-content border-2"
           : "border-none",
         data.isPublished
           ? "bg-secondary/80 hover:bg-secondary/50"
           : "bg-base-200 hover:bg-blue-500/30"
       )}
-      onClick={() => setSelectedVersionUuid(data.uuid)}
+      onClick={handleNodeClick}
     >
       <Handle type="target" position={Position.Top} />
       <p className="text-base-content font-medium italic">

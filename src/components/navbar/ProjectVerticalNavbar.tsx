@@ -1,6 +1,8 @@
 "use client";
 
 import { useOrgData } from "@/hooks/useOrgData";
+import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
+import { usePromptModelVersionStore } from "@/stores/promptModelVersionStore";
 import {
   DiscordLogo,
   GearSix,
@@ -12,11 +14,30 @@ import {
 import classNames from "classnames";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
+import { useEffect } from "react";
 
 export const ProjectVerticalNavbar = () => {
-  const pathname = usePathname();
+  const params = useParams();
+  const {
+    isCreateVariantOpen: isCreateChatModelVariantOpen,
+    setIsCreateVariantOpen: setIsCreateChatModelVariantOpen,
+  } = useChatModelVersionStore();
+  const {
+    isCreateVariantOpen: isCreatePromptModelVariantOpen,
+    setIsCreateVariantOpen: setIsCreatePromptModelVariantOpen,
+  } = usePromptModelVersionStore();
 
-  if (pathname.includes("dev/")) return null;
+  useEffect(() => {
+    if (!params?.promptModelUuid) {
+      setIsCreatePromptModelVariantOpen(false);
+    }
+    if (!params?.chatModelUuid) {
+      setIsCreateChatModelVariantOpen(false);
+    }
+  }, [params?.promptModelUuid, params?.chatModelUuid]);
+
+  if (isCreateChatModelVariantOpen || isCreatePromptModelVariantOpen)
+    return null;
 
   return (
     <div
@@ -51,7 +72,7 @@ export const ProjectVerticalNavbar = () => {
         </VerticalNavbarItem>
         <VerticalNavbarItem
           label="Discord"
-          href="https://discord.gg/JrwzhSUW"
+          href="https://discord.gg/2Y36M36tZf"
           external
         >
           <DiscordLogo weight="fill" className="text-base-content" size={20} />

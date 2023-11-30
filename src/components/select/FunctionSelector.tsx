@@ -3,8 +3,9 @@ import classNames from "classnames";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ModalPortal } from "@/components/ModalPortal";
 import { motion } from "framer-motion";
-import { useFunctions } from "@/hooks/dev/useFunctions";
 import { TagsInput } from "react-tag-input-component";
+import { useFunctions } from "@/hooks/useFunction";
+import { LocalConnectionStatus } from "../LocalConnectionStatus";
 
 interface FunctionSelectorProps {
   selectedFunctions: string[];
@@ -31,12 +32,12 @@ export const FunctionSelector = ({
     if (!functionListData) return [];
     if (!inputValue)
       return functionListData?.filter(
-        (func: any) => !selectedFunctions?.includes(func)
+        (func: any) => !selectedFunctions?.includes(func.name)
       );
     return functionListData?.filter(
       (func: any) =>
         func?.includes(inputValue?.toLowerCase()) &&
-        !selectedFunctions?.includes(func)
+        !selectedFunctions?.includes(func.name)
     );
   }, [inputValue, functionListData, selectedFunctions]);
 
@@ -128,12 +129,12 @@ export const FunctionSelector = ({
           }}
           className={classNames(
             `absolute z-[999999]`,
-            "w-fit backdrop-blur-sm rounded-xl",
+            "w-fit backdrop-blur-sm rounded-lg",
             "shadow-lg shadow-base-300/30 min-w-[200px]"
           )}
         >
           <div className="overflow-auto flex-grow max-h-96">
-            <div className="flex flex-col w-full h-full bg-base-100/70 backdrop-blur-sm rounded-b-xl">
+            <div className="flex flex-col w-full h-full bg-base-100/70 backdrop-blur-sm rounded-b-lg">
               {filteredOptions?.length === 0 && (
                 <div className="flex flex-col items-center justify-center flex-grow py-4">
                   <p className="text-base-content">No functions found.</p>
@@ -145,17 +146,24 @@ export const FunctionSelector = ({
                     key={index}
                     className={classNames(
                       "flex flex-row items-center gap-x-2 cursor-pointer text-base-content text-sm",
-                      "transition-all hover:bg-white/20 rounded-md py-2 px-4"
+                      "transition-all hover:bg-white/20 rounded-lg py-2 px-4"
                     )}
                     onClick={() => {
+                      if (selectedFunctions?.includes(functionOption.name))
+                        return;
                       setSelectedFunctions([
                         ...selectedFunctions,
-                        functionOption,
+                        functionOption.name,
                       ]);
                       setIsOpen(false);
                     }}
                   >
-                    <p>{functionOption}</p>
+                    <LocalConnectionStatus
+                      online={functionOption.online}
+                      statusType="connection"
+                      mini
+                    />
+                    <p>{functionOption.name}</p>
                   </div>
                 );
               })}

@@ -6,10 +6,9 @@ export async function fetchPromptModelVersions(
 ) {
   const res = await supabaseClient
     .from("prompt_model_version")
-    .select("uuid, version, from_uuid, is_published")
+    .select("uuid, created_at, version, from_version, is_published, tags, memo")
     .match({
-      "prompt_model_uuid": promptModelUuid,
-      "is_deployed": true,
+      prompt_model_uuid: promptModelUuid,
     })
     .order("version", { ascending: true });
   return res.data;
@@ -21,7 +20,7 @@ export async function fetchPromptModelVersion(
   const res = await supabaseClient
     .from("prompt_model_version")
     .select(
-      "version, from_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys, functions"
+      "uuid, version, from_version, model, is_published, is_ab_test, ratio, parsing_type, output_keys, functions, tags, memo"
     )
     .eq("uuid", uuid)
     .single();
@@ -32,7 +31,7 @@ export async function updatePublishedPromptModelVersion(
   supabaseClient: SupabaseClient,
   uuid: string,
   previousPublishedVersionUuid: string | null,
-  projectVersion: string,
+  projectVersion: number,
   projectUuid: string
 ) {
   if (previousPublishedVersionUuid) {
@@ -47,19 +46,40 @@ export async function updatePublishedPromptModelVersion(
     .eq("uuid", uuid)
     .single();
 
-  // Update project version
-  const projectVersionLevel3: number = parseInt(projectVersion.split(".")[2]);
-  const newProjectVersion =
-    projectVersion.split(".").slice(0, 2).join(".") +
-    "." +
-    (projectVersionLevel3 + 1).toString();
-
   await supabaseClient
     .from("project")
     .update({
-      version: newProjectVersion,
+      version: projectVersion + 1,
     })
     .eq("uuid", projectUuid);
+
+  return res.data;
+}
+
+export async function updatePromptModelVersionTags(
+  supabaseClient: SupabaseClient,
+  versionUuid: string,
+  tags: string[]
+) {
+  const res = await supabaseClient
+    .from("prompt_model_version")
+    .update({ tags: tags })
+    .eq("uuid", versionUuid)
+    .single();
+
+  return res.data;
+}
+
+export async function updatePromptModelVersionMemo(
+  supabaseClient: SupabaseClient,
+  versionUuid: string,
+  memo: string
+) {
+  const res = await supabaseClient
+    .from("prompt_model_version")
+    .update({ memo: memo })
+    .eq("uuid", versionUuid)
+    .single();
 
   return res.data;
 }

@@ -5,43 +5,42 @@ import { useParams } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ModalPortal } from "./ModalPortal";
+import { LocalConnectionStatus } from "./LocalConnectionStatus";
 
 type LinkDisplay = {
   label: string;
   href: string;
+  online?: boolean;
 };
 
 interface SelectNavigatorProps {
   current: LinkDisplay;
+  statusType: "connection" | "usage";
   options?: LinkDisplay[];
 }
 
-export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
+export const SelectNavigator = ({
+  current,
+  statusType,
+  options,
+}: SelectNavigatorProps) => {
   const [showOptions, setShowOptions] = useState<boolean>(false);
+  const [optionsPosition, setOptionsPosition] = useState(null);
   const params = useParams();
   const containerRef = useRef<HTMLAnchorElement | null>(null);
   const optionsRef = useRef<HTMLDivElement | null>(null);
-  const showOptionsRef = useRef(showOptions); // Create a ref to hold the showOptions state
-
-  const optionsPosition = useMemo(() => {
-    if (!containerRef.current) return {};
-    const inputRect = containerRef.current.getBoundingClientRect();
-    return {
-      top: inputRect.top + inputRect.height,
-      left: inputRect.left,
-    };
-  }, [containerRef.current]);
+  const optionsPositionRef = useRef(optionsPosition); // Create a ref to hold the optionsPosition state
 
   useEffect(() => {
-    showOptionsRef.current = showOptions; // Always keep it updated with the latest state
-  }, [showOptions]);
+    optionsPositionRef.current = optionsPosition; // Always keep it updated with the latest state
+  }, [optionsPosition]);
 
   // Use useEffect to add an event listener to the document
   useEffect(() => {
     function handleOutsideClick(event) {
       if (optionsRef.current && !optionsRef.current.contains(event.target)) {
-        if (showOptionsRef.current) {
-          setShowOptions(false);
+        if (optionsPositionRef.current) {
+          setOptionsPosition(null);
         } else {
         }
       }
@@ -61,14 +60,23 @@ export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
           ref={containerRef}
           href={current?.href}
           className={classNames(
-            "bg-base-content/10 w-full h-full rounded-md px-2 py-1 transition-colors hover:bg-base-content/20"
+            "bg-base-content/10 w-full h-full rounded-md px-2 py-1 transition-colors hover:bg-base-content/20 flex flex-row items-center gap-x-2"
           )}
         >
-          {current.label}
+          <LocalConnectionStatus
+            online={current.online}
+            statusType={statusType}
+            mini
+          />
+          <p>{current.label}</p>
         </Link>
         <button
           onClick={() => {
-            setShowOptions(!showOptions);
+            const inputRect = containerRef.current.getBoundingClientRect();
+            setOptionsPosition({
+              top: inputRect.top + inputRect.height,
+              left: inputRect.left,
+            });
           }}
           className="text-muted-content hover:bg-base-content/20 transition-colors rounded-md py-1"
         >
@@ -76,25 +84,25 @@ export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
         </button>
       </div>
       {/* Options */}
-      {options && options?.length > 0 && showOptions && optionsPosition?.top && (
+      {options && options?.length > 0 && optionsPosition && (
         <ModalPortal>
           <motion.div
             ref={optionsRef}
             initial={{
               opacity: 0,
               height: 0,
-              top: optionsPosition?.top + 16,
+              top: optionsPosition?.top - 16,
               left: optionsPosition?.left,
             }}
             animate={{
-              opacity: showOptions ? 1 : 0,
-              height: showOptions ? "auto" : 0,
+              opacity: optionsPosition ? 1 : 0,
+              height: optionsPosition ? "auto" : 0,
               top: optionsPosition?.top + 4,
               left: optionsPosition?.left,
             }}
             className={classNames(
               `fixed z-[99999]`,
-              "mt-2 w-fit bg-popover/50 text-popover-content backdrop-blur-sm rounded-2xl p-2",
+              "mt-2 w-fit bg-popover/70 text-popover-content backdrop-blur-sm rounded-2xl p-2",
               "shadow-lg shadow-popover/30",
               "max-h-96 overflow-auto"
             )}
@@ -105,12 +113,17 @@ export const SelectNavigator = ({ current, options }: SelectNavigatorProps) => {
                   <Link
                     key={index}
                     href={optionValue.href}
-                    onClick={() => setShowOptions(false)}
+                    onClick={() => setOptionsPosition(null)}
                     className={classNames(
                       "flex flex-row items-center gap-x-2 cursor-pointer",
                       "transition-all hover:bg-popover-content/20 rounded-md p-2"
                     )}
                   >
+                    <LocalConnectionStatus
+                      online={optionValue.online}
+                      statusType={statusType}
+                      mini
+                    />
                     <p className="text-sm text-popover-content">
                       {optionValue.label}
                     </p>

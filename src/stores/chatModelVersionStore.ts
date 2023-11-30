@@ -9,13 +9,17 @@ export type RunLog = {
 };
 
 type NewVersionCache = {
-  uuid: string | null;
+  uuid?: string | null;
+  version?: number | null;
   systemPrompt: string | null;
   model: string | null;
+  functions: string[] | null;
+  // TODO: Add functions
 };
 
 type Store = {
-  selectedChatModelVersionUuid: string | null;
+  isCreateVariantOpen: boolean;
+  selectedChatModelVersion: number | null;
   chatModelVersionLists: Record<string, any>;
   originalVersionData: Record<string, any> | null;
   selectedModel: string;
@@ -29,7 +33,8 @@ type Store = {
 };
 
 type Actions = {
-  setSelectedChatModelVersionUuid: (version: string) => void;
+  setIsCreateVariantOpen: (isOpen: boolean) => void;
+  setSelectedChatModelVersion: (version: number) => void;
   setOriginalVersionData: (data: Record<string, any> | null) => void;
   setSelectedModel: (model: string) => void;
   setSelectedFunctions: (functions: string[]) => void;
@@ -44,7 +49,8 @@ type Actions = {
 };
 
 export const useChatModelVersionStore = create<Store & Actions>((set) => ({
-  selectedChatModelVersionUuid: null,
+  isCreateVariantOpen: false,
+  selectedChatModelVersion: null,
   chatModelVersionLists: {},
   originalVersionData: null,
   selectedModel: "gpt-3.5-turbo",
@@ -55,8 +61,9 @@ export const useChatModelVersionStore = create<Store & Actions>((set) => ({
   newVersionCache: null,
   focusedEditor: null,
   fullScreenChatVersion: null,
-  setSelectedChatModelVersionUuid: (uuid) =>
-    set({ selectedChatModelVersionUuid: uuid }),
+  setIsCreateVariantOpen: (isOpen) => set({ isCreateVariantOpen: isOpen }),
+  setSelectedChatModelVersion: (version) =>
+    set({ selectedChatModelVersion: version }),
   setOriginalVersionData: (data) => set({ originalVersionData: data }),
   setSelectedModel: (model) => set({ selectedModel: model }),
   setSelectedFunctions: (functions) => set({ selectedFunctions: functions }),

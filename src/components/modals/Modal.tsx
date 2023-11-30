@@ -7,7 +7,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 export const Modal = ({
   isOpen,
   setIsOpen,
-  zIndex = 50,
+  zIndex = 999999,
   children,
 }: {
   isOpen: boolean;
@@ -42,11 +42,13 @@ export const Modal = ({
     };
   }, []);
 
+  if (!isOpen) return null;
+
   return (
     <ModalPortal>
       <motion.div
         className={classNames(
-          "w-full h-full fixed inset-0 flex justify-center items-center",
+          "w-full h-full fixed inset-0 flex justify-center items-center backdrop-blur-sm",
           `z-[${zIndex}]`
         )}
         initial={{ opacity: 0 }}

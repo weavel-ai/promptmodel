@@ -1,6 +1,7 @@
 "use client";
 
 import { Project } from "@/apis/project";
+import { LocalConnectionStatus } from "@/components/LocalConnectionStatus";
 import { useProject } from "@/hooks/useProject";
 import { GearSix, Plus } from "@phosphor-icons/react";
 import classNames from "classnames";
@@ -67,7 +68,14 @@ const ProjectComponent = ({ project }: { project: Project }) => {
         "transition-colors hover:bg-base-content/10"
       )}
     >
-      <p className="text-xl text-base-content font-medium">{project.name}</p>
+      <div className="flex flex-col gap-y-2 justify-start items-start">
+        <p className="text-xl text-base-content font-medium">{project.name}</p>
+        <LocalConnectionStatus
+          online={project.online}
+          statusType="connection"
+        />
+      </div>
+
       <p className="text-sm text-neutral-content">V{project.version}</p>
     </Link>
   );

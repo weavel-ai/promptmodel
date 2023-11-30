@@ -81,6 +81,13 @@ export const SlashCommandOptions = ({
     }
   );
 
+  function handleClickInsert() {
+    if (open && outputKey && type) {
+      onInsert(outputFormatText, outputKey);
+      setOpen(false);
+    }
+  }
+
   if (!open) return null;
 
   return (
@@ -140,7 +147,7 @@ export const SlashCommandOptions = ({
             </button>
             <button
               className="btn bg-base-content hover:bg-base-content/80 text-base-100 mt-2"
-              onClick={() => setOpen(false)}
+              onClick={handleClickInsert}
             >
               <p>Insert</p>
               <div className="flex flex-row items-center">

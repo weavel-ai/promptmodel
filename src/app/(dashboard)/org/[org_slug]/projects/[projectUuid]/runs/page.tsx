@@ -26,6 +26,8 @@ import {
   subscribeChatLogs,
 } from "@/apis/chatLog";
 import { cloneDeep, escapeCSV } from "@/utils";
+import { useRunLogCount } from "@/hooks/useRunLogCount";
+import { useChatLogCount } from "@/hooks/useChatLogCount";
 
 const ROWS_PER_PAGE = 50;
 
@@ -56,18 +58,7 @@ export default function Page() {
   const [isRealtime, setIsRealtime] = useState(false);
   const [selectedTab, setSelectedTab] = useState(Tab.PROMPT_MODEL);
 
-  const { data: runLogsCountData, refetch: refetchRunLogsCountData } = useQuery(
-    {
-      queryKey: ["runLogsCount", { projectUuid: projectData?.uuid }],
-      queryFn: async () =>
-        await fetchRunLogsCount(
-          await createSupabaseClient(),
-          projectData?.uuid
-        ),
-      enabled: !!projectData?.uuid,
-    }
-  );
-
+  const { runLogCountData, refetchRunLogCountData } = useRunLogCount();
   const {
     data: runLogListData,
     refetch: refetchRunLogListData,
@@ -84,16 +75,7 @@ export default function Page() {
     enabled: !!projectData?.uuid,
   });
 
-  const { data: chatLogsCountData, refetch: refetchChatLogsCountData } =
-    useQuery({
-      queryKey: ["chatLogsCount", { projectUuid: projectData?.uuid }],
-      queryFn: async () =>
-        await fetchChatLogsCount(
-          await createSupabaseClient(),
-          projectData?.uuid
-        ),
-      enabled: !!projectData?.uuid,
-    });
+  const { chatLogCountData, refetchChatLogCountData } = useChatLogCount();
 
   const {
     data: chatLogListData,
@@ -120,7 +102,7 @@ export default function Page() {
           client,
           projectUuid,
           () => {
-            refetchRunLogsCountData();
+            refetchRunLogCountData();
             refetchRunLogListData();
           }
         );
@@ -145,7 +127,7 @@ export default function Page() {
           projectUuid,
           () => {
             refetchChatLogListData();
-            refetchChatLogsCountData();
+            refetchChatLogCountData();
           }
         );
         // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
@@ -227,8 +209,8 @@ export default function Page() {
             of{" "}
             {Math.ceil(
               (selectedTab == Tab.PROMPT_MODEL
-                ? runLogsCountData?.run_logs_count
-                : chatLogsCountData?.chat_logs_count) / ROWS_PER_PAGE
+                ? runLogCountData?.run_logs_count
+                : chatLogCountData?.chat_logs_count) / ROWS_PER_PAGE
             )}
           </p>
           <button
@@ -238,8 +220,8 @@ export default function Page() {
                 page <
                 Math.ceil(
                   (selectedTab == Tab.PROMPT_MODEL
-                    ? runLogsCountData?.run_logs_count
-                    : chatLogsCountData?.chat_logs_count) / ROWS_PER_PAGE
+                    ? runLogCountData?.run_logs_count
+                    : chatLogCountData?.chat_logs_count) / ROWS_PER_PAGE
                 )
               ) {
                 setPage(page + 1);
@@ -257,8 +239,8 @@ export default function Page() {
           <p className="text-muted-content">
             Total{" "}
             {selectedTab == Tab.PROMPT_MODEL
-              ? runLogsCountData?.run_logs_count
-              : chatLogsCountData?.chat_logs_count}{" "}
+              ? runLogCountData?.run_logs_count
+              : chatLogCountData?.chat_logs_count}{" "}
             runs
           </p>
         </div>

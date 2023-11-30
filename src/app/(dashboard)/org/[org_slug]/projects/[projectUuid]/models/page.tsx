@@ -1,7 +1,14 @@
 "use client";
 import { usePromptModel } from "@/hooks/usePromptModel";
 import classNames from "classnames";
-import { useEffect, useMemo, useState } from "react";
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import dayjs from "dayjs";
 import ReactFlow, { Background, BackgroundVariant } from "reactflow";
 
@@ -9,12 +16,21 @@ import "reactflow/dist/style.css";
 import relativeTime from "dayjs/plugin/relativeTime";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PencilSimple } from "@phosphor-icons/react";
-import { CreateDevModal } from "@/components/modals/CreateDevModal";
+import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import { useChatModel } from "@/hooks/useChatModel";
 import { ModelNode } from "@/components/nodes/ModelNode";
 import { GroupNode } from "@/components/nodes/GroupNode";
 import { useWindowSize } from "@react-hook/window-size";
+import { CreateModelModal } from "@/components/modals/CreateModelModal";
+import { useQueryClient } from "@tanstack/react-query";
+import { SelectTab } from "@/components/SelectTab";
+import { ContextMenu, ContextMenuItem } from "@/components/menu/ContextMenu";
+import { Modal } from "@/components/modals/Modal";
+import { InputField } from "@/components/InputField";
+import { toast } from "react-toastify";
+import { deletePromptModel, editPromptModelName } from "@/apis/promptModel";
+import { useSupabaseClient } from "@/apis/base";
+import { deleteChatModel, editChatModelName } from "@/apis/chatModel";
 
 dayjs.extend(relativeTime);
 
@@ -25,191 +41,372 @@ const NODE_PADDING = 32;
 const initialNodes = [];
 const initialEdges = [];
 
+enum Tab {
+  PROMPT_MODEL = "PromptModel",
+  CHAT_MODEL = "ChatModel",
+}
+
+const TABS = [Tab.PROMPT_MODEL, Tab.CHAT_MODEL];
+
 export default function Page() {
   const [windowWidth, windowHeight] = useWindowSize();
+  const queryClient = useQueryClient();
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
   const { chatModelListData } = useChatModel();
   const { promptModelListData } = usePromptModel();
-  const [showCreateDevModal, setShowCreateDevModal] = useState(false);
+  const [showCreateModelModal, setShowCreateModelModal] = useState(false);
+  const [selectedTab, setSelectedTab] = useState(Tab.PROMPT_MODEL);
+  const [menuData, setMenuData] = useState(null);
+  const reactFlowRef = useRef(null);
 
   const nodeTypes = useMemo(
     () => ({ model: ModelNode, groupLabel: GroupNode }),
     []
   );
 
+  const onNodeContextMenu = useCallback(
+    (event, node) => {
+      // Prevent native context menu from showing
+      event.preventDefault();
+
+      // Calculate position of the context menu. We want to make sure it
+      // doesn't get positioned off-screen.
+      const pane = reactFlowRef.current.getBoundingClientRect();
+      setMenuData({
+        id: node.id,
+        top: event.clientY < pane.height - 200 && event.clientY,
+        left: event.clientX < pane.width - 200 && event.clientX,
+        right: event.clientX >= pane.width - 200 && pane.width - event.clientX,
+        bottom:
+          event.clientY >= pane.height - 200 && pane.height - event.clientY,
+      });
+    },
+    [setMenuData]
+  );
+
+  // Close the context menu if it's open whenever the window is clicked.
+  const onPaneClick = useCallback(() => setMenuData(null), [setMenuData]);
+
   // Build nodes
   useEffect(() => {
-    if (!promptModelListData || !chatModelListData) return;
+    if (selectedTab === Tab.PROMPT_MODEL && !promptModelListData) return;
+    if (selectedTab === Tab.CHAT_MODEL && !chatModelListData) return;
 
-    // Calculations for PromptModel
-    const promptModelTotalNodes = promptModelListData.length;
-    let maxPromptNodesPerRow = Math.floor(
+    // Calculations
+    const totalNodes =
+      selectedTab === Tab.PROMPT_MODEL
+        ? promptModelListData.length
+        : chatModelListData.length;
+
+    let maxNodesPerRow = Math.floor(
       (windowWidth - NODE_PADDING) / (NODE_WIDTH + NODE_PADDING)
     );
-    maxPromptNodesPerRow = Math.min(
-      maxPromptNodesPerRow,
-      promptModelTotalNodes
-    );
-    const promptNumRows = Math.ceil(
-      promptModelTotalNodes / maxPromptNodesPerRow
-    );
-    const promptTotalHeight =
-      promptNumRows * NODE_HEIGHT + (promptNumRows - 1) * NODE_PADDING;
-    const promptTopPadding = (windowHeight - promptTotalHeight) / 2;
+    maxNodesPerRow = Math.min(maxNodesPerRow, totalNodes);
+    const numRows = Math.ceil(totalNodes / maxNodesPerRow);
+    const totalHeight = numRows * NODE_HEIGHT + (numRows - 1) * NODE_PADDING;
+    const topPadding = (windowHeight - totalHeight) / 2;
 
-    // Calculations for ChatModel
-    const chatModelTotalNodes = chatModelListData.length;
-    let maxChatNodesPerRow = Math.floor(
-      (windowWidth - NODE_PADDING) / (NODE_WIDTH + NODE_PADDING)
-    );
-    maxChatNodesPerRow = Math.min(maxChatNodesPerRow, chatModelTotalNodes);
-    const chatNumRows = Math.ceil(chatModelTotalNodes / maxChatNodesPerRow);
-    const chatTotalHeight =
-      chatNumRows * NODE_HEIGHT + (chatNumRows - 1) * NODE_PADDING;
-    const chatTopPadding = promptTopPadding + promptTotalHeight + 30 + 80 + 20; // Adjust the spacing between two groups
+    const modelListData =
+      selectedTab === Tab.PROMPT_MODEL
+        ? promptModelListData
+        : chatModelListData;
+    const newNodes = modelListData.map((model, index) => {
+      const row = Math.floor(index / maxNodesPerRow);
+      const col = index % maxNodesPerRow;
+      const x =
+        (windowWidth -
+          NODE_WIDTH * maxNodesPerRow -
+          NODE_PADDING * (maxNodesPerRow - 1)) /
+          2 +
+        col * (NODE_WIDTH + NODE_PADDING);
+      const y = topPadding + row * (NODE_HEIGHT + NODE_PADDING);
 
-    // Initialize nodes array
-    const newNodes = [];
-
-    if (promptModelListData.length > 0) {
-      // Add group for PromptModels
-      newNodes.push({
-        id: "PromptModels",
-        type: "groupLabel",
-        position: {
-          x:
-            (windowWidth -
-              NODE_WIDTH * maxPromptNodesPerRow -
-              NODE_PADDING * (maxPromptNodesPerRow - 1)) /
-              2 -
-            28,
-          y: promptTopPadding - 80,
-        },
-        style: {
-          width:
-            NODE_WIDTH * maxPromptNodesPerRow +
-            NODE_PADDING * (maxPromptNodesPerRow - 1) +
-            56,
-          height: promptTotalHeight + 30 + 80,
-        },
+      return {
+        id: model.uuid,
+        type: "model",
+        position: { x, y },
         data: {
-          label: "PromptModels",
+          label: model.name,
+          name: model.name,
+          uuid: model.uuid,
+          created_at: model.created_at,
+          type: selectedTab,
+          online: model.online,
         },
-      });
-
-      // Add PromptModel nodes
-      newNodes.push(
-        ...promptModelListData.map((model, index) => {
-          const row = Math.floor(index / maxPromptNodesPerRow);
-          const col = index % maxPromptNodesPerRow;
-          const x =
-            (windowWidth -
-              NODE_WIDTH * maxPromptNodesPerRow -
-              NODE_PADDING * (maxPromptNodesPerRow - 1)) /
-              2 +
-            col * (NODE_WIDTH + NODE_PADDING);
-          const y = promptTopPadding + row * (NODE_HEIGHT + NODE_PADDING);
-
-          return {
-            id: model.uuid,
-            type: "model",
-            position: { x, y },
-            data: {
-              label: model.name,
-              name: model.name,
-              uuid: model.uuid,
-              created_at: model.created_at,
-              type: "PromptModel",
-            },
-          };
-        })
-      );
-    }
-
-    if (chatModelListData.length > 0) {
-      // Add group for ChatModels
-      newNodes.push({
-        id: "ChatModels",
-        type: "groupLabel",
-        position: {
-          x:
-            (windowWidth -
-              NODE_WIDTH * maxChatNodesPerRow -
-              NODE_PADDING * (maxChatNodesPerRow - 1)) /
-              2 -
-            28,
-          y: chatTopPadding - 80,
-        },
-        style: {
-          width:
-            NODE_WIDTH * maxChatNodesPerRow +
-            NODE_PADDING * (maxChatNodesPerRow - 1) +
-            56,
-          height: chatTotalHeight + 30 + 80,
-        },
-        data: {
-          label: "ChatModels",
-        },
-      });
-
-      // Add ChatModel nodes
-      newNodes.push(
-        ...chatModelListData.map((model, index) => {
-          const row = Math.floor(index / maxChatNodesPerRow);
-          const col = index % maxChatNodesPerRow;
-          const x =
-            (windowWidth -
-              NODE_WIDTH * maxChatNodesPerRow -
-              NODE_PADDING * (maxChatNodesPerRow - 1)) /
-              2 +
-            col * (NODE_WIDTH + NODE_PADDING);
-          const y = chatTopPadding + row * (NODE_HEIGHT + NODE_PADDING);
-
-          return {
-            id: model.uuid,
-            type: "model",
-            position: { x, y },
-            data: {
-              label: model.name,
-              name: model.name,
-              uuid: model.uuid,
-              created_at: model.created_at,
-              type: "ChatModel",
-            },
-          };
-        })
-      );
-    }
+      };
+    });
 
     setNodes(newNodes);
-  }, [promptModelListData, chatModelListData]);
+  }, [selectedTab, promptModelListData, chatModelListData]);
+
+  function handleModelCreated() {
+    queryClient.invalidateQueries({
+      predicate: (query) =>
+        query.queryKey[0] === "modelListData" &&
+        query.queryKey[1]["type"] === selectedTab,
+    });
+  }
 
   return (
     <div className="w-full h-full">
       <ReactFlow
+        ref={reactFlowRef}
         nodesDraggable={false}
         nodeTypes={nodeTypes}
         nodes={nodes}
         edges={edges}
         proOptions={{ hideAttribution: true }}
+        onPaneClick={onPaneClick}
+        onNodeContextMenu={onNodeContextMenu}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-        <button
-          className={classNames(
-            "fixed top-16 right-10 flex flex-row gap-x-2 items-center backdrop-blur-sm z-50",
-            "btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
-          )}
-          onClick={() => setShowCreateDevModal(true)}
-        >
-          <PencilSimple className="text-secondary" size={20} weight="fill" />
-          <p className="text-base-content">Develop</p>
-        </button>
+        <div className="fixed top-16 left-24 z-50">
+          <SelectTab
+            tabs={TABS}
+            selectedTab={selectedTab}
+            onSelect={(newTab) => setSelectedTab(newTab as Tab)}
+          />
+        </div>
+        <CreateNewButton onClick={() => setShowCreateModelModal(true)} />
+        <CreateModelModal
+          isOpen={showCreateModelModal}
+          setIsOpen={setShowCreateModelModal}
+          type={selectedTab}
+          onCreated={handleModelCreated}
+        />
       </ReactFlow>
-      <CreateDevModal
-        isOpen={showCreateDevModal}
-        setIsOpen={setShowCreateDevModal}
-      />
+      {menuData && (
+        <ModelContextMenu
+          onPaneClick={onPaneClick}
+          menuData={menuData}
+          setMenuData={setMenuData}
+          modelType={selectedTab}
+        />
+      )}
     </div>
+  );
+}
+
+function CreateNewButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      className={classNames(
+        "fixed top-16 right-6 flex flex-row gap-x-2 items-center backdrop-blur-sm z-50",
+        "btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
+      )}
+      onClick={onClick}
+    >
+      <Plus className="text-secondary" size={20} weight="fill" />
+      <p className="text-base-content">Create new</p>
+    </button>
+  );
+}
+
+function ModelContextMenu({ onPaneClick, menuData, setMenuData, modelType }) {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  return (
+    <>
+      <ContextMenu onClick={onPaneClick} menuData={menuData}>
+        {
+          (
+            <ContextMenuItem
+              icon={
+                (
+                  <PencilSimple className="text-secondary" size={20} />
+                ) as ReactNode
+              }
+              label="Edit"
+              onClick={() => {
+                setIsEditModalOpen(true);
+                // onPaneClick();
+              }}
+            />
+          ) as ReactNode
+        }
+        {
+          (
+            <ContextMenuItem
+              icon={(<Trash className="text-red-500" size={20} />) as ReactNode}
+              label="Delete"
+              onClick={() => {
+                setIsDeleteModalOpen(true);
+                // onPaneClick();
+              }}
+            />
+          ) as ReactNode
+        }
+      </ContextMenu>
+      <EditModelNameModal
+        isOpen={isEditModalOpen}
+        setIsOpen={setIsEditModalOpen}
+        setMenuData={setMenuData}
+        modelType={modelType}
+        modelUuid={menuData.id}
+      />
+      <DeleteModelModal
+        isOpen={isDeleteModalOpen}
+        setIsOpen={setIsDeleteModalOpen}
+        setMenuData={setMenuData}
+        modelType={modelType}
+        modelUuid={menuData.id}
+      />
+    </>
+  );
+}
+
+function EditModelNameModal({
+  isOpen,
+  setIsOpen,
+  setMenuData,
+  modelType,
+  modelUuid,
+}) {
+  const { createSupabaseClient } = useSupabaseClient();
+  const { promptModelListData } = usePromptModel();
+  const { chatModelListData } = useChatModel();
+
+  const previousName = useMemo(() => {
+    if (modelType === Tab.PROMPT_MODEL) {
+      const model = promptModelListData.find(
+        (model) => model?.uuid === modelUuid
+      );
+      return model.name;
+    } else if (modelType == Tab.CHAT_MODEL) {
+      const model = chatModelListData.find((model) => model.uuid === modelUuid);
+      return model?.name;
+    }
+  }, [modelType, modelUuid, promptModelListData, chatModelListData]);
+
+  const [name, setName] = useState(previousName);
+
+  useEffect(() => {
+    setName(previousName);
+  }, [previousName]);
+
+  const isDisabled = useMemo(() => {
+    if (name?.length === 0) return true;
+    if (name === previousName) return true;
+  }, [name]);
+
+  async function handleSaveName() {
+    const toastId = toast.loading("Saving...");
+    const supabaseClient = await createSupabaseClient();
+    if (modelType === Tab.PROMPT_MODEL) {
+      await editPromptModelName({
+        supabaseClient: supabaseClient,
+        promptModelUuid: modelUuid,
+        name: name,
+      });
+    } else {
+      await editChatModelName({
+        supabaseClient: supabaseClient,
+        chatModelUuid: modelUuid,
+        name: name,
+      });
+    }
+    setIsOpen(false);
+    setMenuData(null);
+    toast.update(toastId, {
+      render: "Saved!",
+      type: "success",
+      isLoading: false,
+      autoClose: 1000,
+    });
+  }
+
+  return (
+    <Modal isOpen={isOpen} setIsOpen={setIsOpen}>
+      <div className="bg-popover p-6 rounded-box flex flex-col gap-y-4 items-start">
+        <p className="text-base-content text-xl font-semibold">
+          Edit {modelType} name
+        </p>
+        <InputField label={`Name`} value={name} setValue={setName} />
+        <div className="flex flex-row w-full justify-end">
+          <button
+            className={classNames(
+              "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
+              "disabled:bg-neutral-content"
+            )}
+            onClick={handleSaveName}
+            disabled={isDisabled}
+          >
+            <p className="text-base-100">Save</p>
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function DeleteModelModal({
+  isOpen,
+  setIsOpen,
+  setMenuData,
+  modelType,
+  modelUuid,
+}) {
+  const { createSupabaseClient } = useSupabaseClient();
+  const { promptModelListData } = usePromptModel();
+  const { chatModelListData } = useChatModel();
+
+  const model = useMemo(() => {
+    if (modelType === Tab.PROMPT_MODEL) {
+      return promptModelListData.find((model) => model.uuid === modelUuid);
+    } else if (modelType === Tab.CHAT_MODEL) {
+      return chatModelListData.find((model) => model.uuid === modelUuid);
+    }
+  }, [modelUuid, promptModelListData, chatModelListData, modelType]);
+
+  async function handleDeleteModel() {
+    const toastId = toast.loading("Deleting...");
+    const supabaseClient = await createSupabaseClient();
+    if (modelType === Tab.PROMPT_MODEL) {
+      await deletePromptModel({
+        supabaseClient: supabaseClient,
+        promptModelUuid: modelUuid,
+      });
+    } else if (modelType === Tab.CHAT_MODEL) {
+      await deleteChatModel({
+        supabaseClient: supabaseClient,
+        chatModelUuid: modelUuid,
+      });
+    }
+    setIsOpen(false);
+    setMenuData(null);
+    toast.update(toastId, {
+      render: "Deleted!",
+      type: "success",
+      isLoading: false,
+      autoClose: 1000,
+    });
+  }
+
+  return (
+    <Modal isOpen={isOpen} setIsOpen={setIsOpen}>
+      <div className="bg-popover p-6 rounded-box flex flex-col gap-y-4 items-start">
+        <p className="text-base-content text-xl font-semibold">
+          Delete {modelType}
+        </p>
+        <p className="text-base-content">
+          Are you sure you want to delete {modelType}{" "}
+          <span className="font-semibold">{model?.name}</span>? This action
+          cannot be undone.
+        </p>
+        <div className="flex flex-row w-full justify-end">
+          <button
+            className={classNames(
+              "flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 bg-red-500 hover:bg-red-500/80",
+              "disabled:bg-neutral-content outline-none active:outline-none focus:outline-none"
+            )}
+            onClick={handleDeleteModel}
+          >
+            <p className="text-base-content">Delete</p>
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }

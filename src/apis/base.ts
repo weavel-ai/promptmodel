@@ -93,7 +93,9 @@ export const useSupabaseClient = () => {
       isSignedIn && {
         global: {
           headers: {
-            Authorization: `Bearer ${await getToken({ template: "supabase" })}`,
+            Authorization: `Bearer ${await getToken({
+              template: "supabase-colab",
+            })}`,
           },
         },
       }
