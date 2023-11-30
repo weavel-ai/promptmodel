@@ -21,7 +21,7 @@ export function ModelNode({ data }) {
     >
       <div className="flex flex-col justify-start gap-y-2 items-start">
         <p className="text-base-content font-bold text-lg">{data.name}</p>
-        <LocalConnectionStatus online={data?.online} />
+        <LocalConnectionStatus online={data?.online} statusType="usage" />
       </div>
       <p className="text-neutral-content text-sm">
         Created {dayjs(data.created_at).fromNow()}

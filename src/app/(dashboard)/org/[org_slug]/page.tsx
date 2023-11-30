@@ -70,7 +70,10 @@ const ProjectComponent = ({ project }: { project: Project }) => {
     >
       <div className="flex flex-col gap-y-2 justify-start items-start">
         <p className="text-xl text-base-content font-medium">{project.name}</p>
-        <LocalConnectionStatus online={project.online} />
+        <LocalConnectionStatus
+          online={project.online}
+          statusType="connection"
+        />
       </div>
 
       <p className="text-sm text-neutral-content">V{project.version}</p>

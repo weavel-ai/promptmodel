@@ -56,7 +56,7 @@ export function ContextMenuItem({
       onClick={onClick}
     >
       {icon}
-      <p>{label}</p>
+      <p className="text-sm">{label}</p>
     </button>
   );
 }
