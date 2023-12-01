@@ -45,7 +45,9 @@ export const usePromptModel = () => {
           client,
           projectUuid,
           () => {
-            toast("Syncing PromptModel...");
+            toast("Syncing...", {
+              toastId: "sync",
+            });
             refetchPromptModelListData();
           }
         );

@@ -31,6 +31,19 @@ export function Providers({ children }) {
         pauseOnHover={false}
         theme="dark"
       />
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss={false}
+        pauseOnHover={false}
+        theme="dark"
+        containerId="sync"
+        enableMultiContainer={true}
+        limit={1}
+      />
       {/* <ThemeProvider> */}
       {children}
       {/* </ThemeProvider> */}

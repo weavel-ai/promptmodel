@@ -22,7 +22,7 @@ export const useProject = () => {
     enabled: organization != undefined && organization != null,
   });
 
-  const { data: projectData } = useQuery({
+  const { data: projectData, refetch: refetchProjectData } = useQuery({
     queryKey: ["projectData", { projectUuid: params?.projectUuid }],
     queryFn: async () =>
       await fetchProject(
@@ -41,8 +41,11 @@ export const useProject = () => {
           client,
           organization?.id,
           () => {
-            toast("Syncing project...");
+            toast("Syncing...", {
+              toastId: "sync",
+            });
             refetchProjectListData();
+            refetchProjectData();
           }
         );
         setProjectStream(newStream);

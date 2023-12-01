@@ -33,7 +33,9 @@ export const useSamples = () => {
           client,
           params?.projectUuid as string,
           () => {
-            toast("Syncing samples...");
+            toast("Syncing...", {
+              toastId: "sync",
+            });
             refetchSampleInputListData();
           }
         );

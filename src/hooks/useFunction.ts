@@ -33,7 +33,9 @@ export const useFunctions = () => {
           client,
           params?.projectUuid as string,
           () => {
-            toast("Syncing functions...");
+            toast("Syncing...", {
+              toastId: "sync",
+            });
             refetchFunctionListData();
           }
         );
