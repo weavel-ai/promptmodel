@@ -1,7 +1,7 @@
 """APIs for package management"""
 import asyncio
 from operator import truediv
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from pydantic import BaseModel
@@ -22,6 +22,7 @@ from starlette.status import (
     HTTP_403_FORBIDDEN,
     HTTP_500_INTERNAL_SERVER_ERROR,
     HTTP_404_NOT_FOUND,
+    HTTP_406_NOT_ACCEPTABLE,
 )
 
 from utils.security import get_api_key, get_project, get_cli_user_id
@@ -29,6 +30,7 @@ from utils.dependency import get_websocket_token
 from utils.logger import logger
 from base.database import supabase
 from base.websocket_connection import websocket_manager
+from modules.types import InstanceType
 from litellm.utils import completion_cost
 
 router = APIRouter()
@@ -484,134 +486,6 @@ async def connect_cli_project(project_uuid: str, api_key: str = Depends(get_api_
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.post("/log_deployment_run")
-async def log_deployment_run(
-    version_uuid: str,
-    inputs: Optional[Dict[str, Any]] = None,
-    api_response: Optional[Dict[str, Any]] = None,
-    parsed_outputs: Optional[Dict[str, Any]] = None,
-    metadata: Optional[Dict[str, Any]] = None,
-    project: dict = Depends(get_project),
-):
-    try:
-        # save log
-        (
-            supabase.table("run_log")
-            .insert(
-                {
-                    "inputs": inputs,
-                    "raw_output": api_response["choices"][0]["message"]["content"]
-                    if api_response
-                    else None,
-                    "parsed_outputs": parsed_outputs,
-                    "input_register_name": None,
-                    "run_from_deployment": True,
-                    "version_uuid": version_uuid,
-                    "token_usage": api_response["usage"] if api_response else None,
-                    "latency": api_response["response_ms"] if api_response else None,
-                    "cost": completion_cost(api_response) if api_response else None,
-                    "metadata": metadata,
-                }
-            )
-            .execute()
-        )
-        return Response(status_code=HTTP_200_OK)
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
-@router.post("/log_deployment_chat")
-async def log_deployment_chat(
-    session_uuid: str,
-    version_uuid: str,
-    messages: List[Dict[str, Any]] = [],
-    metadata: Optional[List[Dict[str, Any]]] = None,
-    project: dict = Depends(get_project),
-):
-    try:
-        # check session
-        session = (
-            supabase.table("chat_log_session")
-            .select("*")
-            .eq("uuid", session_uuid)
-            .single()
-            .execute()
-            .data
-        )
-        if len(session) == 0:
-            raise ValueError("Session not found")
-        # make logs
-        logs = []
-        for message, meta in zip(messages, metadata):
-            token_usage = {}
-            latency = 0
-            cost = completion_cost(meta["api_response"]) if meta else None
-            if "token_usage" in meta:
-                token_usage = meta["token_usage"]
-                del meta["token_usage"]
-            if "response_ms" in meta:
-                latency = meta["response_ms"]
-                del meta["response_ms"]
-            if "_response_ms" in meta:
-                latency = meta["_response_ms"]
-                del meta["_response_ms"]
-            if "latency" in meta:
-                latency = meta["latency"]
-                del meta["latency"]
-
-            logs.append(
-                {
-                    "session_uuid": session_uuid,
-                    "role": message["role"],
-                    "content": message["content"],
-                    "name": message["name"] if "name" in message else None,
-                    "tool_calls": message["tool_calls"]
-                    if "tool_calls" in message
-                    else None,
-                    "token_usage": token_usage,
-                    "latency": latency,
-                    "cost": cost,
-                    "metadata": meta,
-                }
-            )
-        # save logs
-        (supabase.table("chat_log").insert(logs).execute())
-        return Response(status_code=HTTP_200_OK)
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
-@router.post("/make_session")
-async def make_session(
-    session_uuid: str,
-    version_uuid: str,
-    project: dict = Depends(get_project),
-):
-    try:
-        # check version
-        version = (
-            supabase.table("chat_model_version")
-            .select("*")
-            .eq("uuid", version_uuid)
-            .single()
-            .execute()
-            .data
-        )
-        if len(version) == 0:
-            raise ValueError("Chat Model Version not found")
-        # make Session
-        (
-            supabase.table("chat_log_session")
-            .insert({"uuid": session_uuid, "version_uuid": version_uuid})
-            .execute()
-        )
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
 @router.post("/save_instances_in_code")
 async def save_instances_in_code(
     project_uuid: str,
@@ -825,6 +699,261 @@ async def save_instances_in_code(
                 .execute()
             )
 
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+
+
+@router.post("/log_general")
+async def log_general(
+    type: str,
+    identifier: Optional[str] = None,
+    content: Dict[str, Any] = {},
+    metadata: Dict[str, Any] = {},
+    project: dict = Depends(get_project),
+):
+    try:
+        if type == InstanceType.RunLog.value:
+            if identifier is None:
+                identifier = str(uuid4())
+                run_log_to_insert = content
+                run_log_to_insert["metadata"] = metadata
+                run_log_to_insert["uuid"] = identifier
+                try:
+                    (supabase.table("run_log").insert(run_log_to_insert).execute())
+                except:
+                    return HTTPException(
+                        status_code=HTTP_406_NOT_ACCEPTABLE,
+                        detail="RunLog Content Column is not valid",
+                    )
+            else:
+                try:
+                    original_value = (
+                        supabase.table("run_log")
+                        .select("uuid")
+                        .eq("uuid", identifier)
+                        .single()
+                        .execute()
+                        .data
+                    )
+                except:
+                    return HTTPException(
+                        status_code=HTTP_404_NOT_FOUND,
+                        detail=f"RunLog Not found for uuid {identifier}",
+                    )
+                # update metadata in original_value
+                new_metadata = (
+                    original_value["metadata"]
+                    if original_value["metadata"] is not None
+                    else {}
+                )
+                for key, value in metadata.items():
+                    new_metadata[key] = value
+                supabase.table("run_log").update({"metadata": new_metadata}).eq(
+                    "uuid", identifier
+                ).execute()
+
+        elif type == InstanceType.ChatLog.value:
+            if identifier is None:
+                identifier = str(uuid4())
+                chat_log_to_insert = content
+                chat_log_to_insert["metadata"] = metadata
+                chat_log_to_insert["uuid"] = identifier
+                try:
+                    supabase.table("chat_log").insert(chat_log_to_insert).execute()
+                except:
+                    return HTTPException(
+                        status_code=HTTP_406_NOT_ACCEPTABLE,
+                        detail="ChatLog Content Column is not valid",
+                    )
+            else:
+                try:
+                    original_value = (
+                        supabase.table("chat_log")
+                        .select("uuid")
+                        .eq("uuid", identifier)
+                        .single()
+                        .execute()
+                        .data
+                    )
+                except:
+                    return HTTPException(
+                        status_code=HTTP_404_NOT_FOUND,
+                        detail=f"ChatLog Not found for uuid {identifier}",
+                    )
+                # update metadata in original_value
+                new_metadata = (
+                    original_value["metadata"]
+                    if original_value["metadata"] is not None
+                    else {}
+                )
+                for key, value in metadata.items():
+                    new_metadata[key] = value
+                supabase.table("chat_log").update({"metadata": new_metadata}).eq(
+                    "uuid", identifier
+                ).execute()
+
+        elif type == InstanceType.Session.value:
+            if identifier is None:
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST, detail="Session uuid is required"
+                )
+            else:
+                try:
+                    original_value = (
+                        supabase.table("chat_log_session")
+                        .select("uuid")
+                        .eq("uuid", identifier)
+                        .single()
+                        .execute()
+                        .data
+                    )
+                except:
+                    return HTTPException(
+                        status_code=HTTP_404_NOT_FOUND,
+                        detail=f"Session Not found for uuid {identifier}",
+                    )
+                # update metadata in original_value
+                new_metadata = (
+                    original_value["metadata"]
+                    if original_value["metadata"] is not None
+                    else {}
+                )
+                for key, value in metadata.items():
+                    new_metadata[key] = value
+                supabase.table("chat_log_session").update(
+                    {"metadata": new_metadata}
+                ).eq("uuid", identifier).execute()
+
+        return Response(status_code=HTTP_200_OK)
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+
+
+@router.post("/log_deployment_run")
+async def log_deployment_run(
+    version_uuid: str,
+    inputs: Optional[Dict[str, Any]] = None,
+    api_response: Optional[Dict[str, Any]] = None,
+    parsed_outputs: Optional[Dict[str, Any]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    project: dict = Depends(get_project),
+):
+    try:
+        # save log
+        (
+            supabase.table("run_log")
+            .insert(
+                {
+                    "inputs": inputs,
+                    "raw_output": api_response["choices"][0]["message"]["content"]
+                    if api_response
+                    else None,
+                    "parsed_outputs": parsed_outputs,
+                    "input_register_name": None,
+                    "run_from_deployment": True,
+                    "version_uuid": version_uuid,
+                    "token_usage": api_response["usage"] if api_response else None,
+                    "latency": api_response["response_ms"] if api_response else None,
+                    "cost": completion_cost(api_response) if api_response else None,
+                    "metadata": metadata,
+                }
+            )
+            .execute()
+        )
+        return Response(status_code=HTTP_200_OK)
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+
+
+@router.post("/log_deployment_chat")
+async def log_deployment_chat(
+    session_uuid: str,
+    version_uuid: str,
+    messages: List[Dict[str, Any]] = [],
+    metadata: Optional[List[Dict[str, Any]]] = None,
+    project: dict = Depends(get_project),
+):
+    try:
+        # check session
+        session = (
+            supabase.table("chat_log_session")
+            .select("*")
+            .eq("uuid", session_uuid)
+            .single()
+            .execute()
+            .data
+        )
+        if len(session) == 0:
+            raise ValueError("Session not found")
+        # make logs
+        logs = []
+        for message, meta in zip(messages, metadata):
+            token_usage = {}
+            latency = 0
+            cost = completion_cost(meta["api_response"]) if meta else None
+            if "token_usage" in meta:
+                token_usage = meta["token_usage"]
+                del meta["token_usage"]
+            if "response_ms" in meta:
+                latency = meta["response_ms"]
+                del meta["response_ms"]
+            if "_response_ms" in meta:
+                latency = meta["_response_ms"]
+                del meta["_response_ms"]
+            if "latency" in meta:
+                latency = meta["latency"]
+                del meta["latency"]
+
+            logs.append(
+                {
+                    "session_uuid": session_uuid,
+                    "role": message["role"],
+                    "content": message["content"],
+                    "name": message["name"] if "name" in message else None,
+                    "tool_calls": message["tool_calls"]
+                    if "tool_calls" in message
+                    else None,
+                    "token_usage": token_usage,
+                    "latency": latency,
+                    "cost": cost,
+                    "metadata": meta,
+                }
+            )
+        # save logs
+        (supabase.table("chat_log").insert(logs).execute())
+        return Response(status_code=HTTP_200_OK)
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+
+
+@router.post("/make_session")
+async def make_session(
+    session_uuid: str,
+    version_uuid: str,
+    project: dict = Depends(get_project),
+):
+    try:
+        # check version
+        version = (
+            supabase.table("chat_model_version")
+            .select("*")
+            .eq("uuid", version_uuid)
+            .single()
+            .execute()
+            .data
+        )
+        if len(version) == 0:
+            raise ValueError("Chat Model Version not found")
+        # make Session
+        (
+            supabase.table("chat_log_session")
+            .insert({"uuid": session_uuid, "version_uuid": version_uuid})
+            .execute()
+        )
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc

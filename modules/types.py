@@ -50,3 +50,9 @@ class LocalTaskErrorType(str, Enum):
     PARSING_FAILED_ERROR = "PARSING_FAILED_ERROR"  # create PromptModelVersion, create Prompt, create RunLog
 
     SERVICE_ERROR = "SERVICE_ERROR"  # no DB update is needed
+
+
+class InstanceType(str, Enum):
+    ChatLog = "ChatLog"
+    RunLog = "RunLog"
+    Session = "Session"
