@@ -503,6 +503,8 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
   }, []);
 
   useEffect(() => {
+    if (!selectedChatModelVersion || !chatModelVersionListData) return;
+    if (selectedChatModelVersion == originalVersionData?.version) return;
     const data = chatModelVersionListData?.find(
       (version) => version.version === selectedChatModelVersion
     );
@@ -960,7 +962,7 @@ const PromptComponent = ({
     editorRef.current = editor;
 
     if (contentHeight) {
-      setHeight(contentHeight);
+      setHeight(contentHeight + 20);
     }
 
     editor.onDidFocusEditorWidget(() => {
@@ -973,7 +975,7 @@ const PromptComponent = ({
     const minHeight = 200;
     const maxHeight = windowHeight * 0.7;
     if (contentHeight) {
-      setHeight(Math.min(Math.max(minHeight, contentHeight), maxHeight));
+      setHeight(Math.min(Math.max(minHeight, contentHeight), maxHeight) + 20);
     }
   }, [editorRef.current?.getContentHeight()]);
 
@@ -1026,7 +1028,7 @@ const PromptDiffComponent = ({
     const originalHeight = originalEditorRef.current?.getContentHeight();
     const maxHeight = windowHeight * 0.7;
     if (originalHeight) {
-      setHeight(Math.min(originalHeight, maxHeight));
+      setHeight(Math.min(originalHeight, maxHeight) + 20);
     }
     modifiedEditorRef.current?.onDidFocusEditorWidget(() => {
       setFocusedEditor(modifiedEditorRef.current);
@@ -1037,7 +1039,7 @@ const PromptDiffComponent = ({
       const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
       const maxHeight = windowHeight * 0.7;
       if (modifiedHeight) {
-        setHeight(Math.min(modifiedHeight, maxHeight));
+        setHeight(Math.min(modifiedHeight, maxHeight) + 20);
       }
     });
   };
@@ -1047,9 +1049,9 @@ const PromptDiffComponent = ({
     const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
     const maxHeight = windowHeight * 0.7;
     if (modifiedHeight > originalHeight) {
-      setHeight(Math.min(modifiedHeight, maxHeight));
+      setHeight(Math.min(modifiedHeight, maxHeight) + 20);
     } else {
-      setHeight(Math.min(originalHeight, maxHeight));
+      setHeight(Math.min(originalHeight, maxHeight) + 20);
     }
   }, [originalEditorRef.current, modifiedEditorRef.current]);
 

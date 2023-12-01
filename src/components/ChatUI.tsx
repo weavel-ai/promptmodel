@@ -5,7 +5,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ModalPortal } from "./ModalPortal";
 import dayjs from "dayjs";
 import { ChatSessionSelector } from "./select/ChatSessionSelector";
-import { arePrimitiveListsEqual, firstLetterToUppercase } from "@/utils";
+import {
+  arePrimitiveListsEqual,
+  cloneDeep,
+  firstLetterToUppercase,
+} from "@/utils";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -28,7 +32,7 @@ export function ChatUI({
   const [isLoading, setIsLoading] = useState(false);
   const [generatedMessage, setGeneratedMessage] = useState(null);
   const [selectedSessionUuid, setSelectedSessionUuid] = useState(null);
-  const { projectUuid } = useProject();
+  const { projectUuid, projectData } = useProject();
   const { chatModelUuid, chatModelData } = useChatModel();
   const { chatModelVersionListData, refetchChatModelVersionListData } =
     useChatModelVersion();
@@ -139,7 +143,7 @@ export function ChatUI({
             version: data?.version,
             systemPrompt: systemPrompt,
             model: selectedModel,
-            functions: selectedFunctions,
+            functions: cloneDeep(selectedFunctions),
           });
         }
         if (data?.chat_log_session_uuid) {
@@ -153,7 +157,7 @@ export function ChatUI({
       },
     };
 
-    if (chatModelData?.online) {
+    if (projectData?.online) {
       await streamLocalChatModelRun(args);
     } else {
       await streamChatModelRun(args);

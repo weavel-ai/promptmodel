@@ -26,6 +26,7 @@ export const usePromptModelVersion = () => {
   const params = useParams();
   const queryClient = useQueryClient();
   const { createSupabaseClient } = useSupabaseClient();
+  const { projectData } = useProject();
   const { promptModelData } = usePromptModel();
   const {
     newVersionCache,
@@ -218,7 +219,7 @@ export const usePromptModelVersion = () => {
         console.log(data);
         switch (data?.status) {
           case "completed":
-            queryClient.invalidateQueries([
+            await queryClient.invalidateQueries([
               "runLogData",
               {
                 versionUuid: onRightSide
@@ -244,7 +245,7 @@ export const usePromptModelVersion = () => {
             });
             break;
           case "failed":
-            queryClient.invalidateQueries([
+            await queryClient.invalidateQueries([
               "runLogData",
               {
                 versionUuid: onRightSide
@@ -276,9 +277,9 @@ export const usePromptModelVersion = () => {
             uuid: data?.prompt_model_version_uuid,
             version: data?.version,
             prompts: cloneDeep(prompts),
-            model: originalPromptModelVersionData?.model,
-            parsing_type: originalPromptModelVersionData?.parsing_type,
-            functions: originalPromptModelVersionData?.functions,
+            model: selectedModel,
+            parsing_type: selectedParser,
+            functions: cloneDeep(selectedFunctions),
           });
         }
         if (data?.inputs) {
@@ -362,7 +363,7 @@ export const usePromptModelVersion = () => {
         }
       },
     };
-    if (promptModelData?.online) {
+    if (projectData?.online) {
       await streamLocalPromptModelRun(args);
     } else {
       await streamPromptModelRun(args);
@@ -374,6 +375,12 @@ export const usePromptModelVersion = () => {
         setSelectedPromptModelVersion(newVersionCache?.version);
       }
     }
+    // If toast is still loading after 2 seconds, remove it
+    setTimeout(() => {
+      if (toast.isActive(toastId)) {
+        toast.dismiss();
+      }
+    }, 2000);
   }
 
   return {

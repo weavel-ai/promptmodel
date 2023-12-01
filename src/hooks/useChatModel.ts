@@ -41,7 +41,9 @@ export const useChatModel = () => {
     if (!chatModelStream) {
       createSupabaseClient().then(async (client) => {
         const newStream = await subscribeChatModel(client, projectUuid, () => {
-          toast("Syncing ChatModel...");
+          toast("Syncing...", {
+            toastId: "sync",
+          });
           refetchChatModelListData();
         });
         setChatModelStream(newStream);
