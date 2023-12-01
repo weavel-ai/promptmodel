@@ -64,7 +64,6 @@ export function ChatUI({
 
   // Set initial session uuid
   useEffect(() => {
-    console.log(chatLogSessionListData);
     if (chatLogSessionListData?.length > 1) {
       setSelectedSessionUuid(chatLogSessionListData[1].uuid);
     } else {
@@ -122,9 +121,10 @@ export function ChatUI({
         ? selectedFunctions
         : originalVersionData?.functions,
       onNewData: async (data) => {
+        console.log(data);
         switch (data?.status) {
           case "completed":
-            refetchChatLogListData();
+            await refetchChatLogListData();
             setGeneratedMessage(null);
             setIsLoading(false);
             break;
@@ -233,23 +233,26 @@ export function ChatUI({
                 </div>
               );
             })}
-            {generatedMessage != null && (
-              <div className="chat chat-start">
-                <div className="chat-header">
-                  Assistant
-                  <time className="text-xs opacity-50 ml-2">
-                    {dayjs().fromNow()}
-                  </time>
+            {generatedMessage != null &&
+              chatLogListData?.length > 0 &&
+              chatLogListData[chatLogListData?.length - 1]?.content !=
+                generatedMessage && (
+                <div className="chat chat-start">
+                  <div className="chat-header">
+                    Assistant
+                    <time className="text-xs opacity-50 ml-2">
+                      {dayjs().fromNow()}
+                    </time>
+                  </div>
+                  <div className="chat-bubble bg-base-300">
+                    {generatedMessage?.length == 0 ? (
+                      <div className="loading loading-dots loading-sm" />
+                    ) : (
+                      <p>{generatedMessage}</p>
+                    )}
+                  </div>
                 </div>
-                <div className="chat-bubble bg-base-300">
-                  {generatedMessage?.length == 0 ? (
-                    <div className="loading loading-dots loading-sm" />
-                  ) : (
-                    <p>{generatedMessage}</p>
-                  )}
-                </div>
-              </div>
-            )}
+              )}
           </div>
         </div>
         <ChatInput
@@ -316,7 +319,6 @@ const ChatInput = ({
   const disabledMessage = useMemo(() => {
     if (isLoading) return true;
     if (chatInput.length == 0) return true;
-    console.log(isNewVersion);
     if (isNewVersion) {
       if (modifiedSystemPrompt?.length == 0)
         return "Please enter a system prompt";

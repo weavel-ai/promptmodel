@@ -28,6 +28,7 @@ export default function Page() {
     const data = await createProject(orgId, name, description);
     if (!data) {
       toast.update(toastId, {
+        containerId: "default",
         render: "Failed to create project.",
         type: "error",
         isLoading: false,
@@ -40,6 +41,7 @@ export default function Page() {
     router.push(`${pathname.split("/").slice(0, -1).join("/")}/${data.uuid}`);
     setLoading(false);
     toast.update(toastId, {
+      containerId: "default",
       render: "Project created successfully!",
       type: "success",
       isLoading: false,

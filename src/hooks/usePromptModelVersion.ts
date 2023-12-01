@@ -130,49 +130,55 @@ export const usePromptModelVersion = () => {
     }
   }, [originalPromptModelVersionData]);
 
-  const isNewVersionReady = useMemo(() => {
+  const isEqualToOriginal = useMemo(() => {
     if (isCreateVariantOpen) {
-      if (
-        !originalPromptListData?.every((prompt, index) =>
-          Object.keys(prompt)?.every(
-            (key) => prompt[key] == modifiedPrompts[index][key]
-          )
-        ) &&
-        (!newVersionCache ||
-          !newVersionCache?.prompts.every((prompt, index) =>
-            Object.keys(prompt).every(
-              (key) => prompt[key] == modifiedPrompts[index][key]
-            )
-          ))
-      )
-        return true;
-      if (
-        originalPromptModelVersionData?.model != selectedModel &&
-        (!newVersionCache || newVersionCache?.model != selectedModel)
-      )
-        return true;
-      if (
-        originalPromptModelVersionData?.parsing_type != selectedParser &&
-        (!newVersionCache || newVersionCache?.parsing_type != selectedParser)
-      )
-        return true;
-      if (
-        !arePrimitiveListsEqual(
-          originalPromptModelVersionData?.functions,
-          selectedFunctions
-        ) &&
-        (!newVersionCache ||
-          !arePrimitiveListsEqual(
-            newVersionCache?.functions,
-            selectedFunctions
-          ))
-      )
-        return true;
+      const promptsEqual = originalPromptListData?.every((prompt, index) =>
+        Object.keys(prompt)?.every(
+          (key) => prompt[key] == modifiedPrompts[index][key]
+        )
+      );
+
+      const modelEqual = originalPromptModelVersionData?.model == selectedModel;
+      const parserEqual =
+        originalPromptModelVersionData?.parsing_type == selectedParser;
+      const functionsEqual = arePrimitiveListsEqual(
+        originalPromptModelVersionData?.functions ?? [],
+        selectedFunctions
+      );
+
+      return promptsEqual && modelEqual && parserEqual && functionsEqual;
     }
-    return false;
+    return true;
   }, [
     isCreateVariantOpen,
+    originalPromptListData,
     originalPromptModelVersionData,
+    selectedModel,
+    selectedParser,
+    selectedFunctions,
+    modifiedPrompts,
+  ]);
+
+  const isEqualToCache = useMemo(() => {
+    if (isCreateVariantOpen && newVersionCache) {
+      const promptsEqual = newVersionCache?.prompts.every((prompt, index) =>
+        Object.keys(prompt).every(
+          (key) => prompt[key] == modifiedPrompts[index][key]
+        )
+      );
+
+      const modelEqual = newVersionCache?.model == selectedModel;
+      const parserEqual = newVersionCache?.parsing_type == selectedParser;
+      const functionsEqual = arePrimitiveListsEqual(
+        newVersionCache?.functions,
+        selectedFunctions
+      );
+
+      return promptsEqual && modelEqual && parserEqual && functionsEqual;
+    }
+    return true;
+  }, [
+    isCreateVariantOpen,
     newVersionCache,
     selectedModel,
     selectedParser,
@@ -184,12 +190,14 @@ export const usePromptModelVersion = () => {
   async function handleRun(onRightSide: boolean) {
     const toastId = toast.loading("Running...");
     let prompts: Prompt[];
-    let newVersionUuid: string;
+    let versionUuid: string;
 
     if (onRightSide) {
       prompts = modifiedPrompts;
+      versionUuid = isEqualToCache ? newVersionCache?.uuid : null;
     } else {
       prompts = originalPromptListData;
+      versionUuid = originalPromptModelVersionData?.uuid;
     }
     let cacheRawOutput = "";
     const cacheParsedOutputs = {};
@@ -203,7 +211,7 @@ export const usePromptModelVersion = () => {
       model: onRightSide ? selectedModel : originalPromptModelVersionData.model,
       fromVersion: onRightSide ? originalPromptModelVersionData?.version : null,
       versionUuid: onRightSide
-        ? (isNewVersionReady ? null : newVersionCache?.uuid) ?? null
+        ? (isEqualToCache ? newVersionCache?.uuid : null) ?? null
         : originalPromptModelVersionData?.uuid,
       sampleName: selectedSample,
       parsingType: onRightSide
@@ -217,62 +225,46 @@ export const usePromptModelVersion = () => {
         : originalPromptModelVersionData?.functions,
       onNewData: async (data) => {
         console.log(data);
-        switch (data?.status) {
-          case "completed":
-            await queryClient.invalidateQueries([
-              "runLogData",
-              {
-                versionUuid: onRightSide
-                  ? isNewVersionReady
-                    ? newVersionUuid
-                    : newVersionCache?.uuid
-                  : originalPromptModelVersionData?.uuid,
-              },
-            ]);
-            removeRunLog(
-              onRightSide
-                ? isNewVersionReady
-                  ? newVersionUuid
-                  : newVersionCache?.uuid
-                : originalPromptModelVersionData?.uuid,
-              uuid
-            );
-            toast.update(toastId, {
-              render: "Completed",
-              type: "success",
-              autoClose: 2000,
-              isLoading: false,
-            });
-            break;
-          case "failed":
-            await queryClient.invalidateQueries([
-              "runLogData",
-              {
-                versionUuid: onRightSide
-                  ? isNewVersionReady
-                    ? newVersionUuid
-                    : newVersionCache?.uuid
-                  : originalPromptModelVersionData?.uuid,
-              },
-            ]);
-            removeRunLog(
-              onRightSide
-                ? isNewVersionReady
-                  ? newVersionUuid
-                  : newVersionCache?.uuid
-                : originalPromptModelVersionData?.uuid,
-              uuid
-            );
-            toast.update(toastId, {
-              render: data?.log,
-              type: "error",
-              autoClose: 4000,
-              isLoading: false,
-            });
-            break;
+        if (data?.status) {
+          console.log(data.status);
+          console.log(toastId);
+          switch (data?.status) {
+            case "completed":
+              toast.update(toastId, {
+                containerId: "default",
+                render: "Completed",
+                type: "success",
+                autoClose: 2000,
+                isLoading: false,
+              });
+              await queryClient.invalidateQueries([
+                "runLogData",
+                {
+                  versionUuid: versionUuid,
+                },
+              ]);
+              removeRunLog(versionUuid, uuid);
+              break;
+            case "failed":
+              toast.update(toastId, {
+                containerId: "default",
+                render: data?.log,
+                type: "error",
+                autoClose: 4000,
+                isLoading: false,
+              });
+              await queryClient.invalidateQueries([
+                "runLogData",
+                {
+                  versionUuid: versionUuid,
+                },
+              ]);
+              removeRunLog(versionUuid, uuid);
+              break;
+          }
         }
         if (data?.prompt_model_version_uuid) {
-          newVersionUuid = data?.prompt_model_version_uuid;
+          versionUuid = data?.prompt_model_version_uuid;
           setNewVersionCache({
             uuid: data?.prompt_model_version_uuid,
             version: data?.version,
@@ -283,31 +275,15 @@ export const usePromptModelVersion = () => {
           });
         }
         if (data?.inputs) {
-          updateRunLogs(
-            onRightSide
-              ? isNewVersionReady
-                ? newVersionUuid
-                : newVersionCache?.uuid
-              : originalPromptModelVersionData?.uuid,
-            uuid,
-            {
-              inputs: data?.inputs,
-            }
-          );
+          updateRunLogs(versionUuid, uuid, {
+            inputs: data?.inputs,
+          });
         }
         if (data?.raw_output) {
           cacheRawOutput += data?.raw_output;
-          updateRunLogs(
-            onRightSide
-              ? isNewVersionReady
-                ? newVersionUuid
-                : newVersionCache?.uuid
-              : originalPromptModelVersionData?.uuid,
-            uuid,
-            {
-              raw_output: cacheRawOutput,
-            }
-          );
+          updateRunLogs(versionUuid, uuid, {
+            raw_output: cacheRawOutput,
+          });
         }
         if (data?.parsed_outputs) {
           const parsedOutputs = data?.parsed_outputs;
@@ -318,48 +294,24 @@ export const usePromptModelVersion = () => {
               cacheParsedOutputs[key] = parsedOutputs[key];
             }
           }
-          updateRunLogs(
-            onRightSide
-              ? isNewVersionReady
-                ? newVersionUuid
-                : newVersionCache?.uuid
-              : originalPromptModelVersionData?.uuid,
-            uuid,
-            {
-              parsed_outputs: cacheParsedOutputs,
-            }
-          );
+          updateRunLogs(versionUuid, uuid, {
+            parsed_outputs: cacheParsedOutputs,
+          });
         }
         if (data?.function_call) {
           cacheFunctionCallData = data?.function_call;
           // functionCallData["initial_raw_output"] = cacheRawOutput;
-          updateRunLogs(
-            onRightSide
-              ? isNewVersionReady
-                ? newVersionUuid
-                : newVersionCache?.uuid
-              : originalPromptModelVersionData?.uuid,
-            uuid,
-            {
-              // raw_output: "",
-              function_call: cacheFunctionCallData,
-            }
-          );
+          updateRunLogs(versionUuid, uuid, {
+            // raw_output: "",
+            function_call: cacheFunctionCallData,
+          });
           // cacheRawOutput = "";
         }
         if (data?.function_response) {
           cacheFunctionCallData["response"] = data?.function_response;
-          updateRunLogs(
-            onRightSide
-              ? isNewVersionReady
-                ? newVersionUuid
-                : newVersionCache?.uuid
-              : originalPromptModelVersionData?.uuid,
-            uuid,
-            {
-              function_call: cacheFunctionCallData,
-            }
-          );
+          updateRunLogs(versionUuid, uuid, {
+            function_call: cacheFunctionCallData,
+          });
         }
       },
     };
@@ -370,7 +322,7 @@ export const usePromptModelVersion = () => {
     }
 
     if (onRightSide) {
-      refetchPromptModelVersionListData();
+      await refetchPromptModelVersionListData();
       if (!originalPromptModelVersionData?.uuid) {
         setSelectedPromptModelVersion(newVersionCache?.version);
       }
@@ -391,6 +343,7 @@ export const usePromptModelVersion = () => {
     originalPromptModelVersionData,
     refetchPromptModelVersionListData,
     handleRun,
-    isNewVersionReady,
+    isEqualToCache,
+    isEqualToOriginal,
   };
 };

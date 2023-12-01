@@ -24,9 +24,9 @@ export const useOrgData = () => {
     enabled: organization != undefined && organization != null,
   });
 
-  useEffect(() => {
-    refetchOrgData();
-  }, [organization?.id]);
+  // useEffect(() => {
+  //   refetchOrgData();
+  // }, [organization?.id]);
 
   return {
     orgData,

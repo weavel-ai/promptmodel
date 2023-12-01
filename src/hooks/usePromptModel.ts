@@ -36,25 +36,19 @@ export const usePromptModel = () => {
     );
   }, [promptModelListData, params?.promptModelUuid]);
 
-  // Subscribe to PromptModel changes
-  useEffect(() => {
-    if (!projectUuid) return;
-    if (!promptModelStream) {
-      createSupabaseClient().then(async (client) => {
-        const newStream = await subscribePromptModel(
-          client,
-          projectUuid,
-          () => {
-            toast("Syncing...", {
-              toastId: "sync",
-            });
-            refetchPromptModelListData();
-          }
-        );
-        setPromptModelStream(newStream);
+  function subscribeToPromptModel() {
+    if (!projectUuid || promptModelStream) return;
+    createSupabaseClient().then(async (client) => {
+      const newStream = await subscribePromptModel(client, projectUuid, () => {
+        toast.loading("Syncing...", {
+          toastId: "sync",
+          autoClose: 1000,
+        });
+        refetchPromptModelListData();
       });
-    }
-    // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
+      setPromptModelStream(newStream);
+    });
+
     return () => {
       if (promptModelStream) {
         promptModelStream.unsubscribe();
@@ -63,11 +57,15 @@ export const usePromptModel = () => {
         });
       }
     };
-  }, [projectUuid, promptModelStream]);
+  }
+
+  const subscriptionDep = [projectUuid, promptModelStream];
 
   return {
     promptModelUuid: params?.promptModelUuid as string,
     promptModelData,
     promptModelListData,
+    subscribeToPromptModel,
+    subscriptionDep,
   };
 };

@@ -24,25 +24,23 @@ export const useSamples = () => {
       enabled: params?.projectUuid != undefined && params?.projectUuid != null,
     });
 
-  // Subscribe to sample input changes
-  useEffect(() => {
-    if (!params?.projectUuid) return;
-    if (!sampleInputStream) {
-      createSupabaseClient().then(async (client) => {
-        const newStream = await subscribeSampleInputs(
-          client,
-          params?.projectUuid as string,
-          () => {
-            toast("Syncing...", {
-              toastId: "sync",
-            });
-            refetchSampleInputListData();
-          }
-        );
-        setSampleInputStream(newStream);
-      });
-    }
-    // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
+  function subscribeToSamples() {
+    if (!params?.projectUuid || sampleInputStream) return;
+    createSupabaseClient().then(async (client) => {
+      const newStream = await subscribeSampleInputs(
+        client,
+        params?.projectUuid as string,
+        () => {
+          toast.loading("Syncing...", {
+            toastId: "sync",
+            autoClose: 1000,
+          });
+          refetchSampleInputListData();
+        }
+      );
+      setSampleInputStream(newStream);
+    });
+
     return () => {
       if (sampleInputStream) {
         sampleInputStream.unsubscribe();
@@ -51,10 +49,14 @@ export const useSamples = () => {
         });
       }
     };
-  }, [params?.projectUuid, sampleInputStream]);
+  }
+
+  const subscriptionDep = [params?.projectUuid, sampleInputStream];
 
   return {
     sampleInputListData,
     refetchSampleInputListData,
+    subscribeToSamples,
+    subscriptionDep,
   };
 };
