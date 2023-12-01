@@ -5,7 +5,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ModalPortal } from "./ModalPortal";
 import dayjs from "dayjs";
 import { ChatSessionSelector } from "./select/ChatSessionSelector";
-import { arePrimitiveListsEqual, firstLetterToUppercase } from "@/utils";
+import {
+  arePrimitiveListsEqual,
+  cloneDeep,
+  firstLetterToUppercase,
+} from "@/utils";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -28,7 +32,7 @@ export function ChatUI({
   const [isLoading, setIsLoading] = useState(false);
   const [generatedMessage, setGeneratedMessage] = useState(null);
   const [selectedSessionUuid, setSelectedSessionUuid] = useState(null);
-  const { projectUuid } = useProject();
+  const { projectUuid, projectData } = useProject();
   const { chatModelUuid, chatModelData } = useChatModel();
   const { chatModelVersionListData, refetchChatModelVersionListData } =
     useChatModelVersion();
@@ -60,7 +64,6 @@ export function ChatUI({
 
   // Set initial session uuid
   useEffect(() => {
-    console.log(chatLogSessionListData);
     if (chatLogSessionListData?.length > 1) {
       setSelectedSessionUuid(chatLogSessionListData[1].uuid);
     } else {
@@ -118,9 +121,10 @@ export function ChatUI({
         ? selectedFunctions
         : originalVersionData?.functions,
       onNewData: async (data) => {
+        console.log(data);
         switch (data?.status) {
           case "completed":
-            refetchChatLogListData();
+            await refetchChatLogListData();
             setGeneratedMessage(null);
             setIsLoading(false);
             break;
@@ -139,7 +143,7 @@ export function ChatUI({
             version: data?.version,
             systemPrompt: systemPrompt,
             model: selectedModel,
-            functions: selectedFunctions,
+            functions: cloneDeep(selectedFunctions),
           });
         }
         if (data?.chat_log_session_uuid) {
@@ -153,7 +157,7 @@ export function ChatUI({
       },
     };
 
-    if (chatModelData?.online) {
+    if (projectData?.online) {
       await streamLocalChatModelRun(args);
     } else {
       await streamChatModelRun(args);
@@ -229,23 +233,26 @@ export function ChatUI({
                 </div>
               );
             })}
-            {generatedMessage != null && (
-              <div className="chat chat-start">
-                <div className="chat-header">
-                  Assistant
-                  <time className="text-xs opacity-50 ml-2">
-                    {dayjs().fromNow()}
-                  </time>
+            {generatedMessage != null &&
+              chatLogListData?.length > 0 &&
+              chatLogListData[chatLogListData?.length - 1]?.content !=
+                generatedMessage && (
+                <div className="chat chat-start">
+                  <div className="chat-header">
+                    Assistant
+                    <time className="text-xs opacity-50 ml-2">
+                      {dayjs().fromNow()}
+                    </time>
+                  </div>
+                  <div className="chat-bubble bg-base-300">
+                    {generatedMessage?.length == 0 ? (
+                      <div className="loading loading-dots loading-sm" />
+                    ) : (
+                      <p>{generatedMessage}</p>
+                    )}
+                  </div>
                 </div>
-                <div className="chat-bubble bg-base-300">
-                  {generatedMessage?.length == 0 ? (
-                    <div className="loading loading-dots loading-sm" />
-                  ) : (
-                    <p>{generatedMessage}</p>
-                  )}
-                </div>
-              </div>
-            )}
+              )}
           </div>
         </div>
         <ChatInput
@@ -312,7 +319,6 @@ const ChatInput = ({
   const disabledMessage = useMemo(() => {
     if (isLoading) return true;
     if (chatInput.length == 0) return true;
-    console.log(isNewVersion);
     if (isNewVersion) {
       if (modifiedSystemPrompt?.length == 0)
         return "Please enter a system prompt";

@@ -60,7 +60,7 @@ import { RunLogUI } from "@/components/RunLogUI";
 import { SlashCommandOptions } from "@/components/select/SlashCommandOptions";
 import { usePromptModel } from "@/hooks/usePromptModel";
 import { Monaco, MonacoDiffEditor } from "@monaco-editor/react";
-import { arePrimitiveListsEqual, countStretchNodes } from "@/utils";
+import { arePrimitiveListsEqual, cloneDeep, countStretchNodes } from "@/utils";
 import { TagsSelector } from "@/components/select/TagsSelector";
 import { ClickToEditInput } from "@/components/inputs/ClickToEditInput";
 import { VersionTag } from "@/components/VersionTag";
@@ -604,7 +604,8 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     promptModelVersionListData,
     refetchPromptModelVersionListData,
     selectedPromptModelVersionUuid,
-    isNewVersionReady,
+    isEqualToOriginal,
+    isEqualToCache,
   } = usePromptModelVersion();
   const {
     newVersionCache,
@@ -630,6 +631,10 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     setShowSlashOptions,
   } = usePromptModelVersionStore();
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
+  const isNewVersionReady = useMemo(
+    () => !isEqualToCache && !isEqualToOriginal,
+    [isEqualToCache, isEqualToOriginal]
+  );
 
   useHotkeys(
     "esc",
@@ -674,6 +679,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     });
     setSelectedPromptModelVersion(null);
     toast.update(toastId, {
+      containerId: "default",
       render: "Published successfully!",
       type: "success",
       isLoading: false,
@@ -804,7 +810,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
             {isCreateVariantOpen && (
               <div className="flex flex-row w-1/2 justify-between items-center mb-2">
                 <div className="flex flex-col items-start justify-center">
-                  {isNewVersionReady || !newVersionCache ? (
+                  {isEqualToOriginal || !isEqualToCache || !newVersionCache ? (
                     <p className="text-base-content font-bold text-lg">
                       New Version
                     </p>
@@ -832,7 +838,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     onClick={() => {
                       handleRun(true);
                     }}
-                    disabled={!isNewVersionReady && !newVersionCache}
+                    disabled={isEqualToOriginal}
                   >
                     <p>Run</p>
                     <Play size={20} weight="fill" />
@@ -1082,8 +1088,8 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                 isCreateVariantOpen ? (
                   <PromptDiffComponent
                     key={idx}
-                    prompt={prompt}
-                    setPrompts={setModifiedPrompts}
+                    originalPrompt={prompt}
+                    setModifiedPrompts={setModifiedPrompts}
                   />
                 ) : (
                   <PromptComponent key={idx} prompt={prompt} />
@@ -1235,7 +1241,7 @@ const PromptComponent = ({
     const contentHeight = editorRef.current?.getContentHeight();
     const maxHeight = windowHeight * 0.7;
     if (contentHeight) {
-      setHeight(Math.min(contentHeight, maxHeight));
+      setHeight(Math.min(contentHeight, maxHeight) + 20);
     }
   }, [editorRef.current?.getContentHeight()]);
 
@@ -1313,7 +1319,7 @@ const PromptComponent = ({
   );
 };
 
-const PromptDiffComponent = ({ prompt, setPrompts }) => {
+const PromptDiffComponent = ({ originalPrompt, setModifiedPrompts }) => {
   const windowHeight = useWindowHeight();
   const [open, setOpen] = useState(true);
   const [height, setHeight] = useState(30);
@@ -1321,6 +1327,11 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
   const modifiedEditorRef = useRef<editor.IStandaloneCodeEditor>(null);
   const { setFocusedEditor, modifiedPrompts, setShowSlashOptions } =
     usePromptModelVersionStore();
+  const modifiedPromptsRef = useRef(modifiedPrompts);
+
+  useEffect(() => {
+    modifiedPromptsRef.current = modifiedPrompts; // Keep a reference to the latest modifiedPrompts
+  }, [modifiedPrompts]);
 
   const handleEditorDidMount = (editor: MonacoDiffEditor, monaco: Monaco) => {
     originalEditorRef.current = editor.getOriginalEditor();
@@ -1334,39 +1345,49 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
       setFocusedEditor(modifiedEditorRef.current);
     });
 
-    modifiedEditorRef.current.onDidChangeModelContent(() => {
-      const newPrompts = [...modifiedPrompts];
-      if (newPrompts.length < prompt.step) {
-        newPrompts.push({
-          role: prompt.role,
-          step: prompt.step,
-          content: modifiedEditorRef.current?.getValue(),
-        });
-      } else {
-        newPrompts[prompt.step - 1].content =
-          modifiedEditorRef.current?.getValue();
+    modifiedEditorRef.current.onDidChangeModelContent(
+      (e: editor.IModelContentChangedEvent) => {
+        const newPrompts = [...modifiedPromptsRef.current];
+
+        if (newPrompts.length < originalPrompt.step) {
+          newPrompts.push({
+            role: originalPrompt.role,
+            step: originalPrompt.step,
+            content: modifiedEditorRef.current?.getValue(),
+          });
+        } else {
+          newPrompts[originalPrompt.step - 1].content =
+            modifiedEditorRef.current?.getValue();
+        }
+        setModifiedPrompts(newPrompts);
+        // Set height
+        const originalHeight = originalEditorRef.current?.getContentHeight();
+        const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
+        const maxHeight = windowHeight * 0.7;
+        if (modifiedHeight > originalHeight) {
+          setHeight(Math.min(modifiedHeight, maxHeight) + 20);
+        } else {
+          setHeight(Math.min(originalHeight, maxHeight) + 20);
+        }
       }
-      setPrompts(newPrompts);
-      const originalHeight = originalEditorRef.current?.getContentHeight();
-      const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
-      const maxHeight = windowHeight * 0.7;
-      if (modifiedHeight > originalHeight) {
-        setHeight(Math.min(modifiedHeight, maxHeight));
-      } else {
-        setHeight(Math.min(originalHeight, maxHeight));
-      }
-    });
+    );
   };
 
   useEffect(() => {
+    // Set height
     const originalHeight = originalEditorRef.current?.getContentHeight();
+    const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
     const maxHeight = windowHeight * 0.7;
-    setHeight(Math.min(originalHeight, maxHeight));
-  }, []);
+    if (modifiedHeight > originalHeight) {
+      setHeight(Math.min(modifiedHeight, maxHeight) + 20);
+    } else {
+      setHeight(Math.min(originalHeight, maxHeight) + 20);
+    }
+  }, [open]);
 
   return (
     <motion.div
-      key={prompt.step}
+      key={originalPrompt.step}
       className="w-full h-full flex flex-col justify-start items-center bg-base-100 rounded-box"
       animate={{ height: open ? "auto" : "2.5rem" }}
     >
@@ -1377,7 +1398,7 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
         onClick={() => setOpen(!open)}
       >
         <p className="text-base-content font-semibold">
-          #{prompt.step}. {prompt.role}
+          #{originalPrompt.step}. {originalPrompt.role}
         </p>
         <CaretDown
           className={classNames(
@@ -1389,8 +1410,8 @@ const PromptDiffComponent = ({ prompt, setPrompts }) => {
       {open && (
         <PromptDiffEditor
           className="gap-x-8"
-          original={prompt.content}
-          modified={prompt.content}
+          original={originalPrompt.content}
+          modified={originalPrompt.content}
           loading={<div className="loading loading-xs loading-dots" />}
           onMount={handleEditorDidMount}
           height={height}

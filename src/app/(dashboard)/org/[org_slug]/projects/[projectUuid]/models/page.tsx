@@ -310,6 +310,7 @@ function EditModelNameModal({
     setIsOpen(false);
     setMenuData(null);
     toast.update(toastId, {
+      containerId: "default",
       render: "Saved!",
       type: "success",
       isLoading: false,
@@ -377,6 +378,7 @@ function DeleteModelModal({
     setIsOpen(false);
     setMenuData(null);
     toast.update(toastId, {
+      containerId: "default",
       render: "Deleted!",
       type: "success",
       isLoading: false,

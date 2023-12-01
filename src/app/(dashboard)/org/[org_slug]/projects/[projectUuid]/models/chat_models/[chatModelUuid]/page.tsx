@@ -503,6 +503,8 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
   }, []);
 
   useEffect(() => {
+    if (!selectedChatModelVersion || !chatModelVersionListData) return;
+    if (selectedChatModelVersion == originalVersionData?.version) return;
     const data = chatModelVersionListData?.find(
       (version) => version.version === selectedChatModelVersion
     );
@@ -523,32 +525,50 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     }
   }, [selectedChatModelVersion, originalVersionData]);
 
-  const isNewVersionReady = useMemo(() => {
-    if (!isCreateVariantOpen) return false;
-    if (
-      originalVersionData?.system_prompt == modifiedSystemPrompt &&
-      originalVersionData?.model == selectedModel &&
-      arePrimitiveListsEqual(originalVersionData?.functions, selectedFunctions)
-    )
-      return false;
+  const isEqualToOriginal = useMemo(() => {
+    if (!isCreateVariantOpen) return true;
 
-    if (newVersionCache) {
-      if (
-        newVersionCache?.systemPrompt == modifiedSystemPrompt &&
-        newVersionCache?.model == selectedModel &&
-        arePrimitiveListsEqual(newVersionCache?.functions, selectedFunctions)
-      )
-        return false;
-    }
-    return true;
+    const isSystemPromptEqual =
+      originalVersionData?.system_prompt == modifiedSystemPrompt;
+    const isModelEqual = originalVersionData?.model == selectedModel;
+    const areFunctionsEqual = arePrimitiveListsEqual(
+      originalVersionData?.functions ?? [],
+      selectedFunctions
+    );
+
+    return isSystemPromptEqual && isModelEqual && areFunctionsEqual;
   }, [
     isCreateVariantOpen,
     originalVersionData,
-    newVersionCache,
-    selectedModel,
     modifiedSystemPrompt,
+    selectedModel,
     selectedFunctions,
   ]);
+
+  const isEqualToCache = useMemo(() => {
+    if (!isCreateVariantOpen || !newVersionCache) return true;
+
+    const isSystemPromptEqual =
+      newVersionCache?.systemPrompt == modifiedSystemPrompt;
+    const isModelEqual = newVersionCache?.model == selectedModel;
+    const areFunctionsEqual = arePrimitiveListsEqual(
+      newVersionCache?.functions,
+      selectedFunctions
+    );
+
+    return isSystemPromptEqual && isModelEqual && areFunctionsEqual;
+  }, [
+    isCreateVariantOpen,
+    newVersionCache,
+    modifiedSystemPrompt,
+    selectedModel,
+    selectedFunctions,
+  ]);
+
+  const isNewVersionReady = useMemo(
+    () => !isEqualToCache && !isEqualToOriginal,
+    [isEqualToCache, isEqualToOriginal]
+  );
 
   useHotkeys(
     "esc",
@@ -591,6 +611,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     });
     setSelectedChatModelVersion(null);
     toast.update(toastId, {
+      containerId: "default",
       render: "Published successfully!",
       type: "success",
       isLoading: false,
@@ -701,7 +722,9 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
               <div className="flex flex-row w-1/2 justify-between items-center mb-2">
                 <div className="flex flex-row justify-start items-center gap-x-3">
                   <div className="flex flex-col items-start justify-center">
-                    {isNewVersionReady || !newVersionCache ? (
+                    {isEqualToOriginal ||
+                    !isEqualToCache ||
+                    !newVersionCache ? (
                       <p className="text-base-content font-medium text-lg">
                         New Version
                       </p>
@@ -861,7 +884,9 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
               {isCreateVariantOpen && (
                 <ChatUI
                   versionUuid={
-                    isNewVersionReady ? "new" : newVersionCache?.uuid ?? "new"
+                    isEqualToOriginal || !isEqualToCache || !newVersionCache
+                      ? "new"
+                      : newVersionCache?.uuid
                   }
                   className="!w-1/2"
                 />
@@ -960,7 +985,7 @@ const PromptComponent = ({
     editorRef.current = editor;
 
     if (contentHeight) {
-      setHeight(contentHeight);
+      setHeight(contentHeight + 20);
     }
 
     editor.onDidFocusEditorWidget(() => {
@@ -973,7 +998,7 @@ const PromptComponent = ({
     const minHeight = 200;
     const maxHeight = windowHeight * 0.7;
     if (contentHeight) {
-      setHeight(Math.min(Math.max(minHeight, contentHeight), maxHeight));
+      setHeight(Math.min(Math.max(minHeight, contentHeight), maxHeight) + 20);
     }
   }, [editorRef.current?.getContentHeight()]);
 
@@ -1026,7 +1051,7 @@ const PromptDiffComponent = ({
     const originalHeight = originalEditorRef.current?.getContentHeight();
     const maxHeight = windowHeight * 0.7;
     if (originalHeight) {
-      setHeight(Math.min(originalHeight, maxHeight));
+      setHeight(Math.min(originalHeight, maxHeight) + 20);
     }
     modifiedEditorRef.current?.onDidFocusEditorWidget(() => {
       setFocusedEditor(modifiedEditorRef.current);
@@ -1037,7 +1062,7 @@ const PromptDiffComponent = ({
       const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
       const maxHeight = windowHeight * 0.7;
       if (modifiedHeight) {
-        setHeight(Math.min(modifiedHeight, maxHeight));
+        setHeight(Math.min(modifiedHeight, maxHeight) + 20);
       }
     });
   };
@@ -1047,9 +1072,9 @@ const PromptDiffComponent = ({
     const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
     const maxHeight = windowHeight * 0.7;
     if (modifiedHeight > originalHeight) {
-      setHeight(Math.min(modifiedHeight, maxHeight));
+      setHeight(Math.min(modifiedHeight, maxHeight) + 20);
     } else {
-      setHeight(Math.min(originalHeight, maxHeight));
+      setHeight(Math.min(originalHeight, maxHeight) + 20);
     }
   }, [originalEditorRef.current, modifiedEditorRef.current]);
 

@@ -2,8 +2,10 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "react-toastify/dist/ReactToastify.css";
-import { ToastContainer } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 import { initAmplitude } from "@/services/amplitude";
+import { RealtimeProvider } from "./providers/RealtimeProvider";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,10 +31,11 @@ export function Providers({ children }) {
         rtl={false}
         pauseOnFocusLoss={false}
         pauseOnHover={false}
+        containerId="default"
         theme="dark"
       />
       {/* <ThemeProvider> */}
-      {children}
+      <RealtimeProvider>{children}</RealtimeProvider>
       {/* </ThemeProvider> */}
     </QueryClientProvider>
   );

@@ -6,7 +6,7 @@ import { useRealtimeStore } from "@/stores/realtimeStore";
 import { useOrganization } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { toast } from "react-toastify";
 
 export const useProject = () => {
@@ -22,7 +22,7 @@ export const useProject = () => {
     enabled: organization != undefined && organization != null,
   });
 
-  const { data: projectData } = useQuery({
+  const { data: projectData, refetch: refetchProjectData } = useQuery({
     queryKey: ["projectData", { projectUuid: params?.projectUuid }],
     queryFn: async () =>
       await fetchProject(
@@ -32,23 +32,20 @@ export const useProject = () => {
     enabled: params?.projectUuid != undefined && params?.projectUuid != null,
   });
 
-  // Subscribe to project changes
-  useEffect(() => {
-    if (!params?.projectUuid) return;
-    if (!projectStream) {
-      createSupabaseClient().then(async (client) => {
-        const newStream = await subscribeProject(
-          client,
-          organization?.id,
-          () => {
-            toast("Syncing project...");
-            refetchProjectListData();
-          }
-        );
-        setProjectStream(newStream);
+  function subscribeToProject() {
+    if (!params?.projectUuid || !organization?.id || projectStream) return;
+    createSupabaseClient().then(async (client) => {
+      const newStream = await subscribeProject(client, organization?.id, () => {
+        toast.loading("Syncing...", {
+          toastId: "sync",
+          autoClose: 1000,
+        });
+        refetchProjectListData();
+        refetchProjectData();
       });
-    }
-    // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
+      setProjectStream(newStream);
+    });
+
     return () => {
       if (projectStream) {
         projectStream.unsubscribe();
@@ -57,12 +54,20 @@ export const useProject = () => {
         });
       }
     };
-  }, [params?.projectUuid, projectStream]);
+  }
+
+  const subscriptionDep = [
+    params?.projectUuid,
+    organization?.id,
+    projectStream,
+  ];
 
   return {
     projectData,
     projectListData,
     refetchProjectListData,
     projectUuid: params?.projectUuid as string,
+    subscribeToProject,
+    subscriptionDep,
   };
 };

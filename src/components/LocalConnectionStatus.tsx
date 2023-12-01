@@ -17,7 +17,7 @@ export function LocalConnectionStatus({
     if (statusType == "connection") {
       return "bg-green-500";
     } else if (statusType == "usage") {
-      return "bg-secondary";
+      return "bg-primary";
     }
   }, [online, statusType]);
 

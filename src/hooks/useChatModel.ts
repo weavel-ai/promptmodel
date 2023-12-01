@@ -35,19 +35,19 @@ export const useChatModel = () => {
     );
   }, [chatModelListData, params?.chatModelUuid]);
 
-  // Subscribe to ChatModel changes
-  useEffect(() => {
-    if (!projectUuid) return;
-    if (!chatModelStream) {
-      createSupabaseClient().then(async (client) => {
-        const newStream = await subscribeChatModel(client, projectUuid, () => {
-          toast("Syncing ChatModel...");
-          refetchChatModelListData();
+  function subscribeToChatModel() {
+    if (!projectUuid || chatModelStream) return;
+    createSupabaseClient().then(async (client) => {
+      const newStream = await subscribeChatModel(client, projectUuid, () => {
+        toast.loading("Syncing...", {
+          toastId: "sync",
+          autoClose: 1000,
         });
-        setChatModelStream(newStream);
+        refetchChatModelListData();
       });
-    }
-    // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
+      setChatModelStream(newStream);
+    });
+
     return () => {
       if (chatModelStream) {
         chatModelStream.unsubscribe();
@@ -56,11 +56,15 @@ export const useChatModel = () => {
         });
       }
     };
-  }, [projectUuid, chatModelStream]);
+  }
+
+  const subscriptionDep = [projectUuid, chatModelStream];
 
   return {
     chatModelUuid: params?.chatModelUuid as string,
     chatModelData,
     chatModelListData,
+    subscribeToChatModel,
+    subscriptionDep,
   };
 };

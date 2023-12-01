@@ -44,7 +44,10 @@ export async function subscribeProject(
         table: "project",
         filter: `organization_id=eq.${organizationId}`,
       },
-      (payload) => {
+      (payload: any) => {
+        if (payload.new.cli_access_key != null && payload.new.online == false) {
+          return;
+        }
         onUpdate();
       }
     )

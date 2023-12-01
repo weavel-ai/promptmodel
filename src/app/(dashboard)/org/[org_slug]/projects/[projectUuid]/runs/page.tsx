@@ -93,51 +93,48 @@ export default function Page() {
     enabled: !!projectData?.uuid,
   });
 
-  // Subscribe run logs
-  useEffect(() => {
+  function subscribeToRunLogs() {
     if (!projectUuid) return;
-    if (isRealtime) {
-      createSupabaseClient().then(async (client) => {
-        const runLogsStream = await subscribeRunLogs(
-          client,
-          projectUuid,
-          () => {
-            refetchRunLogCountData();
-            refetchRunLogListData();
-          }
-        );
-        // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
-        return () => {
-          if (runLogsStream) {
-            runLogsStream.unsubscribe();
-            client.removeChannel(runLogsStream);
-          }
-        };
+    createSupabaseClient().then(async (client) => {
+      const runLogsStream = await subscribeRunLogs(client, projectUuid, () => {
+        refetchRunLogCountData();
+        refetchRunLogListData();
       });
-    }
-  }, [projectUuid, isRealtime]);
+      // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
+      return () => {
+        if (runLogsStream) {
+          runLogsStream.unsubscribe();
+          client.removeChannel(runLogsStream);
+        }
+      };
+    });
+  }
 
-  // Subscribe chat logs
-  useEffect(() => {
+  function subscribeToChatLogs() {
     if (!projectUuid) return;
+    createSupabaseClient().then(async (client) => {
+      const chatLogsStream = await subscribeChatLogs(
+        client,
+        projectUuid,
+        () => {
+          refetchChatLogCountData();
+          refetchChatLogListData();
+        }
+      );
+      // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
+      return () => {
+        if (chatLogsStream) {
+          chatLogsStream.unsubscribe();
+          client.removeChannel(chatLogsStream);
+        }
+      };
+    });
+  }
+
+  useEffect(() => {
     if (isRealtime) {
-      createSupabaseClient().then(async (client) => {
-        const chatLogsStream = await subscribeChatLogs(
-          client,
-          projectUuid,
-          () => {
-            refetchChatLogListData();
-            refetchChatLogCountData();
-          }
-        );
-        // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
-        return () => {
-          if (chatLogsStream) {
-            chatLogsStream.unsubscribe();
-            client.removeChannel(chatLogsStream);
-          }
-        };
-      });
+      subscribeToRunLogs();
+      subscribeToChatLogs();
     }
   }, [projectUuid, isRealtime]);
 

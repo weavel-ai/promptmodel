@@ -24,23 +24,23 @@ export const useFunctions = () => {
     }
   );
 
-  // Subscribe to function changes
-  useEffect(() => {
-    if (!params?.projectUuid) return;
-    if (!functionStream) {
-      createSupabaseClient().then(async (client) => {
-        const newStream = await subscribeFunctions(
-          client,
-          params?.projectUuid as string,
-          () => {
-            toast("Syncing functions...");
-            refetchFunctionListData();
-          }
-        );
-        setFunctionStream(newStream);
-      });
-    }
-    // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
+  function subscribeToFunctions() {
+    if (!params?.projectUuid || functionStream) return;
+    createSupabaseClient().then(async (client) => {
+      const newStream = await subscribeFunctions(
+        client,
+        params?.projectUuid as string,
+        () => {
+          toast.loading("Syncing...", {
+            toastId: "sync",
+            autoClose: 1000,
+          });
+          refetchFunctionListData();
+        }
+      );
+      setFunctionStream(newStream);
+    });
+
     return () => {
       if (functionStream) {
         functionStream.unsubscribe();
@@ -49,10 +49,14 @@ export const useFunctions = () => {
         });
       }
     };
-  }, [params?.projectUuid, functionStream]);
+  }
+
+  const subscriptionDep = [params?.projectUuid, functionStream];
 
   return {
     functionListData,
     refetchFunctionListData,
+    subscribeToFunctions,
+    subscriptionDep,
   };
 };
