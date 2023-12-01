@@ -9,7 +9,10 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.status import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
+    HTTP_403_FORBIDDEN,
     HTTP_500_INTERNAL_SERVER_ERROR,
+    HTTP_404_NOT_FOUND,
+    HTTP_406_NOT_ACCEPTABLE,
 )
 
 from utils.security import get_project
@@ -69,9 +72,13 @@ async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
             .data
         )
         if len(project) == 0:
-            raise ValueError("There is no project")
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND, detail="There is no project"
+            )
         if project[0]["cli_access_key"] is None:
-            raise ValueError("There is no connection")
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
+            )
 
         cli_access_key = project[0]["cli_access_key"]
 
@@ -85,12 +92,13 @@ async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
             logger.error(exc)
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
-    except ValueError as ve:
-        logger.error(ve)
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST) from ve
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception as exc:
         logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
 
 
 @router.get("/list_chat_models")
@@ -120,9 +128,13 @@ async def list_chat_models(project_uuid: str):
             .data
         )
         if len(project) == 0:
-            raise ValueError("There is no project")
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND, detail="There is no project"
+            )
         if project[0]["cli_access_key"] is None:
-            raise ValueError("There is no connection")
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
+            )
 
         cli_access_key = project[0]["cli_access_key"]
         response = await websocket_manager.request(
@@ -132,9 +144,11 @@ async def list_chat_models(project_uuid: str):
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
         return JSONResponse(response, status_code=HTTP_200_OK)
 
-    except ValueError as ve:
-        logger.error(ve)
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST) from ve
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as exc:
         logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc

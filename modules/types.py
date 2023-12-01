@@ -55,4 +55,4 @@ class LocalTaskErrorType(str, Enum):
 class InstanceType(str, Enum):
     ChatLog = "ChatLog"
     RunLog = "RunLog"
-    Session = "Session"
+    ChatLogSession = "ChatLogSession"

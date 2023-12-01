@@ -25,7 +25,6 @@ class LocalTask(str, Enum):
 class ServerTask(str, Enum):
     UPDATE_RESULT_RUN = "UPDATE_RESULT_RUN"
     UPDATE_RESULT_CHAT_RUN = "UPDATE_RESULT_CHAT_RUN"
-    LOCAL_UPDATE_ALERT = "LOCAL_UPDATE_ALERT"
 
     SYNC_CODE = "SYNC_CODE"
 
@@ -214,29 +213,11 @@ class ConnectionManager:
 
     async def task_handler(self, token: str, data: dict):
         """Handles the message received from the agent."""
-        if data["type"] == ServerTask.LOCAL_UPDATE_ALERT:
+        if data["type"] == ServerTask.SYNC_CODE:
             try:
                 project = (
                     supabase.table("project")
-                    .update({"sync": False})
-                    .eq("cli_access_key", token)
-                    .execute()
-                ).data
-
-                if len(project) == 0:
-                    logger.error(f"Dev branch not found for token {token}")
-                    return
-
-                project_name = project[0]["name"]
-                logger.info(f"Project {project_name} sync columm updated to False")
-
-            except Exception as error:
-                logger.error(f"Error updating Dev branch sync columm: {error}")
-        elif data["type"] == ServerTask.SYNC_CODE:
-            try:
-                project = (
-                    supabase.table("project")
-                    .update({"sync": False})
+                    .select("*")
                     .eq("cli_access_key", token)
                     .execute()
                 ).data
