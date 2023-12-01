@@ -263,7 +263,7 @@ async def run_cloud_prompt_model(project_uuid: str, run_config: PromptModelRunCo
         # add function schemas
         function_schemas = (
             supabase.table("function_schema")
-            .select("*")
+            .select("name, description, parameters, mock_response")
             .eq("project_uuid", project_uuid)
             .in_("name", run_config.functions)
             .execute()

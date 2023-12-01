@@ -62,7 +62,6 @@ class ConnectionManager:
                 data = json.loads(message)
                 logger.debug(f"Received data : {data}")
                 correlation_id = data.get("correlation_id")
-                # print("Received", data)
 
                 if correlation_id and correlation_id in self.pending_requests:
                     await self.responses[correlation_id].put(data)
@@ -194,11 +193,6 @@ class ConnectionManager:
                 await asyncio.wait_for(event.wait(), timeout=60)
                 while not stream_end:
                     response = await self.responses[correlation_id].get()
-                    # print(response)
-                    # if "parsed_outputs" in response:
-                    #     print("type of parsed outputs", type(response["parsed_outputs"]))
-                    #     print(json.dumps(response))
-                    #     print(type(json.dumps(response)))
                     if response["status"] in ["completed", "failed"]:
                         stream_end = True
                     if response["status"] == "failed":
