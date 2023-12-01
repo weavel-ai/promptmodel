@@ -75,12 +75,17 @@ export const DeploymentNavbar = (props: NavbarProps) => {
   }, [pathname]);
 
   useEffect(() => {
-    if (organization?.name && organization?.slug && orgData) {
-      createSupabaseClient().then(async (supabase) => {
-        if (
-          orgData.name != organization?.name ||
-          orgData.slug != organization?.slug
-        ) {
+    if (
+      organization?.name &&
+      organization?.slug &&
+      orgData?.name &&
+      orgData?.slug
+    ) {
+      if (
+        orgData.name != organization?.name ||
+        orgData.slug != organization?.slug
+      ) {
+        createSupabaseClient().then(async (supabase) => {
           await updateOrganization(
             supabase,
             organization?.id,
@@ -94,8 +99,8 @@ export const DeploymentNavbar = (props: NavbarProps) => {
           );
           router.push(newPathname);
           refetchOrgData();
-        }
-      });
+        });
+      }
     }
   }, [orgData, organization?.name, organization?.slug]);
 

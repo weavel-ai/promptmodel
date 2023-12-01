@@ -604,7 +604,8 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     promptModelVersionListData,
     refetchPromptModelVersionListData,
     selectedPromptModelVersionUuid,
-    isNewVersionReady,
+    isEqualToOriginal,
+    isEqualToCache,
   } = usePromptModelVersion();
   const {
     newVersionCache,
@@ -630,6 +631,10 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     setShowSlashOptions,
   } = usePromptModelVersionStore();
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
+  const isNewVersionReady = useMemo(
+    () => !isEqualToCache && !isEqualToOriginal,
+    [isEqualToCache, isEqualToOriginal]
+  );
 
   useHotkeys(
     "esc",
@@ -674,6 +679,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     });
     setSelectedPromptModelVersion(null);
     toast.update(toastId, {
+      containerId: "default",
       render: "Published successfully!",
       type: "success",
       isLoading: false,
@@ -804,7 +810,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
             {isCreateVariantOpen && (
               <div className="flex flex-row w-1/2 justify-between items-center mb-2">
                 <div className="flex flex-col items-start justify-center">
-                  {isNewVersionReady || !newVersionCache ? (
+                  {isEqualToOriginal || !isEqualToCache || !newVersionCache ? (
                     <p className="text-base-content font-bold text-lg">
                       New Version
                     </p>
@@ -832,7 +838,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     onClick={() => {
                       handleRun(true);
                     }}
-                    disabled={!isNewVersionReady && !newVersionCache}
+                    disabled={isEqualToOriginal}
                   >
                     <p>Run</p>
                     <Play size={20} weight="fill" />

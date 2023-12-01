@@ -77,6 +77,7 @@ export const CreateSampleInputModal = ({
       content
     );
     toast.update(toastId, {
+      containerId: "default",
       render: `Created ${name}!`,
       type: "success",
       isLoading: false,
