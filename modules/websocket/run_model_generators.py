@@ -111,7 +111,7 @@ async def run_local_prompt_model_generator(
     # add function schemas
     function_schemas = (
         supabase.table("function_schema")
-        .select("*")
+        .select("name, description, parameters, mock_response")
         .eq("project_uuid", project["uuid"])
         .in_("name", run_config.functions)
         .execute()
@@ -304,9 +304,7 @@ async def run_local_chat_model_generator(
             .execute()
             .data
         )
-        old_messages.extend(
-            [{"role": log["role"], "content": log["content"]} for log in chat_logs]
-        )
+        old_messages += chat_logs
         # delete None values
         old_messages = [
             {k: v for k, v in message.items() if v is not None}
@@ -316,7 +314,7 @@ async def run_local_chat_model_generator(
     # add function schemas
     function_schemas = (
         supabase.table("function_schema")
-        .select("*")
+        .select("name, description, parameters, mock_response")
         .eq("project_uuid", project["uuid"])
         .in_("name", run_config.functions)
         .execute()
@@ -560,6 +558,7 @@ def save_chat_logs(
             # save response messages
             for message in response_messages:
                 message["tool_calls"] = None
+                message["name"] = None if "name" not in message else message["name"]
                 if "function_call" in message:
                     message["tool_calls"] = message["function_call"]
                     del message["function_call"]
@@ -582,10 +581,10 @@ def save_chat_logs(
         for message in response_messages:
             message["session_uuid"] = session_uuid
             message["tool_calls"] = None
-            message["name"] = None
+            message["name"] = None if "name" not in message else message["name"]
             if "function_call" in message:
                 message["tool_calls"] = message["function_call"]
                 del message["function_call"]
-        print(response_messages)
+
         supabase.table("chat_log").insert(response_messages).execute()
         return
