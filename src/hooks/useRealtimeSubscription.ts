@@ -4,7 +4,6 @@ import { useChatModel } from "./useChatModel";
 import { useFunctions } from "./useFunction";
 import { usePromptModel } from "./usePromptModel";
 import { useSamples } from "./useSample";
-import { toast } from "react-toastify";
 
 export function useRealtimeSubscription() {
   const { subscribeToProject, subscriptionDep: projectSubscriptionDep } =

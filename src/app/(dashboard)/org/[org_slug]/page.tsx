@@ -8,6 +8,7 @@ import classNames from "classnames";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { toast } from "react-toastify";
 
 export default function Page() {
   const pathname = usePathname();
