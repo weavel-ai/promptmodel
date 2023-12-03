@@ -326,9 +326,9 @@ const LogsUI = ({ logData, type }) => {
             </thead>
 
             <tbody className="bg-base-100">
-              {logData?.map((log) => {
+              {logData?.map((log, idx) => {
                 return (
-                  <tr className="border-b-2 border-base-300">
+                  <tr key={idx} className="border-b-2 border-base-300">
                     <td className="align-top">
                       {isPromptModel
                         ? log.prompt_model_name

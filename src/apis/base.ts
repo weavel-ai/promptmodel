@@ -126,7 +126,7 @@ export const useSupabaseClient = () => {
         supabaseWithoutToken: client,
       })
     );
-  }, []);
+  }, [createSupabaseClient, status]);
 
   return {
     ...status,

@@ -20,7 +20,7 @@ export default function Page() {
     if (projectListData.length === 0) {
       router.push(`${pathname}/projects/new`);
     }
-  }, [projectListData]);
+  }, [projectListData, pathname, router]);
 
   return (
     <div className="w-full h-full max-w-6xl">
