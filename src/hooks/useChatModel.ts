@@ -11,7 +11,7 @@ import { toast } from "react-toastify";
 
 export const useChatModel = () => {
   const params = useParams();
-  const { projectUuid } = useProject();
+  const { projectUuid, syncToast } = useProject();
   const { createSupabaseClient } = useSupabaseClient();
   const { chatModelStream, setChatModelStream } = useRealtimeStore();
 
@@ -38,13 +38,15 @@ export const useChatModel = () => {
   function subscribeToChatModel() {
     if (!projectUuid || chatModelStream) return;
     createSupabaseClient().then(async (client) => {
-      const newStream = await subscribeChatModel(client, projectUuid, () => {
-        toast.loading("Syncing...", {
-          toastId: "sync",
-          autoClose: 1000,
-        });
-        refetchChatModelListData();
-      });
+      const newStream = await subscribeChatModel(
+        client,
+        projectUuid,
+        async () => {
+          syncToast.open();
+          await refetchChatModelListData();
+          syncToast.close();
+        }
+      );
       setChatModelStream(newStream);
     });
 

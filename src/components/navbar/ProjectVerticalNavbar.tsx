@@ -3,6 +3,7 @@
 import { useOrgData } from "@/hooks/useOrgData";
 import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
 import { usePromptModelVersionStore } from "@/stores/promptModelVersionStore";
+import { useOrganization } from "@clerk/nextjs";
 import {
   DiscordLogo,
   GearSix,
@@ -97,13 +98,13 @@ const VerticalNavbarItem = ({
 }) => {
   const pathname = usePathname();
   const params = useParams();
-  const { orgData } = useOrgData();
+  const { organization } = useOrganization();
 
   return (
     <Link
       href={
         href ??
-        `/org/${orgData?.slug}/projects/${params?.projectUuid}${subPath}`
+        `/org/${organization?.slug}/projects/${params?.projectUuid}${subPath}`
       }
       target={external && "_blank"}
       className={classNames(

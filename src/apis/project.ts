@@ -32,7 +32,7 @@ export async function fetchProject(
 export async function subscribeProject(
   supabaseClient: SupabaseClient,
   organizationId: string,
-  onUpdate: () => void
+  onUpdate: () => Promise<void>
 ): Promise<RealtimeChannel> {
   const projectStream = supabaseClient
     .channel("any")
@@ -44,11 +44,11 @@ export async function subscribeProject(
         table: "project",
         filter: `organization_id=eq.${organizationId}`,
       },
-      (payload: any) => {
+      async (payload: any) => {
         if (payload.new.cli_access_key != null && payload.new.online == false) {
           return;
         }
-        onUpdate();
+        await onUpdate();
       }
     )
     .subscribe();

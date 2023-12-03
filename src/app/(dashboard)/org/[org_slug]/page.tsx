@@ -8,6 +8,7 @@ import classNames from "classnames";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { toast } from "react-toastify";
 
 export default function Page() {
   const pathname = usePathname();
@@ -19,7 +20,7 @@ export default function Page() {
     if (projectListData.length === 0) {
       router.push(`${pathname}/projects/new`);
     }
-  }, [projectListData]);
+  }, [projectListData, pathname, router]);
 
   return (
     <div className="w-full h-full max-w-6xl">

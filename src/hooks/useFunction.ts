@@ -4,13 +4,13 @@ import { fetchVersionRunLogs } from "@/apis/runlog";
 import { useRealtimeStore } from "@/stores/realtimeStore";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { useEffect } from "react";
-import { toast } from "react-toastify";
+import { useProject } from "./useProject";
 
 export const useFunctions = () => {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
   const { functionStream, setFunctionStream } = useRealtimeStore();
+  const { syncToast } = useProject();
 
   const { data: functionListData, refetch: refetchFunctionListData } = useQuery(
     {
@@ -30,12 +30,10 @@ export const useFunctions = () => {
       const newStream = await subscribeFunctions(
         client,
         params?.projectUuid as string,
-        () => {
-          toast.loading("Syncing...", {
-            toastId: "sync",
-            autoClose: 1000,
-          });
-          refetchFunctionListData();
+        async () => {
+          syncToast.open();
+          await refetchFunctionListData();
+          syncToast.close();
         }
       );
       setFunctionStream(newStream);

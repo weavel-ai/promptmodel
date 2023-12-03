@@ -62,8 +62,9 @@ export function NewPromptButton({ prompts, setPrompts }) {
             "btn-group btn-group-vertical"
           )}
         >
-          {["system", "user", "assistant"].map((role: string) => (
+          {["system", "user", "assistant"].map((role: string, idx) => (
             <button
+              key={idx}
               className="text-sm text-start hover:bg-base-content hover:text-base-100 rounded-lg px-3 py-2"
               onClick={() => {
                 const newPrompts = [...prompts];

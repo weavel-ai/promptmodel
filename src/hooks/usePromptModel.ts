@@ -11,7 +11,7 @@ import { useRealtimeStore } from "@/stores/realtimeStore";
 
 export const usePromptModel = () => {
   const params = useParams();
-  const { projectUuid } = useProject();
+  const { projectUuid, syncToast } = useProject();
   const { createSupabaseClient } = useSupabaseClient();
   const { promptModelStream, setPromptModelStream } = useRealtimeStore();
 
@@ -39,13 +39,15 @@ export const usePromptModel = () => {
   function subscribeToPromptModel() {
     if (!projectUuid || promptModelStream) return;
     createSupabaseClient().then(async (client) => {
-      const newStream = await subscribePromptModel(client, projectUuid, () => {
-        toast.loading("Syncing...", {
-          toastId: "sync",
-          autoClose: 1000,
-        });
-        refetchPromptModelListData();
-      });
+      const newStream = await subscribePromptModel(
+        client,
+        projectUuid,
+        async () => {
+          syncToast.open();
+          await refetchPromptModelListData();
+          syncToast.close();
+        }
+      );
       setPromptModelStream(newStream);
     });
 
