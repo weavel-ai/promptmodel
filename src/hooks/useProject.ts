@@ -6,7 +6,7 @@ import { useRealtimeStore } from "@/stores/realtimeStore";
 import { useOrganization } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
 export const useProject = () => {
@@ -14,6 +14,8 @@ export const useProject = () => {
   const { organization } = useOrganization();
   const { createSupabaseClient } = useSupabaseClient();
   const { projectStream, setProjectStream } = useRealtimeStore();
+  const [toastId, setToastId] = useState(null);
+  const isOnlineRef = useRef(false);
 
   const { data: projectListData, refetch: refetchProjectListData } = useQuery({
     queryKey: ["projectListData", { orgId: organization?.id }],
@@ -32,17 +34,39 @@ export const useProject = () => {
     enabled: params?.projectUuid != undefined && params?.projectUuid != null,
   });
 
+  useEffect(() => {
+    isOnlineRef.current = projectData?.online;
+  }, [projectData?.online]);
+
+  const syncToast = {
+    open: useCallback(() => {
+      if (isOnlineRef.current && !toast.isActive(toastId)) {
+        const toastId = toast.loading("Syncing..", {
+          toastId: "sync",
+          autoClose: 2000,
+        });
+        console.log("toastId", toastId);
+        setToastId(toastId);
+      }
+    }, [isOnlineRef.current, toastId]),
+    close: useCallback(() => {
+      toast.dismiss("sync");
+    }, [toastId]),
+  };
+
   function subscribeToProject() {
     if (!params?.projectUuid || !organization?.id || projectStream) return;
     createSupabaseClient().then(async (client) => {
-      const newStream = await subscribeProject(client, organization?.id, () => {
-        toast.loading("Syncing...", {
-          toastId: "sync",
-          autoClose: 1000,
-        });
-        refetchProjectListData();
-        refetchProjectData();
-      });
+      const newStream = await subscribeProject(
+        client,
+        organization?.id,
+        async () => {
+          syncToast.open();
+          await refetchProjectListData();
+          await refetchProjectData();
+          syncToast.close();
+        }
+      );
       setProjectStream(newStream);
     });
 
@@ -69,5 +93,6 @@ export const useProject = () => {
     projectUuid: params?.projectUuid as string,
     subscribeToProject,
     subscriptionDep,
+    syncToast,
   };
 };

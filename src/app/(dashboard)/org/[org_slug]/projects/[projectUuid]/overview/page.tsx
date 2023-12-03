@@ -89,9 +89,9 @@ const ChangeLogComponent = ({ changeLog }) => {
 
   return (
     <div className="flex flex-col gap-y-2">
-      {changeLog.logs?.map((log) => {
+      {changeLog.logs?.map((log, idx) => {
         return (
-          <div className="flex flex-col px-2 py-1 rounded gap-y-2">
+          <div key={idx} className="flex flex-col px-2 py-1 rounded gap-y-2">
             <div className="flex flex-row justify-start gap-x-6">
               <p className="text-sm font-semibold">{log.action}</p>
               <p className="text-sm">{log.subject}</p>

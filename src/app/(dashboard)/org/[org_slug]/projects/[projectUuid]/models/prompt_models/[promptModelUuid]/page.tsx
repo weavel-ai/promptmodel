@@ -355,7 +355,7 @@ const VersionsPage = () => {
           setOpen={setShowSlashOptions}
           parsingType={selectedParser}
           onInsert={(outputFormatText: string, outputKey: string) => {
-            const position = focusedEditor.getPosition();
+            const position = focusedEditor?.getPosition();
             focusedEditor?.executeEdits("", [
               {
                 range: {
@@ -1223,10 +1223,15 @@ const PromptComponent = ({
   const [open, setOpen] = useState(true);
   const [height, setHeight] = useState(30);
   const editorRef = useRef<editor.IStandaloneCodeEditor>(null);
-  const { modifiedPrompts, setFocusedEditor, setShowSlashOptions } =
-    usePromptModelVersionStore();
+  const {
+    modifiedPrompts,
+    focusedEditor,
+    setFocusedEditor,
+    setShowSlashOptions,
+  } = usePromptModelVersionStore();
 
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
+    editorRef.current = editor;
     editor.onKeyDown((e) => {
       if (e.code === "Slash" && (e.ctrlKey || e.metaKey)) {
         setShowSlashOptions(true);

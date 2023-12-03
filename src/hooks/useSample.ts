@@ -3,8 +3,7 @@ import { fetchSampleInputs, subscribeSampleInputs } from "@/apis/sampleInput";
 import { useRealtimeStore } from "@/stores/realtimeStore";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { useEffect } from "react";
-import { toast } from "react-toastify";
+import { useProject } from "./useProject";
 
 export const EMPTY_INPUTS_LABEL = "No Inputs";
 
@@ -12,6 +11,7 @@ export const useSamples = () => {
   const params = useParams();
   const { createSupabaseClient } = useSupabaseClient();
   const { sampleInputStream, setSampleInputStream } = useRealtimeStore();
+  const { syncToast } = useProject();
 
   const { data: sampleInputListData, refetch: refetchSampleInputListData } =
     useQuery({
@@ -30,12 +30,10 @@ export const useSamples = () => {
       const newStream = await subscribeSampleInputs(
         client,
         params?.projectUuid as string,
-        () => {
-          toast.loading("Syncing...", {
-            toastId: "sync",
-            autoClose: 1000,
-          });
-          refetchSampleInputListData();
+        async () => {
+          syncToast.open();
+          await refetchSampleInputListData();
+          syncToast.close();
         }
       );
       setSampleInputStream(newStream);

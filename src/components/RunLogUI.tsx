@@ -164,8 +164,8 @@ const RunLogTable = ({ runLogList }) => {
           </tr>
         </thead>
         <tbody className="bg-base-100">
-          {runLogList?.map((log) => (
-            <RunLogComponent showRaw={showRaw} runLogData={log} />
+          {runLogList?.map((log, idx) => (
+            <RunLogComponent key={idx} showRaw={showRaw} runLogData={log} />
           ))}
         </tbody>
       </table>

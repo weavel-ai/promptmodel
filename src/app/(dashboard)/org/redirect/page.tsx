@@ -30,7 +30,7 @@ export default function Page() {
 
   useEffect(() => {
     if (!isLoaded) return;
-    if (organization?.id != null) {
+    if (organization?.id != null && organization?.slug != null) {
       createSupabaseClient().then(async (supabase) => {
         await fetchOrganization(supabase, organization.id)
           .then(async (data) => {
@@ -47,14 +47,14 @@ export default function Page() {
             }
           })
           .then(() => {
-            router.push(`/org/${organization?.slug}`);
+            router.push(`/org/${organization.slug}`);
           });
       });
     } else {
       // If clerk org is not created yet, redirect to org creation page
       router.push("/org/new");
     }
-  }, [organization, userId, isLoaded]);
+  }, [organization?.id, organization?.slug, userId, isLoaded]);
 
   return (
     <div className="w-screen h-screen flex flex-col justify-center items-center gap-y-4">
