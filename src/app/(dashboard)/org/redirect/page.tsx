@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 
 export default function Page() {
   const router = useRouter();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const { organization } = useOrganization();
   const { userId } = useAuth();
   const [loadingTime, setLoadingTime] = useState(0);
@@ -29,32 +29,38 @@ export default function Page() {
   }, [loadingTime, organization?.id]);
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || !supabase) return;
     if (organization?.id != null && organization?.slug != null) {
-      createSupabaseClient().then(async (supabase) => {
-        await fetchOrganization(supabase, organization.id)
-          .then(async (data) => {
-            if (data?.length == 0) {
-              await createOrganization(
-                supabase,
-                organization.id,
-                organization?.slug,
-                userId,
-                organization.name
-              );
+      fetchOrganization(supabase, organization.id)
+        .then(async (data) => {
+          if (data?.length == 0) {
+            await createOrganization(
+              supabase,
+              organization.id,
+              organization?.slug,
+              userId,
+              organization.name
+            );
 
-              logEvent("org_created", { user_id: userId });
-            }
-          })
-          .then(() => {
-            router.push(`/org/${organization.slug}`);
-          });
-      });
+            logEvent("org_created", { user_id: userId });
+          }
+        })
+        .then(() => {
+          router.push(`/org/${organization.slug}`);
+        });
     } else {
       // If clerk org is not created yet, redirect to org creation page
       router.push("/org/new");
     }
-  }, [organization?.id, organization?.slug, userId, isLoaded]);
+  }, [
+    organization?.id,
+    organization?.slug,
+    organization?.name,
+    userId,
+    isLoaded,
+    router,
+    supabase,
+  ]);
 
   return (
     <div className="w-screen h-screen flex flex-col justify-center items-center gap-y-4">

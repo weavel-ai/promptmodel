@@ -17,7 +17,7 @@ export const InputField = (
   const validatorError = useMemo(() => {
     if (!props.validator) return null;
     return props.validator(props.value);
-  }, [props.value]);
+  }, [props]);
 
   return (
     <div

@@ -138,7 +138,13 @@ export default function Page() {
     });
 
     setNodes(newNodes);
-  }, [selectedTab, promptModelListData, chatModelListData]);
+  }, [
+    selectedTab,
+    promptModelListData,
+    chatModelListData,
+    windowHeight,
+    windowWidth,
+  ]);
 
   function handleModelCreated() {
     queryClient.invalidateQueries({
@@ -264,7 +270,7 @@ function EditModelNameModal({
   modelType,
   modelUuid,
 }) {
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const { promptModelListData } = usePromptModel();
   const { chatModelListData } = useChatModel();
 
@@ -284,25 +290,24 @@ function EditModelNameModal({
 
   useEffect(() => {
     setName(previousName);
-  }, [previousName]);
+  }, [previousName, setName]);
 
   const isDisabled = useMemo(() => {
     if (name?.length === 0) return true;
     if (name === previousName) return true;
-  }, [name]);
+  }, [name, previousName]);
 
   async function handleSaveName() {
     const toastId = toast.loading("Saving...");
-    const supabaseClient = await createSupabaseClient();
     if (modelType === Tab.PROMPT_MODEL) {
       await editPromptModelName({
-        supabaseClient: supabaseClient,
+        supabaseClient: supabase,
         promptModelUuid: modelUuid,
         name: name,
       });
     } else {
       await editChatModelName({
-        supabaseClient: supabaseClient,
+        supabaseClient: supabase,
         chatModelUuid: modelUuid,
         name: name,
       });
@@ -349,7 +354,7 @@ function DeleteModelModal({
   modelType,
   modelUuid,
 }) {
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const { promptModelListData } = usePromptModel();
   const { chatModelListData } = useChatModel();
 
@@ -363,15 +368,14 @@ function DeleteModelModal({
 
   async function handleDeleteModel() {
     const toastId = toast.loading("Deleting...");
-    const supabaseClient = await createSupabaseClient();
     if (modelType === Tab.PROMPT_MODEL) {
       await deletePromptModel({
-        supabaseClient: supabaseClient,
+        supabaseClient: supabase,
         promptModelUuid: modelUuid,
       });
     } else if (modelType === Tab.CHAT_MODEL) {
       await deleteChatModel({
-        supabaseClient: supabaseClient,
+        supabaseClient: supabase,
         chatModelUuid: modelUuid,
       });
     }

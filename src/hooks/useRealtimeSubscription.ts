@@ -20,17 +20,44 @@ export function useRealtimeSubscription() {
     useSamples();
 
   // Subscribe to project changes
-  useEffect(subscribeToProject, projectSubscriptionDep);
+  useAsyncSubscription(subscribeToProject, projectSubscriptionDep);
 
   // Subscribe to PromptModel changes
-  useEffect(subscribeToPromptModel, promptModelSubscriptionDep);
+  useAsyncSubscription(subscribeToPromptModel, promptModelSubscriptionDep);
 
   // Subscribe to ChatModel changes
-  useEffect(subscribeToChatModel, chatModelSubscriptionDep);
+  useAsyncSubscription(subscribeToChatModel, chatModelSubscriptionDep);
 
   // Subscribe to Function changes
-  useEffect(subscribeToFunctions, functionSubscriptionDep);
+  useAsyncSubscription(subscribeToFunctions, functionSubscriptionDep);
 
   // Subscribe to Sample changes
-  useEffect(subscribeToSamples, sampleSubscriptionDep);
+  useAsyncSubscription(subscribeToSamples, sampleSubscriptionDep);
+}
+
+function useAsyncSubscription(
+  subscribeFunction: () => Promise<() => void>,
+  dependencies: Array<any>
+) {
+  useEffect(() => {
+    let isActive = true;
+    let cleanupFunction;
+
+    const doSubscription = async () => {
+      try {
+        cleanupFunction = await subscribeFunction();
+      } catch (error) {
+        console.error("Subscription error:", error);
+      }
+    };
+
+    if (isActive) {
+      doSubscription();
+    }
+
+    return () => {
+      isActive = false;
+      if (cleanupFunction) cleanupFunction();
+    };
+  }, [...dependencies, subscribeFunction]);
 }

@@ -54,7 +54,7 @@ export const CreateSampleInputModal = ({
   setIsOpen: (isOpen: boolean) => void;
   onCreated?: (name: string) => void;
 }) => {
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const params = useParams();
   const [name, setName] = useState("");
   const [content, setContent] = useState("");
@@ -71,7 +71,7 @@ export const CreateSampleInputModal = ({
   async function handleCreateSampleInput() {
     const toastId = toast.loading("Creating...");
     const resData = await createSampleInput(
-      await createSupabaseClient(),
+      supabase,
       params.projectUuid as string,
       name,
       content
@@ -98,7 +98,7 @@ export const CreateSampleInputModal = ({
         setIsContentValid(false);
       }
     }
-  }, [isContentValid]);
+  }, [isContentValid, content, setIsContentValid]);
 
   useEffect(() => {
     if (name && isContentValid) {
@@ -106,7 +106,7 @@ export const CreateSampleInputModal = ({
     } else {
       setCreateDisabled(true);
     }
-  }, [name, isContentValid]);
+  }, [name, isContentValid, setCreateDisabled]);
 
   function handleValidate(markers: editor.IMarkerData[]) {
     if (markers.length === 0) {

@@ -13,7 +13,7 @@ export default function Page() {
     if (isSignedIn) {
       router.push("/signin/redirect");
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, router]);
 
   return (
     <div className="w-screen h-screen flex justify-center items-center bg-base-100">

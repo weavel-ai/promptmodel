@@ -192,7 +192,7 @@ const AnalyticsPage = () => {
 
 // Versions Tab Page
 const VersionsPage = () => {
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const { chatModelVersionListData, refetchChatModelVersionListData } =
     useChatModelVersion();
   const [nodes, setNodes] = useState(initialNodes);
@@ -224,12 +224,12 @@ const VersionsPage = () => {
 
   useEffect(() => {
     setSelectedChatModelVersion(null);
-  }, []);
+  }, [setSelectedChatModelVersion]);
 
   useEffect(() => {
     if (!chatModelVersionData) return;
     setOriginalVersionData(chatModelVersionData);
-  }, [chatModelVersionData]);
+  }, [chatModelVersionData, setOriginalVersionData]);
 
   // Build nodes
   useEffect(() => {
@@ -300,7 +300,7 @@ const VersionsPage = () => {
 
     setNodes(generatedNodes);
     setEdges(generatedEdges);
-  }, [chatModelVersionListData, windowWidth]);
+  }, [chatModelVersionListData, windowWidth, windowHeight]);
 
   const onNodeMouseEnter = useCallback((event, node) => {
     const pane = reactFlowRef.current.getBoundingClientRect();
@@ -461,7 +461,7 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
 }
 
 function VersionDetailsDrawer({ open }: { open: boolean }) {
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const [windowWidth, windowHeight] = useWindowSize();
   const queryClient = useQueryClient();
   const { projectData } = useProject();
@@ -500,7 +500,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
 
   useEffect(() => {
     setSelectedChatModelVersion(null);
-  }, []);
+  }, [setSelectedChatModelVersion]);
 
   useEffect(() => {
     if (!selectedChatModelVersion || !chatModelVersionListData) return;
@@ -515,7 +515,14 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
       setSelectedFunctions(data?.functions);
     }
     setOriginalVersionData(data);
-  }, [selectedChatModelVersion, chatModelVersionListData]);
+  }, [
+    selectedChatModelVersion,
+    chatModelVersionListData,
+    originalVersionData?.version,
+    setOriginalVersionData,
+    setSelectedFunctions,
+    setSelectedModel,
+  ]);
 
   useEffect(() => {
     if (originalVersionData) {
@@ -523,7 +530,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     } else {
       setModifiedSystemPrompt("");
     }
-  }, [selectedChatModelVersion, originalVersionData]);
+  }, [selectedChatModelVersion, originalVersionData, setModifiedSystemPrompt]);
 
   const isEqualToOriginal = useMemo(() => {
     if (!isCreateVariantOpen) return true;
@@ -599,7 +606,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     )?.uuid;
 
     await updatePublishedChatModelVersion(
-      await createSupabaseClient(),
+      supabase,
       selectedChatModelVersionUuid,
       previousPublishedUuid,
       projectData?.version,
@@ -621,7 +628,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
 
   async function handleSetMemo(newMemo: string) {
     await updateChatModelVersionMemo(
-      await createSupabaseClient(),
+      supabase,
       selectedChatModelVersionUuid,
       newMemo
     );
@@ -1000,7 +1007,7 @@ const PromptComponent = ({
     if (contentHeight) {
       setHeight(Math.min(Math.max(minHeight, contentHeight), maxHeight) + 20);
     }
-  }, [editorRef.current?.getContentHeight()]);
+  }, [windowHeight]);
 
   return (
     <motion.div className="w-full h-fit flex flex-col justify-start items-center bg-base-100 rounded-box">
@@ -1076,7 +1083,7 @@ const PromptDiffComponent = ({
     } else {
       setHeight(Math.min(originalHeight, maxHeight) + 20);
     }
-  }, [originalEditorRef.current, modifiedEditorRef.current]);
+  }, [setHeight, windowHeight]);
 
   return (
     <div className="w-full h-fit flex flex-col justify-start items-center bg-base-100 rounded-box">

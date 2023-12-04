@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 export const NEW_CHAT_LABEL = "New chat";
 
 export const useChatLogSessions = (versionUuid: string) => {
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
 
   const {
     data: chatLogSessionListData,
@@ -19,14 +19,14 @@ export const useChatLogSessions = (versionUuid: string) => {
       if (versionUuid != "new") {
         sessions.push(
           ...(await fetchChatLogSessions({
-            supabaseClient: await createSupabaseClient(),
+            supabaseClient: supabase,
             versionUuid: versionUuid,
           }))
         );
       }
       return sessions;
     },
-    enabled: versionUuid != undefined && versionUuid != null,
+    enabled: !!supabase && !!versionUuid,
   });
 
   return {

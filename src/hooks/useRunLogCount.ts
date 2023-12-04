@@ -4,14 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useProject } from "./useProject";
 
 export const useRunLogCount = () => {
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const { projectUuid } = useProject();
 
   const { data: runLogCountData, refetch: refetchRunLogCountData } = useQuery({
     queryKey: ["runLogsCount", { projectUuid: projectUuid }],
-    queryFn: async () =>
-      await fetchRunLogsCount(await createSupabaseClient(), projectUuid),
-    enabled: !!projectUuid,
+    queryFn: async () => await fetchRunLogsCount(supabase, projectUuid),
+    enabled: !!supabase && !!projectUuid,
   });
   return {
     runLogCountData,

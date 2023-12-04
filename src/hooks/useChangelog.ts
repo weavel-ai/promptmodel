@@ -5,13 +5,12 @@ import { fetchChangelogs } from "@/apis/changelog";
 
 export const useChangeLog = () => {
   const { projectUuid } = useProject();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
 
   const { data: changeLogListData } = useQuery({
     queryKey: ["changeLogListData", { projectUuid: projectUuid }],
-    queryFn: async () =>
-      await fetchChangelogs(await createSupabaseClient(), projectUuid),
-    enabled: projectUuid != undefined && projectUuid != null,
+    queryFn: async () => await fetchChangelogs(supabase, projectUuid),
+    enabled: !!supabase && !!projectUuid,
   });
 
   return {

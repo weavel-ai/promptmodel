@@ -12,7 +12,7 @@ import { useRealtimeStore } from "@/stores/realtimeStore";
 export const usePromptModel = () => {
   const params = useParams();
   const { projectUuid, syncToast } = useProject();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const { promptModelStream, setPromptModelStream } = useRealtimeStore();
 
   const { data: promptModelListData, refetch: refetchPromptModelListData } =
@@ -21,9 +21,8 @@ export const usePromptModel = () => {
         "modelListData",
         { type: "PromptModel", projectUuid: projectUuid },
       ],
-      queryFn: async () =>
-        await fetchPromptModels(await createSupabaseClient(), projectUuid),
-      enabled: projectUuid != undefined && projectUuid != null,
+      queryFn: async () => await fetchPromptModels(supabase, projectUuid),
+      enabled: !!supabase && !!projectUuid,
     });
 
   const promptModelData = useMemo(() => {
@@ -36,32 +35,28 @@ export const usePromptModel = () => {
     );
   }, [promptModelListData, params?.promptModelUuid]);
 
-  function subscribeToPromptModel() {
-    if (!projectUuid || promptModelStream) return;
-    createSupabaseClient().then(async (client) => {
-      const newStream = await subscribePromptModel(
-        client,
-        projectUuid,
-        async () => {
-          syncToast.open();
-          await refetchPromptModelListData();
-          syncToast.close();
-        }
-      );
-      setPromptModelStream(newStream);
-    });
+  async function subscribeToPromptModel() {
+    if (!projectUuid || promptModelStream || !supabase) return;
+    const newStream = await subscribePromptModel(
+      supabase,
+      projectUuid,
+      async () => {
+        syncToast.open();
+        await refetchPromptModelListData();
+        syncToast.close();
+      }
+    );
+    setPromptModelStream(newStream);
 
     return () => {
       if (promptModelStream) {
         promptModelStream.unsubscribe();
-        createSupabaseClient().then((client) => {
-          client.removeChannel(promptModelStream);
-        });
+        supabase.removeChannel(promptModelStream);
       }
     };
   }
 
-  const subscriptionDep = [projectUuid, promptModelStream];
+  const subscriptionDep = [projectUuid, promptModelStream, supabase];
 
   return {
     promptModelUuid: params?.promptModelUuid as string,

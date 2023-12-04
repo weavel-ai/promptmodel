@@ -8,7 +8,7 @@ import { useProject } from "./useProject";
 
 export const useFunctions = () => {
   const params = useParams();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const { functionStream, setFunctionStream } = useRealtimeStore();
   const { syncToast } = useProject();
 
@@ -16,40 +16,33 @@ export const useFunctions = () => {
     {
       queryKey: ["functionListData", { projectUuid: params?.projectUuid }],
       queryFn: async () =>
-        await fetchFunctions(
-          await createSupabaseClient(),
-          params?.projectUuid as string
-        ),
-      enabled: params?.projectUuid != undefined && params?.projectUuid != null,
+        await fetchFunctions(supabase, params?.projectUuid as string),
+      enabled: !!supabase && !!params?.projectUuid,
     }
   );
 
-  function subscribeToFunctions() {
-    if (!params?.projectUuid || functionStream) return;
-    createSupabaseClient().then(async (client) => {
-      const newStream = await subscribeFunctions(
-        client,
-        params?.projectUuid as string,
-        async () => {
-          syncToast.open();
-          await refetchFunctionListData();
-          syncToast.close();
-        }
-      );
-      setFunctionStream(newStream);
-    });
+  async function subscribeToFunctions() {
+    if (!params?.projectUuid || functionStream || !supabase) return;
+    const newStream = await subscribeFunctions(
+      supabase,
+      params?.projectUuid as string,
+      async () => {
+        syncToast.open();
+        await refetchFunctionListData();
+        syncToast.close();
+      }
+    );
+    setFunctionStream(newStream);
 
     return () => {
       if (functionStream) {
         functionStream.unsubscribe();
-        createSupabaseClient().then((client) => {
-          client.removeChannel(functionStream);
-        });
+        supabase.removeChannel(functionStream);
       }
     };
   }
 
-  const subscriptionDep = [params?.projectUuid, functionStream];
+  const subscriptionDep = [params?.projectUuid, functionStream, supabase];
 
   return {
     functionListData,
