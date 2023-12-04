@@ -12,7 +12,7 @@ import { toast } from "react-toastify";
 export const useChatModel = () => {
   const params = useParams();
   const { projectUuid, syncToast } = useProject();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const { chatModelStream, setChatModelStream } = useRealtimeStore();
 
   const { data: chatModelListData, refetch: refetchChatModelListData } =
@@ -21,9 +21,8 @@ export const useChatModel = () => {
         "modelListData",
         { type: "ChatModel", projectUuid: projectUuid },
       ],
-      queryFn: async () =>
-        await fetchChatModels(await createSupabaseClient(), projectUuid),
-      enabled: projectUuid != undefined && projectUuid != null,
+      queryFn: async () => await fetchChatModels(supabase, projectUuid),
+      enabled: !!supabase && !!projectUuid,
     });
 
   const chatModelData = useMemo(() => {
@@ -35,32 +34,28 @@ export const useChatModel = () => {
     );
   }, [chatModelListData, params?.chatModelUuid]);
 
-  function subscribeToChatModel() {
-    if (!projectUuid || chatModelStream) return;
-    createSupabaseClient().then(async (client) => {
-      const newStream = await subscribeChatModel(
-        client,
-        projectUuid,
-        async () => {
-          syncToast.open();
-          await refetchChatModelListData();
-          syncToast.close();
-        }
-      );
-      setChatModelStream(newStream);
-    });
+  async function subscribeToChatModel() {
+    if (!projectUuid || chatModelStream || !supabase) return;
+    const newStream = await subscribeChatModel(
+      supabase,
+      projectUuid,
+      async () => {
+        syncToast.open();
+        await refetchChatModelListData();
+        syncToast.close();
+      }
+    );
+    setChatModelStream(newStream);
 
     return () => {
       if (chatModelStream) {
         chatModelStream.unsubscribe();
-        createSupabaseClient().then((client) => {
-          client.removeChannel(chatModelStream);
-        });
+        supabase.removeChannel(chatModelStream);
       }
     };
   }
 
-  const subscriptionDep = [projectUuid, chatModelStream];
+  const subscriptionDep = [projectUuid, chatModelStream, supabase];
 
   return {
     chatModelUuid: params?.chatModelUuid as string,

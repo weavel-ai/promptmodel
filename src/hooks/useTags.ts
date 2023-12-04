@@ -7,16 +7,13 @@ export const EMPTY_INPUTS_LABEL = "No Inputs";
 
 export const useTags = () => {
   const params = useParams();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
 
   const { data: tagsListData, refetch: refetchTagsListData } = useQuery({
     queryKey: ["tagsListData", { projectUuid: params?.projectUuid }],
     queryFn: async () =>
-      await fetchTags(
-        await createSupabaseClient(),
-        params?.projectUuid as string
-      ),
-    enabled: params?.projectUuid != undefined && params?.projectUuid != null,
+      await fetchTags(supabase, params?.projectUuid as string),
+    enabled: !!supabase && !!params?.projectUuid,
   });
 
   return {

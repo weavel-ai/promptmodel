@@ -346,6 +346,8 @@ const ChatInput = ({
     selectedModel,
     modifiedSystemPrompt,
     originalVersionData,
+    selectedFunctions,
+    newVersionCache,
   ]);
 
   return (

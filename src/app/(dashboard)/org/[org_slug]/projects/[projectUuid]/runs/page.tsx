@@ -1,7 +1,7 @@
 "use client";
 
 import { useProject } from "@/hooks/useProject";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import classNames from "classnames";
 import {
   ArrowLeft,
@@ -53,10 +53,12 @@ const CHAT_CSV_HEADERS = [
 
 export default function Page() {
   const { projectData, projectUuid } = useProject();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const [page, setPage] = useState(1);
   const [isRealtime, setIsRealtime] = useState(false);
   const [selectedTab, setSelectedTab] = useState(Tab.PROMPT_MODEL);
+  const [runLogsCleanup, setRunLogsCleanup] = useState(null);
+  const [chatLogsCleanup, setChatLogsCleanup] = useState(null);
 
   const { runLogCountData, refetchRunLogCountData } = useRunLogCount();
   const {
@@ -66,13 +68,8 @@ export default function Page() {
   } = useQuery({
     queryKey: ["runLogList", { projectUuid: projectData?.uuid, page: page }],
     queryFn: async () =>
-      await fetchRunLogs(
-        await createSupabaseClient(),
-        projectData?.uuid,
-        page,
-        ROWS_PER_PAGE
-      ),
-    enabled: !!projectData?.uuid,
+      await fetchRunLogs(supabase, projectData?.uuid, page, ROWS_PER_PAGE),
+    enabled: !!supabase && !!projectData?.uuid,
   });
 
   const { chatLogCountData, refetchChatLogCountData } = useChatLogCount();
@@ -84,59 +81,65 @@ export default function Page() {
   } = useQuery({
     queryKey: ["chatLogList", { projectUuid: projectData?.uuid, page: page }],
     queryFn: async () =>
-      await fetchChatLogs(
-        await createSupabaseClient(),
-        projectData?.uuid,
-        page,
-        ROWS_PER_PAGE
-      ),
-    enabled: !!projectData?.uuid,
+      await fetchChatLogs(supabase, projectData?.uuid, page, ROWS_PER_PAGE),
+    enabled: !!supabase && !!projectData?.uuid,
   });
 
-  function subscribeToRunLogs() {
+  const subscribeToRunLogs = useCallback(async () => {
     if (!projectUuid) return;
-    createSupabaseClient().then(async (client) => {
-      const runLogsStream = await subscribeRunLogs(client, projectUuid, () => {
-        refetchRunLogCountData();
-        refetchRunLogListData();
-      });
-      // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
-      return () => {
-        if (runLogsStream) {
-          runLogsStream.unsubscribe();
-          client.removeChannel(runLogsStream);
-        }
-      };
-    });
-  }
 
-  function subscribeToChatLogs() {
-    if (!projectUuid) return;
-    createSupabaseClient().then(async (client) => {
-      const chatLogsStream = await subscribeChatLogs(
-        client,
-        projectUuid,
-        () => {
-          refetchChatLogCountData();
-          refetchChatLogListData();
-        }
-      );
-      // Cleanup function that will be called when the component unmounts or when isRealtime becomes false
-      return () => {
-        if (chatLogsStream) {
-          chatLogsStream.unsubscribe();
-          client.removeChannel(chatLogsStream);
-        }
-      };
+    const runLogsStream = await subscribeRunLogs(supabase, projectUuid, () => {
+      refetchRunLogCountData();
+      refetchRunLogListData();
     });
-  }
+
+    // Cleanup function
+    return () => {
+      if (runLogsStream) {
+        runLogsStream.unsubscribe();
+        supabase.removeChannel(runLogsStream);
+      }
+    };
+  }, [projectUuid, supabase, refetchRunLogCountData, refetchRunLogListData]);
+
+  const subscribeToChatLogs = useCallback(async () => {
+    if (!projectUuid) return;
+
+    const chatLogsStream = await subscribeChatLogs(
+      supabase,
+      projectUuid,
+      () => {
+        refetchChatLogCountData();
+        refetchChatLogListData();
+      }
+    );
+
+    // Cleanup function
+    return () => {
+      if (chatLogsStream) {
+        chatLogsStream.unsubscribe();
+        supabase.removeChannel(chatLogsStream);
+      }
+    };
+  }, [projectUuid, supabase, refetchChatLogCountData, refetchChatLogListData]);
 
   useEffect(() => {
     if (isRealtime) {
-      subscribeToRunLogs();
-      subscribeToChatLogs();
+      subscribeToRunLogs().then(setRunLogsCleanup);
+      subscribeToChatLogs().then(setChatLogsCleanup);
     }
-  }, [projectUuid, isRealtime]);
+
+    return () => {
+      if (runLogsCleanup) runLogsCleanup();
+      if (chatLogsCleanup) chatLogsCleanup();
+    };
+  }, [
+    isRealtime,
+    subscribeToRunLogs,
+    subscribeToChatLogs,
+    runLogsCleanup,
+    chatLogsCleanup,
+  ]);
 
   return (
     <div className="w-full h-full pl-20 overflow-hidden">

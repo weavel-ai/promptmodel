@@ -27,7 +27,15 @@ export const SelectTab = ({ tabs, selectedTab, onSelect }: SelectTabProps) => {
       setXPosition(newPosition);
       setTabWidth(newWidth);
     }
-  }, [selectedTab, tabs.length]);
+  }, [
+    selectedTab,
+    tabs,
+    xPosition,
+    tabWidth,
+    setXPosition,
+    setTabWidth,
+    tabRefs,
+  ]);
 
   return (
     <div

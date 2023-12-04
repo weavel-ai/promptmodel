@@ -3,7 +3,7 @@ import { ENDPOINT_URL, SUPABASE_URL, SUPABASE_KEY } from "@/constants";
 import { SupabaseClient, createClient } from "@supabase/supabase-js";
 import { Database } from "@/supabase.types";
 import { useAuth } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { parseMultipleJson } from "@/utils";
 
 const AXIOS_HEADERS = {
@@ -75,63 +75,65 @@ export const fetchStream = async ({
   }
 };
 
+interface SupabaseClientStatus {
+  initialized: boolean;
+  supabase: SupabaseClient | null;
+  supabaseWithoutToken: SupabaseClient | null;
+}
+
 // Custom supabase hook using Clerk's JWT
 export const useSupabaseClient = () => {
   const { isSignedIn, getToken } = useAuth();
-  const [status, setStatus] = useState<{
-    initialized: boolean;
-    supabase?: SupabaseClient | null;
-    supabaseWithoutToken?: SupabaseClient | null;
-  }>({
+  const [status, setStatus] = useState<SupabaseClientStatus>({
     initialized: false,
+    supabase: null,
+    supabaseWithoutToken: null,
   });
 
-  async function createSupabaseClient() {
-    return createClient<Database>(
-      SUPABASE_URL,
-      SUPABASE_KEY,
-      isSignedIn && {
-        global: {
-          headers: {
-            Authorization: `Bearer ${await getToken({
-              template: "supabase-colab",
-            })}`,
-          },
-        },
-      }
-    );
-  }
+  const supabaseWithoutToken = useMemo(
+    () => createClient(SUPABASE_URL, SUPABASE_KEY),
+    []
+  );
 
-  async function createSupabaseClientWithoutToken() {
-    return createClient<Database>(SUPABASE_URL, SUPABASE_KEY);
-  }
+  const createSupabaseClient = useCallback(async () => {
+    if (!isSignedIn) return null;
+    const token = await getToken({ template: "supabase-colab" });
+    return createClient(SUPABASE_URL, SUPABASE_KEY, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    });
+  }, [isSignedIn, getToken]);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      createSupabaseClient().then((client) => {
+        setStatus((prev) => ({
+          ...prev,
+          initialized: true,
+          supabase: client,
+        }));
+      });
+    } else {
+      setStatus((prev) => ({
+        ...prev,
+        initialized: true,
+        supabase: null,
+      }));
+    }
+  }, [isSignedIn, createSupabaseClient]);
 
   async function fetchAssetUrl(path: string) {
-    const client = await createSupabaseClientWithoutToken();
-    const url = client.storage.from("images").getPublicUrl(path).data.publicUrl;
+    const url = supabaseWithoutToken.storage.from("images").getPublicUrl(path)
+      .data.publicUrl;
     return url;
   }
 
-  useEffect(() => {
-    createSupabaseClient().then((client) =>
-      setStatus({
-        ...status,
-        initialized: true,
-        supabase: client,
-      })
-    );
-    createSupabaseClientWithoutToken().then((client) =>
-      setStatus({
-        ...status,
-        supabaseWithoutToken: client,
-      })
-    );
-  }, [createSupabaseClient, status]);
-
   return {
     ...status,
-    createSupabaseClient,
-    createSupabaseClientWithoutToken,
+    supabaseWithoutToken,
     fetchAssetUrl,
   };
 };

@@ -9,7 +9,7 @@ import { useChatModel } from "./useChatModel";
 
 export const useDailyRunLogMetrics = (startDay, endDay) => {
   const { promptModelUuid } = usePromptModel();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
 
   const { data: dailyRunLogMetrics } = useQuery({
     queryKey: [
@@ -18,12 +18,12 @@ export const useDailyRunLogMetrics = (startDay, endDay) => {
     ],
     queryFn: async () =>
       await fetchDailyRunLogMetrics(
-        await createSupabaseClient(),
+        supabase,
         promptModelUuid,
         startDay,
         endDay
       ),
-    enabled: promptModelUuid != undefined && promptModelUuid != null,
+    enabled: !!supabase && !!promptModelUuid,
   });
 
   return {
@@ -33,7 +33,7 @@ export const useDailyRunLogMetrics = (startDay, endDay) => {
 
 export const useDailyChatLogMetrics = (startDay, endDay) => {
   const { chatModelUuid } = useChatModel();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
 
   const { data: dailyChatLogMetrics } = useQuery({
     queryKey: [
@@ -41,13 +41,8 @@ export const useDailyChatLogMetrics = (startDay, endDay) => {
       { chatModelUuid: chatModelUuid, startDay: startDay, endDay: endDay },
     ],
     queryFn: async () =>
-      await fetchDailyChatLogMetrics(
-        await createSupabaseClient(),
-        chatModelUuid,
-        startDay,
-        endDay
-      ),
-    enabled: chatModelUuid != undefined && chatModelUuid != null,
+      await fetchDailyChatLogMetrics(supabase, chatModelUuid, startDay, endDay),
+    enabled: !!supabase && !!chatModelUuid,
   });
 
   return {

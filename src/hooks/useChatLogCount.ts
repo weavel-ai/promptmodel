@@ -4,15 +4,14 @@ import { useProject } from "./useProject";
 import { fetchChatLogsCount } from "@/apis/chatLog";
 
 export const useChatLogCount = () => {
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const { projectUuid } = useProject();
 
   const { data: chatLogCountData, refetch: refetchChatLogCountData } = useQuery(
     {
       queryKey: ["chatLogCountData", { projectUuid: projectUuid }],
-      queryFn: async () =>
-        await fetchChatLogsCount(await createSupabaseClient(), projectUuid),
-      enabled: !!projectUuid,
+      queryFn: async () => await fetchChatLogsCount(supabase, projectUuid),
+      enabled: !!supabase && !!projectUuid,
     }
   );
 

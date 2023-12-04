@@ -231,7 +231,7 @@ const VersionsPage = () => {
 
   useEffect(() => {
     setSelectedPromptModelVersion(null);
-  }, []);
+  }, [setSelectedPromptModelVersion]);
 
   // Build nodes
   useEffect(() => {
@@ -300,7 +300,7 @@ const VersionsPage = () => {
 
     setNodes(generatedNodes);
     setEdges(generatedEdges);
-  }, [promptModelVersionListData, windowWidth]);
+  }, [promptModelVersionListData, windowWidth, windowHeight]);
 
   const onNodeMouseEnter = useCallback((event, node) => {
     const pane = reactFlowRef.current.getBoundingClientRect();
@@ -456,7 +456,7 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
     if (!open) return;
     setModifiedPrompts([]);
     setSelectedSample(null);
-  }, [open]);
+  }, [open, setModifiedPrompts, setSelectedSample]);
 
   return (
     <Drawer
@@ -593,7 +593,7 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
 }
 
 function VersionDetailsDrawer({ open }: { open: boolean }) {
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const queryClient = useQueryClient();
   const { projectData } = useProject();
   const { promptModelData } = usePromptModel();
@@ -667,7 +667,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     )?.uuid;
 
     await updatePublishedPromptModelVersion(
-      await createSupabaseClient(),
+      supabase,
       selectedPromptModelVersionUuid,
       previousPublishedUuid,
       projectData?.version,
@@ -689,7 +689,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
 
   async function handleSetMemo(newMemo: string) {
     await updatePromptModelVersionMemo(
-      await createSupabaseClient(),
+      supabase,
       selectedPromptModelVersionUuid,
       newMemo
     );
@@ -1248,7 +1248,7 @@ const PromptComponent = ({
     if (contentHeight) {
       setHeight(Math.min(contentHeight, maxHeight) + 20);
     }
-  }, [editorRef.current?.getContentHeight()]);
+  }, [windowHeight, setHeight]);
 
   return (
     <motion.div
@@ -1388,7 +1388,7 @@ const PromptDiffComponent = ({ originalPrompt, setModifiedPrompts }) => {
     } else {
       setHeight(Math.min(originalHeight, maxHeight) + 20);
     }
-  }, [open]);
+  }, [windowHeight, setHeight, open]);
 
   return (
     <motion.div

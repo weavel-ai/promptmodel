@@ -25,7 +25,7 @@ import { usePromptModel } from "./usePromptModel";
 export const usePromptModelVersion = () => {
   const params = useParams();
   const queryClient = useQueryClient();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const { projectData } = useProject();
   const { promptModelData } = usePromptModel();
   const {
@@ -60,11 +60,10 @@ export const usePromptModelVersion = () => {
     ],
     queryFn: async () =>
       await fetchPromptModelVersions(
-        await createSupabaseClient(),
+        supabase,
         params?.promptModelUuid as string
       ),
-    enabled:
-      params?.promptModelUuid != undefined && params?.promptModelUuid != null,
+    enabled: !!supabase && !!params?.promptModelUuid,
   });
 
   const selectedPromptModelVersionUuid = useMemo(() => {
@@ -80,13 +79,8 @@ export const usePromptModelVersion = () => {
       { versionUuid: selectedPromptModelVersionUuid },
     ],
     queryFn: async () =>
-      await fetchPrompts(
-        await createSupabaseClient(),
-        selectedPromptModelVersionUuid
-      ),
-    enabled:
-      selectedPromptModelVersionUuid != undefined &&
-      selectedPromptModelVersionUuid != null,
+      await fetchPrompts(supabase, selectedPromptModelVersionUuid),
+    enabled: !!supabase && !!selectedPromptModelVersionUuid,
   });
 
   const { data: originalPromptModelVersionData } = useQuery({
@@ -95,13 +89,8 @@ export const usePromptModelVersion = () => {
       { uuid: selectedPromptModelVersionUuid },
     ],
     queryFn: async () =>
-      await fetchPromptModelVersion(
-        await createSupabaseClient(),
-        selectedPromptModelVersionUuid
-      ),
-    enabled:
-      selectedPromptModelVersionUuid != undefined &&
-      selectedPromptModelVersionUuid != null,
+      await fetchPromptModelVersion(supabase, selectedPromptModelVersionUuid),
+    enabled: !!supabase && !!selectedPromptModelVersionUuid,
   });
 
   useEffect(() => {
@@ -109,7 +98,12 @@ export const usePromptModelVersion = () => {
     if (!selectedPromptModelVersionUuid) return;
     updatePrompts(selectedPromptModelVersionUuid, originalPromptListData);
     setModifiedPrompts(cloneDeep(originalPromptListData));
-  }, [originalPromptListData, selectedPromptModelVersionUuid]);
+  }, [
+    originalPromptListData,
+    selectedPromptModelVersionUuid,
+    setModifiedPrompts,
+    updatePrompts,
+  ]);
 
   useEffect(() => {
     if (!originalPromptModelVersionData) return;
@@ -128,7 +122,13 @@ export const usePromptModelVersion = () => {
     } else {
       setSelectedFunctions([]);
     }
-  }, [originalPromptModelVersionData]);
+  }, [
+    originalPromptModelVersionData,
+    setOutputKeys,
+    setSelectedFunctions,
+    setSelectedModel,
+    setSelectedParser,
+  ]);
 
   const isEqualToOriginal = useMemo(() => {
     if (isCreateVariantOpen) {

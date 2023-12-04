@@ -25,7 +25,7 @@ export const SelectField = ({ value, setValue, options }: SelectFieldProps) => {
       top: inputRect.top + inputRect.height,
       left: inputRect.left,
     };
-  }, [inputRef.current]);
+  }, []);
 
   useEffect(() => {
     showOptionsRef.current = showOptions; // Always keep it updated with the latest state

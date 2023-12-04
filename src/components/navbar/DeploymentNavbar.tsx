@@ -20,13 +20,7 @@ import { SignInButton } from "../buttons/SignInButton";
 import { useMediaQuery } from "react-responsive";
 import { AnimatedUnderline } from "../AnimatedUnderline";
 import { useSupabaseClient } from "@/apis/base";
-import {
-  ArrowRight,
-  CaretRight,
-  CaretUpDown,
-  List,
-  X,
-} from "@phosphor-icons/react";
+import { CaretRight } from "@phosphor-icons/react";
 import { Michroma, Russo_One } from "next/font/google";
 import { fetchOrganization, updateOrganization } from "@/apis/organization";
 import { useOrgData } from "@/hooks/useOrgData";
@@ -50,7 +44,7 @@ export const DeploymentNavbar = (props: NavbarProps) => {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const { isSignedIn, userId } = useAuth();
   const { organization } = useOrganization();
   const { orgData, refetchOrgData } = useOrgData();
@@ -72,37 +66,46 @@ export const DeploymentNavbar = (props: NavbarProps) => {
     if (isMobile) {
       setShowDropdown(false);
     }
-  }, [pathname]);
+  }, [pathname, isMobile, setShowDropdown]);
 
   useEffect(() => {
     if (
       organization?.name &&
       organization?.slug &&
       orgData?.name &&
-      orgData?.slug
+      orgData?.slug &&
+      supabase
     ) {
       if (
         orgData.name != organization?.name ||
         orgData.slug != organization?.slug
       ) {
-        createSupabaseClient().then(async (supabase) => {
-          await updateOrganization(
-            supabase,
-            organization?.id,
-            organization?.name,
-            organization?.slug
-          );
-          // From the current route path, replace the current org_slug with the new org_slug
-          const newPathname = pathname.replace(
-            /\/org\/[^/]+/,
-            `/org/${organization?.slug}`
-          );
-          router.push(newPathname);
+        updateOrganization(
+          supabase,
+          organization?.id,
+          organization?.name,
+          organization?.slug
+        ).then(() => {
           refetchOrgData();
         });
+        // From the current route path, replace the current org_slug with the new org_slug
+        const newPathname = pathname.replace(
+          /\/org\/[^/]+/,
+          `/org/${organization?.slug}`
+        );
+        router.push(newPathname);
       }
     }
-  }, [orgData, organization?.name, organization?.slug]);
+  }, [
+    orgData,
+    organization?.id,
+    organization?.name,
+    organization?.slug,
+    supabase,
+    pathname,
+    router,
+    refetchOrgData,
+  ]);
 
   return (
     <div

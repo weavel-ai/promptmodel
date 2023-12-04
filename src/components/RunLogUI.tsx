@@ -65,7 +65,7 @@ export function RunLogUI({
     }
 
     setRunLogList(updatedRunLogList);
-  }, [versionUuid, runLogData, runLogs[versionUuid]]);
+  }, [versionUuid, runLogData, runTasksCount, runLogs]);
 
   const mainUI = (
     <div className="w-full h-full flex flex-col gap-y-2">

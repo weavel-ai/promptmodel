@@ -6,7 +6,7 @@ import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
 
 export const useChatModelVersion = () => {
   const params = useParams();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
 
   const {
     data: chatModelVersionListData,
@@ -17,12 +17,8 @@ export const useChatModelVersion = () => {
       { chatModelUuid: params?.chatModelUuid },
     ],
     queryFn: async () =>
-      await fetchChatModelVersions(
-        await createSupabaseClient(),
-        params?.chatModelUuid as string
-      ),
-    enabled:
-      params?.chatModelUuid != undefined && params?.chatModelUuid != null,
+      await fetchChatModelVersions(supabase, params?.chatModelUuid as string),
+    enabled: !!supabase && !!params?.chatModelUuid,
   });
 
   return {
