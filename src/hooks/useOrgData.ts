@@ -6,22 +6,19 @@ import { useEffect } from "react";
 
 export const useOrgData = () => {
   const { organization } = useOrganization();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
 
   const { data: orgData, refetch: refetchOrgData } = useQuery({
     queryKey: ["organization", { orgId: organization?.id }],
     queryFn: async () => {
-      const data = await fetchOrganization(
-        await createSupabaseClient(),
-        organization?.id
-      );
+      const data = await fetchOrganization(supabase, organization?.id);
       if (data?.length > 0) {
         return data[0];
       } else {
         return null;
       }
     },
-    enabled: organization != undefined && organization != null,
+    enabled: !!supabase && !!organization,
   });
 
   // useEffect(() => {

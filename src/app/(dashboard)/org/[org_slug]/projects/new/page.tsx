@@ -12,7 +12,6 @@ import { toast } from "react-toastify";
 import ReactFlow, { Background, BackgroundVariant } from "reactflow";
 
 export default function Page() {
-  const { createSupabaseClient } = useSupabaseClient();
   const router = useRouter();
   const pathname = usePathname();
   const { orgId } = useOrgData();

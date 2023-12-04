@@ -11,7 +11,7 @@ import classNames from "classnames";
 
 export default function Page() {
   const searchParams = useSearchParams();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const router = useRouter();
   const { userId, isSignedIn, isLoaded } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -32,8 +32,7 @@ export default function Page() {
       router.push("/org/redirect");
       setLoading(false);
     }
-    const supabaseClient = await createSupabaseClient();
-    const res = await upsertCliAccess(supabaseClient, userId, token);
+    const res = await upsertCliAccess(supabase, userId, token);
     if (!res) {
       toast.error("Failed to grant access.");
       setLoading(false);

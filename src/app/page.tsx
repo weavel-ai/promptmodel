@@ -29,7 +29,7 @@ export default function Home() {
     } else {
       router.push("/signin");
     }
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, router]);
 
   return (
     <div className="w-screen h-screen flex flex-col justify-center items-center gap-y-4">

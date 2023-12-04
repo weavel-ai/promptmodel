@@ -4,20 +4,18 @@ import { fetchPrompts } from "@/apis/prompt";
 import { useQuery } from "@tanstack/react-query";
 
 export const usePromptModelVersionDetails = (versionUuid: string) => {
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
 
   const { data: promptListData } = useQuery({
     queryKey: ["promptListData", { versionUuid: versionUuid }],
-    queryFn: async () =>
-      await fetchPrompts(await createSupabaseClient(), versionUuid),
-    enabled: versionUuid != undefined && versionUuid != null,
+    queryFn: async () => await fetchPrompts(supabase, versionUuid),
+    enabled: !!supabase && !!versionUuid,
   });
 
   const { data: promptModelVersionData } = useQuery({
     queryKey: ["promptModelVersionData", { uuid: versionUuid }],
-    queryFn: async () =>
-      await fetchPromptModelVersion(await createSupabaseClient(), versionUuid),
-    enabled: versionUuid != undefined && versionUuid != null,
+    queryFn: async () => await fetchPromptModelVersion(supabase, versionUuid),
+    enabled: !!supabase && !!versionUuid,
   });
 
   return {

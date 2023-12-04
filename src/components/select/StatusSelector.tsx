@@ -53,7 +53,7 @@ export const StatusSelector = (props: StatusSelectorProps) => {
 
   const selectedStatus = useMemo(() => {
     return STATUS_OPTIONS?.find((status) => status === props.status);
-  }, [props.status, STATUS_OPTIONS]);
+  }, [props]);
 
   function handleClickOpen() {
     if (!isOpen) {

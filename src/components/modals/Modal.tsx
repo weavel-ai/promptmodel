@@ -22,7 +22,7 @@ export const Modal = ({
     () => {
       setIsOpen(false);
     },
-    [isOpen]
+    [isOpen, setIsOpen]
   );
 
   // Use useEffect to add an event listener to the document
@@ -40,7 +40,7 @@ export const Modal = ({
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
-  }, []);
+  }, [modalRef, setIsOpen]);
 
   if (!isOpen) return null;
 

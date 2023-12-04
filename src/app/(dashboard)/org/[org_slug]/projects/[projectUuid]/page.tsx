@@ -8,7 +8,7 @@ export default function Page() {
   const pathname = usePathname();
   useEffect(() => {
     router.push(pathname + "/overview");
-  }, []);
+  }, [pathname, router]);
 
-  return <div></div>;
+  return <></>;
 }

@@ -36,7 +36,7 @@ export const SlashCommandOptions = ({
       setOutputKey("");
       setType("");
     }
-  }, [open, parsingType]);
+  }, [open, parsingType, setOpen, setOutputKey, setType]);
 
   const outputFormatText = useMemo(() => {
     let valuePlaceholder: string = "(value here)";

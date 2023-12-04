@@ -22,7 +22,7 @@ export const CreateModelModal = ({
   type: "PromptModel" | "ChatModel";
   onCreated: () => void;
 }) => {
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const params = useParams();
   const router = useRouter();
   const [name, setName] = useState("");
@@ -39,13 +39,13 @@ export const CreateModelModal = ({
     let resData;
     if (modelType == "PromptModel") {
       resData = await createPromptModel({
-        supabaseClient: await createSupabaseClient(),
+        supabaseClient: supabase,
         name,
         projectUuid: params.projectUuid as string,
       });
     } else if (modelType == "ChatModel") {
       resData = await createChatModel({
-        supabaseClient: await createSupabaseClient(),
+        supabaseClient: supabase,
         name,
         projectUuid: params.projectUuid as string,
       });

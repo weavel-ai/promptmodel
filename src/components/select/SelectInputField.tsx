@@ -28,7 +28,7 @@ export const SelectInputField = ({
       top: inputRect.top + inputRect.height,
       left: inputRect.left,
     };
-  }, [inputRef.current]);
+  }, []);
 
   const filteredOptions = useMemo(() => {
     return options

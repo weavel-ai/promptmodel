@@ -35,7 +35,12 @@ export const ProjectVerticalNavbar = () => {
     if (!params?.chatModelUuid) {
       setIsCreateChatModelVariantOpen(false);
     }
-  }, [params?.promptModelUuid, params?.chatModelUuid]);
+  }, [
+    params?.promptModelUuid,
+    params?.chatModelUuid,
+    setIsCreateChatModelVariantOpen,
+    setIsCreatePromptModelVariantOpen,
+  ]);
 
   if (isCreateChatModelVariantOpen || isCreatePromptModelVariantOpen)
     return null;

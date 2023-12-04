@@ -9,7 +9,7 @@ export const EMPTY_INPUTS_LABEL = "No Inputs";
 
 export const useSamples = () => {
   const params = useParams();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const { sampleInputStream, setSampleInputStream } = useRealtimeStore();
   const { syncToast } = useProject();
 
@@ -17,39 +17,32 @@ export const useSamples = () => {
     useQuery({
       queryKey: ["sampleInputListData", { projectUuid: params?.projectUuid }],
       queryFn: async () =>
-        await fetchSampleInputs(
-          await createSupabaseClient(),
-          params?.projectUuid as string
-        ),
-      enabled: params?.projectUuid != undefined && params?.projectUuid != null,
+        await fetchSampleInputs(supabase, params?.projectUuid as string),
+      enabled: !!supabase && !!params?.projectUuid,
     });
 
-  function subscribeToSamples() {
-    if (!params?.projectUuid || sampleInputStream) return;
-    createSupabaseClient().then(async (client) => {
-      const newStream = await subscribeSampleInputs(
-        client,
-        params?.projectUuid as string,
-        async () => {
-          syncToast.open();
-          await refetchSampleInputListData();
-          syncToast.close();
-        }
-      );
-      setSampleInputStream(newStream);
-    });
+  async function subscribeToSamples() {
+    if (!params?.projectUuid || sampleInputStream || !supabase) return;
+    const newStream = await subscribeSampleInputs(
+      supabase,
+      params?.projectUuid as string,
+      async () => {
+        syncToast.open();
+        await refetchSampleInputListData();
+        syncToast.close();
+      }
+    );
+    setSampleInputStream(newStream);
 
     return () => {
       if (sampleInputStream) {
         sampleInputStream.unsubscribe();
-        createSupabaseClient().then((client) => {
-          client.removeChannel(sampleInputStream);
-        });
+        supabase.removeChannel(sampleInputStream);
       }
     };
   }
 
-  const subscriptionDep = [params?.projectUuid, sampleInputStream];
+  const subscriptionDep = [params?.projectUuid, sampleInputStream, supabase];
 
   return {
     sampleInputListData,

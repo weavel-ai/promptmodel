@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "lint": "eslint --ignore-path .gitignore .",
     "start": "next start"
   },
   "dependencies": {

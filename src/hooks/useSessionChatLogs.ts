@@ -4,16 +4,15 @@ import { ChatLog, fetchSessionChatLogs } from "@/apis/chatLog";
 import { useEffect, useState } from "react";
 
 export const useSessionChatLogs = (sessionUuid: string | null) => {
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const [chatLogListData, setChatLogListData] = useState<ChatLog[] | any[]>([]);
 
   const { data: fetchedChatLogListData, refetch: refetchChatLogListData } =
     useQuery({
       queryKey: ["chatLogListData", { sessionUuid: sessionUuid }],
-      queryFn: async () =>
-        await fetchSessionChatLogs(await createSupabaseClient(), sessionUuid),
+      queryFn: async () => await fetchSessionChatLogs(supabase, sessionUuid),
 
-      enabled: sessionUuid != undefined && sessionUuid != null,
+      enabled: !!supabase && !!sessionUuid,
     });
 
   useEffect(() => {

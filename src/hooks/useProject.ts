@@ -1,3 +1,5 @@
+"use client";
+
 import { useSupabaseClient } from "@/apis/base";
 import { fetchOrganization } from "@/apis/organization";
 import { fetchProject, fetchProjects, subscribeProject } from "@/apis/project";
@@ -12,26 +14,22 @@ import { toast } from "react-toastify";
 export const useProject = () => {
   const params = useParams();
   const { organization } = useOrganization();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const { projectStream, setProjectStream } = useRealtimeStore();
   const [toastId, setToastId] = useState(null);
   const isOnlineRef = useRef(false);
 
   const { data: projectListData, refetch: refetchProjectListData } = useQuery({
     queryKey: ["projectListData", { orgId: organization?.id }],
-    queryFn: async () =>
-      await fetchProjects(await createSupabaseClient(), organization?.id),
-    enabled: organization != undefined && organization != null,
+    queryFn: async () => await fetchProjects(supabase, organization?.id),
+    enabled: !!supabase && !!organization?.id,
   });
 
   const { data: projectData, refetch: refetchProjectData } = useQuery({
     queryKey: ["projectData", { projectUuid: params?.projectUuid }],
     queryFn: async () =>
-      await fetchProject(
-        await createSupabaseClient(),
-        params?.projectUuid as string
-      ),
-    enabled: params?.projectUuid != undefined && params?.projectUuid != null,
+      await fetchProject(supabase, params?.projectUuid as string),
+    enabled: !!supabase && !!params?.projectUuid,
   });
 
   useEffect(() => {
@@ -45,37 +43,33 @@ export const useProject = () => {
           toastId: "sync",
           autoClose: 2000,
         });
-        console.log("toastId", toastId);
         setToastId(toastId);
       }
-    }, [isOnlineRef.current, toastId]),
+    }, [toastId]),
     close: useCallback(() => {
       toast.dismiss("sync");
-    }, [toastId]),
+    }, []),
   };
 
-  function subscribeToProject() {
-    if (!params?.projectUuid || !organization?.id || projectStream) return;
-    createSupabaseClient().then(async (client) => {
-      const newStream = await subscribeProject(
-        client,
-        organization?.id,
-        async () => {
-          syncToast.open();
-          await refetchProjectListData();
-          await refetchProjectData();
-          syncToast.close();
-        }
-      );
-      setProjectStream(newStream);
-    });
+  async function subscribeToProject() {
+    if (!params?.projectUuid || !organization?.id || projectStream || !supabase)
+      return;
+    const newStream = await subscribeProject(
+      supabase,
+      organization?.id,
+      async () => {
+        syncToast.open();
+        await refetchProjectListData();
+        await refetchProjectData();
+        syncToast.close();
+      }
+    );
+    setProjectStream(newStream);
 
     return () => {
       if (projectStream) {
         projectStream.unsubscribe();
-        createSupabaseClient().then((client) => {
-          client.removeChannel(projectStream);
-        });
+        supabase.removeChannel(projectStream);
       }
     };
   }
@@ -84,6 +78,7 @@ export const useProject = () => {
     params?.projectUuid,
     organization?.id,
     projectStream,
+    supabase,
   ];
 
   return {

@@ -33,7 +33,7 @@ export function TagsSelector({
   previousTags,
 }: TagsSelectorProps) {
   const queryClient = useQueryClient();
-  const { createSupabaseClient } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const { tagsListData } = useTags();
   const { projectUuid } = useProject();
   const { promptModelUuid } = usePromptModel();
@@ -62,7 +62,7 @@ export function TagsSelector({
     return tagsListData?.filter((tag: any) =>
       tag?.name.includes(inputValue?.toLowerCase())
     );
-  }, [inputValue, tagsListData, previousTags]);
+  }, [inputValue, tagsListData]);
 
   useEffect(() => {
     isOpenRef.current = isOpen; // Always keep it updated with the latest state
@@ -95,7 +95,7 @@ export function TagsSelector({
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
-  }, []);
+  }, [previousTags]);
 
   function handleClickOpen() {
     if (!isOpen) {
@@ -116,7 +116,7 @@ export function TagsSelector({
       ) {
         // Add tag
         await createTag(
-          await createSupabaseClient(),
+          supabase,
           projectUuid,
           tag,
           generateRandomPastelColor()
@@ -126,18 +126,10 @@ export function TagsSelector({
     }
     if (modelType === "PromptModel") {
       // Update PromptModel version tags
-      await updatePromptModelVersionTags(
-        await createSupabaseClient(),
-        versionUuid,
-        selectedTags
-      );
+      await updatePromptModelVersionTags(supabase, versionUuid, selectedTags);
     } else if (modelType === "ChatModel") {
       // Update ChatModel version tags
-      await updateChatModelVersionTags(
-        await createSupabaseClient(),
-        versionUuid,
-        selectedTags
-      );
+      await updateChatModelVersionTags(supabase, versionUuid, selectedTags);
     }
     if (newTagCreated) {
       await queryClient.invalidateQueries([
