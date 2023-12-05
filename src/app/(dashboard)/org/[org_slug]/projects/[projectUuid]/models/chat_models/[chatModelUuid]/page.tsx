@@ -998,16 +998,13 @@ const PromptComponent = ({
     editor.onDidFocusEditorWidget(() => {
       setFocusedEditor(editorRef.current);
     });
-  };
 
-  useEffect(() => {
-    const contentHeight = editorRef.current?.getContentHeight();
     const minHeight = 200;
     const maxHeight = windowHeight * 0.7;
     if (contentHeight) {
       setHeight(Math.min(Math.max(minHeight, contentHeight), maxHeight) + 20);
     }
-  }, [windowHeight]);
+  };
 
   return (
     <motion.div className="w-full h-fit flex flex-col justify-start items-center bg-base-100 rounded-box">
@@ -1072,18 +1069,14 @@ const PromptDiffComponent = ({
         setHeight(Math.min(modifiedHeight, maxHeight) + 20);
       }
     });
-  };
 
-  useEffect(() => {
-    const originalHeight = originalEditorRef.current?.getContentHeight();
     const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
-    const maxHeight = windowHeight * 0.7;
     if (modifiedHeight > originalHeight) {
       setHeight(Math.min(modifiedHeight, maxHeight) + 20);
     } else {
       setHeight(Math.min(originalHeight, maxHeight) + 20);
     }
-  }, [setHeight, windowHeight]);
+  };
 
   return (
     <div className="w-full h-fit flex flex-col justify-start items-center bg-base-100 rounded-box">
