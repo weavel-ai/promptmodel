@@ -2,7 +2,7 @@ from fastapi import WebSocket, HTTPException, Security, Depends
 from fastapi.security.api_key import APIKeyHeader
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 
-from base.database import supabase
+# from base.database import supabase
 from utils.logger import logger
 from utils.security import get_project
 

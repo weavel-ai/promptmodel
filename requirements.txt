@@ -10,11 +10,15 @@ Requests
 markdown
 APScheduler
 pytz
-pydantic
+pydantic>=2.4.2
 python-multipart
 pytest
 pytest-asyncio
 pytest-mock
 pytest-cov
 promptmodel>=0.1.0
-
+sqlalchemy>=2.0.0
+python-dotenv
+alembic
+asyncpg
+sqlmodel

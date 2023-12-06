@@ -28,7 +28,8 @@ from starlette.status import (
 from utils.security import get_api_key, get_project, get_cli_user_id
 from utils.dependency import get_websocket_token
 from utils.logger import logger
-from base.database import supabase
+
+# from base.database import supabase
 from base.websocket_connection import websocket_manager
 from modules.types import InstanceType
 from litellm.utils import completion_cost
@@ -945,7 +946,7 @@ async def log_deployment_chat(
 
             logs.append(
                 {
-                    "uuid" : log_uuid,
+                    "uuid": log_uuid,
                     "session_uuid": session_uuid,
                     "role": message["role"],
                     "content": message["content"],

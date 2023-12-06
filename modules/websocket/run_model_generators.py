@@ -3,7 +3,7 @@ import json
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from enum import Enum
 
-from base.database import supabase
+# from base.database import supabase
 from utils.logger import logger
 from utils.prompt_utils import update_dict
 from modules.types import (

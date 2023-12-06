@@ -23,7 +23,8 @@ from promptmodel.types.response import LLMStreamResponse
 
 from utils.logger import logger
 from utils.prompt_utils import update_dict
-from base.database import supabase
+
+# from base.database import supabase
 from modules.types import PromptModelRunConfig, ChatModelRunConfig
 
 router = APIRouter()

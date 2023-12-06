@@ -2,7 +2,7 @@ from fastapi import WebSocket, HTTPException, Security, Depends
 from fastapi.security.api_key import APIKeyHeader
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 
-from base.database import supabase
+# from base.database import supabase
 from utils.logger import logger
 
 API_KEY_HEADER = "Authorization"
@@ -17,10 +17,10 @@ def get_project(
     project = (
         supabase.table("project").select("*").eq("api_key", api_key).execute()
     ).data
-    
+
     logger.debug(f"api key: {api_key}")
     logger.debug(f"project: {project}")
-    
+
     if not project:
         raise HTTPException(
             status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
@@ -50,7 +50,9 @@ def get_api_key(
 ):
     """Authenticate and return API key."""
     try:
-        api_key = api_key.replace("Bearer ", "")  # Strip "Bearer " from the header value
+        api_key = api_key.replace(
+            "Bearer ", ""
+        )  # Strip "Bearer " from the header value
         return api_key
     except:
         raise HTTPException(

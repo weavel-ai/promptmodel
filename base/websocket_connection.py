@@ -9,7 +9,7 @@ from enum import Enum
 
 from fastapi import WebSocket
 
-from base.database import supabase
+# from base.database import supabase
 from utils.logger import logger
 
 

@@ -17,7 +17,8 @@ from starlette.status import (
 from utils.security import get_project
 from utils.prompt_utils import update_dict
 from utils.logger import logger
-from base.database import supabase
+
+# from base.database import supabase
 from base.websocket_connection import websocket_manager, LocalTask
 from modules.websocket.run_model_generators import run_local_prompt_model_generator
 from .dev_chat import router as chat_router
