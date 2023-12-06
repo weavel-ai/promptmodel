@@ -6,11 +6,16 @@ from asyncio import Queue
 from uuid import uuid4
 from datetime import datetime, timezone
 from enum import Enum
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import Result
+from sqlmodel import select, asc, desc, update
 
 from fastapi import WebSocket
 
-# from base.database import supabase
+from base.database import get_session
 from utils.logger import logger
+from ..models import *
+from crud import update_instances, pull_instances, save_instances, disconnect_local
 
 
 class LocalTask(str, Enum):
@@ -75,28 +80,27 @@ class ConnectionManager:
                 logger.error(f"Error reading from websocket for token {token}: {error}")
                 break
         # Cleanup when the reader ends (because the websocket closed or there was an error)
-        self.disconnect(token)
+        await self.disconnect(token)
 
-    def disconnect(self, token: str):
+    async def disconnect(self, token: str):
         if token in self.connected_locals:
             del self.connected_locals[token]
         # if token in self.agent_queues:
         #     del self.agent_queues[token]
-        self._set_local_online_status(token, False)
+        await self._set_local_online_status(token, False)
 
-    def _set_local_online_status(self, token: str, online: bool):
+    async def _set_local_online_status(self, token: str, online: bool):
         """Update agent's online status in the Supabase database."""
         try:
             if not online:
-                supabase.rpc("disconnect_local", {"token": token}).execute()
+                await disconnect_local(token=token)
             else:
-                res = (
-                    supabase.table("project")
-                    .update({"online": True})
-                    .eq("cli_access_key", token)
-                    .execute()
-                    .data
-                )
+                async with get_session() as session:
+                    await session.execute(
+                        update(Project)
+                        .where(Project.cli_access_key == token)
+                        .values(online=True)
+                    )
         except Exception as error:
             logger.error(f"Error updating online status for token {token}: {error}")
 
@@ -215,239 +219,222 @@ class ConnectionManager:
         """Handles the message received from the agent."""
         if data["type"] == ServerTask.SYNC_CODE:
             try:
-                project = (
-                    supabase.table("project")
-                    .select("*")
-                    .eq("cli_access_key", token)
-                    .execute()
-                ).data
-
-                if len(project) == 0:
-                    logger.error(f"Dev branch not found for token {token}")
-                    return
-
-                project_uuid = project[0]["uuid"]
-                changelogs = []
-                instances_in_db = (
-                    supabase.rpc("pull_instances", {"project_uuid": project_uuid})
-                    .execute()
-                    .data[0]
-                )
-                prompt_models_in_db = (
-                    instances_in_db["prompt_model_data"]
-                    if instances_in_db["prompt_model_data"]
-                    else []
-                )
-                chat_models_in_db = (
-                    instances_in_db["chat_model_data"]
-                    if instances_in_db["chat_model_data"]
-                    else []
-                )
-                samples_in_db = (
-                    instances_in_db["sample_input_data"]
-                    if instances_in_db["sample_input_data"]
-                    else []
-                )
-                schemas_in_db = (
-                    instances_in_db["function_schema_data"]
-                    if instances_in_db["function_schema_data"]
-                    else []
-                )
-
-                prompt_models_to_add = []
-                chat_models_to_add = []
-                samples_to_add = []
-                schemas_to_add = []
-
-                new_prompt_model_name_list = data["new_prompt_model"]
-                new_chat_model_name_list = data["new_chat_model"]
-                new_samples = data["new_samples"]
-                new_function_schemas = data["new_schemas"]
-
-                old_names = [x["name"] for x in prompt_models_in_db]
-                new_names = list(set(new_prompt_model_name_list) - set(old_names))
-                prompt_models_to_add = [
-                    {"name": x, "project_uuid": project_uuid} for x in new_names
-                ]
-
-                old_names = [x["name"] for x in chat_models_in_db]
-                new_names = list(set(new_chat_model_name_list) - set(old_names))
-                chat_models_to_add = [
-                    {"name": x, "project_uuid": project_uuid} for x in new_names
-                ]
-
-                old_names = [x["name"] for x in samples_in_db]
-                names_in_code = [x["name"] for x in new_samples]
-                new_names = list(set(names_in_code) - set(old_names))
-                samples_to_add = [
-                    {
-                        "name": x["name"],
-                        "content": x["content"],
-                        "project_uuid": project_uuid,
-                    }
-                    for x in new_samples
-                    if x["name"] in new_names
-                ]
-
-                # sample to update
-                samples_to_update = [
-                    sample
-                    for sample in new_samples
-                    if sample["name"] not in new_names
-                    and sample["content"]
-                    != samples_in_db[old_names.index(sample["name"])]["content"]
-                ]
-
-                # For FunctionSchema
-                old_names = [x["name"] for x in schemas_in_db]
-                names_in_code = [x["name"] for x in new_function_schemas]
-                new_names = list(set(names_in_code) - set(old_names))
-                schemas_to_add = [
-                    {
-                        "name": x["name"],
-                        "description": x["description"],
-                        "parameters": x["parameters"],
-                        "mock_response": x["mock_response"]
-                        if "mock_response" in x
-                        else None,
-                        "project_uuid": project_uuid,
-                    }
-                    for x in new_function_schemas
-                    if x["name"] in new_names
-                ]
-
-                # update schemas
-                schemas_to_update = [
-                    schema
-                    for schema in new_function_schemas
-                    if schema["name"] not in new_names
-                ]
-
-                # save instances
-                new_instances = (
-                    supabase.rpc(
-                        "save_instances",
-                        {
-                            "prompt_models": prompt_models_to_add,
-                            "chat_models": chat_models_to_add,
-                            "sample_inputs": samples_to_add,
-                            "function_schemas": schemas_to_add,
-                        },
-                    )
-                    .execute()
-                    .data[0]
-                )
-                created_prompt_models = (
-                    new_instances["prompt_model_rows"]
-                    if new_instances["prompt_model_rows"]
-                    else []
-                )
-                created_chat_models = (
-                    new_instances["chat_model_rows"]
-                    if new_instances["chat_model_rows"]
-                    else []
-                )
-                created_samples = (
-                    new_instances["sample_input_rows"]
-                    if new_instances["sample_input_rows"]
-                    else []
-                )
-                created_schemas = (
-                    new_instances["function_schema_rows"]
-                    if new_instances["function_schema_rows"]
-                    else []
-                )
-
-                prompt_model_name_list_to_update = new_prompt_model_name_list
-                chat_model_name_list_to_update = new_chat_model_name_list
-                # update instances
-                updated_instances = (
-                    supabase.rpc(
-                        "update_instances",
-                        {
-                            "input_project_uuid": project_uuid,
-                            "prompt_model_names": prompt_model_name_list_to_update,
-                            "chat_model_names": chat_model_name_list_to_update,
-                            "sample_input_names": [x["name"] for x in new_samples],
-                            "function_schema_names": [
-                                x["name"] for x in new_function_schemas
-                            ],
-                            "sample_inputs": samples_to_update,
-                            "function_schemas": schemas_to_update,
-                        },
-                    )
-                    .execute()
-                    .data[0]
-                )
-
-                updated_samples = (
-                    updated_instances["sample_input_rows"]
-                    if updated_instances["sample_input_rows"]
-                    else []
-                )
-                updated_schemas = (
-                    updated_instances["function_schema_rows"]
-                    if updated_instances["function_schema_rows"]
-                    else []
-                )
-
-                # make changelog
-                changelogs = [
-                    {
-                        "subject": f"prompt_model",
-                        "identifiers": [x["uuid"] for x in created_prompt_models],
-                        "action": "ADD",
-                    },
-                    {
-                        "subject": f"chat_model",
-                        "identifiers": [x["uuid"] for x in created_chat_models],
-                        "action": "ADD",
-                    },
-                    {
-                        "subject": f"sample_input",
-                        "identifiers": [x["uuid"] for x in created_samples],
-                        "action": "ADD",
-                    },
-                    {
-                        "subject": f"function_schema",
-                        "identifiers": [x["uuid"] for x in created_schemas],
-                        "action": "ADD",
-                    },
-                    {
-                        "subject": f"sample_input",
-                        "identifiers": [x["uuid"] for x in updated_samples],
-                        "action": "UPDATE",
-                    },
-                    {
-                        "subject": f"function_schema",
-                        "identifiers": [x["uuid"] for x in updated_schemas],
-                        "action": "UPDATE",
-                    },
-                ]
-                # delete if len(identifiers) == 0
-                changelogs = [x for x in changelogs if len(x["identifiers"]) > 0]
-                # save changelog
-                if len(changelogs) > 0:
-                    (
-                        supabase.table("project_changelog")
-                        .insert(
-                            {
-                                "logs": changelogs,
-                                "project_uuid": project_uuid,
-                            }
+                async with get_session() as session:
+                    project = (
+                        (
+                            await session.execute(
+                                select(Project).where(Project.cli_access_key == token)
+                            )
                         )
-                        .execute()
+                        .one()
+                        ._mapping
                     )
-                ws = self.connected_locals.get(token)
-                response_data = {
-                    "type": "SYNC_CODE",
-                    "status": "completed",
-                    "correlation_id": data["correlation_id"],
-                }
-                await ws.send_text(json.dumps(response_data))
-                logger.info(
-                    f"Send response message to local for SYNC_CODE : {response_data}"
-                )
+
+                    if len(project) == 0:
+                        logger.error(f"Dev branch not found for token {token}")
+                        return
+
+                    project_uuid = project[0]["uuid"]
+                    changelogs = []
+                    instances_in_db = await pull_instances(
+                        session=session, project_uuid=project_uuid
+                    )
+
+                    prompt_models_in_db = (
+                        instances_in_db["prompt_model_data"]
+                        if instances_in_db["prompt_model_data"]
+                        else []
+                    )
+                    chat_models_in_db = (
+                        instances_in_db["chat_model_data"]
+                        if instances_in_db["chat_model_data"]
+                        else []
+                    )
+                    samples_in_db = (
+                        instances_in_db["sample_input_data"]
+                        if instances_in_db["sample_input_data"]
+                        else []
+                    )
+                    schemas_in_db = (
+                        instances_in_db["function_schema_data"]
+                        if instances_in_db["function_schema_data"]
+                        else []
+                    )
+
+                    prompt_models_to_add = []
+                    chat_models_to_add = []
+                    samples_to_add = []
+                    schemas_to_add = []
+
+                    new_prompt_model_name_list = data["new_prompt_model"]
+                    new_chat_model_name_list = data["new_chat_model"]
+                    new_samples = data["new_samples"]
+                    new_function_schemas = data["new_schemas"]
+
+                    old_names = [x["name"] for x in prompt_models_in_db]
+                    new_names = list(set(new_prompt_model_name_list) - set(old_names))
+                    prompt_models_to_add = [
+                        {"name": x, "project_uuid": project_uuid} for x in new_names
+                    ]
+
+                    old_names = [x["name"] for x in chat_models_in_db]
+                    new_names = list(set(new_chat_model_name_list) - set(old_names))
+                    chat_models_to_add = [
+                        {"name": x, "project_uuid": project_uuid} for x in new_names
+                    ]
+
+                    old_names = [x["name"] for x in samples_in_db]
+                    names_in_code = [x["name"] for x in new_samples]
+                    new_names = list(set(names_in_code) - set(old_names))
+                    samples_to_add = [
+                        {
+                            "name": x["name"],
+                            "content": x["content"],
+                            "project_uuid": project_uuid,
+                        }
+                        for x in new_samples
+                        if x["name"] in new_names
+                    ]
+
+                    # sample to update
+                    samples_to_update = [
+                        sample
+                        for sample in new_samples
+                        if sample["name"] not in new_names
+                        and sample["content"]
+                        != samples_in_db[old_names.index(sample["name"])]["content"]
+                    ]
+
+                    # For FunctionSchema
+                    old_names = [x["name"] for x in schemas_in_db]
+                    names_in_code = [x["name"] for x in new_function_schemas]
+                    new_names = list(set(names_in_code) - set(old_names))
+                    schemas_to_add = [
+                        {
+                            "name": x["name"],
+                            "description": x["description"],
+                            "parameters": x["parameters"],
+                            "mock_response": x["mock_response"]
+                            if "mock_response" in x
+                            else None,
+                            "project_uuid": project_uuid,
+                        }
+                        for x in new_function_schemas
+                        if x["name"] in new_names
+                    ]
+
+                    # update schemas
+                    schemas_to_update = [
+                        schema
+                        for schema in new_function_schemas
+                        if schema["name"] not in new_names
+                    ]
+
+                    # save instances
+                    new_instances = await save_instances(
+                        session=session,
+                        prompt_models=prompt_models_to_add,
+                        chat_models=chat_models_to_add,
+                        sample_inputs=samples_to_add,
+                        function_schemas=schemas_to_add,
+                    )
+                    
+                    created_prompt_models = (
+                        new_instances["prompt_model_rows"]
+                        if new_instances["prompt_model_rows"]
+                        else []
+                    )
+                    created_chat_models = (
+                        new_instances["chat_model_rows"]
+                        if new_instances["chat_model_rows"]
+                        else []
+                    )
+                    created_samples = (
+                        new_instances["sample_input_rows"]
+                        if new_instances["sample_input_rows"]
+                        else []
+                    )
+                    created_schemas = (
+                        new_instances["function_schema_rows"]
+                        if new_instances["function_schema_rows"]
+                        else []
+                    )
+
+                    prompt_model_name_list_to_update = new_prompt_model_name_list
+                    chat_model_name_list_to_update = new_chat_model_name_list
+                    # update instances
+                    updated_instances = await update_instances(
+                        session=session,
+                        project_uuid=project_uuid,
+                        prompt_model_names=prompt_model_name_list_to_update,
+                        chat_model_names=chat_model_name_list_to_update,
+                        sample_input_names=[x["name"] for x in new_samples],
+                        function_schema_names=[x["name"] for x in new_function_schemas],
+                        sample_inputs=samples_to_update,
+                        function_schemas=schemas_to_update,
+                    )
+
+                    updated_samples = (
+                        updated_instances["sample_input_rows"]
+                        if updated_instances["sample_input_rows"]
+                        else []
+                    )
+                    updated_schemas = (
+                        updated_instances["function_schema_rows"]
+                        if updated_instances["function_schema_rows"]
+                        else []
+                    )
+
+                    # make changelog
+                    changelogs = [
+                        {
+                            "subject": f"prompt_model",
+                            "identifiers": [x["uuid"] for x in created_prompt_models],
+                            "action": "ADD",
+                        },
+                        {
+                            "subject": f"chat_model",
+                            "identifiers": [x["uuid"] for x in created_chat_models],
+                            "action": "ADD",
+                        },
+                        {
+                            "subject": f"sample_input",
+                            "identifiers": [x["uuid"] for x in created_samples],
+                            "action": "ADD",
+                        },
+                        {
+                            "subject": f"function_schema",
+                            "identifiers": [x["uuid"] for x in created_schemas],
+                            "action": "ADD",
+                        },
+                        {
+                            "subject": f"sample_input",
+                            "identifiers": [x["uuid"] for x in updated_samples],
+                            "action": "UPDATE",
+                        },
+                        {
+                            "subject": f"function_schema",
+                            "identifiers": [x["uuid"] for x in updated_schemas],
+                            "action": "UPDATE",
+                        },
+                    ]
+                    # delete if len(identifiers) == 0
+                    changelogs = [x for x in changelogs if len(x["identifiers"]) > 0]
+                    # save changelog
+                    if len(changelogs) > 0:
+                        session.add(ProjectChangelog(**{"logs": changelogs, "project_uuid": project_uuid}))
+                        await session.commit()
+
+                    ws = self.connected_locals.get(token)
+                    response_data = {
+                        "type": "SYNC_CODE",
+                        "status": "completed",
+                        "correlation_id": data["correlation_id"],
+                    }
+                    await ws.send_text(json.dumps(response_data))
+                    logger.info(
+                        f"Send response message to local for SYNC_CODE : {response_data}"
+                    )
 
             except Exception as error:
                 logger.error(f"Error in Syncing with code: {error}")

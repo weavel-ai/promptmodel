@@ -3,6 +3,9 @@ import json
 from datetime import datetime, timezone
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import Result
+from sqlmodel import select, asc, desc, update
 
 from fastapi import APIRouter, Response, HTTPException, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -19,18 +22,23 @@ from utils.security import get_project
 from utils.logger import logger
 from utils.prompt_utils import update_dict
 
-# from base.database import supabase
+from base.database import get_session
 from base.websocket_connection import websocket_manager, LocalTask
 from modules.websocket.run_model_generators import (
     run_local_chat_model_generator,
 )
 from modules.types import ChatModelRunConfig, ChatLog
+from ..models import *
 
 router = APIRouter()
 
 
 @router.post("/run_chat_model")
-async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
+async def run_chat_model(
+    project_uuid: str,
+    run_config: ChatModelRunConfig,
+    session: AsyncSession = Depends(get_session),
+):
     """
     <h2>For local connection, Send run_chat_model request to the local server  </h2>
 
@@ -66,12 +74,17 @@ async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
         start_timestampz_iso = datetime.now(timezone.utc).isoformat()
         # Find local server websocket
         project = (
-            supabase.table("project")
-            .select("uuid, cli_access_key, version")
-            .eq("uuid", project_uuid)
-            .execute()
-            .data
+            (
+                await session.execute(
+                    select(Project.cli_access_key, Project.version, Project.uuid).where(
+                        Project.uuid == UUID(project_uuid)
+                    )
+                )
+            )
+            .mappings()
+            .all()
         )
+
         if len(project) == 0:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND, detail="There is no project"
@@ -86,7 +99,11 @@ async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
         try:
             return StreamingResponse(
                 run_local_chat_model_generator(
-                    project[0], start_timestampz_iso, cli_access_key, run_config
+                    session,
+                    project[0],
+                    start_timestampz_iso,
+                    cli_access_key,
+                    run_config,
                 )
             )
         except Exception as exc:
@@ -103,7 +120,10 @@ async def run_chat_model(project_uuid: str, run_config: ChatModelRunConfig):
 
 
 @router.get("/list_chat_models")
-async def list_chat_models(project_uuid: str):
+async def list_chat_models(
+    project_uuid: str,
+    session: AsyncSession = Depends(get_session),
+):
     """Get list of chat models in local DB by websocket
     Input:
         - project_uuid : project uuid
@@ -122,12 +142,17 @@ async def list_chat_models(project_uuid: str):
     try:
         # Find local server websocket
         project = (
-            supabase.table("project")
-            .select("cli_access_key")
-            .eq("uuid", project_uuid)
-            .execute()
-            .data
+            (
+                await session.execute(
+                    select(Project.cli_access_key, Project.version, Project.uuid).where(
+                        Project.uuid == UUID(project_uuid)
+                    )
+                )
+            )
+            .mappings()
+            .all()
         )
+
         if len(project) == 0:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND, detail="There is no project"

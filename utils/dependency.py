@@ -2,9 +2,14 @@ from fastapi import WebSocket, HTTPException, Security, Depends
 from fastapi.security.api_key import APIKeyHeader
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 
-# from base.database import supabase
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import Result
+from sqlmodel import select, asc, desc, update
+
+from base.database import get_session
 from utils.logger import logger
 from utils.security import get_project
+from ..models import *
 
 API_KEY_HEADER = "Authorization"
 api_key_header = APIKeyHeader(name=API_KEY_HEADER, auto_error=False)
@@ -30,7 +35,10 @@ api_key_header = APIKeyHeader(name=API_KEY_HEADER, auto_error=False)
 #         raise HTTPException(status_code=400, detail="Invalid token!")
 
 
-async def get_user_id(authorization: str = Depends(api_key_header)):
+async def get_user_id(
+    authorization: str = Depends(api_key_header),
+    session: AsyncSession = Depends(get_session),
+):
     if not authorization:
         raise HTTPException(status_code=400, detail="Authorization header is required!")
     auth_header = authorization.split(" ")
@@ -39,12 +47,11 @@ async def get_user_id(authorization: str = Depends(api_key_header)):
     user_id = auth_header[1]
     try:
         user = (
-            supabase.table("user")
-            .select("user_id")
-            .eq("user_id", user_id)
-            .single()
-            .execute()
-        ).data
+            (await session.execute(select(User.user_id).where(User.user_id == user_id)))
+            .one()
+            ._mapping
+        )
+
         logger.debug(f"User authorized: {user}")
         if not user:  # You can further validate the token here if necessary
             raise HTTPException(status_code=400, detail="Token is required!")
@@ -54,7 +61,9 @@ async def get_user_id(authorization: str = Depends(api_key_header)):
         raise HTTPException(status_code=400, detail="Invalid token!")
 
 
-async def get_websocket_token(websocket: WebSocket):
+async def get_websocket_token(
+    websocket: WebSocket, session: AsyncSession = Depends(get_session)
+):
     if websocket:
         authorization = websocket.headers.get("Authorization")
         if not authorization:
@@ -69,13 +78,18 @@ async def get_websocket_token(websocket: WebSocket):
     token = authorization.split(" ")[1]
     try:
         project = (
-            supabase.table("project")
-            .select("id, name")
-            .eq("cli_access_key", token)
-            .execute()
-            .data
+            (
+                await session.execute(
+                    select(Project.id, Project.name).where(
+                        Project.cli_access_key == token
+                    )
+                )
+            )
+            .mappings()
+            .all()
         )
-        if not project:
+
+        if not project or len(project) == 0:
             # await websocket.close(code=4000)
             raise HTTPException(status_code=400, detail="Token is required!")
         return token

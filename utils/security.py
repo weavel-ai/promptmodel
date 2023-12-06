@@ -2,21 +2,29 @@ from fastapi import WebSocket, HTTPException, Security, Depends
 from fastapi.security.api_key import APIKeyHeader
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 
-# from base.database import supabase
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import Result
+from sqlmodel import select, asc, desc, update
+
 from utils.logger import logger
+from base.database import get_session
+from ..models import *
 
 API_KEY_HEADER = "Authorization"
 api_key_header = APIKeyHeader(name=API_KEY_HEADER, auto_error=False)
 
 
-def get_project(
+async def get_project(
     api_key: str = Security(api_key_header),
 ):
     """Authenticate and return project based on API key."""
     api_key = api_key.replace("Bearer ", "")  # Strip "Bearer " from the header value
-    project = (
-        supabase.table("project").select("*").eq("api_key", api_key).execute()
-    ).data
+    async with get_session() as session:
+        project = (
+            (await session.execute(select(Project).where(Project.api_key == api_key)))
+            .one()
+            ._mapping
+        )
 
     logger.debug(f"api key: {api_key}")
     logger.debug(f"project: {project}")
@@ -29,14 +37,18 @@ def get_project(
     return project[0]
 
 
-def get_cli_user_id(
+async def get_cli_user_id(
     api_key: str = Security(api_key_header),
 ):
     """Authenticate and return CLI user based on API key."""
     api_key = api_key.replace("Bearer ", "")  # Strip "Bearer " from the header value
-    user_id = (
-        supabase.table("cli_access").select("user_id").eq("api_key", api_key).execute()
-    ).data
+    async with get_session() as session:
+        user_id = (
+            await session.execute(
+                select(CliAccess.user_id).where(CliAccess.api_key == api_key)
+            )
+        ).scalar_one()
+
     if not user_id:
         raise HTTPException(
             status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
@@ -45,7 +57,7 @@ def get_cli_user_id(
     return user_id[0]["user_id"]
 
 
-def get_api_key(
+async def get_api_key(
     api_key: str = Security(api_key_header),
 ):
     """Authenticate and return API key."""

@@ -1,4 +1,6 @@
 """Postgres SQL Database Session."""
+from typing import AsyncGenerator
+
 from sqlmodel import SQLModel
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -32,6 +34,6 @@ async_session = sessionmaker(
 
 
 # Dependency for getting a database session
-async def get_session() -> AsyncSession:
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:
         yield session

@@ -6,6 +6,9 @@ from datetime import datetime, timezone
 from operator import eq
 from typing import Any, AsyncGenerator, Dict, List, Optional, Sequence, Tuple, Union
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import Result
+from sqlmodel import select, asc, desc, update
 
 from fastapi import APIRouter, HTTPException, Depends, Response
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -24,45 +27,47 @@ from promptmodel.types.response import LLMStreamResponse
 from utils.logger import logger
 from utils.prompt_utils import update_dict
 
-# from base.database import supabase
+from base.database import get_session
 from modules.types import PromptModelRunConfig, ChatModelRunConfig
+from ..models import *
 
 router = APIRouter()
 
 
-class Project(BaseModel):
+class ProjectInstance(BaseModel):
     name: str
     organization_id: str
 
 
 @router.post("/project")
-async def create_project(project: Project):
+async def create_project(
+    project: ProjectInstance, session: AsyncSession = Depends(get_session)
+):
     """Generate a safe API key and create new project."""
     api_key = secrets.token_urlsafe(32)  # generate a random URL-safe key
     try:
-        project_res = (
-            supabase.table("project")
-            .insert(
-                {
-                    "name": project.name,
-                    "organization_id": project.organization_id,
-                    "api_key": api_key,
-                }
-            )
-            .execute()
-            .data[0]
+        new_project = Project(
+            name=project.name, organization_id=project.organization_id, api_key=api_key
         )
+        session.add(new_project)
+        await session.commit()
+        await session.refresh(new_project)
+
+        return new_project
+
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
         ) from exc
 
-    return JSONResponse(project_res, status_code=HTTP_200_OK)
-
 
 @router.post("/run_prompt_model")
-async def run_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
+async def run_prompt_model(
+    project_uuid: str,
+    run_config: PromptModelRunConfig,
+    session: AsyncSession = Depends(get_session),
+):
     """Run PromptModel for cloud development environment.
 
     Args:
@@ -85,7 +90,7 @@ async def run_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
 
     async def stream_run():
         async for chunk in run_cloud_prompt_model(
-            project_uuid=project_uuid, run_config=run_config
+            session=session, project_uuid=project_uuid, run_config=run_config
         ):
             yield json.dumps(chunk)
 
@@ -100,20 +105,21 @@ async def run_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
         ) from exc
 
 
-async def run_cloud_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
+async def run_cloud_prompt_model(
+    session: AsyncSession, project_uuid: str, run_config: PromptModelRunConfig
+):
     """Run PromptModel on the cloud, request from web."""
     sample_input: Dict[str, Any] = {}
     # get sample from db
     if run_config.sample_name:
         sample_input = (
-            supabase.table("sample_input")
-            .select("content")
-            .eq("name", run_config.sample_name)
-            .eq("project_uuid", project_uuid)
-            .single()
-            .execute()
-            .data["content"]
-        )
+            await session.execute(
+                select(SampleInput.content)
+                .where(SampleInput.name == run_config.sample_name)
+                .where(SampleInput.project_uuid == UUID(project_uuid))
+            )
+        ).scalar_one()
+
     # Validate Variable Matching
     prompt_variables = []
     for prompt in run_config.prompts:
@@ -174,38 +180,38 @@ async def run_cloud_prompt_model(project_uuid: str, run_config: PromptModelRunCo
                 need_project_version_update = True
             else:
                 latest_version = (
-                    supabase.table("prompt_model_version")
-                    .select("version")
-                    .eq("prompt_model_uuid", run_config.prompt_model_uuid)
-                    .order("version", desc=True)
-                    .limit(1)
-                    .single()
-                    .execute()
-                    .data["version"]
-                )
+                    await session.execute(
+                        select(PromptModelVersion.version)
+                        .where(
+                            PromptModelVersion.prompt_model_uuid
+                            == run_config.prompt_model_uuid
+                        )
+                        .order_by(desc(PromptModelVersion.version))
+                        .limit(1)
+                    )
+                ).scalar_one()
+
                 version = latest_version + 1
-            prompt_model_version = (
-                supabase.table("prompt_model_version")
-                .insert(
-                    {
-                        "prompt_model_uuid": run_config.prompt_model_uuid,
-                        "from_version": run_config.from_version,
-                        "version": version,
-                        "model": run_config.model,
-                        "parsing_type": run_config.parsing_type,
-                        "output_keys": run_config.output_keys,
-                        "functions": run_config.functions,
-                        "is_published": True if version == 1 else False,
-                    }
-                )
-                .execute()
-                .data[0]
+            new_prompt_model_version_row = PromptModelVersion(
+                **{
+                    "prompt_model_uuid": run_config.prompt_model_uuid,
+                    "from_version": run_config.from_version,
+                    "version": version,
+                    "model": run_config.model,
+                    "parsing_type": run_config.parsing_type,
+                    "output_keys": run_config.output_keys,
+                    "functions": run_config.functions,
+                    "is_published": True if version == 1 else False,
+                }
             )
+            session.add(new_prompt_model_version_row)
+            await session.commit()
+            await session.refresh(new_prompt_model_version_row)
 
             changelogs.append(
                 {
                     "subject": "prompt_model_version",
-                    "identifier": [prompt_model_version["uuid"]],
+                    "identifier": [str(new_prompt_model_version_row.uuid)],
                     "action": "ADD",
                 }
             )
@@ -214,22 +220,24 @@ async def run_cloud_prompt_model(project_uuid: str, run_config: PromptModelRunCo
                 changelogs.append(
                     {
                         "subject": "prompt_model_version",
-                        "identifier": [prompt_model_version["uuid"]],
+                        "identifier": [str(new_prompt_model_version_row.uuid)],
                         "action": "PUBLISH",
                     }
                 )
 
-            prompt_model_version_uuid: str = prompt_model_version["uuid"]
-
+            prompt_model_version_uuid: str = str(new_prompt_model_version_row.uuid)
             for prompt in run_config.prompts:
-                supabase.table("prompt").insert(
-                    {
+                prompt_row = Prompt(
+                    **{
                         "version_uuid": prompt_model_version_uuid,
                         "role": prompt.role,
                         "step": prompt.step,
                         "content": prompt.content,
                     }
-                ).execute()
+                )
+                prompt_row = session.merge(prompt_row)
+                session.add(prompt_row)
+                await session.commit()
 
             data = {
                 "prompt_model_version_uuid": prompt_model_version_uuid,
@@ -257,7 +265,7 @@ async def run_cloud_prompt_model(project_uuid: str, run_config: PromptModelRunCo
                 for prompt in prompts
             ]
         else:
-            messages = [prompt.model_dump() for prompt in prompts]
+            messages = [prompt.dict() for prompt in prompts]
 
         parsing_success = True
         error_log = None
@@ -266,13 +274,21 @@ async def run_cloud_prompt_model(project_uuid: str, run_config: PromptModelRunCo
 
         # add function schemas
         function_schemas = (
-            supabase.table("function_schema")
-            .select("name, description, parameters, mock_response")
-            .eq("project_uuid", project_uuid)
-            .in_("name", run_config.functions)
-            .execute()
-            .data
-        )  # function_schemas includes mock_response
+            (
+                await session.execute(
+                    select(
+                        FunctionSchema.name,
+                        FunctionSchema.description,
+                        FunctionSchema.parameters,
+                        FunctionSchema.mock_response,
+                    )
+                    .where(FunctionSchema.project_uuid == UUID(project_uuid))
+                    .where(FunctionSchema.name.in_(run_config.functions))
+                )
+            )
+            .mappings()
+            .all()
+        )
 
         res: AsyncGenerator[LLMStreamResponse, None] = prompt_model_dev.dev_run(
             messages=messages,
@@ -325,82 +341,93 @@ async def run_cloud_prompt_model(project_uuid: str, run_config: PromptModelRunCo
             data = {"status": "failed", "log": f"parsing failed, {error_log}"}
 
             # Create run log
-            supabase.table("run_log").insert(
-                {
+            run_log_row = RunLog(
+                **{
                     "version_uuid": prompt_model_version_uuid,
                     "inputs": sample_input,
                     "raw_output": output["raw_output"],
                     "parsed_outputs": output["parsed_outputs"],
-                    "metadata": {
+                    "run_log_metadata": {
                         "error_log": error_log,
                         "error": True,
                     },
                     "score": 0,
                     "run_from_deployment": False,
                 }
-            ).execute()
+            )
+            session.add(run_log_row)
+            await session.commit()
 
             yield data
 
             if len(changelogs) > 0:
-                supabase.table("project_changelog").insert(
-                    {
-                        "logs": changelogs,
-                        "project_uuid": project_uuid,
-                    }
-                ).execute()
+                session.add(
+                    ProjectChangelog(
+                        **{
+                            "logs": changelogs,
+                            "project_uuid": project_uuid,
+                        }
+                    )
+                )
+                await session.commit()
+
             if need_project_version_update:
                 project_version = (
-                    supabase.table("project")
-                    .select("version")
-                    .eq("uuid", project_uuid)
-                    .execute()
-                    .data[0]["version"]
-                )
-                (
-                    supabase.table("project")
-                    .update({"version": project_version + 1})
-                    .eq("uuid", project_uuid)
-                    .execute()
+                    await session.execute(
+                        select(Project.version).where(
+                            Project.uuid == UUID(project_uuid)
+                        )
+                    )
+                ).scalar_one()
+
+                await session.execute(
+                    update(Project)
+                    .where(Project.uuid == UUID(project_uuid))
+                    .values(version=project_version + 1)
                 )
             return
 
         # Create run log
-        supabase.table("run_log").insert(
-            {
-                "version_uuid": prompt_model_version_uuid,
-                "inputs": sample_input,
-                "raw_output": output["raw_output"],
-                "parsed_outputs": output["parsed_outputs"],
-                "function_call": function_call,
-                "run_from_deployment": False,
-            }
-        ).execute()
+        session.add(
+            RunLog(
+                **{
+                    "version_uuid": prompt_model_version_uuid,
+                    "inputs": sample_input,
+                    "raw_output": output["raw_output"],
+                    "parsed_outputs": output["parsed_outputs"],
+                    "function_call": function_call,
+                    "run_from_deployment": False,
+                }
+            )
+        )
+        await session.commit()
 
         data = {
             "status": "completed",
         }
 
         if len(changelogs) > 0:
-            supabase.table("project_changelog").insert(
-                {
-                    "logs": changelogs,
-                    "project_uuid": project_uuid,
-                }
-            ).execute()
+            session.add(
+                ProjectChangelog(
+                    **{
+                        "logs": changelogs,
+                        "project_uuid": project_uuid,
+                    }
+                )
+            )
+            await session.commit()
+
         if need_project_version_update:
             project_version = (
-                supabase.table("project")
-                .select("version")
-                .eq("uuid", project_uuid)
-                .execute()
-                .data[0]["version"]
-            )
-            (
-                supabase.table("project")
-                .update({"version": project_version + 1})
-                .eq("uuid", project_uuid)
-                .execute()
+                await session.execute(
+                    select(Project.version).where(Project.uuid == UUID(project_uuid))
+                )
+            ).scalar_one()
+
+            await session.execute(
+                update(Project)
+                .where(Project.uuid == UUID(project_uuid))
+                .values(version=project_version + 1)
             )
 
         yield data
@@ -415,7 +442,11 @@ async def run_cloud_prompt_model(project_uuid: str, run_config: PromptModelRunCo
 
 
 @router.post("/run_chat_model")
-async def run_chat_model(project_uuid: str, chat_config: ChatModelRunConfig):
+async def run_chat_model(
+    project_uuid: str,
+    chat_config: ChatModelRunConfig,
+    session: AsyncSession = Depends(get_session),
+):
     """Run ChatModel from web.
 
     Args:
@@ -440,7 +471,7 @@ async def run_chat_model(project_uuid: str, chat_config: ChatModelRunConfig):
 
     async def stream_run():
         async for chunk in run_cloud_chat_model(
-            project_uuid=project_uuid, chat_config=chat_config
+            session=session, project_uuid=project_uuid, chat_config=chat_config
         ):
             yield json.dumps(chunk)
 
@@ -456,6 +487,7 @@ async def run_chat_model(project_uuid: str, chat_config: ChatModelRunConfig):
 
 
 async def run_cloud_chat_model(
+    session: AsyncSession,
     project_uuid: str,
     chat_config: ChatModelRunConfig,
 ) -> AsyncGenerator[Dict[str, Any], None]:
@@ -496,37 +528,38 @@ async def run_cloud_chat_model(
                 need_project_version_update = True
             else:
                 latest_version = (
-                    supabase.table("chat_model_version")
-                    .select("version")
-                    .eq("chat_model_uuid", chat_config.chat_model_uuid)
-                    .order("version", desc=True)
-                    .limit(1)
-                    .single()
-                    .execute()
-                    .data["version"]
-                )
+                    await session.execute(
+                        select(ChatModelVersion.version)
+                        .where(
+                            ChatModelVersion.chat_model_uuid
+                            == chat_config.chat_model_uuid
+                        )
+                        .order_by(desc(ChatModelVersion.version))
+                        .limit(1)
+                    )
+                ).scalar_one()
+
                 version = latest_version + 1
 
-            chat_model_version = (
-                supabase.table("chat_model_version")
-                .insert(
-                    {
-                        "chat_model_uuid": chat_config.chat_model_uuid,
-                        "from_version": chat_config.from_version,
-                        "version": version,
-                        "model": chat_config.model,
-                        "system_prompt": chat_config.system_prompt,
-                        "functions": chat_config.functions,
-                        "is_published": True if version == 1 else False,
-                    }
-                )
-                .execute()
-                .data[0]
+            new_chat_model_version_row = ChatModelVersion(
+                **{
+                    "chat_model_uuid": chat_config.chat_model_uuid,
+                    "from_version": chat_config.from_version,
+                    "version": version,
+                    "model": chat_config.model,
+                    "system_prompt": chat_config.system_prompt,
+                    "functions": chat_config.functions,
+                    "is_published": True if version == 1 else False,
+                }
             )
+            session.add(new_chat_model_version_row)
+            await session.commit()
+            await session.refresh(new_chat_model_version_row)
+
             changelogs.append(
                 {
                     "subject": "chat_model_version",
-                    "identifier": [chat_model_version["uuid"]],
+                    "identifier": [str(new_chat_model_version_row.uuid)],
                     "action": "ADD",
                 }
             )
@@ -534,12 +567,12 @@ async def run_cloud_chat_model(
                 changelogs.append(
                     {
                         "subject": "chat_model_version",
-                        "identifier": [chat_model_version["uuid"]],
+                        "identifier": [str(new_chat_model_version_row.uuid)],
                         "action": "PUBLISH",
                     }
                 )
 
-            chat_model_version_uuid: str = chat_model_version["uuid"]
+            chat_model_version_uuid: str = str(new_chat_model_version_row.uuid)
 
             data = {
                 "chat_model_version_uuid": chat_model_version_uuid,
@@ -550,17 +583,18 @@ async def run_cloud_chat_model(
 
         # If session uuid is None, create new session
         if session_uuid is None:
-            session_uuid = (
-                supabase.table("chat_log_session")
-                .insert(
-                    {
-                        "version_uuid": chat_model_version_uuid,
-                        "run_from_deployment": False,
-                    }
-                )
-                .execute()
-                .data[0]["uuid"]
+            new_session = ChatLogSession(
+                **{
+                    "version_uuid": chat_model_version_uuid,
+                    "run_from_deployment": False,
+                }
             )
+            session.add(new_session)
+            await session.commit()
+            await session.refresh(new_session)
+
+            session_uuid: str = str(new_session.uuid)
+
             data = {
                 "chat_log_session_uuid": session_uuid,
                 "status": "running",
@@ -569,23 +603,22 @@ async def run_cloud_chat_model(
         else:
             # If session exists, fetch session chat logs from cloud db
             session_chat_logs = (
-                supabase.table("chat_log")
-                .select("role, content")
-                .eq("session_uuid", session_uuid)
-                .order("created_at", desc=False)
-                .execute()
-                .data
+                (
+                    await session.execute(
+                        select(ChatLog.role, ChatLog.content)
+                        .where(ChatLog.session_uuid == UUID(session_uuid))
+                        .order_by(asc(ChatLog.created_at))
+                    )
+                )
+                .mappings()
+                .all()
             )
-            messages.extend(session_chat_logs)
 
-        # function_schemas = (
-        #     supabase.table("function_schema")
-        #     .select("*")
-        #     .eq("project_uuid", project_uuid)
-        #     .in_("name", chat_config.functions)
-        #     .execute()
-        #     .data
-        # )
+            messages.extend(session_chat_logs)
+            messages = [
+                {k: v for k, v in message.items() if v is not None}
+                for message in messages
+            ]
 
         # Append user input to messages
         messages.append({"role": "user", "content": chat_config.user_input})
@@ -624,47 +657,53 @@ async def run_cloud_chat_model(
             yield data
 
         # Create chat log
-        supabase.table("chat_log").insert(
-            {
-                "created_at": start_timestampz_iso,
-                "session_uuid": session_uuid,
-                "role": "user",
-                "content": chat_config.user_input,
-            }
-        ).execute()
-        supabase.table("chat_log").insert(
-            {
-                "session_uuid": session_uuid,
-                "role": "assistant",
-                "content": raw_output,
-                "tool_calls": [function_call],
-            }
-        ).execute()
+        session.add(
+            ChatLog(
+                **{
+                    "created_at": start_timestampz_iso,
+                    "session_uuid": session_uuid,
+                    "role": "user",
+                    "content": chat_config.user_input,
+                }
+            )
+        )
+        session.add(
+            ChatLog(
+                **{
+                    "session_uuid": session_uuid,
+                    "role": "assistant",
+                    "content": raw_output,
+                    "tool_calls": [function_call],
+                }
+            )
+        )
+        await session.commit()
 
         data = {
             "status": "completed",
         }
 
         if len(changelogs) > 0:
-            supabase.table("project_changelog").insert(
-                {
-                    "logs": changelogs,
-                    "project_uuid": project_uuid,
-                }
-            ).execute()
+            session.add(
+                ProjectChangelog(
+                    **{
+                        "logs": changelogs,
+                        "project_uuid": project_uuid,
+                    }
+                )
+            )
+            await session.commit()
         if need_project_version_update:
             project_version = (
-                supabase.table("project")
-                .select("version")
-                .eq("uuid", project_uuid)
-                .execute()
-                .data[0]["version"]
-            )
-            (
-                supabase.table("project")
-                .update({"version": project_version + 1})
-                .eq("uuid", project_uuid)
-                .execute()
+                await session.execute(
+                    select(Project.version).where(Project.uuid == UUID(project_uuid))
+                )
+            ).scalar_one()
+
+            await session.execute(
+                update(Project)
+                .where(Project.uuid == UUID(project_uuid))
+                .values(version=project_version + 1)
             )
 
         yield data

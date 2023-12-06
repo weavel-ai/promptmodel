@@ -87,6 +87,40 @@ END; $$ language plpgsql;
     """
     )
 
+    op.execute(
+        """\
+    CREATE OR REPLACE FUNCTION disconnect_local(token TEXT) RETURNS VOID AS $$
+    DECLARE
+        found_project_uuid UUID;
+    BEGIN
+        SELECT uuid INTO found_project_uuid FROM project WHERE cli_access_key = token;
+
+        UPDATE project
+        SET cli_access_key = NULL, online = FALSE
+        WHERE cli_access_key = token;
+
+        UPDATE prompt_model
+        SET online = FALSE
+        WHERE project_uuid = found_project_uuid;
+
+        UPDATE chat_model
+        SET online = FALSE
+        WHERE project_uuid = found_project_uuid;
+
+        UPDATE sample_input
+        SET online = FALSE
+        WHERE project_uuid = found_project_uuid;
+
+        UPDATE function_schema
+        SET online = FALSE
+        WHERE project_uuid = found_project_uuid;
+
+        RETURN;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+    )
+
 
 def downgrade() -> None:
     pass
