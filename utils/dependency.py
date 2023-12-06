@@ -9,7 +9,7 @@ from sqlmodel import select, asc, desc, update
 from base.database import get_session
 from utils.logger import logger
 from utils.security import get_project
-from ..models import *
+from db_models import *
 
 API_KEY_HEADER = "Authorization"
 api_key_header = APIKeyHeader(name=API_KEY_HEADER, auto_error=False)

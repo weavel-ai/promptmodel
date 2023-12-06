@@ -29,7 +29,7 @@ from utils.prompt_utils import update_dict
 
 from base.database import get_session
 from modules.types import PromptModelRunConfig, ChatModelRunConfig
-from ..models import *
+from db_models import *
 
 router = APIRouter()
 

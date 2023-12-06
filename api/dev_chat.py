@@ -28,7 +28,7 @@ from modules.websocket.run_model_generators import (
     run_local_chat_model_generator,
 )
 from modules.types import ChatModelRunConfig, ChatLog
-from ..models import *
+from db_models import *
 
 router = APIRouter()
 

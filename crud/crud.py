@@ -8,7 +8,7 @@ from sqlmodel import select, asc, desc, update
 
 
 from base.database import get_session
-from ..models import *
+from db_models import *
 from modules.types import (
     InstanceType,
 )

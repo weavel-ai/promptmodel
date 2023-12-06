@@ -34,7 +34,7 @@ from utils.logger import logger
 from base.database import get_session
 from base.websocket_connection import websocket_manager
 from crud import update_instances, pull_instances, save_instances
-from ..models import *
+from db_models import *
 from modules.types import (
     InstanceType,
     DeployedPromptModelVersionInstance,

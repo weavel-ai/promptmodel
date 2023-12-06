@@ -18,7 +18,7 @@ from modules.types import (
 )
 from base.database import get_session
 from base.websocket_connection import websocket_manager, LocalTask
-from ...models import *
+from db_models import *
 
 
 async def run_local_prompt_model_generator(

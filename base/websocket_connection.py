@@ -14,7 +14,7 @@ from fastapi import WebSocket
 
 from base.database import get_session
 from utils.logger import logger
-from ..models import *
+from db_models import *
 from crud import update_instances, pull_instances, save_instances, disconnect_local
 
 
@@ -338,7 +338,7 @@ class ConnectionManager:
                         sample_inputs=samples_to_add,
                         function_schemas=schemas_to_add,
                     )
-                    
+
                     created_prompt_models = (
                         new_instances["prompt_model_rows"]
                         if new_instances["prompt_model_rows"]
@@ -422,7 +422,11 @@ class ConnectionManager:
                     changelogs = [x for x in changelogs if len(x["identifiers"]) > 0]
                     # save changelog
                     if len(changelogs) > 0:
-                        session.add(ProjectChangelog(**{"logs": changelogs, "project_uuid": project_uuid}))
+                        session.add(
+                            ProjectChangelog(
+                                **{"logs": changelogs, "project_uuid": project_uuid}
+                            )
+                        )
                         await session.commit()
 
                     ws = self.connected_locals.get(token)
