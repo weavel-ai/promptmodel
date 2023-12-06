@@ -1,10 +1,9 @@
 """Postgres SQL Database Session."""
 from typing import AsyncGenerator
 
-from sqlmodel import SQLModel
-
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
 
 from settings import Settings
 
@@ -21,13 +20,6 @@ SQLALCHEMY_DATABASE_URL = (
 )
 engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=True)
 
-
-async def init_db():
-    async with engine.begin() as conn:
-        # await conn.run_sync(SQLModel.metadata.drop_all)
-        await conn.run_sync(SQLModel.metadata.create_all)
-
-
 async_session = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False, autocommit=False
 )
@@ -37,3 +29,6 @@ async_session = sessionmaker(
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:
         yield session
+
+
+Base = declarative_base()

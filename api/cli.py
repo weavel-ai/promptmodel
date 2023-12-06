@@ -5,8 +5,7 @@ from uuid import UUID, uuid4
 
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result
-from sqlmodel import select, asc, desc, update
+from sqlalchemy import Result, select, asc, desc, update
 
 from fastapi import (
     APIRouter,
@@ -108,8 +107,9 @@ async def get_project_version(
     """Get project version"""
     try:
         res: Result = await session.execute(
-            select(Project.version).where(Project.uuid == UUID(project_uuid))
+            select(Project.version).where(Project.uuid == project_uuid)
         )
+
         return res.one()._mapping
     except Exception as exc:
         logger.error(exc)
@@ -139,7 +139,7 @@ async def check_update(
         # get project version
         project_version: int = (
             await session.execute(
-                select(Project.version).where(Project.uuid == UUID(project["uuid"]))
+                select(Project.version).where(Project.uuid == project["uuid"])
             )
         ).scalar_one()
 
@@ -162,7 +162,7 @@ async def check_update(
             (
                 await session.execute(
                     select(PromptModel.uuid, PromptModel.name).where(
-                        PromptModel.project_uuid == UUID(project["uuid"])
+                        PromptModel.project_uuid == project["uuid"]
                     )
                 )
             )
@@ -246,7 +246,7 @@ async def fetch_prompt_model_version(
                 (
                     await session.execute(
                         select(PromptModel.uuid, PromptModel.name)
-                        .where(PromptModel.project_uuid == UUID(project["uuid"]))
+                        .where(PromptModel.project_uuid == project["uuid"])
                         .where(PromptModel.name == prompt_model_name)
                     )
                 )
@@ -418,7 +418,7 @@ async def fetch_chat_model_version_with_chat_log(
                     (
                         await db_session.execute(
                             select(ChatLogSession.version_uuid).where(
-                                ChatLogSession.uuid == UUID(session_uuid)
+                                ChatLogSession.uuid == session_uuid
                             )
                         )
                     )
@@ -456,7 +456,7 @@ async def fetch_chat_model_version_with_chat_log(
                             ChatLog.content,
                             ChatLog.tool_calls,
                         )
-                        .where(ChatLog.session_uuid == UUID(session_uuid))
+                        .where(ChatLog.session_uuid == session_uuid)
                         .order_by(asc(ChatLog.created_at))
                     )
                 )
@@ -475,7 +475,7 @@ async def fetch_chat_model_version_with_chat_log(
                     (
                         await db_session.execute(
                             select(ChatModel.uuid, ChatModel.name)
-                            .where(ChatModel.project_uuid == UUID(project["uuid"]))
+                            .where(ChatModel.project_uuid == project["uuid"])
                             .where(ChatModel.name == chat_model_name)
                         )
                     )
@@ -509,7 +509,7 @@ async def fetch_chat_model_version_with_chat_log(
                     (
                         await db_session.execute(
                             select(ChatModel.uuid, ChatModel.name)
-                            .where(ChatModel.project_uuid == UUID(project["uuid"]))
+                            .where(ChatModel.project_uuid == project["uuid"])
                             .where(ChatModel.name == chat_model_name)
                         )
                     )
@@ -586,7 +586,7 @@ async def connect_cli_project(
             (
                 await session.execute(
                     select(Project.cli_access_key, Project.online).where(
-                        Project.uuid == UUID(project_uuid)
+                        Project.uuid == project_uuid
                     )
                 )
             )
@@ -602,7 +602,7 @@ async def connect_cli_project(
             # update project
             res = await session.execute(
                 update(Project)
-                .where(Project.uuid == UUID(project_uuid))
+                .where(Project.uuid == project_uuid)
                 .values(cli_access_key=api_key)
             )
             # return true, connected
@@ -853,7 +853,7 @@ async def log_general(
                         (
                             await session.execute(
                                 select(RunLog.uuid, RunLog.run_log_metadata).where(
-                                    RunLog.uuid == UUID(identifier)
+                                    RunLog.uuid == identifier
                                 )
                             )
                         )
@@ -877,7 +877,7 @@ async def log_general(
 
                 await session.execute(
                     update(RunLog)
-                    .where(RunLog.uuid == UUID(identifier))
+                    .where(RunLog.uuid == identifier)
                     .values(run_log_metadata=new_metadata)
                 )
 
@@ -907,7 +907,7 @@ async def log_general(
                         (
                             await session.execute(
                                 select(ChatLog.uuid, ChatLog.chat_log_metadata).where(
-                                    ChatLog.uuid == UUID(identifier)
+                                    ChatLog.uuid == identifier
                                 )
                             )
                         )
@@ -931,7 +931,7 @@ async def log_general(
 
                 await session.execute(
                     update(ChatLog)
-                    .where(ChatLog.uuid == UUID(identifier))
+                    .where(ChatLog.uuid == identifier)
                     .values(chat_log_metadata=new_metadata)
                 )
 
@@ -947,7 +947,7 @@ async def log_general(
                             await session.execute(
                                 select(
                                     ChatLogSession.uuid, ChatLogSession.session_metadata
-                                ).where(ChatLogSession.uuid == UUID(identifier))
+                                ).where(ChatLogSession.uuid == identifier)
                             )
                         )
                         .one()
@@ -969,7 +969,7 @@ async def log_general(
                     new_metadata[key] = value
                 await session.execute(
                     update(ChatLogSession)
-                    .where(ChatLogSession.uuid == UUID(identifier))
+                    .where(ChatLogSession.uuid == identifier)
                     .values(session_metadata=new_metadata)
                 )
 
@@ -1035,9 +1035,7 @@ async def log_deployment_chat(
         session = (
             (
                 await db_session.execute(
-                    select(ChatLogSession).where(
-                        ChatLogSession.uuid == UUID(session_uuid)
-                    )
+                    select(ChatLogSession).where(ChatLogSession.uuid == session_uuid)
                 )
             )
             .mappings()
@@ -1051,7 +1049,6 @@ async def log_deployment_chat(
 
         # make logs
         logs = []
-        print(log_uuid_list, messages, metadata)
         for log_uuid, message, meta in zip(log_uuid_list, messages, metadata):
             token_usage = {}
             latency = 0
@@ -1113,7 +1110,7 @@ async def make_session(
             (
                 await db_session.execute(
                     select(ChatModelVersion).where(
-                        ChatModelVersion.uuid == UUID(version_uuid)
+                        ChatModelVersion.uuid == version_uuid
                     )
                 )
             )

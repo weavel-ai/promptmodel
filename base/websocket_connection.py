@@ -7,8 +7,7 @@ from uuid import uuid4
 from datetime import datetime, timezone
 from enum import Enum
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result
-from sqlmodel import select, asc, desc, update
+from sqlalchemy import Result, select, asc, desc, update
 
 from fastapi import WebSocket
 

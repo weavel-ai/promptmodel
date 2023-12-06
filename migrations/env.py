@@ -5,8 +5,6 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from sqlmodel import SQLModel
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -21,19 +19,9 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 
-from models.chat_model import ChatModel, ChatModelVersion, ChatLogSession, ChatLog
-from models.project import (
-    Organization,
-    User,
-    UsersOrganizations,
-    CliAccess,
-    Project,
-    ProjectChangelog,
-)
-from models.sample_input import SampleInput
-from models.function_schema import FunctionSchema
-from models.prompt_model import PromptModel, PromptModelVersion, Prompt, RunLog
-from models.type import ParsingType
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
 
 view_name_list = [
     "user_organizations",
@@ -47,7 +35,7 @@ view_name_list = [
     "deployment_run_log_view",
 ]
 
-target_metadata = SQLModel.metadata
+target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

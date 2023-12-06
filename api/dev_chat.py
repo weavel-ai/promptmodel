@@ -4,8 +4,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result
-from sqlmodel import select, asc, desc, update
+from sqlalchemy import Result, select, asc, desc, update
 
 from fastapi import APIRouter, Response, HTTPException, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -71,13 +70,13 @@ async def run_chat_model(
     """
     # If the API key in header is valid, this function will execute.
     try:
-        start_timestampz_iso = datetime.now(timezone.utc).isoformat()
+        start_timestampz_iso = datetime.now(timezone.utc)
         # Find local server websocket
         project = (
             (
                 await session.execute(
                     select(Project.cli_access_key, Project.version, Project.uuid).where(
-                        Project.uuid == UUID(project_uuid)
+                        Project.uuid == project_uuid
                     )
                 )
             )
@@ -145,7 +144,7 @@ async def list_chat_models(
             (
                 await session.execute(
                     select(Project.cli_access_key, Project.version, Project.uuid).where(
-                        Project.uuid == UUID(project_uuid)
+                        Project.uuid == project_uuid
                     )
                 )
             )

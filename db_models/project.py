@@ -17,7 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from uuid import uuid4, UUID as UUIDType
 from sqlalchemy.sql import func, text
-from sqlmodel import SQLModel, Field, Relationship
+from base.database import Base
 
 if TYPE_CHECKING:
     from .chat_model import ChatModel
@@ -26,205 +26,176 @@ if TYPE_CHECKING:
     from .sample_input import SampleInput
 
 
-class Organization(SQLModel, table=True):
+class Organization(Base):
     __tablename__ = "organization"
 
-    id: int = Field(sa_column=Column(BigInteger, Identity(), primary_key=True))
-    created_at: datetime = Field(
-        sa_column=Column(
-            TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
-        )
+    id: int = Column(BigInteger, Identity(), primary_key=True)
+    created_at: datetime = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
 
-    organization_id: int = Field(sa_column=Column(Text, unique=True))
-    name: str = Field(sa_column=Column(Text, nullable=False))
-    slug: str = Field(sa_column=Column(Text, nullable=False))
+    organization_id: int = Column(Text, unique=True)
+    name: str = Column(Text, nullable=False)
+    slug: str = Column(Text, nullable=False)
 
-    projects: List["Project"] = Relationship(back_populates="organization")
+    # projects: List["Project"] = Relationship(back_populates="organization")
 
 
-class User(SQLModel, table=True):
+class User(Base):
     __tablename__ = "user"
 
-    id: int = Field(sa_column=Column(BigInteger, Identity()))
-    created_at: datetime = Field(
-        sa_column=Column(
-            TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
-        )
+    id: int = Column(BigInteger, Identity())
+    created_at: datetime = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
-    user_id: str = Field(sa_column=Column(Text, primary_key=True, unique=True))
 
-    email: int = Field(sa_column=Column(Text, nullable=False))
-    is_test: bool = Field(sa_column=Column(Boolean, nullable=False, default=False))
+    user_id: str = Column(Text, primary_key=True, unique=True)
 
-    cli_access: "CliAccess" = Relationship(back_populates="user")
+    email: int = Column(Text, nullable=False)
+    is_test: bool = Column(Boolean, nullable=False, default=False)
+
+    # cli_access: "CliAccess" = Relationship(back_populates="user")
 
 
-class CliAccess(SQLModel, table=True):
+class CliAccess(Base):
     __tablename__ = "cli_access"
 
-    created_at: datetime = Field(
-        sa_column=Column(
-            TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
-        )
+    created_at: datetime = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
+
     # created_at + 7 days
-    expires_at: datetime = Field(
-        sa_column=Column(
-            TIMESTAMP(timezone=True),
-            server_default=text("CURRENT_TIMESTAMP + INTERVAL '7 days'"),
-        )
-    )
-    user_id: int = Field(
-        sa_column=Column(Text, ForeignKey("user.user_id"), primary_key=True)
+    expires_at: datetime = Column(
+        TIMESTAMP(timezone=True),
+        server_default=text("CURRENT_TIMESTAMP + INTERVAL '7 days'"),
     )
 
-    api_key: str = Field(sa_column=Column(Text, unique=True))
+    user_id: int = Column(Text, ForeignKey("user.user_id"), primary_key=True)
 
-    user: "User" = Relationship(back_populates="cli_access")
+    api_key: str = Column(Text, unique=True)
+
+    # user: "User" = Relationship(back_populates="cli_access")
 
 
-class Project(SQLModel, table=True):
+class Project(Base):
     __tablename__ = "project"
 
-    id: int = Field(sa_column=Column(BigInteger, Identity(), unique=True))
-    created_at: datetime = Field(
-        sa_column=Column(
-            TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
-        )
-    )
-    uuid: UUIDType = Field(
-        sa_column=Column(
-            UUID(as_uuid=True),
-            server_default=text("gen_random_uuid()"),
-            primary_key=True,
-            unique=True,
-        )
+    id: int = Column(BigInteger, Identity(), unique=True)
+    created_at: datetime = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
 
-    name: str = Field(sa_column=Column(Text, nullable=False))
-    api_key: str = Field(sa_column=Column(Text, nullable=False, unique=True))
-    version: int = Field(sa_column=Column(BigInteger, nullable=False, default=1))
-    online: bool = Field(sa_column=Column(Boolean, nullable=False, default=False))
-
-    description: Optional[str] = Field(sa_column=Column(Text, nullable=True))
-    cli_access_key: Optional[str] = Field(
-        sa_column=Column(
-            Text,
-            ForeignKey("cli_access.api_key", onupdate="CASCADE", ondelete="SET NULL"),
-            nullable=True,
-        )
+    uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        server_default=text("gen_random_uuid()"),
+        primary_key=True,
+        unique=True,
     )
 
-    organization_id: str = Field(
-        sa_column=Column(
-            Text,
-            ForeignKey(
-                "organization.organization_id", onupdate="CASCADE", ondelete="CASCADE"
-            ),
-            nullable=True,
-        )
+    name: str = Column(Text, nullable=False)
+    api_key: str = Column(Text, nullable=False, unique=True)
+    version: int = Column(BigInteger, nullable=False, default=1)
+    online: bool = Column(Boolean, nullable=False, default=False)
+
+    description: Optional[str] = Column(Text, nullable=True)
+    cli_access_key: Optional[str] = Column(
+        Text,
+        ForeignKey("cli_access.api_key", onupdate="CASCADE", ondelete="SET NULL"),
+        nullable=True,
     )
 
-    organization: "Organization" = Relationship(back_populates="projects")
-    tags: List["Tag"] = Relationship(back_populates="project")
-    llms: List["LLM"] = Relationship(back_populates="project")
-    project_changelogs: List["ProjectChangelog"] = Relationship(
-        back_populates="project"
+    organization_id: str = Column(
+        Text,
+        ForeignKey(
+            "organization.organization_id", onupdate="CASCADE", ondelete="CASCADE"
+        ),
+        nullable=True,
     )
-    prompt_models: List["PromptModel"] = Relationship(back_populates="project")
-    chat_models: List["ChatModel"] = Relationship(back_populates="project")
-    function_schemas: List["FunctionSchema"] = Relationship(back_populates="project")
-    sample_inputs: List["SampleInput"] = Relationship(back_populates="project")
+
+    # organization: "Organization" = Relationship(back_populates="projects")
+    # tags: List["Tag"] = Relationship(back_populates="project")
+    # llms: List["LLM"] = Relationship(back_populates="project")
+    # project_changelogs: List["ProjectChangelog"] = Relationship(
+    #     back_populates="project"
+    # )
+    # prompt_models: List["PromptModel"] = Relationship(back_populates="project")
+    # chat_models: List["ChatModel"] = Relationship(back_populates="project")
+    # function_schemas: List["FunctionSchema"] = Relationship(back_populates="project")
+    # sample_inputs: List["SampleInput"] = Relationship(back_populates="project")
 
 
-class ProjectChangelog(SQLModel, table=True):
+class ProjectChangelog(Base):
     __tablename__ = "project_changelog"
 
-    id: int = Field(sa_column=Column(BigInteger, Identity(), primary_key=True))
-    created_at: datetime = Field(
-        sa_column=Column(
-            TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
-        )
+    id: int = Column(BigInteger, Identity(), primary_key=True)
+    created_at: datetime = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
 
-    logs: List[Dict[str, Any]] = Field(
-        sa_column=Column(ARRAY(JSONB), nullable=False, server_default="[]")
+    logs: List[Dict[str, Any]] = Column(
+        ARRAY(JSONB), nullable=False, server_default="[]"
     )
 
-    project_uuid: UUIDType = Field(
-        sa_column=Column(UUID(as_uuid=True), ForeignKey("project.uuid"), nullable=True)
+    project_uuid: UUIDType = Column(
+        UUID(as_uuid=True), ForeignKey("project.uuid"), nullable=True
     )
 
-    project: "Project" = Relationship(back_populates="project_changelogs")
+    # project: "Project" = Relationship(back_populates="project_changelogs")
 
 
-class UsersOrganizations(SQLModel, table=True):
+class UsersOrganizations(Base):
     __tablename__ = "users_organizations"
 
-    id: int = Field(sa_column=Column(BigInteger, Identity(), unique=True))
-    created_at: datetime = Field(
-        sa_column=Column(
-            TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
-        )
+    id: int = Column(BigInteger, Identity(), unique=True)
+    created_at: datetime = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
 
-    user_id: str = Field(
-        sa_column=Column(Text, ForeignKey("user.user_id"), primary_key=True)
-    )
-    organization_id: str = Field(
-        sa_column=Column(
-            Text, ForeignKey("organization.organization_id"), primary_key=True
-        )
+    user_id: str = Column(Text, ForeignKey("user.user_id"), primary_key=True)
+
+    organization_id: str = Column(
+        Text, ForeignKey("organization.organization_id"), primary_key=True
     )
 
-    user: "User" = Relationship()
-    organization: "Organization" = Relationship()
+    # user: "User" = Relationship()
+    # organization: "Organization" = Relationship()
 
 
-class Tag(SQLModel, table=True):
+class Tag(Base):
     __tablename__ = "tag"
 
-    id: int = Field(sa_column=Column(BigInteger, Identity(), primary_key=True))
-    created_at: datetime = Field(
-        sa_column=Column(
-            TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
-        )
+    id: int = Column(BigInteger, Identity(), primary_key=True)
+    created_at: datetime = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
 
-    name: str = Field(sa_column=Column(Text))
-    color: str = Field(sa_column=Column(Text))
+    name: str = Column(Text)
+    color: str = Column(Text)
 
-    project_uuid: UUIDType = Field(
-        sa_column=Column(
-            UUID(as_uuid=True),
-            ForeignKey("project.uuid", onupdate="CASCADE", ondelete="CASCADE"),
-            nullable=True,
-        )
+    project_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey("project.uuid", onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=True,
     )
 
-    project: "Project" = Relationship(back_populates="tags")
+    # project: "Project" = Relationship(back_populates="tags")
 
 
-class LLM(SQLModel, table=True):
+class LLM(Base):
     __tablename__ = "llm"
 
-    id: int = Field(sa_column=Column(BigInteger, Identity(), primary_key=True))
-    created_at: datetime = Field(
-        sa_column=Column(
-            TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
-        )
+    id: int = Column(BigInteger, Identity(), primary_key=True)
+    created_at: datetime = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
 
-    name: str = Field(sa_column=Column(Text))
-    api_base: str = Field(sa_column=Column(Text))
+    name: str = Column(Text)
+    api_base: str = Column(Text)
 
-    project_uuid: UUIDType = Field(
-        sa_column=Column(
-            UUID(as_uuid=True),
-            ForeignKey("project.uuid", onupdate="CASCADE", ondelete="CASCADE"),
-            nullable=True,
-        )
+    project_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey("project.uuid", onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=True,
     )
 
-    project: "Project" = Relationship(back_populates="llms")
+    # project: "Project" = Relationship(back_populates="llms")

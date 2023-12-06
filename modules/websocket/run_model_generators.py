@@ -3,8 +3,7 @@ import json
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from enum import Enum
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result
-from sqlmodel import select, asc, desc, update
+from sqlalchemy import Result, select, asc, desc, update
 
 from utils.logger import logger
 from utils.prompt_utils import update_dict
@@ -36,7 +35,7 @@ async def run_local_prompt_model_generator(
             await session.execute(
                 select(SampleInput.content)
                 .where(SampleInput.name == run_config.sample_name)
-                .where(SampleInput.project_uuid == UUID(project["uuid"]))
+                .where(SampleInput.project_uuid == project["uuid"])
             )
         ).scalar_one()
 
@@ -114,7 +113,7 @@ async def run_local_prompt_model_generator(
                     FunctionSchema.parameters,
                     FunctionSchema.mock_response,
                 )
-                .where(FunctionSchema.project_uuid == UUID(project["uuid"]))
+                .where(FunctionSchema.project_uuid == project["uuid"])
                 .where(FunctionSchema.name.in_(run_config.functions))
             )
         )
@@ -271,7 +270,7 @@ async def run_local_prompt_model_generator(
     if need_project_version_update:
         await session.execute(
             update(Project)
-            .where(Project.uuid == UUID(project["uuid"]))
+            .where(Project.uuid == project["uuid"])
             .values(version=project["version"] + 1)
         )
 
@@ -308,7 +307,7 @@ async def run_local_chat_model_generator(
                     select(
                         ChatLog.role, ChatLog.name, ChatLog.content, ChatLog.tool_calls
                     )
-                    .where(ChatLog.session_uuid == UUID(session_uuid))
+                    .where(ChatLog.session_uuid == session_uuid)
                     .order_by(asc(ChatLog.created_at))
                 )
             )
@@ -332,7 +331,7 @@ async def run_local_chat_model_generator(
                     FunctionSchema.parameters,
                     FunctionSchema.mock_response,
                 )
-                .where(FunctionSchema.project_uuid == UUID(project["uuid"]))
+                .where(FunctionSchema.project_uuid == project["uuid"])
                 .where(FunctionSchema.name.in_(run_config.functions))
             )
         )
@@ -505,7 +504,7 @@ async def run_local_chat_model_generator(
     if need_project_version_update:
         await session.execute(
             update(Project)
-            .where(Project.uuid == UUID(project["uuid"]))
+            .where(Project.uuid == project["uuid"])
             .values(version=project["version"] + 1)
         )
 
@@ -589,7 +588,7 @@ async def save_chat_logs(
                 message["tool_calls"] = None
                 message["name"] = None if "name" not in message else message["name"]
                 if "function_call" in message:
-                    message["tool_calls"] = message["function_call"]
+                    message["tool_calls"] = [message["function_call"]]
                     del message["function_call"]
                 message["session_uuid"] = session_uuid
 
@@ -619,7 +618,7 @@ async def save_chat_logs(
             message["tool_calls"] = None
             message["name"] = None if "name" not in message else message["name"]
             if "function_call" in message:
-                message["tool_calls"] = message["function_call"]
+                message["tool_calls"] = [message["function_call"]]
                 del message["function_call"]
 
         response_chat_log_rows = [ChatLog(**message) for message in response_messages]

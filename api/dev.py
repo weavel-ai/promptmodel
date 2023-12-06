@@ -3,8 +3,7 @@ import json
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result
-from sqlmodel import select, asc, desc, update
+from sqlalchemy import Result, select, asc, desc, update
 
 from fastapi import APIRouter, Response, HTTPException, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -76,7 +75,7 @@ async def run_prompt_model(
             (
                 await session.execute(
                     select(Project.cli_access_key, Project.version, Project.uuid).where(
-                        Project.uuid == UUID(project_uuid)
+                        Project.uuid == project_uuid
                     )
                 )
             )
@@ -141,7 +140,7 @@ async def list_prompt_models(
             (
                 await session.execute(
                     select(Project.cli_access_key, Project.version, Project.uuid).where(
-                        Project.uuid == UUID(project_uuid)
+                        Project.uuid == project_uuid
                     )
                 )
             )
@@ -201,7 +200,7 @@ async def list_functions(
             (
                 await session.execute(
                     select(Project.cli_access_key, Project.version, Project.uuid).where(
-                        Project.uuid == UUID(project_uuid)
+                        Project.uuid == project_uuid
                     )
                 )
             )

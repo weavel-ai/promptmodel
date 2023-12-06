@@ -3,8 +3,7 @@ import asyncio
 
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result
-from sqlmodel import select, asc, desc, update
+from sqlalchemy import Result, select, asc, desc, update
 
 
 from base.database import get_session

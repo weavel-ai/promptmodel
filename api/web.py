@@ -7,8 +7,7 @@ from operator import eq
 from typing import Any, AsyncGenerator, Dict, List, Optional, Sequence, Tuple, Union
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result
-from sqlmodel import select, asc, desc, update
+from sqlalchemy import Result, select, asc, desc, update
 
 from fastapi import APIRouter, HTTPException, Depends, Response
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -111,12 +110,14 @@ async def run_cloud_prompt_model(
     """Run PromptModel on the cloud, request from web."""
     sample_input: Dict[str, Any] = {}
     # get sample from db
+
     if run_config.sample_name:
         sample_input = (
             await session.execute(
-                select(SampleInput.content)
-                .where(SampleInput.name == run_config.sample_name)
-                .where(SampleInput.project_uuid == UUID(project_uuid))
+                select(SampleInput.content).where(
+                    (SampleInput.project_uuid == project_uuid)
+                    & (SampleInput.name == run_config.sample_name)
+                )
             )
         ).scalar_one()
 
@@ -282,7 +283,7 @@ async def run_cloud_prompt_model(
                         FunctionSchema.parameters,
                         FunctionSchema.mock_response,
                     )
-                    .where(FunctionSchema.project_uuid == UUID(project_uuid))
+                    .where(FunctionSchema.project_uuid == project_uuid)
                     .where(FunctionSchema.name.in_(run_config.functions))
                 )
             )
@@ -374,15 +375,13 @@ async def run_cloud_prompt_model(
             if need_project_version_update:
                 project_version = (
                     await session.execute(
-                        select(Project.version).where(
-                            Project.uuid == UUID(project_uuid)
-                        )
+                        select(Project.version).where(Project.uuid == project_uuid)
                     )
                 ).scalar_one()
 
                 await session.execute(
                     update(Project)
-                    .where(Project.uuid == UUID(project_uuid))
+                    .where(Project.uuid == project_uuid)
                     .values(version=project_version + 1)
                 )
             return
@@ -420,13 +419,13 @@ async def run_cloud_prompt_model(
         if need_project_version_update:
             project_version = (
                 await session.execute(
-                    select(Project.version).where(Project.uuid == UUID(project_uuid))
+                    select(Project.version).where(Project.uuid == project_uuid)
                 )
             ).scalar_one()
 
             await session.execute(
                 update(Project)
-                .where(Project.uuid == UUID(project_uuid))
+                .where(Project.uuid == project_uuid)
                 .values(version=project_version + 1)
             )
 
@@ -512,7 +511,7 @@ async def run_cloud_chat_model(
 
     """
     try:
-        start_timestampz_iso = datetime.now(timezone.utc).isoformat()
+        start_timestampz_iso = datetime.now(timezone.utc)
         chat_model_dev = LLMDev()
         chat_model_version_uuid: Union[str, None] = chat_config.version_uuid
         session_uuid: Union[str, None] = chat_config.session_uuid
@@ -605,16 +604,20 @@ async def run_cloud_chat_model(
             session_chat_logs = (
                 (
                     await session.execute(
-                        select(ChatLog.role, ChatLog.content)
-                        .where(ChatLog.session_uuid == UUID(session_uuid))
+                        select(
+                            ChatLog.role,
+                            ChatLog.name,
+                            ChatLog.content,
+                            ChatLog.tool_calls,
+                        )
+                        .where(ChatLog.session_uuid == session_uuid)
                         .order_by(asc(ChatLog.created_at))
                     )
                 )
                 .mappings()
                 .all()
             )
-
-            messages.extend(session_chat_logs)
+            messages += session_chat_logs
             messages = [
                 {k: v for k, v in message.items() if v is not None}
                 for message in messages
@@ -696,13 +699,13 @@ async def run_cloud_chat_model(
         if need_project_version_update:
             project_version = (
                 await session.execute(
-                    select(Project.version).where(Project.uuid == UUID(project_uuid))
+                    select(Project.version).where(Project.uuid == project_uuid)
                 )
             ).scalar_one()
 
             await session.execute(
                 update(Project)
-                .where(Project.uuid == UUID(project_uuid))
+                .where(Project.uuid == project_uuid)
                 .values(version=project_version + 1)
             )
 
