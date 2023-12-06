@@ -29,3 +29,9 @@ async def init_db():
 async_session = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False, autocommit=False
 )
+
+
+# Dependency for getting a database session
+async def get_session() -> AsyncSession:
+    async with async_session() as session:
+        yield session

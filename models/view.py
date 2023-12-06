@@ -23,7 +23,7 @@ from sqlalchemy.sql import func, text
 from sqlmodel import SQLModel, Field, Relationship
 
 
-class UserOrganizations(SQLModel, table=False):
+class UserOrganizations(SQLModel, table=True):
     __tablename__ = "user_organizations"
 
     user_id: str = Field(sa_column=Column(Text, primary_key=True))
@@ -33,7 +33,7 @@ class UserOrganizations(SQLModel, table=False):
     slug: str = Field(sa_column=Column(Text))
 
 
-class ChatLogView(SQLModel, table=False):
+class ChatLogView(SQLModel, table=True):
     __tablename__ = "chat_log_view"
 
     assistant_log_id: int = Field(
@@ -67,7 +67,7 @@ class ChatLogView(SQLModel, table=False):
     run_from_deployment: bool = Field(sa_column=Column(Boolean))
 
 
-class ChatLogsCount(SQLModel, table=False):
+class ChatLogsCount(SQLModel, table=True):
     __tablename__ = "chat_logs_count"
 
     project_uuid: UUIDType = Field(
@@ -76,7 +76,7 @@ class ChatLogsCount(SQLModel, table=False):
     chat_logs_count: int = Field(sa_column=Column(BigInteger))
 
 
-class RunLogsCount(SQLModel, table=False):
+class RunLogsCount(SQLModel, table=True):
     __tablename__ = "run_logs_count"
 
     project_uuid: UUIDType = Field(
@@ -85,7 +85,7 @@ class RunLogsCount(SQLModel, table=False):
     run_logs_count: int = Field(sa_column=Column(BigInteger))
 
 
-class DailyChatLogMetric(SQLModel, table=False):
+class DailyChatLogMetric(SQLModel, table=True):
     __tablename__ = "daily_chat_log_metric"
 
     project_name: str = Field(sa_column=Column(Text))
@@ -101,7 +101,7 @@ class DailyChatLogMetric(SQLModel, table=False):
     total_chat_sessions: int = Field(sa_column=Column(BigInteger))
 
 
-class DailyRunLogMetric(SQLModel, table=False):
+class DailyRunLogMetric(SQLModel, table=True):
     __tablename__ = "daily_run_log_metric"
 
     prompt_model_uuid: UUIDType = Field(
@@ -116,7 +116,7 @@ class DailyRunLogMetric(SQLModel, table=False):
     total_runs: int = Field(sa_column=Column(BigInteger))
 
 
-class DeployedChatModelVersion(SQLModel, table=False):
+class DeployedChatModelVersion(SQLModel, table=True):
     __tablename__ = "deployed_chat_model_version"
 
     id: int = Field(sa_column=Column(BigInteger))
@@ -135,7 +135,7 @@ class DeployedChatModelVersion(SQLModel, table=False):
     chat_model_uuid: UUIDType = Field(sa_column=Column(UUID(as_uuid=True)))
 
 
-class DeployedPromptModelVersion(SQLModel, table=False):
+class DeployedPromptModelVersion(SQLModel, table=True):
     __tablename__ = "deployed_prompt_model_version"
 
     id: int = Field(sa_column=Column(BigInteger))
@@ -157,7 +157,7 @@ class DeployedPromptModelVersion(SQLModel, table=False):
     prompt_model_uuid: UUIDType = Field(sa_column=Column(UUID(as_uuid=True)))
 
 
-class DeploymentRunLogView(SQLModel, table=False):
+class DeploymentRunLogView(SQLModel, table=True):
     __tablename__ = "deployment_run_log_view"
 
     project_uuid: UUIDType = Field(sa_column=Column(UUID(as_uuid=True)))

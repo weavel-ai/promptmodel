@@ -35,12 +35,30 @@ from models.function_schema import FunctionSchema
 from models.prompt_model import PromptModel, PromptModelVersion, Prompt, RunLog
 from models.type import ParsingType
 
+view_name_list = [
+    "user_organizations",
+    "chat_log_view",
+    "chat_logs_count",
+    "run_logs_count",
+    "daily_chat_log_metric",
+    "daily_run_log_metric",
+    "deployed_chat_model_version",
+    "deployed_prompt_model_version",
+    "deployment_run_log_view",
+]
+
 target_metadata = SQLModel.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+
+def include_object(object, name, type_, reflected, compare_to):
+    if name in view_name_list:
+        return False
+    return True
 
 
 def run_migrations_offline() -> None:
@@ -81,7 +99,11 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            include_object=include_object,
+        )
 
         with context.begin_transaction():
             context.run_migrations()
