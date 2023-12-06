@@ -56,3 +56,26 @@ class InstanceType(str, Enum):
     ChatLog = "ChatLog"
     RunLog = "RunLog"
     ChatLogSession = "ChatLogSession"
+
+
+class DeployedPromptModelVersionInstance(BaseModel):
+    uuid: str
+    from_version: Optional[int]
+    prompt_model_uuid: str
+    model: str
+    is_published: bool
+    is_ab_test: Optional[bool]
+    ratio: Optional[float]
+    parsing_type: Optional[str]
+    output_keys: Optional[List[str]]
+
+
+class DeployedChatModelVersionInstance(BaseModel):
+    uuid: str
+    from_version: Optional[int]
+    chat_model_uuid: str
+    model: str
+    is_published: bool
+    is_ab_test: Optional[bool]
+    ratio: Optional[float]
+    system_prompt: str

@@ -4,7 +4,9 @@ from operator import truediv
 from uuid import UUID, uuid4
 
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
-from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import Result
+from sqlmodel import select, asc, desc, update
 
 from fastapi import (
     APIRouter,
@@ -30,53 +32,69 @@ from utils.dependency import get_websocket_token
 from utils.logger import logger
 
 # from base.database import supabase
+from base.database import get_session
 from base.websocket_connection import websocket_manager
-from modules.types import InstanceType
+from crud import update_instances, pull_instances, save_instances
+from ..models import *
+from modules.types import (
+    InstanceType,
+    DeployedPromptModelVersionInstance,
+    DeployedChatModelVersionInstance,
+)
 from litellm.utils import completion_cost
 
 router = APIRouter()
 
 
 @router.get("/check_cli_access")
-async def check_cli_access(api_key: str = Depends(get_api_key)):
+async def check_cli_access(
+    api_key: str = Depends(get_api_key), session: AsyncSession = Depends(get_session)
+):
     """Check if user has CLI access"""
-    user_id = (
-        supabase.table("cli_access").select("user_id").eq("api_key", api_key).execute()
-    ).data
+    statement = select(CliAccess.user_id).where(CliAccess.api_key == api_key)
+    result = await session.execute(statement)
+    user_id = result.scalar_one_or_none()
     if not user_id:
         return False  # Response(status_code=HTTP_403_FORBIDDEN)
     return True  # Response(status_code=HTTP_200_OK)
 
 
 @router.get("/list_orgs")
-async def list_orgs(user_id: str = Depends(get_cli_user_id)):
+async def list_orgs(
+    user_id: str = Depends(get_cli_user_id),
+    session: AsyncSession = Depends(get_session),
+):
     """List user's organizations"""
     try:
-        res = (
-            supabase.table("user_organizations")
-            .select("name, slug, organization_id")
-            .eq("user_id", user_id)
-            .execute()
-            .data
+        res: Result = await session.execute(
+            select(
+                UserOrganizations.organization_id,
+                UserOrganizations.name,
+                UserOrganizations.slug,
+            ).where(UserOrganizations.user_id == user_id)
         )
-        return JSONResponse(res, status_code=HTTP_200_OK)
+
+        res_dict: List[Dict] = res.mappings().all()
+        return JSONResponse(res_dict, status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
 @router.get("/list_projects")
-async def list_projects(organization_id: str, user_id: str = Depends(get_cli_user_id)):
+async def list_projects(
+    organization_id: str,
+    user_id: str = Depends(get_cli_user_id),
+    session: AsyncSession = Depends(get_session),
+):
     """List projects in organization"""
     try:
-        res = (
-            supabase.table("project")
-            .select("uuid, name, description, version")
-            .eq("organization_id", organization_id)
-            .execute()
-            .data
+        res: Result = await session.execute(
+            select(
+                Project.uuid, Project.name, Project.description, Project.version
+            ).where(Project.organization_id == organization_id)
         )
-        return JSONResponse(res, status_code=HTTP_200_OK)
+        return res.mappings().all()
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
@@ -84,25 +102,27 @@ async def list_projects(organization_id: str, user_id: str = Depends(get_cli_use
 
 @router.get("/get_project_version")
 async def get_project_version(
-    project_uuid: str, user_id: str = Depends(get_cli_user_id)
+    project_uuid: str,
+    user_id: str = Depends(get_cli_user_id),
+    session: AsyncSession = Depends(get_session),
 ):
     """Get project version"""
     try:
-        res = (
-            supabase.table("project")
-            .select("version")
-            .eq("uuid", project_uuid)
-            .execute()
-            .data
+        res: Result = await session.execute(
+            select(Project.version).where(Project.uuid == project_uuid)
         )
-        return JSONResponse(res, status_code=HTTP_200_OK)
+        return res.one()._mapping
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
 @router.get("/check_update")
-async def check_update(cached_version: int, project: dict = Depends(get_project)):
+async def check_update(
+    cached_version: int,
+    project: dict = Depends(get_project),
+    session: AsyncSession = Depends(get_session),
+):
     """
     Check version between local Cache and cloud,
     If local version is lower than cloud, return (True, New Version, project_status)
@@ -118,14 +138,12 @@ async def check_update(cached_version: int, project: dict = Depends(get_project)
     """
     try:
         # get project version
-        project_version = (
-            supabase.table("project")
-            .select("version")
-            .eq("uuid", project["uuid"])
-            .single()
-            .execute()
-            .data["version"]
-        )
+        project_version: int = (
+            await session.execute(
+                select(Project.version).where(Project.uuid == project["uuid"])
+            )
+        ).scalar_one()
+
         # check if need update
         if project_version == cached_version:
             need_update = False
@@ -142,33 +160,50 @@ async def check_update(cached_version: int, project: dict = Depends(get_project)
 
         # get prompt_models
         prompt_models = (
-            supabase.table("prompt_model")
-            .select("uuid, name")
-            .eq("project_uuid", project["uuid"])
-            .execute()
-            .data
+            (
+                await session.execute(
+                    select(PromptModel.uuid, PromptModel.name).where(
+                        PromptModel.project_uuid == project["uuid"]
+                    )
+                )
+            )
+            .mappings()
+            .all()
         )
 
         # get published, ab_test prompt_model_versions
-        deployed_prompt_model_versions = (
-            supabase.table("deployed_prompt_model_version")
-            .select(
-                "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+        deployed_prompt_model_versions: List[Dict] = (
+            (
+                await session.execute(
+                    select(DeployedPromptModelVersion).where(
+                        DeployedPromptModelVersion.prompt_model_uuid.in_(
+                            [x["uuid"] for x in prompt_models]
+                        )
+                    )
+                )
             )
-            # .select("uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio")
-            .in_("prompt_model_uuid", [x["uuid"] for x in prompt_models])
-            .execute()
-            .data
+            .mappings()
+            .all()
         )
+
+        # filter out columns
+        deployed_prompt_model_versions = [
+            DeployedPromptModelVersionInstance(**x).dict()
+            for x in deployed_prompt_model_versions
+        ]
 
         versions_uuid_list = [x["uuid"] for x in deployed_prompt_model_versions]
         # get prompts
         prompts = (
-            supabase.table("prompt")
-            .select("version_uuid, role, step, content")
-            .in_("version_uuid", versions_uuid_list)
-            .execute()
-            .data
+            (
+                await session.execute(
+                    select(
+                        Prompt.version_uuid, Prompt.role, Prompt.step, Prompt.content
+                    ).where(Prompt.version_uuid.in_(versions_uuid_list))
+                )
+            )
+            .mappings()
+            .all()
         )
 
         res = {
@@ -192,6 +227,7 @@ async def fetch_prompt_model_version(
     prompt_model_name: str,
     version: Optional[Union[str, int]] = "deploy",
     project: dict = Depends(get_project),
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Only use when use_cache = False.
@@ -208,13 +244,15 @@ async def fetch_prompt_model_version(
         # find_prompt_model
         try:
             prompt_model = (
-                supabase.table("prompt_model")
-                .select("uuid, name")
-                .eq("project_uuid", project["uuid"])
-                .eq("name", prompt_model_name)
-                .single()
-                .execute()
-                .data
+                (
+                    await session.execute(
+                        select(PromptModel.uuid, PromptModel.name)
+                        .where(PromptModel.project_uuid == project["uuid"])
+                        .where(PromptModel.name == prompt_model_name)
+                    )
+                )
+                .mappings()
+                .one()
             )
         except:
             raise HTTPException(
@@ -224,23 +262,37 @@ async def fetch_prompt_model_version(
             if version == "deploy":
                 # get published, ab_test prompt_model_versions
                 deployed_prompt_model_versions = (
-                    supabase.table("deployed_prompt_model_version")
-                    .select(
-                        "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+                    (
+                        await session.execute(
+                            select(DeployedPromptModelVersion).where(
+                                DeployedPromptModelVersion.prompt_model_uuid
+                                == prompt_model["uuid"]
+                            )
+                        )
                     )
-                    .eq("prompt_model_uuid", prompt_model["uuid"])
-                    .execute()
-                    .data
+                    .mappings()
+                    .all()
                 )
+                deployed_prompt_model_versions = [
+                    DeployedPromptModelVersionInstance(**x).dict()
+                    for x in deployed_prompt_model_versions
+                ]
 
                 versions_uuid_list = [x["uuid"] for x in deployed_prompt_model_versions]
                 # get prompts
                 prompts = (
-                    supabase.table("prompt")
-                    .select("version_uuid, role, step, content")
-                    .in_("version_uuid", versions_uuid_list)
-                    .execute()
-                    .data
+                    (
+                        await session.execute(
+                            select(
+                                Prompt.version_uuid,
+                                Prompt.role,
+                                Prompt.step,
+                                Prompt.content,
+                            ).where(Prompt.version_uuid.in_(versions_uuid_list))
+                        )
+                    )
+                    .mappings()
+                    .all()
                 )
 
                 res = {
@@ -255,36 +307,61 @@ async def fetch_prompt_model_version(
 
                 if isinstance(version, int):
                     prompt_model_versions = (
-                        supabase.table("prompt_model_version")
-                        .select(
-                            "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+                        (
+                            await session.execute(
+                                select(PromptModelVersion)
+                                .where(
+                                    PromptModelVersion.prompt_model_uuid
+                                    == prompt_model["uuid"]
+                                )
+                                .where(PromptModelVersion.version == version)
+                            )
                         )
-                        .eq("prompt_model_uuid", prompt_model["uuid"])
-                        .eq("version", version)
-                        .execute()
-                        .data
+                        .mappings()
+                        .all()
                     )
+
+                    prompt_model_versions = [
+                        DeployedPromptModelVersionInstance(**x).dict()
+                        for x in prompt_model_versions
+                    ]
+
                 elif version == "latest":
                     prompt_model_versions = (
-                        supabase.table("prompt_model_version")
-                        .select(
-                            "uuid, from_version, prompt_model_uuid, model, is_published, is_ab_test, ratio, parsing_type, output_keys"
+                        (
+                            await session.execute(
+                                select(PromptModelVersion)
+                                .where(
+                                    PromptModelVersion.prompt_model_uuid
+                                    == prompt_model["uuid"]
+                                )
+                                .order_by(desc(PromptModelVersion.version))
+                                .limit(1)
+                            )
                         )
-                        .eq("prompt_model_uuid", prompt_model["uuid"])
-                        .order("version", desc=True)
-                        .limit(1)
-                        .execute()
-                        .data
+                        .mappings()
+                        .all()
                     )
+                    prompt_model_versions = [
+                        DeployedPromptModelVersionInstance(**x).dict()
+                        for x in prompt_model_versions
+                    ]
 
                 versions_uuid_list = [x["uuid"] for x in prompt_model_versions]
                 # get prompts
                 prompts = (
-                    supabase.table("prompt")
-                    .select("version_uuid, role, step, content")
-                    .in_("version_uuid", versions_uuid_list)
-                    .execute()
-                    .data
+                    (
+                        await session.execute(
+                            select(
+                                Prompt.version_uuid,
+                                Prompt.role,
+                                Prompt.step,
+                                Prompt.content,
+                            ).where(Prompt.version_uuid.in_(versions_uuid_list))
+                        )
+                    )
+                    .mappings()
+                    .all()
                 )
 
                 res = {
@@ -312,6 +389,7 @@ async def fetch_chat_model_version_with_chat_log(
     session_uuid: Optional[str] = None,
     version: Optional[Union[str, int]] = "deploy",
     project: dict = Depends(get_project),
+    db_session: AsyncSession = Depends(get_session),
 ):
     """
     ChatModel Always use this function when use_cache = True or False
@@ -338,35 +416,53 @@ async def fetch_chat_model_version_with_chat_log(
             # find session's chat_model & version
             try:
                 session = (
-                    supabase.table("chat_log_session")
-                    .select("version_uuid")
-                    .eq("uuid", session_uuid)
-                    .single()
-                    .execute()
-                    .data
+                    (
+                        await db_session.execute(
+                            select(ChatLogSession.version_uuid).where(
+                                ChatLogSession.uuid == session_uuid
+                            )
+                        )
+                    )
+                    .one()
+                    ._mapping
                 )
             except:
                 raise HTTPException(
                     status_code=HTTP_404_NOT_FOUND, detail="Session not found"
                 )
-
             session_chat_model_version = (
-                supabase.table("chat_model_version")
-                .select(
-                    "uuid, from_version, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
+                (
+                    await db_session.execute(
+                        select(ChatModelVersion).where(
+                            ChatModelVersion.uuid == session["version_uuid"]
+                        )
+                    )
                 )
-                .eq("uuid", session["version_uuid"])
-                .execute()
-                .data
+                .mappings()
+                .all()
             )
+
+            session_chat_model_version = [
+                DeployedChatModelVersionInstance(**x).dict()
+                for x in session_chat_model_version
+            ]
+
             # find chat logs
             chat_logs = (
-                supabase.table("chat_log")
-                .select("role, name, content, tool_calls")
-                .eq("session_uuid", session_uuid)
-                .order("created_at", desc=False)
-                .execute()
-                .data
+                (
+                    await db_session.execute(
+                        select(
+                            ChatLog.role,
+                            ChatLog.name,
+                            ChatLog.content,
+                            ChatLog.tool_calls,
+                        )
+                        .where(ChatLog.session_uuid == session_uuid)
+                        .order_by(asc(ChatLog.created_at))
+                    )
+                )
+                .mappings()
+                .all()
             )
 
             res = {
@@ -377,40 +473,49 @@ async def fetch_chat_model_version_with_chat_log(
             # find chat_model_version
             try:
                 chat_model = (
-                    supabase.table("chat_model")
-                    .select("uuid, name")
-                    .eq("project_uuid", project["uuid"])
-                    .eq("name", chat_model_name)
-                    .single()
-                    .execute()
-                    .data
+                    (
+                        await db_session.execute(
+                            select(ChatModel.uuid, ChatModel.name)
+                            .where(ChatModel.project_uuid == project["uuid"])
+                            .where(ChatModel.name == chat_model_name)
+                        )
+                    )
+                    .one()
+                    ._mapping
                 )
             except:
                 raise HTTPException(
                     status_code=HTTP_404_NOT_FOUND, detail="Chat Model not found"
                 )
-
             chat_model_version = (
-                supabase.table("chat_model_version")
-                .select(
-                    "uuid, from_version, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
+                (
+                    await db_session.execute(
+                        select(ChatModelVersion)
+                        .where(ChatModelVersion.chat_model_uuid == chat_model["uuid"])
+                        .where(ChatModelVersion.version == version)
+                    )
                 )
-                .eq("chat_model_uuid", chat_model["uuid"])
-                .eq("version", version)
-                .execute()
-                .data
+                .mappings()
+                .all()
             )
+
+            chat_model_version = [
+                DeployedChatModelVersionInstance(**x).dict() for x in chat_model_version
+            ]
+
             res = {"chat_model_versions": chat_model_version, "chat_logs": []}
         else:
             try:
                 chat_model = (
-                    supabase.table("chat_model")
-                    .select("uuid, name")
-                    .eq("project_uuid", project["uuid"])
-                    .eq("name", chat_model_name)
-                    .single()
-                    .execute()
-                    .data
+                    (
+                        await db_session.execute(
+                            select(ChatModel.uuid, ChatModel.name)
+                            .where(ChatModel.project_uuid == project["uuid"])
+                            .where(ChatModel.name == chat_model_name)
+                        )
+                    )
+                    .one()
+                    ._mapping
                 )
             except:
                 raise HTTPException(
@@ -419,14 +524,22 @@ async def fetch_chat_model_version_with_chat_log(
 
             # get published, ab_test chat_model_versions
             deployed_chat_model_versions = (
-                supabase.table("deployed_chat_model_version")
-                .select(
-                    "uuid, from_version, chat_model_uuid, model, is_published, is_ab_test, ratio, system_prompt"
+                (
+                    await db_session.execute(
+                        select(DeployedChatModelVersion).where(
+                            DeployedChatModelVersion.chat_model_uuid
+                            == chat_model["uuid"]
+                        )
+                    )
                 )
-                .eq("chat_model_uuid", chat_model["uuid"])
-                .execute()
-                .data
+                .mappings()
+                .all()
             )
+
+            deployed_chat_model_versions = [
+                DeployedChatModelVersionInstance(**x).dict()
+                for x in deployed_chat_model_versions
+            ]
 
             res = {"chat_model_versions": deployed_chat_model_versions, "chat_logs": []}
 
@@ -443,7 +556,9 @@ async def fetch_chat_model_version_with_chat_log(
 # promptmodel library local websocket connection endpoint
 @router.websocket("/open_websocket")
 async def open_websocket(
-    websocket: WebSocket, token: str = Depends(get_websocket_token)
+    websocket: WebSocket,
+    token: str = Depends(get_websocket_token),
+    session: AsyncSession = Depends(get_session),
 ):
     """Initializes a websocket connection with the local server."""
     # websocket_connection = await websocket_manager.connect(websocket, token)
@@ -461,15 +576,23 @@ async def open_websocket(
 
 
 @router.post("/connect_cli_project")
-async def connect_cli_project(project_uuid: str, api_key: str = Depends(get_api_key)):
+async def connect_cli_project(
+    project_uuid: str,
+    api_key: str = Depends(get_api_key),
+    session: AsyncSession = Depends(get_session),
+):
     """Update cli token for project."""
     try:
         project = (
-            supabase.table("project")
-            .select("cli_access_key, online")
-            .eq("uuid", project_uuid)
-            .execute()
-            .data
+            (
+                await session.execute(
+                    select(Project.cli_access_key, Project.online).where(
+                        Project.uuid == project_uuid
+                    )
+                )
+            )
+            .mappings()
+            .all()
         )
 
         if project[0]["online"] is True:
@@ -478,15 +601,10 @@ async def connect_cli_project(project_uuid: str, api_key: str = Depends(get_api_
             )
         else:
             # update project
-            res = (
-                supabase.table("project")
-                .update(
-                    {
-                        "cli_access_key": api_key,
-                    }
-                )
-                .eq("uuid", project_uuid)
-                .execute()
+            res = await session.execute(
+                update(Project)
+                .where(Project.uuid == project_uuid)
+                .values(cli_access_key=api_key)
             )
             # return true, connected
             return Response(status_code=HTTP_200_OK)
@@ -507,14 +625,12 @@ async def save_instances_in_code(
     samples: list[dict],
     function_schemas: list[dict],
     project: dict = Depends(get_project),
+    session: AsyncSession = Depends(get_session),
 ):
     try:
         changelogs = []
-        instances_in_db = (
-            supabase.rpc("pull_instances", {"project_uuid": project_uuid})
-            .execute()
-            .data[0]
-        )
+        instances_in_db = await pull_instances(project_uuid=project_uuid)
+
         prompt_models_in_db = (
             instances_in_db["prompt_model_data"]
             if instances_in_db["prompt_model_data"]
@@ -600,19 +716,13 @@ async def save_instances_in_code(
         ]
 
         # save instances
-        new_instances = (
-            supabase.rpc(
-                "save_instances",
-                {
-                    "prompt_models": prompt_models_to_add,
-                    "chat_models": chat_models_to_add,
-                    "sample_inputs": samples_to_add,
-                    "function_schemas": schemas_to_add,
-                },
-            )
-            .execute()
-            .data[0]
+        new_instances = await save_instances(
+            prompt_models=prompt_models_to_add,
+            chat_models=chat_models_to_add,
+            sample_inputs=samples_to_add,
+            function_schemas=schemas_to_add,
         )
+
         new_prompt_models = (
             new_instances["prompt_model_rows"]
             if new_instances["prompt_model_rows"]
@@ -637,21 +747,16 @@ async def save_instances_in_code(
 
         # update instances
         updated_instances = (
-            supabase.rpc(
-                "update_instances",
-                {
-                    "input_project_uuid": project_uuid,
-                    "prompt_model_names": prompt_model_name_list_to_update,
-                    "chat_model_names": chat_model_name_list_to_update,
-                    "sample_input_names": [x["name"] for x in samples],
-                    "function_schema_names": [x["name"] for x in function_schemas],
-                    "sample_inputs": samples_to_update,
-                    "function_schemas": schemas_to_update,
-                },
+            await update_instances(
+                project_uuid=project_uuid,
+                prompt_model_name_list=prompt_model_name_list_to_update,
+                chat_model_name_list=chat_model_name_list_to_update,
+                sample_input_names=[x["name"] for x in samples],
+                function_schema_names=[x["name"] for x in function_schemas],
+                sample_inputs=samples_to_update,
+                function_schemas=schemas_to_update,
             )
-            .execute()
-            .data[0]
-        )
+        )[0]
 
         updated_samples = (
             updated_instances["sample_input_rows"]
@@ -699,18 +804,13 @@ async def save_instances_in_code(
         ]
         # delete if len(identifiers) == 0
         changelogs = [x for x in changelogs if len(x["identifiers"]) > 0]
+        changelogs_rows = [
+            ProjectChangelog(logs=x, project_uuid=project_uuid) for x in changelogs
+        ]
         # save changelog
         if len(changelogs) > 0:
-            (
-                supabase.table("project_changelog")
-                .insert(
-                    {
-                        "logs": changelogs,
-                        "project_uuid": project_uuid,
-                    }
-                )
-                .execute()
-            )
+            session.add_all(changelogs_rows)
+            await session.commit()
 
     except Exception as exc:
         logger.error(exc)
@@ -724,19 +824,21 @@ async def log_general(
     content: Dict[str, Any] = {},
     metadata: Dict[str, Any] = {},
     project: dict = Depends(get_project),
+    session: AsyncSession = Depends(get_session),
 ):
     try:
         if type == InstanceType.RunLog.value:
             if not identifier:
                 identifier = str(uuid4())
                 run_log_to_insert = content
-                run_log_to_insert["metadata"] = metadata
+                run_log_to_insert["run_log_metadata"] = metadata
                 run_log_to_insert["uuid"] = identifier
                 try:
                     # check ["uuid", "version_uuid"] in content
                     if "uuid" not in content or "version_uuid" not in content:
                         raise Exception
-                    (supabase.table("run_log").insert(run_log_to_insert).execute())
+                    session.add_all([RunLog(**x) for x in run_log_to_insert])
+                    await session.commit()
                 except Exception as exc:
                     raise HTTPException(
                         status_code=HTTP_406_NOT_ACCEPTABLE,
@@ -745,13 +847,17 @@ async def log_general(
             else:
                 try:
                     original_value = (
-                        supabase.table("run_log")
-                        .select("uuid, metadata")
-                        .eq("uuid", identifier)
-                        .single()
-                        .execute()
-                        .data
+                        (
+                            await session.execute(
+                                select(RunLog.uuid, RunLog.run_log_metadata).where(
+                                    RunLog.uuid == identifier
+                                )
+                            )
+                        )
+                        .one()
+                        ._mapping
                     )
+
                 except:
                     raise HTTPException(
                         status_code=HTTP_404_NOT_FOUND,
@@ -759,21 +865,24 @@ async def log_general(
                     )
                 # update metadata in original_value
                 new_metadata = (
-                    original_value["metadata"]
-                    if original_value["metadata"] is not None
+                    original_value["run_log_metadata"]
+                    if original_value["run_log_metadata"] is not None
                     else {}
                 )
                 for key, value in metadata.items():
                     new_metadata[key] = value
-                supabase.table("run_log").update({"metadata": new_metadata}).eq(
-                    "uuid", identifier
-                ).execute()
+
+                await session.execute(
+                    update(RunLog)
+                    .where(RunLog.uuid == identifier)
+                    .values(run_log_metadata=new_metadata)
+                )
 
         elif type == InstanceType.ChatLog.value:
             if not identifier:
                 identifier = str(uuid4())
                 chat_log_to_insert = content
-                chat_log_to_insert["metadata"] = metadata
+                chat_log_to_insert["chat_log_metadata"] = metadata
                 chat_log_to_insert["uuid"] = identifier
                 try:
                     if (
@@ -782,7 +891,8 @@ async def log_general(
                         or "session_uuid" not in content
                     ):
                         raise Exception
-                    supabase.table("chat_log").insert(chat_log_to_insert).execute()
+                    session.add_all([ChatLog(**x) for x in chat_log_to_insert])
+                    await session.commit()
                 except Exception as exc:
                     raise HTTPException(
                         status_code=HTTP_406_NOT_ACCEPTABLE,
@@ -791,13 +901,17 @@ async def log_general(
             else:
                 try:
                     original_value = (
-                        supabase.table("chat_log")
-                        .select("uuid, metadata")
-                        .eq("uuid", identifier)
-                        .single()
-                        .execute()
-                        .data
+                        (
+                            await session.execute(
+                                select(ChatLog.uuid, ChatLog.chat_log_metadata).where(
+                                    ChatLog.uuid == identifier
+                                )
+                            )
+                        )
+                        .one()
+                        ._mapping
                     )
+
                 except:
                     raise HTTPException(
                         status_code=HTTP_404_NOT_FOUND,
@@ -805,15 +919,18 @@ async def log_general(
                     )
                 # update metadata in original_value
                 new_metadata = (
-                    original_value["metadata"]
-                    if original_value["metadata"] is not None
+                    original_value["chat_log_metadata"]
+                    if original_value["chat_log_metadata"] is not None
                     else {}
                 )
                 for key, value in metadata.items():
                     new_metadata[key] = value
-                supabase.table("chat_log").update({"metadata": new_metadata}).eq(
-                    "uuid", identifier
-                ).execute()
+
+                await session.execute(
+                    update(ChatLog)
+                    .where(ChatLog.uuid == identifier)
+                    .values(chat_log_metadata=new_metadata)
+                )
 
         elif type == InstanceType.ChatLogSession.value:
             if not identifier:
@@ -823,13 +940,17 @@ async def log_general(
             else:
                 try:
                     original_value = (
-                        supabase.table("chat_log_session")
-                        .select("uuid, metadata")
-                        .eq("uuid", identifier)
-                        .single()
-                        .execute()
-                        .data
+                        (
+                            await session.execute(
+                                select(
+                                    ChatLogSession.uuid, ChatLogSession.session_metadata
+                                ).where(ChatLogSession.uuid == identifier)
+                            )
+                        )
+                        .one()
+                        ._mapping
                     )
+
                 except:
                     raise HTTPException(
                         status_code=HTTP_404_NOT_FOUND,
@@ -837,15 +958,17 @@ async def log_general(
                     )
                 # update metadata in original_value
                 new_metadata = (
-                    original_value["metadata"]
-                    if original_value["metadata"] is not None
+                    original_value["session_metadata"]
+                    if original_value["session_metadata"] is not None
                     else {}
                 )
                 for key, value in metadata.items():
                     new_metadata[key] = value
-                supabase.table("chat_log_session").update(
-                    {"metadata": new_metadata}
-                ).eq("uuid", identifier).execute()
+                await session.execute(
+                    update(ChatLogSession)
+                    .where(ChatLogSession.uuid == identifier)
+                    .values(session_metadata=new_metadata)
+                )
 
         return Response(status_code=HTTP_200_OK)
     except HTTPException as http_exc:
@@ -866,30 +989,28 @@ async def log_deployment_run(
     parsed_outputs: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
     project: dict = Depends(get_project),
+    session: AsyncSession = Depends(get_session),
 ):
     try:
         # save log
-        (
-            supabase.table("run_log")
-            .insert(
-                {
-                    "uuid": log_uuid,
-                    "inputs": inputs,
-                    "raw_output": api_response["choices"][0]["message"]["content"]
-                    if api_response
-                    else None,
-                    "parsed_outputs": parsed_outputs,
-                    "input_register_name": None,
-                    "run_from_deployment": True,
-                    "version_uuid": version_uuid,
-                    "token_usage": api_response["usage"] if api_response else None,
-                    "latency": api_response["response_ms"] if api_response else None,
-                    "cost": completion_cost(api_response) if api_response else None,
-                    "metadata": metadata,
-                }
-            )
-            .execute()
+        run_log_row = RunLog(
+            uuid=log_uuid,
+            inputs=inputs,
+            raw_output=api_response["choices"][0]["message"]["content"]
+            if api_response
+            else None,
+            parsed_outputs=parsed_outputs,
+            input_register_name=None,
+            run_from_deployment=True,
+            version_uuid=version_uuid,
+            token_usage=api_response["usage"] if api_response else None,
+            latency=api_response["response_ms"] if api_response else None,
+            cost=completion_cost(api_response) if api_response else None,
+            run_log_metadata=metadata,
         )
+        session.add(run_log_row)
+        await session.commit()
+
         return Response(status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
@@ -904,26 +1025,25 @@ async def log_deployment_chat(
     messages: List[Dict[str, Any]] = [],
     metadata: Optional[List[Dict[str, Any]]] = None,
     project: dict = Depends(get_project),
+    db_session: AsyncSession = Depends(get_session),
 ):
     try:
-        print(session_uuid, type(session_uuid))
-        print(log_uuid_list, type(log_uuid_list))
-        print(version_uuid, type(version_uuid))
-        print(messages, type(messages))
-        print(metadata, type(metadata))
         # check session
         session = (
-            supabase.table("chat_log_session")
-            .select("*")
-            .eq("uuid", session_uuid)
-            .single()
-            .execute()
-            .data
+            (
+                await db_session.execute(
+                    select(ChatLogSession).where(ChatLogSession.uuid == session_uuid)
+                )
+            )
+            .mappings()
+            .all()
         )
+
         if len(session) == 0:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND, detail="Session not found"
             )
+
         # make logs
         logs = []
         print(log_uuid_list, messages, metadata)
@@ -945,23 +1065,26 @@ async def log_deployment_chat(
                 del meta["latency"]
 
             logs.append(
-                {
-                    "uuid": log_uuid,
-                    "session_uuid": session_uuid,
-                    "role": message["role"],
-                    "content": message["content"],
-                    "name": message["name"] if "name" in message else None,
-                    "tool_calls": message["tool_calls"]
-                    if "tool_calls" in message
-                    else None,
-                    "token_usage": token_usage,
-                    "latency": latency,
-                    "cost": cost,
-                    "metadata": meta,
-                }
+                ChatLog(
+                    **{
+                        "uuid": log_uuid,
+                        "session_uuid": session_uuid,
+                        "role": message["role"],
+                        "content": message["content"],
+                        "name": message["name"] if "name" in message else None,
+                        "tool_calls": message["tool_calls"]
+                        if "tool_calls" in message
+                        else None,
+                        "token_usage": token_usage,
+                        "latency": latency,
+                        "cost": cost,
+                        "chat_log_metadata": meta,
+                    }
+                )
             )
         # save logs
-        (supabase.table("chat_log").insert(logs).execute())
+        db_session.add_all(logs)
+        await db_session.commit()
         return Response(status_code=HTTP_200_OK)
     except HTTPException as http_exc:
         raise http_exc
@@ -977,27 +1100,31 @@ async def make_session(
     session_uuid: str,
     version_uuid: str,
     project: dict = Depends(get_project),
+    db_session: AsyncSession = Depends(get_session),
 ):
     try:
         # check version
         version = (
-            supabase.table("chat_model_version")
-            .select("*")
-            .eq("uuid", version_uuid)
-            .single()
-            .execute()
-            .data
+            (
+                await db_session.execute(
+                    select(ChatModelVersion).where(
+                        ChatModelVersion.uuid == version_uuid
+                    )
+                )
+            )
+            .mappings()
+            .all()
         )
+
         if len(version) == 0:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND, detail="Chat Model Version not found"
             )
         # make Session
-        (
-            supabase.table("chat_log_session")
-            .insert({"uuid": session_uuid, "version_uuid": version_uuid})
-            .execute()
-        )
+        session_row = ChatLogSession(uuid=session_uuid, version_uuid=version_uuid)
+        db_session.add(session_row)
+        await db_session.commit()
+
     except HTTPException as http_exc:
         raise http_exc
     except Exception as exc:
