@@ -2,8 +2,9 @@ import re
 import json
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from enum import Enum
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import Result, select, asc, desc, update
 
-from base.database import supabase
 from utils.logger import logger
 from utils.prompt_utils import update_dict
 from modules.types import (
@@ -14,11 +15,16 @@ from modules.types import (
     RunLog,
     LocalTaskErrorType,
 )
+from base.database import get_session
 from base.websocket_connection import websocket_manager, LocalTask
+from db_models import *
 
 
 async def run_local_prompt_model_generator(
-    project, cli_access_key: str, run_config: PromptModelRunConfig
+    session: AsyncSession,
+    project: Dict,
+    cli_access_key: str,
+    run_config: PromptModelRunConfig,
 ):
     sample_name: Optional[str] = run_config.sample_name
     prompts: List[PromptConfig] = run_config.prompts
@@ -26,25 +32,14 @@ async def run_local_prompt_model_generator(
     # get sample from db
     if sample_name:
         sample_input_rows = (
-            supabase.table("sample_input")
-            .select("*")
-            .eq("name", sample_name)
-            .eq("project_uuid", project["uuid"])
-            .execute()
-            .data
-        )
-        # if len(sample_input_rows) != 1:
-        #     logger.error(f"There is no sample input {sample_name}.")
-        #     return MessagesWithInputs(
-        #         error=True, error_message=f"There is no sample input {sample_name}."
-        #     )
-        # if "contents" not in sample_input_rows[0]:
-        #     logger.error(f"There is no sample input {sample_name}.")
-        #     return MessagesWithInputs(
-        #         error=True, error_message=f"There is no sample input {sample_name}."
-        #     )
+            await session.execute(
+                select(SampleInput.content)
+                .where(SampleInput.name == run_config.sample_name)
+                .where(SampleInput.project_uuid == project["uuid"])
+            )
+        ).scalar_one()
 
-        sample_input: Dict = sample_input_rows[0]["content"]
+        sample_input: Dict = sample_input_rows
     else:
         sample_input = None
 
@@ -110,12 +105,20 @@ async def run_local_prompt_model_generator(
 
     # add function schemas
     function_schemas = (
-        supabase.table("function_schema")
-        .select("name, description, parameters, mock_response")
-        .eq("project_uuid", project["uuid"])
-        .in_("name", run_config.functions)
-        .execute()
-        .data
+        (
+            await session.execute(
+                select(
+                    FunctionSchema.name,
+                    FunctionSchema.description,
+                    FunctionSchema.parameters,
+                    FunctionSchema.mock_response,
+                )
+                .where(FunctionSchema.project_uuid == project["uuid"])
+                .where(FunctionSchema.name.in_(run_config.functions))
+            )
+        )
+        .mappings()
+        .all()
     )  # function_schemas includes mock_response
 
     run_log: Dict[str, Any] = {
@@ -128,7 +131,7 @@ async def run_local_prompt_model_generator(
         "token_usage": None,  # TODO: add token usage, latency, cost on testing
         "latency": None,
         "cost": None,
-        "metadata": None,
+        "run_log_metadata": None,
         "run_from_deployment": False,
     }
 
@@ -150,54 +153,53 @@ async def run_local_prompt_model_generator(
         if run_config.from_version is None:
             prompt_model_version_config["is_published"] = True
             prompt_model_version_config["version"] = 1
-            prompt_model_version = (
-                supabase.table("prompt_model_version")
-                .insert(prompt_model_version_config)
-                .execute()
-                .data
+            new_prompt_model_version_row = PromptModelVersion(
+                **prompt_model_version_config
             )
+            session.add(new_prompt_model_version_row)
+            await session.commit()
+            await session.refresh(new_prompt_model_version_row)
+
             # update project version
             need_project_version_update = True
             changelogs += [
                 {
                     "subject": "prompt_model_version",
-                    "identifier": [prompt_model_version[0]["uuid"]],
+                    "identifier": [str(new_prompt_model_version_row.uuid)],
                     "action": "ADD",
                 },
                 {
                     "subject": "prompt_model_version",
-                    "identifier": [prompt_model_version[0]["uuid"]],
+                    "identifier": [str(new_prompt_model_version_row.uuid)],
                     "action": "PUBLISH",
                 },
             ]
         else:
             latest_version = (
-                supabase.table("prompt_model_version")
-                .select("version")
-                .eq(
-                    "prompt_model_uuid",
-                    run_config.prompt_model_uuid,
+                await session.execute(
+                    select(PromptModelVersion.version)
+                    .where(
+                        PromptModelVersion.prompt_model_uuid
+                        == run_config.prompt_model_uuid
+                    )
+                    .order_by(desc(PromptModelVersion.version))
+                    .limit(1)
                 )
-                .order("version", desc=True)
-                .limit(1)
-                .single()
-                .execute()
-                .data["version"]
-            )
+            ).scalar_one()
 
             prompt_model_version_config["version"] = latest_version + 1
 
-            prompt_model_version = (
-                supabase.table("prompt_model_version")
-                .insert(prompt_model_version_config)
-                .execute()
-                .data
+            new_prompt_model_version_row = PromptModelVersion(
+                **prompt_model_version_config
             )
+            session.add(new_prompt_model_version_row)
+            await session.commit()
+            await session.refresh(new_prompt_model_version_row)
 
             changelogs.append(
                 {
                     "subject": "prompt_model_version",
-                    "identifier": [prompt_model_version[0]["uuid"]],
+                    "identifier": [str(new_prompt_model_version_row.uuid)],
                     "action": "ADD",
                 }
             )
@@ -205,11 +207,13 @@ async def run_local_prompt_model_generator(
         # add res[0]["uuid"] for each prompt
         prompt_dict = [p.model_dump() for p in prompts]
         for prompt in prompt_dict:
-            prompt["version_uuid"] = prompt_model_version[0]["uuid"]
+            prompt["version_uuid"] = str(new_prompt_model_version_row.uuid)
 
-        (supabase.table("prompt").insert(prompt_dict).execute())
+        prompt_row_list = [Prompt(**prompt) for prompt in prompt_dict]
+        session.add_all(prompt_row_list)
+        await session.commit()
 
-        prompt_model_version_config["uuid"] = prompt_model_version[0]["uuid"]
+        prompt_model_version_config["uuid"] = str(new_prompt_model_version_row.uuid)
 
         data = {
             "prompt_model_version_uuid": prompt_model_version_config["uuid"],
@@ -255,7 +259,8 @@ async def run_local_prompt_model_generator(
 
         yield json.dumps(chunk)
 
-    save_run_log(
+    await save_run_log(
+        session,
         prompt_model_version_config,
         run_log,
         error_type,
@@ -263,19 +268,20 @@ async def run_local_prompt_model_generator(
     )
 
     if need_project_version_update:
-        (
-            supabase.table("project")
-            .update({"version": project["version"] + 1})
-            .eq("uuid", project["uuid"])
-            .execute()
+        await session.execute(
+            update(Project)
+            .where(Project.uuid == project["uuid"])
+            .values(version=project["version"] + 1)
         )
+        await session.commit()
+
     if len(changelogs) > 0:
-        supabase.table("project_changelog").insert(
-            {"project_uuid": project["uuid"], "logs": changelogs}
-        ).execute()
+        session.add(ProjectChangelog(project_uuid=project["uuid"], logs=changelogs))
+        await session.commit()
 
 
 async def run_local_chat_model_generator(
+    session: AsyncSession,
     project: Dict,
     start_timestampz_iso,
     cli_access_key: str,
@@ -297,12 +303,17 @@ async def run_local_chat_model_generator(
     old_messages = [{"role": "system", "content": run_config.system_prompt}]
     if session_uuid:
         chat_logs: List[Dict] = (
-            supabase.table("chat_log")
-            .select("role, name, content, tool_calls")
-            .eq("session_uuid", session_uuid)
-            .order("created_at", desc=False)
-            .execute()
-            .data
+            (
+                await session.execute(
+                    select(
+                        ChatLog.role, ChatLog.name, ChatLog.content, ChatLog.tool_calls
+                    )
+                    .where(ChatLog.session_uuid == session_uuid)
+                    .order_by(asc(ChatLog.created_at))
+                )
+            )
+            .mappings()
+            .all()
         )
         old_messages += chat_logs
         # delete None values
@@ -313,12 +324,20 @@ async def run_local_chat_model_generator(
 
     # add function schemas
     function_schemas = (
-        supabase.table("function_schema")
-        .select("name, description, parameters, mock_response")
-        .eq("project_uuid", project["uuid"])
-        .in_("name", run_config.functions)
-        .execute()
-        .data
+        (
+            await session.execute(
+                select(
+                    FunctionSchema.name,
+                    FunctionSchema.description,
+                    FunctionSchema.parameters,
+                    FunctionSchema.mock_response,
+                )
+                .where(FunctionSchema.project_uuid == project["uuid"])
+                .where(FunctionSchema.name.in_(run_config.functions))
+            )
+        )
+        .mappings()
+        .all()
     )
 
     user_input = run_config.user_input
@@ -329,57 +348,54 @@ async def run_local_chat_model_generator(
         if run_config.from_version is None:
             chat_model_version_config["is_published"] = True
             chat_model_version_config["version"] = 1
-            res = (
-                supabase.table("chat_model_version")
-                .insert(chat_model_version_config)
-                .execute()
-                .data
-            )
+            new_chat_model_version_row = ChatModelVersion(**chat_model_version_config)
+            session.add(new_chat_model_version_row)
+            await session.commit()
+            await session.refresh(new_chat_model_version_row)
             # update project version
             need_project_version_update = True
             changelogs += [
                 {
                     "subject": "chat_model_version",
-                    "identifier": [res[0]["uuid"]],
+                    "identifier": [str(new_chat_model_version_row.uuid)],
                     "action": "ADD",
                     "project_uuid": project["uuid"],
                 },
                 {
                     "subject": "chat_model_version",
-                    "identifier": [res[0]["uuid"]],
+                    "identifier": [str(new_chat_model_version_row.uuid)],
                     "action": "PUBLISH",
                     "project_uuid": project["uuid"],
                 },
             ]
         else:
             latest_version = (
-                supabase.table("chat_model_version")
-                .select("version")
-                .eq("chat_model_uuid", run_config.chat_model_uuid)
-                .order("version", desc=True)
-                .limit(1)
-                .single()
-                .execute()
-                .data["version"]
-            )
+                await session.execute(
+                    select(ChatModelVersion.version)
+                    .where(
+                        ChatModelVersion.chat_model_uuid == run_config.chat_model_uuid
+                    )
+                    .order_by(desc(ChatModelVersion.version))
+                    .limit(1)
+                )
+            ).scalar_one()
 
             chat_model_version_config["version"] = latest_version + 1
+            new_chat_model_version_row = ChatModelVersion(**chat_model_version_config)
 
-            res = (
-                supabase.table("chat_model_version")
-                .insert(chat_model_version_config)
-                .execute()
-                .data
-            )
+            session.add(new_chat_model_version_row)
+            await session.commit()
+            await session.refresh(new_chat_model_version_row)
+
             changelogs.append(
                 {
                     "subject": "chat_model_version",
-                    "identifier": [res[0]["uuid"]],
+                    "identifier": [str(new_chat_model_version_row.uuid)],
                     "action": "ADD",
                 }
             )
 
-        chat_model_version_config["uuid"] = res[0]["uuid"]
+        chat_model_version_config["uuid"] = str(new_chat_model_version_row.uuid)
 
         data = {
             "chat_model_version_uuid": chat_model_version_config["uuid"],
@@ -390,18 +406,18 @@ async def run_local_chat_model_generator(
 
     # make session
     if session_uuid is None:
-        res = (
-            supabase.table("chat_log_session")
-            .insert(
-                {
-                    "version_uuid": chat_model_version_config["uuid"],
-                    "run_from_deployment": False,
-                }
-            )
-            .execute()
-            .data
+        new_session = ChatLogSession(
+            **{
+                "version_uuid": chat_model_version_config["uuid"],
+                "run_from_deployment": False,
+            }
         )
-        session_uuid = res[0]["uuid"]
+        session.add(new_session)
+        await session.commit()
+        await session.refresh(new_session)
+
+        session_uuid: str = str(new_session.uuid)
+
         data = {
             "chat_log_session_uuid": session_uuid,
             "status": "running",
@@ -430,7 +446,7 @@ async def run_local_chat_model_generator(
             {"role": message["role"], "content": message["content"]}
             for message in new_messages
         ],
-        "function_schemas": function_schemas,
+        "function_schemas": [dict(x) for x in function_schemas],
         "model": run_config.model,
     }
 
@@ -477,7 +493,8 @@ async def run_local_chat_model_generator(
 
         yield json.dumps(chunk)
 
-    save_chat_logs(
+    await save_chat_logs(
+        session,
         session_uuid,
         new_messages,
         response_messages,
@@ -486,19 +503,27 @@ async def run_local_chat_model_generator(
     )
 
     if need_project_version_update:
-        (
-            supabase.table("project")
-            .update({"version": project["version"] + 1})
-            .eq("uuid", project["uuid"])
-            .execute()
+        await session.execute(
+            update(Project)
+            .where(Project.uuid == project["uuid"])
+            .values(version=project["version"] + 1)
         )
+        await session.commit()
+
     if len(changelogs) > 0:
-        supabase.table("project_changelog").insert(
-            {"project_uuid": project["uuid"], "logs": changelogs}
-        ).execute()
+        session.add(
+            ProjectChangelog(
+                **{
+                    "logs": changelogs,
+                    "project_uuid": project["uuid"],
+                }
+            )
+        )
+        await session.commit()
 
 
-def save_run_log(
+async def save_run_log(
+    session: AsyncSession,
     prompt_model_version_config: Optional[Dict[str, Any]] = None,
     run_log: Optional[Dict[str, Any]] = None,
     local_task_error_type: Optional[LocalTaskErrorType] = None,
@@ -519,8 +544,9 @@ def save_run_log(
             run_log["version_uuid"] = prompt_model_version_config["uuid"]
 
             # add error logs for run_log
-            run_log["metadata"] = {"error_occurs": True, "error_log": error_log}
-            supabase.table("run_log").insert(run_log).execute()
+            run_log["run_log_metadata"] = {"error_occurs": True, "error_log": error_log}
+            session.add(RunLog(**run_log))
+            await session.commit()
 
             return
         else:
@@ -529,12 +555,14 @@ def save_run_log(
     else:
         # add version_uuid for run_log
         run_log["version_uuid"] = prompt_model_version_config["uuid"]
-        supabase.table("run_log").insert(run_log).execute()
+        session.add(RunLog(**run_log))
+        await session.commit()
 
         return
 
 
-def save_chat_logs(
+async def save_chat_logs(
+    session: AsyncSession,
     session_uuid: Optional[str] = None,
     new_messages: Optional[List[Dict[str, Any]]] = None,
     response_messages: Optional[List[Dict[str, Any]]] = None,
@@ -553,29 +581,38 @@ def save_chat_logs(
             or local_task_error_type == LocalTaskErrorType.PARSING_FAILED_ERROR.value
         ):
             # save new messages
-            supabase.table("chat_log").insert(new_messages).execute()
+            new_chat_log_rows = [ChatLog(**message) for message in new_messages]
+            session.add_all(new_chat_log_rows)
+            await session.commit()
 
             # save response messages
             for message in response_messages:
                 message["tool_calls"] = None
                 message["name"] = None if "name" not in message else message["name"]
                 if "function_call" in message:
-                    message["tool_calls"] = message["function_call"]
+                    message["tool_calls"] = [message["function_call"]]
                     del message["function_call"]
                 message["session_uuid"] = session_uuid
 
-            response_messages[-1]["metadata"] = {
+            response_messages[-1]["chat_log_metadata"] = {
                 "error_occurs": True,
                 "error_log": error_log,
             }
-            supabase.table("chat_log").insert(response_messages).execute()
+
+            response_chat_log_rows = [
+                ChatLog(**message) for message in response_messages
+            ]
+            session.add_all(response_chat_log_rows)
+            await session.commit()
             return
         else:
             return
 
     else:
         # save new messages
-        supabase.table("chat_log").insert(new_messages).execute()
+        new_chat_log_rows = [ChatLog(**message) for message in new_messages]
+        session.add_all(new_chat_log_rows)
+        await session.commit()
 
         # save response messages
         for message in response_messages:
@@ -583,8 +620,11 @@ def save_chat_logs(
             message["tool_calls"] = None
             message["name"] = None if "name" not in message else message["name"]
             if "function_call" in message:
-                message["tool_calls"] = message["function_call"]
+                message["tool_calls"] = [message["function_call"]]
                 del message["function_call"]
 
-        supabase.table("chat_log").insert(response_messages).execute()
+        response_chat_log_rows = [ChatLog(**message) for message in response_messages]
+        session.add_all(response_chat_log_rows)
+        await session.commit()
+
         return

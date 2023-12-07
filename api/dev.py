@@ -2,6 +2,8 @@
 import json
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import Result, select, asc, desc, update
 
 from fastapi import APIRouter, Response, HTTPException, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -17,18 +19,24 @@ from starlette.status import (
 from utils.security import get_project
 from utils.prompt_utils import update_dict
 from utils.logger import logger
-from base.database import supabase
+
+from base.database import get_session
 from base.websocket_connection import websocket_manager, LocalTask
 from modules.websocket.run_model_generators import run_local_prompt_model_generator
 from .dev_chat import router as chat_router
 from modules.types import PromptConfig, PromptModelRunConfig
+from db_models import *
 
 router = APIRouter()
 router.include_router(chat_router)
 
 
 @router.post("/run_prompt_model")
-async def run_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
+async def run_prompt_model(
+    project_uuid: str,
+    run_config: PromptModelRunConfig,
+    session: AsyncSession = Depends(get_session),
+):
     """
     <h2>Send run_prompt_model request to the local server  </h2>
 
@@ -64,12 +72,17 @@ async def run_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
     try:
         # Find local server websocket
         project = (
-            supabase.table("project")
-            .select("cli_access_key, version, uuid")
-            .eq("uuid", project_uuid)
-            .execute()
-            .data
+            (
+                await session.execute(
+                    select(Project.cli_access_key, Project.version, Project.uuid).where(
+                        Project.uuid == project_uuid
+                    )
+                )
+            )
+            .mappings()
+            .all()
         )
+
         if len(project) == 0:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND, detail="There is no project"
@@ -83,7 +96,9 @@ async def run_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
 
         try:
             return StreamingResponse(
-                run_local_prompt_model_generator(project[0], cli_access_key, run_config)
+                run_local_prompt_model_generator(
+                    session, project[0], cli_access_key, run_config
+                )
             )
         except Exception as exc:
             logger.error(exc)
@@ -100,7 +115,10 @@ async def run_prompt_model(project_uuid: str, run_config: PromptModelRunConfig):
 
 
 @router.get("/list_prompt_models")
-async def list_prompt_models(project_uuid: str):
+async def list_prompt_models(
+    project_uuid: str,
+    session: AsyncSession = Depends(get_session),
+):
     """Get list of prompt models in local Code by websocket
     Input:
         - project_uuid : project uuid
@@ -119,11 +137,15 @@ async def list_prompt_models(project_uuid: str):
     try:
         # Find local server websocket
         project = (
-            supabase.table("project")
-            .select("cli_access_key")
-            .eq("uuid", project_uuid)
-            .execute()
-            .data
+            (
+                await session.execute(
+                    select(Project.cli_access_key, Project.version, Project.uuid).where(
+                        Project.uuid == project_uuid
+                    )
+                )
+            )
+            .mappings()
+            .all()
         )
         if len(project) == 0:
             raise HTTPException(
@@ -153,7 +175,10 @@ async def list_prompt_models(project_uuid: str):
 
 
 @router.get("/list_functions")
-async def list_functions(project_uuid: str):
+async def list_functions(
+    project_uuid: str,
+    session: AsyncSession = Depends(get_session),
+):
     """Get list of functions in local Code by websocket
     Input:
         - project_uuid : project uuid
@@ -172,11 +197,15 @@ async def list_functions(project_uuid: str):
     try:
         # Find local server websocket
         project = (
-            supabase.table("project")
-            .select("cli_access_key")
-            .eq("uuid", project_uuid)
-            .execute()
-            .data
+            (
+                await session.execute(
+                    select(Project.cli_access_key, Project.version, Project.uuid).where(
+                        Project.uuid == project_uuid
+                    )
+                )
+            )
+            .mappings()
+            .all()
         )
         if len(project) == 0:
             raise HTTPException(

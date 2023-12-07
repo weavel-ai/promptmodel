@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from enum import Enum
+from uuid import UUID
 
 
 class PromptConfig(BaseModel):
@@ -56,3 +57,56 @@ class InstanceType(str, Enum):
     ChatLog = "ChatLog"
     RunLog = "RunLog"
     ChatLogSession = "ChatLogSession"
+
+
+class WeavelObject(BaseModel):
+    def __init__(self, **data: Any):
+        for key, value in data.items():
+            if key in self.__annotations__ and self.__annotations__[key] == str:
+                try:
+                    data[key] = str(value)
+                except:
+                    data[key] = value
+        super().__init__(**data)
+
+
+class DeployedPromptModelVersionInstance(WeavelObject):
+    uuid: str
+    from_version: Optional[int]
+    prompt_model_uuid: str
+    model: str
+    is_published: bool
+    is_ab_test: Optional[bool]
+    ratio: Optional[float]
+    parsing_type: Optional[str]
+    output_keys: Optional[List[str]]
+
+
+class DeployedChatModelVersionInstance(WeavelObject):
+    uuid: str
+    from_version: Optional[int]
+    chat_model_uuid: str
+    model: str
+    is_published: bool
+    is_ab_test: Optional[bool]
+    ratio: Optional[float]
+    system_prompt: str
+
+
+class DeployedPromptModelInstance(WeavelObject):
+    uuid: str
+    name: str
+
+
+class DeployedPromptInstance(WeavelObject):
+    version_uuid: str
+    role: str
+    content: str
+    step: int
+
+
+class DeployedChatLogInstance(WeavelObject):
+    role: str
+    name: Optional[str] = None
+    content: Optional[str] = None
+    tool_calls: Optional[Dict[str, Any]] = None
