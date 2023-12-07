@@ -39,7 +39,7 @@ async def run_local_prompt_model_generator(
             )
         ).scalar_one()
 
-        sample_input: Dict = sample_input_rows[0]["content"]
+        sample_input: Dict = sample_input_rows
     else:
         sample_input = None
 
@@ -205,7 +205,7 @@ async def run_local_prompt_model_generator(
             )
 
         # add res[0]["uuid"] for each prompt
-        prompt_dict = [p.dict() for p in prompts]
+        prompt_dict = [p.model_dump() for p in prompts]
         for prompt in prompt_dict:
             prompt["version_uuid"] = str(new_prompt_model_version_row.uuid)
 
@@ -273,6 +273,7 @@ async def run_local_prompt_model_generator(
             .where(Project.uuid == project["uuid"])
             .values(version=project["version"] + 1)
         )
+        await session.commit()
 
     if len(changelogs) > 0:
         session.add(ProjectChangelog(project_uuid=project["uuid"], logs=changelogs))
@@ -445,7 +446,7 @@ async def run_local_chat_model_generator(
             {"role": message["role"], "content": message["content"]}
             for message in new_messages
         ],
-        "function_schemas": function_schemas,
+        "function_schemas": [dict(x) for x in function_schemas],
         "model": run_config.model,
     }
 
@@ -507,6 +508,7 @@ async def run_local_chat_model_generator(
             .where(Project.uuid == project["uuid"])
             .values(version=project["version"] + 1)
         )
+        await session.commit()
 
     if len(changelogs) > 0:
         session.add(

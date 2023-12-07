@@ -11,7 +11,7 @@ from sqlalchemy import Result, select, asc, desc, update
 
 from fastapi import WebSocket
 
-from base.database import get_session
+from base.database import get_session, get_session_context
 from utils.logger import logger
 from db_models import *
 from crud import update_instances, pull_instances, save_instances, disconnect_local
@@ -52,7 +52,7 @@ class ConnectionManager:
         self.connected_locals[token] = websocket
         # Create and store a new queue for this local server
         # self.local_queues[token] = asyncio.Queue()
-        self._set_local_online_status(token, True)
+        await self._set_local_online_status(token, True)
         # Start a dedicated reader task for this local server
         task = asyncio.create_task(self.websocket_reader(websocket, token))
         return task
@@ -94,12 +94,13 @@ class ConnectionManager:
             if not online:
                 await disconnect_local(token=token)
             else:
-                async with get_session() as session:
+                async with get_session_context() as session:
                     await session.execute(
                         update(Project)
                         .where(Project.cli_access_key == token)
                         .values(online=True)
                     )
+                    await session.commit()
         except Exception as error:
             logger.error(f"Error updating online status for token {token}: {error}")
 
@@ -218,22 +219,22 @@ class ConnectionManager:
         """Handles the message received from the agent."""
         if data["type"] == ServerTask.SYNC_CODE:
             try:
-                async with get_session() as session:
+                async with get_session_context() as session:
                     project = (
                         (
                             await session.execute(
                                 select(Project).where(Project.cli_access_key == token)
                             )
                         )
-                        .one()
-                        ._mapping
+                        .scalars()
+                        .all()
                     )
 
                     if len(project) == 0:
                         logger.error(f"Dev branch not found for token {token}")
                         return
 
-                    project_uuid = project[0]["uuid"]
+                    project_uuid = project[0].model_dump()["uuid"]
                     changelogs = []
                     instances_in_db = await pull_instances(
                         session=session, project_uuid=project_uuid
@@ -388,32 +389,36 @@ class ConnectionManager:
                     changelogs = [
                         {
                             "subject": f"prompt_model",
-                            "identifiers": [x["uuid"] for x in created_prompt_models],
+                            "identifiers": [
+                                str(x["uuid"]) for x in created_prompt_models
+                            ],
                             "action": "ADD",
                         },
                         {
                             "subject": f"chat_model",
-                            "identifiers": [x["uuid"] for x in created_chat_models],
+                            "identifiers": [
+                                str(x["uuid"]) for x in created_chat_models
+                            ],
                             "action": "ADD",
                         },
                         {
                             "subject": f"sample_input",
-                            "identifiers": [x["uuid"] for x in created_samples],
+                            "identifiers": [str(x["uuid"]) for x in created_samples],
                             "action": "ADD",
                         },
                         {
                             "subject": f"function_schema",
-                            "identifiers": [x["uuid"] for x in created_schemas],
+                            "identifiers": [str(x["uuid"]) for x in created_schemas],
                             "action": "ADD",
                         },
                         {
                             "subject": f"sample_input",
-                            "identifiers": [x["uuid"] for x in updated_samples],
+                            "identifiers": [str(x["uuid"]) for x in updated_samples],
                             "action": "UPDATE",
                         },
                         {
                             "subject": f"function_schema",
-                            "identifiers": [x["uuid"] for x in updated_schemas],
+                            "identifiers": [str(x["uuid"]) for x in updated_schemas],
                             "action": "UPDATE",
                         },
                     ]
@@ -423,7 +428,10 @@ class ConnectionManager:
                     if len(changelogs) > 0:
                         session.add(
                             ProjectChangelog(
-                                **{"logs": changelogs, "project_uuid": project_uuid}
+                                **{
+                                    "logs": changelogs,
+                                    "project_uuid": str(project_uuid),
+                                }
                             )
                         )
                         await session.commit()

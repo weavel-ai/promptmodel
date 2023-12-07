@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import Result, select, asc, desc, update
 
 from utils.logger import logger
-from base.database import get_session
+from base.database import get_session, get_session_context
 from db_models import *
 
 API_KEY_HEADER = "Authorization"
@@ -18,11 +18,11 @@ async def get_project(
 ):
     """Authenticate and return project based on API key."""
     api_key = api_key.replace("Bearer ", "")  # Strip "Bearer " from the header value
-    async with get_session() as session:
+    async with get_session_context() as session:
         project = (
             (await session.execute(select(Project).where(Project.api_key == api_key)))
+            .scalars()
             .one()
-            ._mapping
         )
 
     logger.debug(f"api key: {api_key}")
@@ -33,7 +33,7 @@ async def get_project(
             status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
         )
 
-    return project[0]
+    return project.model_dump()
 
 
 async def get_cli_user_id(
@@ -41,7 +41,7 @@ async def get_cli_user_id(
 ):
     """Authenticate and return CLI user based on API key."""
     api_key = api_key.replace("Bearer ", "")  # Strip "Bearer " from the header value
-    async with get_session() as session:
+    async with get_session_context() as session:
         user_id = (
             await session.execute(
                 select(CliAccess.user_id).where(CliAccess.api_key == api_key)
@@ -53,7 +53,7 @@ async def get_cli_user_id(
             status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
         )
 
-    return user_id[0]["user_id"]
+    return user_id
 
 
 async def get_api_key(

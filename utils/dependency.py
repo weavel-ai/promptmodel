@@ -5,7 +5,7 @@ from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import Result, select, asc, desc, update
 
-from base.database import get_session
+from base.database import get_session, get_session_context
 from utils.logger import logger
 from utils.security import get_project
 from db_models import *
@@ -60,9 +60,7 @@ async def get_user_id(
         raise HTTPException(status_code=400, detail="Invalid token!")
 
 
-async def get_websocket_token(
-    websocket: WebSocket, session: AsyncSession = Depends(get_session)
-):
+async def get_websocket_token(websocket: WebSocket):
     if websocket:
         authorization = websocket.headers.get("Authorization")
         if not authorization:
@@ -76,17 +74,18 @@ async def get_websocket_token(
 
     token = authorization.split(" ")[1]
     try:
-        project = (
-            (
-                await session.execute(
-                    select(Project.id, Project.name).where(
-                        Project.cli_access_key == token
+        async with get_session_context() as session:
+            project = (
+                (
+                    await session.execute(
+                        select(Project.id, Project.name).where(
+                            Project.cli_access_key == token
+                        )
                     )
                 )
+                .mappings()
+                .all()
             )
-            .mappings()
-            .all()
-        )
 
         if not project or len(project) == 0:
             # await websocket.close(code=4000)

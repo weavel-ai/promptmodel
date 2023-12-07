@@ -1,12 +1,13 @@
 """APIs for package management"""
 import asyncio
+import json
 
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import Result, select, asc, desc, update
 
 
-from base.database import get_session
+from base.database import get_session, get_session_context
 from db_models import *
 from modules.types import (
     InstanceType,
@@ -20,7 +21,7 @@ async def save_instances(
     sample_inputs: List[Dict],
     function_schemas: List[Dict],
 ) -> Dict[str, Any]:
-    async with session.begin():
+    async with session.begin_nested():
         # Insert prompt models
         current_time = datetime.utcnow()
 
@@ -39,7 +40,7 @@ async def save_instances(
         function_schemas = [FunctionSchema(**data) for data in function_schemas]
         session.add_all(function_schemas)
 
-        await session.commit()
+        await session.flush()
 
         result = await session.execute(
             select(PromptModel).where(PromptModel.created_at >= current_time)
@@ -62,10 +63,10 @@ async def save_instances(
         function_schema_rows = result.scalars().all()
 
         return {
-            "prompt_model_rows": prompt_model_rows,
-            "chat_model_rows": chat_model_rows,
-            "sample_input_rows": sample_input_rows,
-            "function_schema_rows": function_schema_rows,
+            "prompt_model_rows": [r.model_dump() for r in prompt_model_rows],
+            "chat_model_rows": [r.model_dump() for r in chat_model_rows],
+            "sample_input_rows": [r.model_dump() for r in sample_input_rows],
+            "function_schema_rows": [r.model_dump() for r in function_schema_rows],
         }
 
 
@@ -88,10 +89,16 @@ async def pull_instances(session: AsyncSession, project_uuid: str) -> Dict[str, 
     function_schema_data = await session.execute(function_schema_query)
 
     return {
-        "prompt_model_data": prompt_model_data.mappings().all(),
-        "chat_model_data": chat_model_data.mappings().all(),
-        "sample_input_data": sample_input_data.mappings().all(),
-        "function_schema_data": function_schema_data.mappings().all(),
+        "prompt_model_data": [
+            r.model_dump() for r in prompt_model_data.scalars().all()
+        ],
+        "chat_model_data": [r.model_dump() for r in chat_model_data.scalars().all()],
+        "sample_input_data": [
+            r.model_dump() for r in sample_input_data.scalars().all()
+        ],
+        "function_schema_data": [
+            r.model_dump() for r in function_schema_data.scalars().all()
+        ],
     }
 
 
@@ -126,11 +133,16 @@ async def update_instances(
             "chat_model_names": chat_model_names,
             "sample_input_names": sample_input_names,
             "function_schema_names": function_schema_names,
-            "sample_inputs": sample_inputs,  # Ensure this is a JSON-compatible format
-            "function_schemas": function_schemas,  # Ensure this is a JSON-compatible format
+            "sample_inputs": json.dumps(
+                sample_inputs
+            ),  # Ensure this is a JSON-compatible format
+            "function_schemas": json.dumps(
+                function_schemas
+            ),  # Ensure this is a JSON-compatible format
         },
     )
-    return result.mappings().all()
+    await session.commit()
+    return result.mappings().one()
 
 
 async def disconnect_local(token: str):
@@ -168,11 +180,12 @@ async def disconnect_local(token: str):
     $$ LANGUAGE plpgsql;
 
     """
-    async with get_session() as session:
+    async with get_session_context() as session:
         function_call = text(
             """
             SELECT * FROM disconnect_local(:token)
         """
         )
         await session.execute(function_call, {"token": token})
+        await session.commit()
         return

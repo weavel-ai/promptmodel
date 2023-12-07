@@ -38,6 +38,8 @@ from modules.types import (
     InstanceType,
     DeployedPromptModelVersionInstance,
     DeployedChatModelVersionInstance,
+    DeployedPromptInstance,
+    DeployedPromptModelInstance,
 )
 from litellm.utils import completion_cost
 
@@ -64,16 +66,21 @@ async def list_orgs(
 ):
     """List user's organizations"""
     try:
-        res: Result = await session.execute(
-            select(
-                UserOrganizations.organization_id,
-                UserOrganizations.name,
-                UserOrganizations.slug,
-            ).where(UserOrganizations.user_id == user_id)
+        res: Result = (
+            (
+                await session.execute(
+                    select(
+                        UserOrganizations.organization_id,
+                        UserOrganizations.name,
+                        UserOrganizations.slug,
+                    ).where(UserOrganizations.user_id == user_id)
+                )
+            )
+            .mappings()
+            .all()
         )
 
-        res_dict: List[Dict] = res.mappings().all()
-        return JSONResponse(res_dict, status_code=HTTP_200_OK)
+        return res
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
@@ -169,29 +176,32 @@ async def check_update(
             .mappings()
             .all()
         )
+        prompt_models = [
+            DeployedPromptModelInstance(**dict(x)).model_dump() for x in prompt_models
+        ]
 
         # get published, ab_test prompt_model_versions
-        deployed_prompt_model_versions: List[Dict] = (
+        deployed_prompt_model_versions: List[DeployedPromptModelVersion] = (
             (
                 await session.execute(
                     select(DeployedPromptModelVersion).where(
                         DeployedPromptModelVersion.prompt_model_uuid.in_(
-                            [x["uuid"] for x in prompt_models]
+                            [str(x["uuid"]) for x in prompt_models]
                         )
                     )
                 )
             )
-            .mappings()
+            .scalars()
             .all()
         )
 
         # filter out columns
         deployed_prompt_model_versions = [
-            DeployedPromptModelVersionInstance(**x).dict()
+            DeployedPromptModelVersionInstance(**x.model_dump()).model_dump()
             for x in deployed_prompt_model_versions
         ]
 
-        versions_uuid_list = [x["uuid"] for x in deployed_prompt_model_versions]
+        versions_uuid_list = [str(x["uuid"]) for x in deployed_prompt_model_versions]
         # get prompts
         prompts = (
             (
@@ -204,6 +214,7 @@ async def check_update(
             .mappings()
             .all()
         )
+        prompts = [DeployedPromptInstance(**dict(x)).model_dump() for x in prompts]
 
         res = {
             "need_update": need_update,
@@ -269,15 +280,17 @@ async def fetch_prompt_model_version(
                             )
                         )
                     )
-                    .mappings()
+                    .scalars()
                     .all()
                 )
                 deployed_prompt_model_versions = [
-                    DeployedPromptModelVersionInstance(**x).dict()
+                    DeployedPromptModelVersionInstance(**x.model_dump()).model_dump()
                     for x in deployed_prompt_model_versions
                 ]
 
-                versions_uuid_list = [x["uuid"] for x in deployed_prompt_model_versions]
+                versions_uuid_list = [
+                    str(x["uuid"]) for x in deployed_prompt_model_versions
+                ]
                 # get prompts
                 prompts = (
                     (
@@ -293,6 +306,9 @@ async def fetch_prompt_model_version(
                     .mappings()
                     .all()
                 )
+                prompts = [
+                    DeployedPromptInstance(**dict(x)).model_dump() for x in prompts
+                ]
 
                 res = {
                     "prompt_model_versions": deployed_prompt_model_versions,
@@ -316,12 +332,14 @@ async def fetch_prompt_model_version(
                                 .where(PromptModelVersion.version == version)
                             )
                         )
-                        .mappings()
+                        .scalars()
                         .all()
                     )
 
                     prompt_model_versions = [
-                        DeployedPromptModelVersionInstance(**x).dict()
+                        DeployedPromptModelVersionInstance(
+                            **x.model_dump()
+                        ).model_dump()
                         for x in prompt_model_versions
                     ]
 
@@ -338,15 +356,17 @@ async def fetch_prompt_model_version(
                                 .limit(1)
                             )
                         )
-                        .mappings()
+                        .scalars()
                         .all()
                     )
                     prompt_model_versions = [
-                        DeployedPromptModelVersionInstance(**x).dict()
+                        DeployedPromptModelVersionInstance(
+                            **x.model_dump()
+                        ).model_dump()
                         for x in prompt_model_versions
                     ]
 
-                versions_uuid_list = [x["uuid"] for x in prompt_model_versions]
+                versions_uuid_list = [str(x["uuid"]) for x in prompt_model_versions]
                 # get prompts
                 prompts = (
                     (
@@ -362,6 +382,9 @@ async def fetch_prompt_model_version(
                     .mappings()
                     .all()
                 )
+                prompts = [
+                    DeployedPromptInstance(**dict(x)).model_dump() for x in prompts
+                ]
 
                 res = {
                     "prompt_model_versions": prompt_model_versions,
@@ -437,12 +460,12 @@ async def fetch_chat_model_version_with_chat_log(
                         )
                     )
                 )
-                .mappings()
+                .scalars()
                 .all()
             )
 
             session_chat_model_version = [
-                DeployedChatModelVersionInstance(**x).dict()
+                DeployedChatModelVersionInstance(**x.model_dump()).model_dump()
                 for x in session_chat_model_version
             ]
 
@@ -463,6 +486,7 @@ async def fetch_chat_model_version_with_chat_log(
                 .mappings()
                 .all()
             )
+            chat_logs = [dict(x) for x in chat_logs]
 
             res = {
                 "chat_model_versions": session_chat_model_version,
@@ -494,12 +518,13 @@ async def fetch_chat_model_version_with_chat_log(
                         .where(ChatModelVersion.version == version)
                     )
                 )
-                .mappings()
+                .scalars()
                 .all()
             )
 
             chat_model_version = [
-                DeployedChatModelVersionInstance(**x).dict() for x in chat_model_version
+                DeployedChatModelVersionInstance(**x.model_dump()).model_dump()
+                for x in chat_model_version
             ]
 
             res = {"chat_model_versions": chat_model_version, "chat_logs": []}
@@ -531,12 +556,12 @@ async def fetch_chat_model_version_with_chat_log(
                         )
                     )
                 )
-                .mappings()
+                .scalars()
                 .all()
             )
 
             deployed_chat_model_versions = [
-                DeployedChatModelVersionInstance(**x).dict()
+                DeployedChatModelVersionInstance(**x.model_dump()).model_dump()
                 for x in deployed_chat_model_versions
             ]
 
@@ -557,7 +582,6 @@ async def fetch_chat_model_version_with_chat_log(
 async def open_websocket(
     websocket: WebSocket,
     token: str = Depends(get_websocket_token),
-    session: AsyncSession = Depends(get_session),
 ):
     """Initializes a websocket connection with the local server."""
     # websocket_connection = await websocket_manager.connect(websocket, token)
@@ -605,6 +629,7 @@ async def connect_cli_project(
                 .where(Project.uuid == project_uuid)
                 .values(cli_access_key=api_key)
             )
+            await session.commit()
             # return true, connected
             return Response(status_code=HTTP_200_OK)
     except HTTPException as http_exc:
@@ -748,18 +773,16 @@ async def save_instances_in_code(
         chat_model_name_list_to_update = chat_models
 
         # update instances
-        updated_instances = (
-            await update_instances(
-                session=session,
-                project_uuid=project_uuid,
-                prompt_model_name_list=prompt_model_name_list_to_update,
-                chat_model_name_list=chat_model_name_list_to_update,
-                sample_input_names=[x["name"] for x in samples],
-                function_schema_names=[x["name"] for x in function_schemas],
-                sample_inputs=samples_to_update,
-                function_schemas=schemas_to_update,
-            )
-        )[0]
+        updated_instances = await update_instances(
+            session=session,
+            project_uuid=project_uuid,
+            prompt_model_names=prompt_model_name_list_to_update,
+            chat_model_names=chat_model_name_list_to_update,
+            sample_input_names=[x["name"] for x in samples],
+            function_schema_names=[x["name"] for x in function_schemas],
+            sample_inputs=samples_to_update,
+            function_schemas=schemas_to_update,
+        )
 
         updated_samples = (
             updated_instances["sample_input_rows"]
@@ -776,32 +799,32 @@ async def save_instances_in_code(
         changelogs = [
             {
                 "subject": f"prompt_model",
-                "identifiers": [x["uuid"] for x in new_prompt_models],
+                "identifiers": [str(x["uuid"]) for x in new_prompt_models],
                 "action": "ADD",
             },
             {
                 "subject": f"chat_model",
-                "identifiers": [x["uuid"] for x in new_chat_models],
+                "identifiers": [str(x["uuid"]) for x in new_chat_models],
                 "action": "ADD",
             },
             {
                 "subject": f"sample_input",
-                "identifiers": [x["uuid"] for x in new_samples],
+                "identifiers": [str(x["uuid"]) for x in new_samples],
                 "action": "ADD",
             },
             {
                 "subject": f"function_schema",
-                "identifiers": [x["uuid"] for x in new_schemas],
+                "identifiers": [str(x["uuid"]) for x in new_schemas],
                 "action": "ADD",
             },
             {
                 "subject": f"sample_input",
-                "identifiers": [x["uuid"] for x in updated_samples],
+                "identifiers": [str(x["uuid"]) for x in updated_samples],
                 "action": "UPDATE",
             },
             {
                 "subject": f"function_schema",
-                "identifiers": [x["uuid"] for x in updated_schemas],
+                "identifiers": [str(x["uuid"]) for x in updated_schemas],
                 "action": "UPDATE",
             },
         ]
@@ -973,6 +996,7 @@ async def log_general(
                     .values(session_metadata=new_metadata)
                 )
 
+        await session.commit()
         return Response(status_code=HTTP_200_OK)
     except HTTPException as http_exc:
         raise http_exc
@@ -1038,7 +1062,7 @@ async def log_deployment_chat(
                     select(ChatLogSession).where(ChatLogSession.uuid == session_uuid)
                 )
             )
-            .mappings()
+            .scalars()
             .all()
         )
 
@@ -1065,6 +1089,9 @@ async def log_deployment_chat(
             if "latency" in meta:
                 latency = meta["latency"]
                 del meta["latency"]
+
+            if "function_call" in message:
+                message["tool_calls"] = [message["function_call"]]
 
             logs.append(
                 ChatLog(
@@ -1114,7 +1141,7 @@ async def make_session(
                     )
                 )
             )
-            .mappings()
+            .scalars()
             .all()
         )
 
@@ -1123,7 +1150,9 @@ async def make_session(
                 status_code=HTTP_404_NOT_FOUND, detail="Chat Model Version not found"
             )
         # make Session
-        session_row = ChatLogSession(uuid=session_uuid, version_uuid=version_uuid)
+        session_row = ChatLogSession(
+            uuid=session_uuid, version_uuid=version_uuid, run_from_deployment=True
+        )
         db_session.add(session_row)
         await db_session.commit()
 

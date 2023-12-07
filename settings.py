@@ -11,6 +11,7 @@ class Settings(BaseModel):
     DB_USERNAME: str = os.environ.get("DB_USERNAME")
     DB_HOST: str = os.environ.get("DB_HOST")
     DB_PORT: str = os.environ.get("DB_PORT")
+    TESTMODE: bool = os.environ.get("TESTMODE", False)
 
 
 # from pydantic import BaseSettings

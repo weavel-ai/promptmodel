@@ -266,7 +266,7 @@ async def run_cloud_prompt_model(
                 for prompt in prompts
             ]
         else:
-            messages = [prompt.dict() for prompt in prompts]
+            messages = [prompt.model_dump() for prompt in prompts]
 
         parsing_success = True
         error_log = None
@@ -384,6 +384,7 @@ async def run_cloud_prompt_model(
                     .where(Project.uuid == project_uuid)
                     .values(version=project_version + 1)
                 )
+                await session.commit()
             return
 
         # Create run log
@@ -428,6 +429,7 @@ async def run_cloud_prompt_model(
                 .where(Project.uuid == project_uuid)
                 .values(version=project_version + 1)
             )
+            await session.commit()
 
         yield data
     except Exception as error:
@@ -708,6 +710,7 @@ async def run_cloud_chat_model(
                 .where(Project.uuid == project_uuid)
                 .values(version=project_version + 1)
             )
+            await session.commit()
 
         yield data
 
