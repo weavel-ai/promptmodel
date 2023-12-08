@@ -46,8 +46,6 @@ async def fetch_daily_run_log_metrics(
             .scalars()
             .all()
         )
-        for m in metrics:
-            print(m.model_dump())
 
         metrics: List[DailyRunLogMetricInstance] = [
             DailyRunLogMetricInstance(**metric.model_dump())

@@ -18,7 +18,7 @@ from utils.logger import logger
 from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from modules.types import PromptModelRunConfig, ChatModelRunConfig
+from api.common.models import PromptModelRunConfig, ChatModelRunConfig
 from db_models import *
 
 router = APIRouter()

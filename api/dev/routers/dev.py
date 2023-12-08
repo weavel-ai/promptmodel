@@ -24,7 +24,7 @@ from base.database import get_session
 from base.websocket_connection import websocket_manager, LocalTask
 from modules.websocket.run_model_generators import run_local_prompt_model_generator
 from .dev_chat import router as chat_router
-from modules.types import PromptConfig, PromptModelRunConfig
+from api.common.models import PromptModelRunConfig
 from db_models import *
 
 router = APIRouter()
