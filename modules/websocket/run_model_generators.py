@@ -8,15 +8,15 @@ from sqlalchemy import Result, select, asc, desc, update
 from utils.logger import logger
 from utils.prompt_utils import update_dict
 from modules.types import (
-    ChatLog,
-    ChatModelRunConfig,
-    PromptConfig,
-    PromptModelRunConfig,
-    RunLog,
     LocalTaskErrorType,
 )
 from base.database import get_session
 from base.websocket_connection import websocket_manager, LocalTask
+from api.common.models import (
+    ChatModelRunConfig,
+    PromptConfig,
+    PromptModelRunConfig,
+)
 from db_models import *
 
 

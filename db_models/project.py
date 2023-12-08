@@ -34,7 +34,7 @@ class Organization(Base):
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
 
-    organization_id: int = Column(Text, unique=True)
+    organization_id: str = Column(Text, unique=True)
     name: str = Column(Text, nullable=False)
     slug: str = Column(Text, nullable=False)
 
@@ -70,9 +70,9 @@ class CliAccess(Base):
         server_default=text("CURRENT_TIMESTAMP + INTERVAL '7 days'"),
     )
 
-    user_id: int = Column(Text, ForeignKey("user.user_id"), primary_key=True)
+    user_id: str = Column(Text, ForeignKey("user.user_id"), primary_key=True)
 
-    api_key: str = Column(Text, unique=True)
+    api_key: str = Column(Text)
 
     # user: "User" = Relationship(back_populates="cli_access")
 

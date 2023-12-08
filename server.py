@@ -4,6 +4,7 @@ import pytz
 from fastapi import FastAPI
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_nextauth_jwt import NextAuthJWT
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
@@ -11,6 +12,7 @@ from dotenv import load_dotenv
 from api import cli, web, dev
 
 app = FastAPI()
+
 
 origins = ["*"]
 
@@ -42,7 +44,7 @@ app.add_middleware(
 
 
 app.include_router(cli.router, prefix="/api/cli", tags=["cli"])
-app.include_router(web.router, prefix="/api/web", tags=["web"])
+app.include_router(web.router, prefix="/api/web")
 app.include_router(dev.router, prefix="/api/dev", tags=["dev"])
 
 load_dotenv()
