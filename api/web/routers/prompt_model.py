@@ -1,48 +1,34 @@
-"""APIs for promptmodel webpage"""
-import re
-import json
-import secrets
-from datetime import datetime, timezone
-from operator import eq
-from typing import Any, Dict, List, Optional, Annotated
-from pydantic import BaseModel
+"""APIs for PromptModel"""
+from datetime import datetime
+from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result, select, asc, desc, update, delete
+from sqlalchemy import select, desc, update, delete
 
-from fastapi import APIRouter, HTTPException, Depends, Response
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi_nextauth_jwt import NextAuthJWT
+from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
     HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-from promptmodel.llms.llm_dev import LLMDev
-from promptmodel.types.response import LLMStreamResponse
 
 from utils.logger import logger
-from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from modules.types import PromptModelRunConfig, ChatModelRunConfig
+from modules.types import PMObject
 from db_models import *
+from ..models import PromptModelInstance, CreatePromptModelBody
 
 router = APIRouter()
 
 
 # PromptModel Endpoints
-@router.get("/")
+@router.get("/", response_model=List[PromptModelInstance])
 async def fetch_prompt_models(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        prompt_models: List[Dict] = [
-            prompt_model.model_dump()
+        prompt_models: List[PromptModelInstance] = [
+            PromptModelInstance(**prompt_model.model_dump())
             for prompt_model in (
                 await session.execute(
                     select(PromptModel)
@@ -61,12 +47,7 @@ async def fetch_prompt_models(
         )
 
 
-class CreatePromptModelBody(BaseModel):
-    name: str
-    project_uuid: str
-
-
-@router.post("/")
+@router.post("/", response_model=PromptModelInstance)
 async def create_prompt_model(
     body: CreatePromptModelBody,
     session: AsyncSession = Depends(get_session),
@@ -89,7 +70,7 @@ async def create_prompt_model(
         session.add(new_prompt_model)
         await session.commit()
         await session.refresh(new_prompt_model)
-        return new_prompt_model.model_dump()
+        return PromptModelInstance(**new_prompt_model.model_dump())
     except HTTPException as http_exc:
         logger.error(http_exc)
         raise http_exc
@@ -100,18 +81,27 @@ async def create_prompt_model(
         )
 
 
-@router.patch("/{uuid}/")
+@router.patch("/{uuid}/", response_model=PromptModelInstance)
 async def edit_prompt_model_name(
     uuid: str,
     name: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        await session.execute(
-            update(PromptModel).where(PromptModel.uuid == uuid).values(name=name)
+        updated_model = (
+            (
+                await session.execute(
+                    update(PromptModel)
+                    .where(PromptModel.uuid == uuid)
+                    .values(name=name)
+                    .returning(PromptModel)
+                )
+            )
+            .scalar_one()
+            .model_dump()
         )
         await session.commit()
-        return Response(status_code=HTTP_200_OK)
+        return PromptModelInstance(**updated_model)
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -119,15 +109,25 @@ async def edit_prompt_model_name(
         )
 
 
-@router.delete("/{uuid}")
+@router.delete("/{uuid}", response_model=PromptModelInstance)
 async def delete_prompt_model(
     uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        await session.execute(delete(PromptModel).where(PromptModel.uuid == uuid))
+        deleted_model = (
+            (
+                await session.execute(
+                    delete(PromptModel)
+                    .where(PromptModel.uuid == uuid)
+                    .returning(PromptModel)
+                )
+            )
+            .scalar_one()
+            .model_dump()
+        )
         await session.commit()
-        return Response(status_code=HTTP_200_OK)
+        return PromptModelInstance(**deleted_model)
     except Exception as e:
         logger.error(e)
         raise HTTPException(

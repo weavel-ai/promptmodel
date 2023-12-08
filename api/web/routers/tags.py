@@ -1,48 +1,34 @@
-"""APIs for promptmodel webpage"""
-import re
-import json
-import secrets
-from datetime import datetime, timezone
-from operator import eq
-from typing import Any, Dict, List, Optional, Annotated
-from pydantic import BaseModel
+"""APIs for Tags"""
+from datetime import datetime
+from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result, select, asc, desc, update, delete
+from sqlalchemy import select, asc
 
-from fastapi import APIRouter, HTTPException, Depends, Response
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi_nextauth_jwt import NextAuthJWT
+from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
     HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-from promptmodel.llms.llm_dev import LLMDev
-from promptmodel.types.response import LLMStreamResponse
 
 from utils.logger import logger
-from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from modules.types import PromptModelRunConfig, ChatModelRunConfig
+from modules.types import PMObject
 from db_models import *
+from ..models import TagsInstance, CreateTagsBody
 
 router = APIRouter()
 
 
 # Tags Endpoints
-@router.get("/")
+@router.get("/", response_model=List[TagsInstance])
 async def fetch_tags(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        tags: List[Dict] = [
-            tag.model_dump()
+        tags: List[TagsInstance] = [
+            TagsInstance(**tag.model_dump())
             for tag in (
                 await session.execute(
                     select(Tag)
@@ -61,15 +47,9 @@ async def fetch_tags(
         )
 
 
-class CreateTagBody(BaseModel):
-    project_uuid: str
-    name: str
-    color: str
-
-
-@router.post("/")
+@router.post("/", response_model=TagsInstance)
 async def create_tag(
-    body: CreateTagBody,
+    body: CreateTagsBody,
     session: AsyncSession = Depends(get_session),
 ):
     try:
@@ -93,7 +73,7 @@ async def create_tag(
         await session.commit()
         await session.refresh(new_tag)
 
-        return new_tag.model_dump()
+        return TagsInstance(**new_tag.model_dump())
     except HTTPException as http_exc:
         logger.error(http_exc)
         raise http_exc

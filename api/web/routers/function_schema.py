@@ -1,48 +1,32 @@
-"""APIs for promptmodel webpage"""
-import re
-import json
-import secrets
-from datetime import datetime, timezone
-from operator import eq
-from typing import Any, Dict, List, Optional, Annotated
-from pydantic import BaseModel
+"""APIs for FunctionSchema"""
+from typing import Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result, select, asc, desc, update, delete
+from sqlalchemy import select, desc
 
-from fastapi import APIRouter, HTTPException, Depends, Response
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi_nextauth_jwt import NextAuthJWT
+from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
-    HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-from promptmodel.llms.llm_dev import LLMDev
-from promptmodel.types.response import LLMStreamResponse
 
 from utils.logger import logger
-from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from modules.types import PromptModelRunConfig, ChatModelRunConfig
+from modules.types import PMObject
 from db_models import *
+from ..models import FunctionSchemaInstance
 
 router = APIRouter()
 
 
 # FunctionSchema Endpoints
-@router.get("/")
+@router.get("/", response_model=List[FunctionSchemaInstance])
 async def fetch_function_schemas(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        function_schemas: List[Dict] = [
-            function_schema.model_dump()
+        function_schemas: List[FunctionSchemaInstance] = [
+            FunctionSchemaInstance(**function_schema.model_dump())
             for function_schema in (
                 await session.execute(
                     select(FunctionSchema)
@@ -61,7 +45,7 @@ async def fetch_function_schemas(
         )
 
 
-@router.get("/{uuid}")
+@router.get("/{uuid}", response_model=FunctionSchemaInstance)
 async def fetch_function_schema(
     uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -76,7 +60,7 @@ async def fetch_function_schema(
             .scalar_one()
             .model_dump()
         )
-        return function_schema
+        return FunctionSchemaInstance(**function_schema)
     except Exception as e:
         logger.error(e)
         raise HTTPException(

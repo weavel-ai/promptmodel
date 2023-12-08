@@ -1,59 +1,44 @@
-"""APIs for promptmodel webpage"""
-import re
-import json
-import secrets
-from datetime import datetime, timezone
-from operator import eq
-from typing import Any, Dict, List, Optional, Annotated
+"""APIs for CliAccess"""
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result, select, asc, desc, update, delete
+from sqlalchemy import update
 
-from fastapi import APIRouter, HTTPException, Depends, Response
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi_nextauth_jwt import NextAuthJWT
+from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
-    HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-from promptmodel.llms.llm_dev import LLMDev
-from promptmodel.types.response import LLMStreamResponse
-
 from utils.logger import logger
-from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from modules.types import PromptModelRunConfig, ChatModelRunConfig
+from modules.types import PMObject
 from db_models import *
+from ..models import CliAccessInstance, UpdateCliAccessKeyBody
 
 router = APIRouter()
 
 
-class UpdateCliAccessKeyBody(BaseModel):
-    user_id: str
-    api_key: str
-
-
 # CliAccess Endpoints
-@router.patch("/")
+@router.patch("/", response_model=CliAccessInstance)
 async def update_cli_access(
     cli_access: UpdateCliAccessKeyBody,
     session: AsyncSession = Depends(get_session),
 ):
     try:
         # update table CliAccess by user_id
-        await session.execute(
-            update(CliAccess)
-            .where(CliAccess.user_id == cli_access.user_id)
-            .values(api_key=cli_access.api_key)
+        updated_cli_access = (
+            (
+                await session.execute(
+                    update(CliAccess)
+                    .where(CliAccess.user_id == cli_access.user_id)
+                    .values(api_key=cli_access.api_key)
+                    .returning(CliAccess)
+                )
+            )
+            .scalar_one()
+            .model_dump()
         )
         await session.commit()
-        return Response(status_code=HTTP_200_OK)
+        return CliAccessInstance(**updated_cli_access)
     except Exception as e:
         logger.error(e)
         raise HTTPException(

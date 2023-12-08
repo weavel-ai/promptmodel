@@ -1,35 +1,24 @@
-"""APIs for promptmodel webpage"""
-import re
-import json
-import secrets
-from datetime import datetime, timezone
-from operator import eq
-from typing import Any, Dict, List, Optional, Annotated
-from pydantic import BaseModel
+"""APIs for RunLog"""
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result, select, asc, desc, update, delete
+from sqlalchemy import select, desc
 
-from fastapi import APIRouter, HTTPException, Depends, Response
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi_nextauth_jwt import NextAuthJWT
+from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
-    HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-from promptmodel.llms.llm_dev import LLMDev
-from promptmodel.types.response import LLMStreamResponse
 
 from utils.logger import logger
-from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from modules.types import PromptModelRunConfig, ChatModelRunConfig
+from modules.types import PMObject
 from db_models import *
+from ..models import (
+    RunLogInstance,
+    DeploymentRunLogViewInstance,
+    RunLogsCountInstance,
+)
 
 router = APIRouter()
 
@@ -37,14 +26,14 @@ router = APIRouter()
 # RunLog Endpoints
 
 
-@router.get("/version/")
+@router.get("/version/", response_model=List[RunLogInstance])
 async def fetch_version_run_logs(
     prompt_model_version_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        run_logs: List[Dict] = [
-            run_log.model_dump()
+        run_logs: List[RunLogInstance] = [
+            RunLogInstance(**run_log.model_dump())
             for run_log in (
                 await session.execute(
                     select(RunLog)
@@ -63,7 +52,7 @@ async def fetch_version_run_logs(
         )
 
 
-@router.get("/project/")
+@router.get("/project/", response_model=List[DeploymentRunLogViewInstance])
 async def fetch_run_logs(
     project_uuid: str,
     page: int,
@@ -71,8 +60,8 @@ async def fetch_run_logs(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        run_logs: List[Dict] = [
-            run_log.model_dump()
+        run_logs: List[DeploymentRunLogViewInstance] = [
+            DeploymentRunLogViewInstance(**run_log.model_dump())
             for run_log in (
                 await session.execute(
                     select(DeploymentRunLogView)
@@ -93,7 +82,7 @@ async def fetch_run_logs(
         )
 
 
-@router.get("/count/")
+@router.get("/count/", response_model=RunLogsCountInstance)
 async def fetch_run_logs_count(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -111,7 +100,7 @@ async def fetch_run_logs_count(
             .model_dump()
         )
 
-        return run_logs_count
+        return RunLogsCountInstance(**run_logs_count)
     except Exception as e:
         logger.error(e)
         raise HTTPException(

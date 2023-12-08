@@ -1,48 +1,32 @@
-"""APIs for promptmodel webpage"""
-import re
-import json
-import secrets
-from datetime import datetime, timezone
-from operator import eq
-from typing import Any, Dict, List, Optional, Annotated
-from pydantic import BaseModel
+"""APIs for PromptModelVersion"""
+from typing import Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result, select, asc, desc, update, delete
+from sqlalchemy import select, asc, update
 
-from fastapi import APIRouter, HTTPException, Depends, Response
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi_nextauth_jwt import NextAuthJWT
+from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
-    HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-from promptmodel.llms.llm_dev import LLMDev
-from promptmodel.types.response import LLMStreamResponse
 
 from utils.logger import logger
-from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from modules.types import PromptModelRunConfig, ChatModelRunConfig
+from modules.types import PMObject
 from db_models import *
+from ..models import PromptModelVersionInstance, UpdatePublishedPromptModelVersionBody
 
 router = APIRouter()
 
 
 # PromptModelVersion Endpoints
-@router.get("/")
+@router.get("/", response_model=List[PromptModelVersionInstance])
 async def fetch_prompt_model_versions(
     prompt_model_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        prompt_model_versions: List[Dict] = [
-            prompt_model_version.model_dump()
+        prompt_model_versions: List[PromptModelVersionInstance] = [
+            PromptModelVersionInstance(**prompt_model_version.model_dump())
             for prompt_model_version in (
                 await session.execute(
                     select(PromptModelVersion)
@@ -61,7 +45,7 @@ async def fetch_prompt_model_versions(
         )
 
 
-@router.get("/{uuid}")
+@router.get("/{uuid}", response_model=PromptModelVersionInstance)
 async def fetch_prompt_model_version(
     uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -76,7 +60,7 @@ async def fetch_prompt_model_version(
             .scalar_one()
             .model_dump()
         )
-        return prompt_model_version
+        return PromptModelVersionInstance(**prompt_model_version)
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -84,13 +68,7 @@ async def fetch_prompt_model_version(
         )
 
 
-class UpdatePublishedPromptModelVersionBody(BaseModel):
-    project_uuid: str
-    project_version: int
-    previous_published_version_uuid: Optional[str] = None
-
-
-@router.post("/{uuid}/publish/")
+@router.post("/{uuid}/publish/", response_model=PromptModelVersionInstance)
 async def update_published_prompt_model_version(
     uuid: str,
     body: UpdatePublishedPromptModelVersionBody,
@@ -104,10 +82,17 @@ async def update_published_prompt_model_version(
                 .values(published=False)
             )
 
-        await session.execute(
-            update(PromptModelVersion)
-            .where(PromptModelVersion.uuid == uuid)
-            .values(published=True)
+        updated_prompt_model_version = (
+            (
+                await session.execute(
+                    update(PromptModelVersion)
+                    .where(PromptModelVersion.uuid == uuid)
+                    .values(published=True)
+                    .returning(PromptModelVersion)
+                )
+            )
+            .scalar_one()
+            .model_dump()
         )
         await session.execute(
             update(Project)
@@ -116,7 +101,7 @@ async def update_published_prompt_model_version(
         )
 
         await session.commit()
-        return Response(status_code=HTTP_200_OK)
+        return PromptModelVersionInstance(**updated_prompt_model_version)
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -124,20 +109,27 @@ async def update_published_prompt_model_version(
         )
 
 
-@router.patch("/{uuid}/tags/")
+@router.patch("/{uuid}/tags/", response_model=PromptModelVersionInstance)
 async def update_prompt_model_version_tags(
     uuid: str,
     tags: List[str],
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        await session.execute(
-            update(PromptModelVersion)
-            .where(PromptModelVersion.uuid == uuid)
-            .values(tags=tags)
+        updated_version = (
+            (
+                await session.execute(
+                    update(PromptModelVersion)
+                    .where(PromptModelVersion.uuid == uuid)
+                    .values(tags=tags)
+                    .returning(PromptModelVersion)
+                )
+            )
+            .scalar_one()
+            .model_dump()
         )
         await session.commit()
-        return Response(status_code=HTTP_200_OK)
+        return PromptModelVersionInstance(**updated_version)
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -145,20 +137,27 @@ async def update_prompt_model_version_tags(
         )
 
 
-@router.patch("/{uuid}/memo/")
+@router.patch("/{uuid}/memo/", response_model=PromptModelVersionInstance)
 async def update_prompt_model_version_memo(
     uuid: str,
     memo: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        await session.execute(
-            update(PromptModelVersion)
-            .where(PromptModelVersion.uuid == uuid)
-            .values(memo=memo)
+        updated_version = (
+            (
+                await session.execute(
+                    update(PromptModelVersion)
+                    .where(PromptModelVersion.uuid == uuid)
+                    .values(memo=memo)
+                    .returning(PromptModelVersion)
+                )
+            )
+            .scalar_one()
+            .model_dump()
         )
         await session.commit()
-        return Response(status_code=HTTP_200_OK)
+        return PromptModelVersionInstance(**updated_version)
     except Exception as e:
         logger.error(e)
         raise HTTPException(

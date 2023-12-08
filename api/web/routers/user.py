@@ -1,46 +1,27 @@
-"""APIs for promptmodel webpage"""
-import re
-import json
-import secrets
-from datetime import datetime, timezone
-from operator import eq
-from typing import Any, Dict, List, Optional, Annotated
-from pydantic import BaseModel
+"""APIs for User Table"""
+from datetime import datetime
+from typing import Dict
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result, select, asc, desc, update, delete
+from sqlalchemy import select
 
-from fastapi import APIRouter, HTTPException, Depends, Response
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi_nextauth_jwt import NextAuthJWT
+from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
-    HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-from promptmodel.llms.llm_dev import LLMDev
-from promptmodel.types.response import LLMStreamResponse
-
 from utils.logger import logger
-from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from modules.types import PromptModelRunConfig, ChatModelRunConfig
+from modules.types import PMObject
 from db_models import *
+from ..models import UserInstance, CreateUserBody
 
 router = APIRouter()
 
 
 # User Endpoints
-class CreateUserBody(BaseModel):
-    user_id: str
-    email: str
 
 
-@router.post("/")
+@router.post("/", response_model=UserInstance)
 async def create_user(
     body: CreateUserBody,
     session: AsyncSession = Depends(get_session),
@@ -50,7 +31,7 @@ async def create_user(
         session.add(new_user)
         await session.commit()
         await session.refresh(new_user)
-        return new_user.model_dump()
+        return UserInstance(**new_user.model_dump())
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -58,7 +39,7 @@ async def create_user(
         )
 
 
-@router.get("/{user_id}")
+@router.get("/{user_id}", response_model=UserInstance)
 async def get_user(
     user_id: str,
     session: AsyncSession = Depends(get_session),
@@ -69,7 +50,7 @@ async def get_user(
             .scalar_one()
             .model_dump()
         )
-        return user
+        return UserInstance(**user)
     except Exception as e:
         logger.error(e)
         raise HTTPException(

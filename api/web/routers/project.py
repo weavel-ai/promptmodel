@@ -1,47 +1,27 @@
 """APIs for Project Table"""
-import re
-import json
 import secrets
-from datetime import datetime, timezone
-from operator import eq
-from typing import Any, Dict, List, Optional, Annotated
-from pydantic import BaseModel
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result, select, asc, desc, update, delete
+from sqlalchemy import select
 
-from fastapi import APIRouter, HTTPException, Depends, Response
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi_nextauth_jwt import NextAuthJWT
+from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
-    HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-from promptmodel.llms.llm_dev import LLMDev
-from promptmodel.types.response import LLMStreamResponse
 
 from utils.logger import logger
-from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from modules.types import PromptModelRunConfig, ChatModelRunConfig
+from modules.types import PMObject
 from db_models import *
+from ..models import ProjectInstance, CreateProjectBody
 
 router = APIRouter()
 
 
-class CreateProjectBody(BaseModel):
-    organization_id: str
-    name: str
-    description: Optional[str] = None
-
-
 # Project Endpoints
-@router.post("/")
+@router.post("/", response_model=ProjectInstance)
 async def create_project(
     body: CreateProjectBody,
     session: AsyncSession = Depends(get_session),
@@ -57,7 +37,7 @@ async def create_project(
         session.add(new_project)
         await session.commit()
         await session.refresh(new_project)
-        return new_project.model_dump()
+        return ProjectInstance(**new_project.model_dump())
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -65,14 +45,14 @@ async def create_project(
         )
 
 
-@router.get("/")
+@router.get("/", response_model=List[ProjectInstance])
 async def fetch_projects(
     organization_id: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        projects: List[Dict] = [
-            project.model_dump()
+        projects: List[ProjectInstance] = [
+            ProjectInstance(**project.model_dump())
             for project in (
                 await session.execute(
                     select(Project).where(Project.organization_id == organization_id)
@@ -89,7 +69,7 @@ async def fetch_projects(
         )
 
 
-@router.get("/{uuid}")
+@router.get("/{uuid}", response_model=ProjectInstance)
 async def get_project(
     uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -100,7 +80,7 @@ async def get_project(
             .scalar_one()
             .model_dump()
         )
-        return project
+        return ProjectInstance(**project)
     except Exception as e:
         logger.error(e)
         raise HTTPException(

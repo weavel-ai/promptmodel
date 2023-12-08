@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from enum import Enum
 from uuid import UUID
+from datetime import datetime
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
 
 class PromptConfig(BaseModel):
@@ -59,18 +61,23 @@ class InstanceType(str, Enum):
     ChatLogSession = "ChatLogSession"
 
 
-class WeavelObject(BaseModel):
+class PMObject(BaseModel):
     def __init__(self, **data: Any):
         for key, value in data.items():
             if key in self.__annotations__ and self.__annotations__[key] == str:
-                try:
-                    data[key] = str(value)
-                except:
-                    data[key] = value
+                if (
+                    isinstance(value, UUID)
+                    or isinstance(value, PGUUID)
+                    or isinstance(value, datetime)
+                ):
+                    try:
+                        data[key] = str(value)
+                    except:
+                        data[key] = value
         super().__init__(**data)
 
 
-class DeployedPromptModelVersionInstance(WeavelObject):
+class DeployedPromptModelVersionInstance(PMObject):
     uuid: str
     from_version: Optional[int]
     prompt_model_uuid: str
@@ -82,7 +89,7 @@ class DeployedPromptModelVersionInstance(WeavelObject):
     output_keys: Optional[List[str]]
 
 
-class DeployedChatModelVersionInstance(WeavelObject):
+class DeployedChatModelVersionInstance(PMObject):
     uuid: str
     from_version: Optional[int]
     chat_model_uuid: str
@@ -93,19 +100,19 @@ class DeployedChatModelVersionInstance(WeavelObject):
     system_prompt: str
 
 
-class DeployedPromptModelInstance(WeavelObject):
+class DeployedPromptModelInstance(PMObject):
     uuid: str
     name: str
 
 
-class DeployedPromptInstance(WeavelObject):
+class DeployedPromptInstance(PMObject):
     version_uuid: str
     role: str
     content: str
     step: int
 
 
-class DeployedChatLogInstance(WeavelObject):
+class DeployedChatLogInstance(PMObject):
     role: str
     name: Optional[str] = None
     content: Optional[str] = None

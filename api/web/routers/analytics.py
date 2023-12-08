@@ -1,42 +1,25 @@
 # analytics Endpoints
 
-"""APIs for promptmodel webpage"""
-import re
-import json
-import secrets
-from datetime import datetime, timezone
-from operator import eq
-from typing import Any, Dict, List, Optional, Annotated
-from pydantic import BaseModel
+"""APIs for metrics"""
+from typing import Any, Dict, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result, select, asc, desc, update, delete
+from sqlalchemy import select, asc
 
-from fastapi import APIRouter, HTTPException, Depends, Response
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi_nextauth_jwt import NextAuthJWT
+from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
-    HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-from promptmodel.llms.llm_dev import LLMDev
-from promptmodel.types.response import LLMStreamResponse
-
 from utils.logger import logger
-from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from modules.types import PromptModelRunConfig, ChatModelRunConfig
+from modules.types import PMObject
 from db_models import *
+from ..models import DailyRunLogMetricInstance, DailyChatLogMetricInstance
 
 router = APIRouter()
 
 
-@router.get("/prompt_model/")
+@router.get("/prompt_model/", response_model=List[DailyRunLogMetricInstance])
 async def fetch_daily_run_log_metrics(
     prompt_model_uuid: str,
     start_day: str,
@@ -44,8 +27,8 @@ async def fetch_daily_run_log_metrics(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        metrics: List[Dict] = [
-            metric.model_dump()
+        metrics: List[DailyRunLogMetricInstance] = [
+            DailyRunLogMetricInstance(**metric.model_dump())
             for metric in (
                 await session.execute(
                     select(DailyRunLogMetric)
@@ -66,7 +49,7 @@ async def fetch_daily_run_log_metrics(
         )
 
 
-@router.get("/chat_model/")
+@router.get("/chat_model/", response_model=List[DailyChatLogMetricInstance])
 async def fetch_daily_chat_log_metrics(
     chat_model_uuid: str,
     start_day: str,
@@ -74,8 +57,8 @@ async def fetch_daily_chat_log_metrics(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        metrics: List[Dict] = [
-            metric.model_dump()
+        metrics: List[DailyChatLogMetricInstance] = [
+            DailyChatLogMetricInstance(**metric.model_dump())
             for metric in (
                 await session.execute(
                     select(DailyChatLogMetric)

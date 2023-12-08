@@ -1,48 +1,33 @@
-"""APIs for promptmodel webpage"""
-import re
-import json
-import secrets
-from datetime import datetime, timezone
-from operator import eq
-from typing import Any, Dict, List, Optional, Annotated
-from pydantic import BaseModel
+"""APIs for ChatModel"""
+from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result, select, asc, desc, update, delete
+from sqlalchemy import select, desc, update, delete
 
-from fastapi import APIRouter, HTTPException, Depends, Response
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi_nextauth_jwt import NextAuthJWT
+from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
     HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-from promptmodel.llms.llm_dev import LLMDev
-from promptmodel.types.response import LLMStreamResponse
 
 from utils.logger import logger
-from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from modules.types import PromptModelRunConfig, ChatModelRunConfig
+from modules.types import PMObject
 from db_models import *
+from ..models import ChatModelInstance, CreateChatModelBody
 
 router = APIRouter()
 
 
 # ChatModel Endpoints
-@router.get("/")
+@router.get("/", response_model=List[ChatModelInstance])
 async def fetch_chat_models(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        chat_models: List[Dict] = [
-            chat_model.model_dump()
+        chat_models: List[ChatModelInstance] = [
+            ChatModelInstance(**chat_model.model_dump())
             for chat_model in (
                 await session.execute(
                     select(ChatModel)
@@ -61,12 +46,7 @@ async def fetch_chat_models(
         )
 
 
-class CreateChatModelBody(BaseModel):
-    project_uuid: str
-    name: str
-
-
-@router.post("/")
+@router.post("/", response_model=ChatModelInstance)
 async def create_chat_model(
     body: CreateChatModelBody,
     session: AsyncSession = Depends(get_session),
@@ -89,7 +69,7 @@ async def create_chat_model(
         session.add(new_chat_model)
         await session.commit()
         await session.refresh(new_chat_model)
-        return new_chat_model.model_dump()
+        return ChatModelInstance(**new_chat_model.model_dump())
     except HTTPException as http_exc:
         logger.error(http_exc)
         raise http_exc
@@ -100,18 +80,27 @@ async def create_chat_model(
         )
 
 
-@router.patch("/{uuid}/")
+@router.patch("/{uuid}/", response_model=ChatModelInstance)
 async def edit_chat_model_name(
     uuid: str,
     name: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        await session.execute(
-            update(ChatModel).where(ChatModel.uuid == uuid).values(name=name)
+        updated_chat_model = (
+            (
+                await session.execute(
+                    update(ChatModel)
+                    .where(ChatModel.uuid == uuid)
+                    .values(name=name)
+                    .returning(ChatModel)
+                )
+            )
+            .scalar_one()
+            .model_dump()
         )
         await session.commit()
-        return Response(status_code=HTTP_200_OK)
+        return ChatModelInstance(**updated_chat_model)
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -119,15 +108,24 @@ async def edit_chat_model_name(
         )
 
 
-@router.delete("/{uuid}")
+@router.delete("/{uuid}", response_model=ChatModelInstance)
 async def delete_chat_model(
     uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        await session.execute(delete(ChatModel).where(ChatModel.uuid == uuid))
+        deleted_chat_model = (
+            (
+                await session.execute(
+                    delete(ChatModel).where(ChatModel.uuid == uuid).returning(ChatModel)
+                )
+            )
+            .scalar_one()
+            .model_dump()
+        )
+
         await session.commit()
-        return Response(status_code=HTTP_200_OK)
+        return ChatModelInstance(**deleted_chat_model)
     except Exception as e:
         logger.error(e)
         raise HTTPException(

@@ -27,7 +27,6 @@ class ChatModel(Base):
     __tablename__ = "chat_model"
 
     id: int = Column(BigInteger, Identity(), unique=True)
-    id: int = Column(BigInteger, Identity(), unique=True)
     created_at: datetime = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )

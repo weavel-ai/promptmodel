@@ -1,48 +1,27 @@
-"""APIs for promptmodel webpage"""
-import re
-import json
-import secrets
-from datetime import datetime, timezone
-from operator import eq
-from typing import Any, Dict, List, Optional, Annotated
+"""APIs for Organization"""
+from datetime import datetime
+from typing import Dict
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result, select, asc, desc, update, delete
+from sqlalchemy import select, update
 
-from fastapi import APIRouter, HTTPException, Depends, Response
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi_nextauth_jwt import NextAuthJWT
+from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
-    HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-from promptmodel.llms.llm_dev import LLMDev
-from promptmodel.types.response import LLMStreamResponse
 
 from utils.logger import logger
-from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from modules.types import PromptModelRunConfig, ChatModelRunConfig
+from modules.types import PMObject
 from db_models import *
+from ..models import OrganizationInstance, CreateOrganizationBody
 
 router = APIRouter()
 
 
-class CreateOrganizationBody(BaseModel):
-    organization_id: str
-    name: str
-    user_id: str
-    slug: str
-
-
 # Organization Endpoints
-@router.post("/")
+@router.post("/", response_model=OrganizationInstance)
 async def create_organization(
     body: CreateOrganizationBody,
     # jwt: Annotated[dict, Depends(JWT)],
@@ -66,7 +45,7 @@ async def create_organization(
         await session.commit()
         await session.refresh(new_org)
 
-        return new_org.model_dump()
+        return OrganizationInstance(**new_org.model_dump())
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -74,7 +53,7 @@ async def create_organization(
         )
 
 
-@router.patch("/{organization_id}/")
+@router.patch("/{organization_id}/", response_model=OrganizationInstance)
 async def update_organization(
     organization_id: str,
     name: str,
@@ -82,24 +61,20 @@ async def update_organization(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        await session.execute(
-            update(Organization)
-            .where(Organization.organization_id == organization_id)
-            .values(name=name, slug=slug)
-        )
-        org: Dict = (
+        updated_org = (
             (
                 await session.execute(
-                    select(Organization).where(
-                        Organization.organization_id == organization_id
-                    )
+                    update(Organization)
+                    .where(Organization.organization_id == organization_id)
+                    .values(name=name, slug=slug)
+                    .returning(Organization)
                 )
             )
             .scalar_one()
             .model_dump()
         )
         await session.commit()
-        return org
+        return OrganizationInstance(**updated_org)
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -107,7 +82,7 @@ async def update_organization(
         )
 
 
-@router.get("/{organization_id}")
+@router.get("/{organization_id}", response_model=OrganizationInstance)
 async def get_organization(
     organization_id: str,
     session: AsyncSession = Depends(get_session),
@@ -124,7 +99,7 @@ async def get_organization(
             .scalar_one()
             .model_dump()
         )
-        return org
+        return OrganizationInstance(**org)
     except Exception as e:
         logger.error(e)
         raise HTTPException(
