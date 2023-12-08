@@ -5,6 +5,7 @@ from sqlalchemy import select, asc, update
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
@@ -12,7 +13,6 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from modules.types import PMObject
 from db_models import *
 from ..models import ChatModelVersionInstance, UpdatePublishedChatModelVersionBody
 
@@ -52,16 +52,26 @@ async def fetch_chat_model_version(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        chat_model_version: Dict = (
-            (
-                await session.execute(
-                    select(ChatModelVersion).where(ChatModelVersion.uuid == uuid)
+        try:
+            chat_model_version: Dict = (
+                (
+                    await session.execute(
+                        select(ChatModelVersion).where(ChatModelVersion.uuid == uuid)
+                    )
                 )
+                .scalar_one()
+                .model_dump()
             )
-            .scalar_one()
-            .model_dump()
-        )
+        except Exception as e:
+            logger.error(e)
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="ChatModelVersion with given id not found",
+            )
         return ChatModelVersionInstance(**chat_model_version)
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -80,7 +90,7 @@ async def update_published_chat_model_version(
             await session.execute(
                 update(ChatModelVersion)
                 .where(ChatModelVersion.uuid == body.previous_published_version_uuid)
-                .values(published=False)
+                .values(is_published=False)
             )
 
         updated_chat_model_version = (
@@ -88,7 +98,7 @@ async def update_published_chat_model_version(
                 await session.execute(
                     update(ChatModelVersion)
                     .where(ChatModelVersion.uuid == uuid)
-                    .values(published=True)
+                    .values(is_published=True)
                     .returning(ChatModelVersion)
                 )
             )
@@ -122,10 +132,12 @@ async def update_published_chat_model_version(
 @router.patch("/{uuid}/tags/", response_model=ChatModelVersionInstance)
 async def update_chat_model_version_tags(
     uuid: str,
-    tags: List[str],
+    tags: Optional[List[str]] = None,
     session: AsyncSession = Depends(get_session),
 ):
     try:
+        if tags == []:
+            tags = None
         updated_chat_model_version = (
             (
                 await session.execute(
@@ -150,7 +162,7 @@ async def update_chat_model_version_tags(
 @router.patch("/{uuid}/memo/", response_model=ChatModelVersionInstance)
 async def update_chat_model_version_memo(
     uuid: str,
-    memo: str,
+    memo: Optional[str] = None,
     session: AsyncSession = Depends(get_session),
 ):
     try:

@@ -28,6 +28,7 @@ class RunLogInstance(PMObject):
 
 
 class DeploymentRunLogViewInstance(PMObject):
+    run_log_uuid: str
     project_uuid: str
 
     prompt_model_uuid: str

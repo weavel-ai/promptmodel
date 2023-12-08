@@ -2,6 +2,7 @@
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import update
+from sqlalchemy.dialects.postgresql import insert
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
@@ -10,7 +11,6 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from modules.types import PMObject
 from db_models import *
 from ..models import CliAccessInstance, UpdateCliAccessKeyBody
 
@@ -25,17 +25,17 @@ async def update_cli_access(
 ):
     try:
         # update table CliAccess by user_id
-        updated_cli_access = (
-            (
-                await session.execute(
-                    update(CliAccess)
-                    .where(CliAccess.user_id == cli_access.user_id)
-                    .values(api_key=cli_access.api_key)
-                    .returning(CliAccess)
-                )
+        insert_query = (
+            insert(CliAccess)
+            .values(**cli_access.model_dump())
+            .on_conflict_do_update(
+                index_elements=[CliAccess.user_id],
+                set_={"api_key": cli_access.api_key},
             )
-            .scalar_one()
-            .model_dump()
+            .returning(CliAccess)
+        )
+        updated_cli_access = (
+            (await session.execute(insert_query)).scalar_one().model_dump()
         )
         await session.commit()
         return CliAccessInstance(**updated_cli_access)

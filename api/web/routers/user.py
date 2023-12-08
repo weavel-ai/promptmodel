@@ -6,12 +6,12 @@ from sqlalchemy import select
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 from utils.logger import logger
 
 from base.database import get_session
-from modules.types import PMObject
 from db_models import *
 from ..models import UserInstance, CreateUserBody
 
@@ -45,12 +45,22 @@ async def get_user(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        user: Dict = (
-            (await session.execute(select(User).where(User.user_id == user_id)))
-            .scalar_one()
-            .model_dump()
-        )
+        try:
+            user: Dict = (
+                (await session.execute(select(User).where(User.user_id == user_id)))
+                .scalar_one()
+                .model_dump()
+            )
+        except Exception as e:
+            logger.error(e)
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="User with given id not found",
+            )
         return UserInstance(**user)
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(

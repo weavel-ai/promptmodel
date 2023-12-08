@@ -5,13 +5,13 @@ from sqlalchemy import select, asc, desc
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 from utils.logger import logger
 
 from base.database import get_session
-from modules.types import PMObject
 from db_models import *
 from ..models import ChatLogViewInstance, ChatLogCountInstance
 
@@ -85,15 +85,25 @@ async def fetch_chat_logs_count(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        chat_logs_count: int = (
-            await session.execute(
-                select(ChatLogsCount.chat_logs_count).where(
-                    ChatLogsCount.project_uuid == project_uuid
+        try:
+            chat_logs_count: int = (
+                await session.execute(
+                    select(ChatLogsCount.chat_logs_count).where(
+                        ChatLogsCount.project_uuid == project_uuid
+                    )
                 )
+            ).scalar_one()
+        except Exception as e:
+            logger.error(e)
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="ChatLogsCount with given project_uuid not found",
             )
-        ).scalar_one()
 
         return ChatLogCountInstance(project_uuid=project_uuid, count=chat_logs_count)
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(

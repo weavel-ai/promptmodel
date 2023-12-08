@@ -7,13 +7,13 @@ from sqlalchemy import select, update
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 from utils.logger import logger
 
 from base.database import get_session
-from modules.types import PMObject
 from db_models import *
 from ..models import OrganizationInstance, CreateOrganizationBody
 
@@ -88,18 +88,28 @@ async def get_organization(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        org: Dict = (
-            (
-                await session.execute(
-                    select(Organization).where(
-                        Organization.organization_id == organization_id
+        try:
+            org: Dict = (
+                (
+                    await session.execute(
+                        select(Organization).where(
+                            Organization.organization_id == organization_id
+                        )
                     )
                 )
+                .scalar_one()
+                .model_dump()
             )
-            .scalar_one()
-            .model_dump()
-        )
+        except Exception as e:
+            logger.error(e)
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="Organization Not Found",
+            )
         return OrganizationInstance(**org)
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(

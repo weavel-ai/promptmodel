@@ -1,7 +1,8 @@
 # analytics Endpoints
 
 """APIs for metrics"""
-from typing import Any, Dict, List
+from typing import List
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc
 
@@ -12,7 +13,6 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from modules.types import PMObject
 from db_models import *
 from ..models import DailyRunLogMetricInstance, DailyChatLogMetricInstance
 
@@ -27,14 +27,42 @@ async def fetch_daily_run_log_metrics(
     session: AsyncSession = Depends(get_session),
 ):
     try:
+        metrics: List[DailyRunLogMetricInstance] = (
+            (
+                await session.execute(
+                    select(DailyRunLogMetric)
+                    .where(DailyRunLogMetric.prompt_model_uuid == prompt_model_uuid)
+                    .where(
+                        DailyRunLogMetric.day
+                        >= datetime.strptime(start_day, "%Y-%m-%d").date()
+                    )
+                    .where(
+                        DailyRunLogMetric.day
+                        <= datetime.strptime(end_day, "%Y-%m-%d").date()
+                    )
+                    .order_by(asc(DailyRunLogMetric.day))
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for m in metrics:
+            print(m.model_dump())
+
         metrics: List[DailyRunLogMetricInstance] = [
             DailyRunLogMetricInstance(**metric.model_dump())
             for metric in (
                 await session.execute(
                     select(DailyRunLogMetric)
                     .where(DailyRunLogMetric.prompt_model_uuid == prompt_model_uuid)
-                    .where(DailyRunLogMetric.day >= start_day)
-                    .where(DailyRunLogMetric.day <= end_day)
+                    .where(
+                        DailyRunLogMetric.day
+                        >= datetime.strptime(start_day, "%Y-%m-%d").date()
+                    )
+                    .where(
+                        DailyRunLogMetric.day
+                        <= datetime.strptime(end_day, "%Y-%m-%d").date()
+                    )
                     .order_by(asc(DailyRunLogMetric.day))
                 )
             )
@@ -63,9 +91,15 @@ async def fetch_daily_chat_log_metrics(
                 await session.execute(
                     select(DailyChatLogMetric)
                     .where(DailyChatLogMetric.chat_model_uuid == chat_model_uuid)
-                    .where(DailyChatLogMetric.day >= start_day)
-                    .where(DailyChatLogMetric.day <= end_day)
-                    .order_by(asc(DailyRunLogMetric.day))
+                    .where(
+                        DailyChatLogMetric.day
+                        >= datetime.strptime(start_day, "%Y-%m-%d").date()
+                    )
+                    .where(
+                        DailyChatLogMetric.day
+                        <= datetime.strptime(end_day, "%Y-%m-%d").date()
+                    )
+                    .order_by(asc(DailyChatLogMetric.day))
                 )
             )
             .scalars()

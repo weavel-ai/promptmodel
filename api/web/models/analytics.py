@@ -1,7 +1,7 @@
 # analytics Endpoints
 
 """APIs for metrics"""
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from modules.types import PMObject
 
 
@@ -9,8 +9,8 @@ class DailyRunLogMetricInstance(PMObject):
     prompt_model_uuid: str
     prompt_model_name: str
     day: str
-    total_cost: float
-    avg_latency: float
+    total_cost: Optional[float]
+    avg_latency: Optional[float]
     total_token_usage: Dict[str, Any]
     total_runs: int
 
@@ -20,7 +20,7 @@ class DailyChatLogMetricInstance(PMObject):
     chat_model_uuid: str
     chat_model_name: str
     day: str
-    total_cost: float
-    avg_latency: float
+    total_cost: Optional[float]
+    avg_latency: Optional[float]
     total_token_usage: Dict[str, Any]
-    total_runs: int
+    total_chat_sessions: int

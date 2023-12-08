@@ -7,13 +7,14 @@ from sqlalchemy import select
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_404_NOT_FOUND,
+    HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 from utils.logger import logger
 
 from base.database import get_session
-from modules.types import PMObject
 from db_models import *
 from ..models import ProjectInstance, CreateProjectBody
 
@@ -27,6 +28,21 @@ async def create_project(
     session: AsyncSession = Depends(get_session),
 ):
     try:
+        # check same name
+        project_in_db = (
+            await session.execute(
+                select(Project)
+                .where(Project.name == body.name)
+                .where(Project.organization_id == body.organization_id)
+            )
+        ).scalar_one_or_none()
+
+        if project_in_db:
+            raise HTTPException(
+                status_code=HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Project with given name already exists",
+            )
+
         api_key = secrets.token_urlsafe(32)
         new_project = Project(
             name=body.name,
@@ -38,6 +54,9 @@ async def create_project(
         await session.commit()
         await session.refresh(new_project)
         return ProjectInstance(**new_project.model_dump())
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -75,12 +94,22 @@ async def get_project(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        project: Dict = (
-            (await session.execute(select(Project).where(Project.uuid == uuid)))
-            .scalar_one()
-            .model_dump()
-        )
+        try:
+            project: Dict = (
+                (await session.execute(select(Project).where(Project.uuid == uuid)))
+                .scalar_one()
+                .model_dump()
+            )
+        except Exception as e:
+            logger.error(e)
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="Project with given uuid not found",
+            )
         return ProjectInstance(**project)
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(

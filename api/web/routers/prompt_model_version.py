@@ -5,13 +5,13 @@ from sqlalchemy import select, asc, update
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 from utils.logger import logger
 
 from base.database import get_session
-from modules.types import PMObject
 from db_models import *
 from ..models import PromptModelVersionInstance, UpdatePublishedPromptModelVersionBody
 
@@ -51,16 +51,28 @@ async def fetch_prompt_model_version(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        prompt_model_version: Dict = (
-            (
-                await session.execute(
-                    select(PromptModelVersion).where(PromptModelVersion.uuid == uuid)
+        try:
+            prompt_model_version: Dict = (
+                (
+                    await session.execute(
+                        select(PromptModelVersion).where(
+                            PromptModelVersion.uuid == uuid
+                        )
+                    )
                 )
+                .scalar_one()
+                .model_dump()
             )
-            .scalar_one()
-            .model_dump()
-        )
+        except Exception as e:
+            logger.error(e)
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="PromptModelVersion with given id not found",
+            )
         return PromptModelVersionInstance(**prompt_model_version)
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -79,7 +91,7 @@ async def update_published_prompt_model_version(
             await session.execute(
                 update(PromptModelVersion)
                 .where(PromptModelVersion.uuid == body.previous_published_version_uuid)
-                .values(published=False)
+                .values(is_published=False)
             )
 
         updated_prompt_model_version = (
@@ -87,7 +99,7 @@ async def update_published_prompt_model_version(
                 await session.execute(
                     update(PromptModelVersion)
                     .where(PromptModelVersion.uuid == uuid)
-                    .values(published=True)
+                    .values(is_published=True)
                     .returning(PromptModelVersion)
                 )
             )
@@ -112,10 +124,12 @@ async def update_published_prompt_model_version(
 @router.patch("/{uuid}/tags/", response_model=PromptModelVersionInstance)
 async def update_prompt_model_version_tags(
     uuid: str,
-    tags: List[str],
+    tags: Optional[List[str]] = None,
     session: AsyncSession = Depends(get_session),
 ):
     try:
+        if tags == []:
+            tags = None
         updated_version = (
             (
                 await session.execute(
@@ -140,7 +154,7 @@ async def update_prompt_model_version_tags(
 @router.patch("/{uuid}/memo/", response_model=PromptModelVersionInstance)
 async def update_prompt_model_version_memo(
     uuid: str,
-    memo: str,
+    memo: Optional[str] = None,
     session: AsyncSession = Depends(get_session),
 ):
     try:

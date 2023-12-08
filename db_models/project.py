@@ -72,7 +72,7 @@ class CliAccess(Base):
 
     user_id: str = Column(Text, ForeignKey("user.user_id"), primary_key=True)
 
-    api_key: str = Column(Text, unique=True)
+    api_key: str = Column(Text)
 
     # user: "User" = Relationship(back_populates="cli_access")
 

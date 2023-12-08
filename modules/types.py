@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from enum import Enum
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
 
@@ -69,6 +69,7 @@ class PMObject(BaseModel):
                     isinstance(value, UUID)
                     or isinstance(value, PGUUID)
                     or isinstance(value, datetime)
+                    or isinstance(value, date)
                 ):
                     try:
                         data[key] = str(value)

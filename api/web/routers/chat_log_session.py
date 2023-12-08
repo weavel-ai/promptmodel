@@ -11,7 +11,6 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from modules.types import PMObject
 from db_models import *
 from ..models import ChatLogInstance
 
