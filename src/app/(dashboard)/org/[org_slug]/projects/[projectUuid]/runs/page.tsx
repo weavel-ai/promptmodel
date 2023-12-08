@@ -15,7 +15,7 @@ import {
   fetchRunLogsCount,
   subscribeRunLogs,
 } from "@/apis/runlog";
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { CSVLink } from "react-csv";

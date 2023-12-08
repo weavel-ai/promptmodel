@@ -1,4 +1,4 @@
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { fetchVersionRunLogs } from "@/apis/runlog";
 import { useQuery } from "@tanstack/react-query";
 

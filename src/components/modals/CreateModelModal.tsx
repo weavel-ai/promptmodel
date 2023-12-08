@@ -5,7 +5,7 @@ import { InputField } from "../InputField";
 import { Modal } from "./Modal";
 import classNames from "classnames";
 import { toast } from "react-toastify";
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createPromptModel } from "@/apis/promptModel";

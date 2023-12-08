@@ -29,7 +29,7 @@ import {
   updatePromptModelVersionMemo,
   updatePublishedPromptModelVersion,
 } from "@/apis/promptModelVersion";
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import "reactflow/dist/style.css";
 import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";

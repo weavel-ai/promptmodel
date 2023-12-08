@@ -6,7 +6,7 @@ import { Modal } from "./Modal";
 import classNames from "classnames";
 import { ArrowFatUp, KeyReturn } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Editor } from "@monaco-editor/react";

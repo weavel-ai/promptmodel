@@ -12,7 +12,7 @@ import ReactFlow, {
 import { motion } from "framer-motion";
 import { GitBranch, RocketLaunch, XCircle } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import "reactflow/dist/style.css";
 import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";

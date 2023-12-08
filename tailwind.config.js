@@ -74,7 +74,20 @@ module.exports = {
       },
     },
   },
-  daisyui: {},
+  daisyui: {
+    themes: [
+      {
+        light: {
+          primary: "#6f00ff",
+        },
+      },
+      {
+        dark: {
+          primary: "#6f00ff",
+        },
+      },
+    ],
+  },
   plugins: [
     require("tailwindcss-animate"),
     require("tailwind-scrollbar-hide"),

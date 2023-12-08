@@ -1,4 +1,4 @@
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { fetchOrganization } from "@/apis/organization";
 import { fetchProject, fetchProjects } from "@/apis/project";
 import { useQuery } from "@tanstack/react-query";

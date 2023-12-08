@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { PRODUCT_NAME } from "@/constants";
+import { PRODUCT_NAME, env } from "@/constants";
 import classNames from "classnames";
 import {
   useParams,
@@ -10,19 +10,16 @@ import {
   useRouter,
   useSearchParams,
 } from "next/navigation";
-import {
-  OrganizationSwitcher,
-  useAuth,
-  useOrganization,
-  useUser,
-} from "@clerk/nextjs";
+import { OrganizationSwitcher } from "@clerk/nextjs";
+import { useAuth } from "@/hooks/auth/useAuth";
+import { useOrganization } from "@/hooks/auth/useOrganization";
 import { SignInButton } from "../buttons/SignInButton";
 import { useMediaQuery } from "react-responsive";
 import { AnimatedUnderline } from "../AnimatedUnderline";
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { CaretRight } from "@phosphor-icons/react";
 import { Michroma, Russo_One } from "next/font/google";
-import { fetchOrganization, updateOrganization } from "@/apis/organization";
+import { updateOrganization } from "@/apis/organization";
 import { useOrgData } from "@/hooks/useOrgData";
 import { useProject } from "@/hooks/useProject";
 import { usePromptModel } from "@/hooks/usePromptModel";
@@ -116,8 +113,8 @@ export const DeploymentNavbar = (props: NavbarProps) => {
           pathname == "/signup" ||
           pathname == "/signin"
           ? "max-w-6xl w-full self-center"
-          : "w-screen px-6",
-        "flex justify-center h-12 py-2 transition-all",
+          : "w-screen",
+        "flex justify-center h-12 py-2 px-6 transition-all",
         "fixed top-0",
         "bg-base-100/5 backdrop-blur-sm z-50"
       )}
@@ -154,12 +151,18 @@ export const DeploymentNavbar = (props: NavbarProps) => {
               </div>
             ) : (
               <div className="h-[32px]">
-                <OrganizationSwitcher
-                  hidePersonal
-                  afterCreateOrganizationUrl="/org/redirect"
-                  afterSelectOrganizationUrl="/org/redirect"
-                  createOrganizationUrl="/org/new"
-                />
+                {env?.SELF_HOSTED ? (
+                  <div className="py-1 px-2 rounded-md bg-base-300 font-sans font-medium ">
+                    {organization?.name}
+                  </div>
+                ) : (
+                  <OrganizationSwitcher
+                    hidePersonal
+                    afterCreateOrganizationUrl="/org/redirect"
+                    afterSelectOrganizationUrl="/org/redirect"
+                    createOrganizationUrl="/org/new"
+                  />
+                )}
               </div>
             )}
             {/* Project navigator */}

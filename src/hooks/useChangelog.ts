@@ -1,5 +1,5 @@
 import { useProject } from "./useProject";
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { useQuery } from "@tanstack/react-query";
 import { fetchChangelogs } from "@/apis/changelog";
 
