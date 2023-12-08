@@ -44,7 +44,7 @@ app.add_middleware(
 
 
 app.include_router(cli.router, prefix="/api/cli", tags=["cli"])
-app.include_router(web.router, prefix="/api/web", tags=["web"])
+app.include_router(web.router, prefix="/api/web")
 app.include_router(dev.router, prefix="/api/dev", tags=["dev"])
 
 load_dotenv()

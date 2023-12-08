@@ -29,10 +29,8 @@ from utils.prompt_utils import update_dict
 from base.database import get_session
 from modules.types import PromptModelRunConfig, ChatModelRunConfig
 from db_models import *
-from .web_db import router as web_db_router
 
 router = APIRouter()
-router.include_router(web_db_router)
 
 
 class ProjectInstance(BaseModel):
