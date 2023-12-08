@@ -27,7 +27,7 @@ from starlette.status import (
 )
 
 from utils.security import get_api_key, get_project, get_cli_user_id
-from utils.dependency import get_websocket_token
+from api.dependency import get_websocket_token
 from utils.logger import logger
 
 from base.database import get_session

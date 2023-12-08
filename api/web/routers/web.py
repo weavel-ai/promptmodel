@@ -29,8 +29,10 @@ from utils.prompt_utils import update_dict
 from base.database import get_session
 from modules.types import PromptModelRunConfig, ChatModelRunConfig
 from db_models import *
+from .web_db import router as web_db_router
 
 router = APIRouter()
+router.include_router(web_db_router)
 
 
 class ProjectInstance(BaseModel):
@@ -38,27 +40,27 @@ class ProjectInstance(BaseModel):
     organization_id: str
 
 
-@router.post("/project")
-async def create_project(
-    project: ProjectInstance, session: AsyncSession = Depends(get_session)
-):
-    """Generate a safe API key and create new project."""
-    api_key = secrets.token_urlsafe(32)  # generate a random URL-safe key
-    try:
-        new_project = Project(
-            name=project.name, organization_id=project.organization_id, api_key=api_key
-        )
-        session.add(new_project)
-        await session.commit()
-        await session.refresh(new_project)
+# @router.post("/project")
+# async def create_project(
+#     project: ProjectInstance, session: AsyncSession = Depends(get_session)
+# ):
+#     """Generate a safe API key and create new project."""
+#     api_key = secrets.token_urlsafe(32)  # generate a random URL-safe key
+#     try:
+#         new_project = Project(
+#             name=project.name, organization_id=project.organization_id, api_key=api_key
+#         )
+#         session.add(new_project)
+#         await session.commit()
+#         await session.refresh(new_project)
 
-        return new_project
+#         return new_project.model_dump()
 
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
-        ) from exc
+#     except Exception as exc:
+#         logger.error(exc)
+#         raise HTTPException(
+#             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
+#         ) from exc
 
 
 @router.post("/run_prompt_model")

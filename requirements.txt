@@ -21,3 +21,4 @@ sqlalchemy>=2.0.0
 python-dotenv
 alembic
 asyncpg
+fastapi-nextauth-jwt
