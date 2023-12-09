@@ -1,12 +1,12 @@
 "use client";
 
 import { useSupabaseClient } from "@/apis/supabase";
-import { upsertCliAccess } from "@/apis/cliAccess";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import Confetti from "react-confetti";
+import { updateCliAccess } from "@/apis/cli_access";
 
 export default function Page() {
   const searchParams = useSearchParams();
@@ -31,7 +31,10 @@ export default function Page() {
       router.push("/org/redirect");
       setLoading(false);
     }
-    const res = await upsertCliAccess(supabase, userId, token);
+    const res = await updateCliAccess({
+      user_id: userId,
+      api_key: token,
+    });
     if (!res) {
       toast.error("Failed to grant access.");
       setLoading(false);

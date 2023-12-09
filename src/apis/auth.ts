@@ -11,9 +11,9 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
 import { GetServerSidePropsContext } from "next";
-import { getUser } from "./users";
-import { authorizeUser } from "./users/authorizeUser";
-import { User } from "@/types/user";
+import { fetchUser } from "./users";
+import { authorizeUser } from "./users";
+import { User } from "@/types/User";
 import { AxiosError } from "axios";
 
 const providers: Provider[] = [
@@ -85,7 +85,7 @@ export const authOptions: NextAuthOptions = {
         token.user_id = user?.user_id;
         token.name = user?.first_name + " " + user?.last_name;
       }
-      const currentUser: User = await getUser({ email: token?.email });
+      const currentUser: User = await fetchUser({ email: token?.email });
       if (currentUser) {
         token.user_id = currentUser.user_id;
         token.name = currentUser.first_name + " " + currentUser.last_name;

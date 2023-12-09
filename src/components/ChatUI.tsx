@@ -227,7 +227,7 @@ export function ChatUI({
                   </div>
                   {chatLog.token_usage && (
                     <div className="chat-footer opacity-50">
-                      {chatLog.token_usage} tokens
+                      {chatLog?.token_usage} tokens
                     </div>
                   )}
                 </div>

@@ -48,7 +48,7 @@ export const SelectTab = ({ tabs, selectedTab, onSelect }: SelectTabProps) => {
           ref={(el) => (tabRefs.current[index] = el)}
           className={classNames(
             "rounded-full w-full h-full px-3 flex justify-center items-center cursor-pointer transition-colors bg-transparent z-0",
-            tab === selectedTab ? "text-neutral" : "text-base-content"
+            tab === selectedTab ? "text-muted" : "text-base-content"
           )}
           onClick={() => onSelect(tab)}
         >

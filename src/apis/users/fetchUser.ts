@@ -1,4 +1,4 @@
-import { ReadUserRequest, User } from "@/types/user";
+import { ReadUserRequest, User } from "@/types/User";
 import { railwayWebClient } from "../base";
 
 /**
@@ -6,7 +6,7 @@ import { railwayWebClient } from "../base";
  * @param requestData - The data required to read a user's information.
  * @returns A promise that resolves to the User interface.
  */
-export async function getUser(requestData: ReadUserRequest): Promise<User> {
+export async function fetchUser(requestData: ReadUserRequest): Promise<User> {
   const response = await railwayWebClient.get(`/v1/users/me`, {
     params: requestData,
   });

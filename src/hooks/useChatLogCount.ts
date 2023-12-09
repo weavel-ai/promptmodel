@@ -1,17 +1,16 @@
-import { useSupabaseClient } from "@/apis/supabase";
 import { useQuery } from "@tanstack/react-query";
 import { useProject } from "./useProject";
-import { fetchChatLogsCount } from "@/apis/chatLog";
+import { fetchProjectChatLogsCount } from "@/apis/chat_logs";
 
 export const useChatLogCount = () => {
-  const { supabase } = useSupabaseClient();
   const { projectUuid } = useProject();
 
   const { data: chatLogCountData, refetch: refetchChatLogCountData } = useQuery(
     {
       queryKey: ["chatLogCountData", { projectUuid: projectUuid }],
-      queryFn: async () => await fetchChatLogsCount(supabase, projectUuid),
-      enabled: !!supabase && !!projectUuid,
+      queryFn: async () =>
+        await fetchProjectChatLogsCount({ project_uuid: projectUuid }),
+      enabled: !!projectUuid,
     }
   );
 

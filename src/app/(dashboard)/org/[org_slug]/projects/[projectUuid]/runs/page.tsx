@@ -3,31 +3,20 @@
 import { useProject } from "@/hooks/useProject";
 import { useEffect, useState, useCallback } from "react";
 import classNames from "classnames";
-import {
-  ArrowLeft,
-  ArrowRight,
-  CloudArrowDown,
-  FileArrowDown,
-} from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, CloudArrowDown } from "@phosphor-icons/react";
 import ReactJson from "react-json-view";
-import {
-  fetchRunLogs,
-  fetchRunLogsCount,
-  subscribeRunLogs,
-} from "@/apis/runlog";
+import { subscribeRunLogs } from "@/apis/runlog";
 import { useSupabaseClient } from "@/apis/supabase";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { CSVLink } from "react-csv";
 import { SelectTab } from "@/components/SelectTab";
-import {
-  fetchChatLogs,
-  fetchChatLogsCount,
-  subscribeChatLogs,
-} from "@/apis/chatLog";
 import { cloneDeep, escapeCSV } from "@/utils";
 import { useRunLogCount } from "@/hooks/useRunLogCount";
 import { useChatLogCount } from "@/hooks/useChatLogCount";
+import { fetchProjectChatLogs } from "@/apis/chat_logs";
+import { subscribeChatLogs } from "@/apis/chatLog";
+import { fetchProjectRunLogs } from "@/apis/run_logs";
 
 const ROWS_PER_PAGE = 50;
 
@@ -68,8 +57,12 @@ export default function Page() {
   } = useQuery({
     queryKey: ["runLogList", { projectUuid: projectData?.uuid, page: page }],
     queryFn: async () =>
-      await fetchRunLogs(supabase, projectData?.uuid, page, ROWS_PER_PAGE),
-    enabled: !!supabase && !!projectData?.uuid,
+      await fetchProjectRunLogs({
+        project_uuid: projectData?.uuid,
+        page: page,
+        rows_per_page: ROWS_PER_PAGE,
+      }),
+    enabled: !!projectData?.uuid,
   });
 
   const { chatLogCountData, refetchChatLogCountData } = useChatLogCount();
@@ -81,8 +74,12 @@ export default function Page() {
   } = useQuery({
     queryKey: ["chatLogList", { projectUuid: projectData?.uuid, page: page }],
     queryFn: async () =>
-      await fetchChatLogs(supabase, projectData?.uuid, page, ROWS_PER_PAGE),
-    enabled: !!supabase && !!projectData?.uuid,
+      await fetchProjectChatLogs({
+        project_uuid: projectData?.uuid,
+        page: page,
+        rows_per_page: ROWS_PER_PAGE,
+      }),
+    enabled: !!projectData?.uuid,
   });
 
   const subscribeToRunLogs = useCallback(async () => {
@@ -209,8 +206,8 @@ export default function Page() {
             of{" "}
             {Math.ceil(
               (selectedTab == Tab.PROMPT_MODEL
-                ? runLogCountData?.run_logs_count
-                : chatLogCountData?.chat_logs_count) / ROWS_PER_PAGE
+                ? runLogCountData?.count
+                : chatLogCountData?.count) / ROWS_PER_PAGE
             )}
           </p>
           <button
@@ -220,8 +217,8 @@ export default function Page() {
                 page <
                 Math.ceil(
                   (selectedTab == Tab.PROMPT_MODEL
-                    ? runLogCountData?.run_logs_count
-                    : chatLogCountData?.chat_logs_count) / ROWS_PER_PAGE
+                    ? runLogCountData?.count
+                    : chatLogCountData?.count) / ROWS_PER_PAGE
                 )
               ) {
                 setPage(page + 1);
@@ -239,8 +236,8 @@ export default function Page() {
           <p className="text-muted-content">
             Total{" "}
             {selectedTab == Tab.PROMPT_MODEL
-              ? runLogCountData?.run_logs_count
-              : chatLogCountData?.chat_logs_count}{" "}
+              ? runLogCountData?.count
+              : chatLogCountData?.count}{" "}
             runs
           </p>
         </div>

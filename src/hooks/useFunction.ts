@@ -1,10 +1,10 @@
 import { useSupabaseClient } from "@/apis/supabase";
-import { fetchFunctions, subscribeFunctions } from "@/apis/functionSchema";
-import { fetchVersionRunLogs } from "@/apis/runlog";
+import { subscribeFunctions } from "@/apis/functionSchema";
 import { useRealtimeStore } from "@/stores/realtimeStore";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
+import { fetchProjectFunctionSchemas } from "@/apis/function_schemas/fetchProjectFunctionSchemas";
 
 export const useFunctions = () => {
   const params = useParams();
@@ -16,8 +16,10 @@ export const useFunctions = () => {
     {
       queryKey: ["functionListData", { projectUuid: params?.projectUuid }],
       queryFn: async () =>
-        await fetchFunctions(supabase, params?.projectUuid as string),
-      enabled: !!supabase && !!params?.projectUuid,
+        await fetchProjectFunctionSchemas({
+          project_uuid: params?.projectUuid as string,
+        }),
+      enabled: !!params?.projectUuid,
     }
   );
 

@@ -1,11 +1,10 @@
 "use client";
 
+import { createProject } from "@/apis/projects";
 import { useSupabaseClient } from "@/apis/supabase";
-import { createProject } from "@/apis/project";
 import { InputField } from "@/components/InputField";
 import { useOrgData } from "@/hooks/useOrgData";
 import { useProject } from "@/hooks/useProject";
-import { X } from "@phosphor-icons/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "react-toastify";
@@ -24,7 +23,11 @@ export default function Page() {
     if (loading) return;
     setLoading(true);
     const toastId = toast.loading("Creating project...");
-    const data = await createProject(orgId, name, description);
+    const data = await createProject({
+      organization_id: orgId,
+      name: name,
+      description: description,
+    });
     if (!data) {
       toast.update(toastId, {
         containerId: "default",

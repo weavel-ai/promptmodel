@@ -28,9 +28,9 @@ import { ContextMenu, ContextMenuItem } from "@/components/menu/ContextMenu";
 import { Modal } from "@/components/modals/Modal";
 import { InputField } from "@/components/InputField";
 import { toast } from "react-toastify";
-import { deletePromptModel, editPromptModelName } from "@/apis/promptModel";
 import { useSupabaseClient } from "@/apis/supabase";
-import { deleteChatModel, editChatModelName } from "@/apis/chatModel";
+import { deleteChatModel, editChatModel } from "@/apis/chat_models";
+import { deletePromptModel, editPromptModel } from "@/apis/prompt_models";
 
 dayjs.extend(relativeTime);
 
@@ -300,15 +300,13 @@ function EditModelNameModal({
   async function handleSaveName() {
     const toastId = toast.loading("Saving...");
     if (modelType === Tab.PROMPT_MODEL) {
-      await editPromptModelName({
-        supabaseClient: supabase,
-        promptModelUuid: modelUuid,
+      await editPromptModel({
+        uuid: modelUuid,
         name: name,
       });
     } else {
-      await editChatModelName({
-        supabaseClient: supabase,
-        chatModelUuid: modelUuid,
+      await editChatModel({
+        uuid: modelUuid,
         name: name,
       });
     }
@@ -370,13 +368,11 @@ function DeleteModelModal({
     const toastId = toast.loading("Deleting...");
     if (modelType === Tab.PROMPT_MODEL) {
       await deletePromptModel({
-        supabaseClient: supabase,
-        promptModelUuid: modelUuid,
+        uuid: modelUuid,
       });
     } else if (modelType === Tab.CHAT_MODEL) {
       await deleteChatModel({
-        supabaseClient: supabase,
-        chatModelUuid: modelUuid,
+        uuid: modelUuid,
       });
     }
     setIsOpen(false);

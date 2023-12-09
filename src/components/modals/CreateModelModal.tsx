@@ -8,8 +8,8 @@ import { toast } from "react-toastify";
 import { useSupabaseClient } from "@/apis/supabase";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { createPromptModel } from "@/apis/promptModel";
-import { createChatModel } from "@/apis/chatModel";
+import { createChatModel } from "@/apis/chat_models";
+import { createPromptModel } from "@/apis/prompt_models";
 
 export const CreateModelModal = ({
   isOpen,
@@ -39,15 +39,13 @@ export const CreateModelModal = ({
     let resData;
     if (modelType == "PromptModel") {
       resData = await createPromptModel({
-        supabaseClient: supabase,
-        name,
-        projectUuid: params.projectUuid as string,
+        project_uuid: params.projectUuid as string,
+        name: name,
       });
     } else if (modelType == "ChatModel") {
       resData = await createChatModel({
-        supabaseClient: supabase,
-        name,
-        projectUuid: params.projectUuid as string,
+        project_uuid: params.projectUuid as string,
+        name: name,
       });
     }
     toast.update(toastId, {

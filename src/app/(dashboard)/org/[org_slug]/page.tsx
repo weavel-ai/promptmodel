@@ -1,8 +1,8 @@
 "use client";
 
-import { Project } from "@/apis/project";
 import { LocalConnectionStatus } from "@/components/LocalConnectionStatus";
 import { useProject } from "@/hooks/useProject";
+import { Project } from "@/types/Project";
 import { GearSix, Plus } from "@phosphor-icons/react";
 import classNames from "classnames";
 import Link from "next/link";

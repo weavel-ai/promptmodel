@@ -1,5 +1,3 @@
-"use client";
-
 export default function Page() {
   return (
     <div className="w-full h-full max-w-6xl px-6">

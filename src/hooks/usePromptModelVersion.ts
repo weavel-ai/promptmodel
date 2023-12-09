@@ -1,14 +1,7 @@
 import { useSupabaseClient } from "@/apis/supabase";
-import { fetchOrganization } from "@/apis/organization";
-import { fetchProject, fetchProjects } from "@/apis/project";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
-import { fetchPromptModels } from "@/apis/promptModel";
-import {
-  fetchPromptModelVersion,
-  fetchPromptModelVersions,
-} from "@/apis/promptModelVersion";
 import { toast } from "react-toastify";
 import {
   Prompt,
@@ -16,18 +9,20 @@ import {
 } from "@/stores/promptModelVersionStore";
 import { v4 as uuidv4 } from "uuid";
 import { useEffect, useMemo } from "react";
-import { fetchPrompts } from "@/apis/prompt";
 import { streamLocalPromptModelRun, streamPromptModelRun } from "@/apis/stream";
-import { useRunLogs } from "./useRunLog";
 import { arePrimitiveListsEqual, cloneDeep } from "@/utils";
-import { usePromptModel } from "./usePromptModel";
+import {
+  fetchPromptModelVersion,
+  fetchPromptModelVersions,
+} from "@/apis/prompt_model_versions";
+import { fetchPrompts } from "@/apis/prompts";
+import { ParsingType } from "@/types/ParsingType";
 
 export const usePromptModelVersion = () => {
   const params = useParams();
   const queryClient = useQueryClient();
   const { supabase } = useSupabaseClient();
   const { projectData } = useProject();
-  const { promptModelData } = usePromptModel();
   const {
     newVersionCache,
     isCreateVariantOpen,
@@ -59,11 +54,10 @@ export const usePromptModelVersion = () => {
       { promptModelUuid: params?.promptModelUuid },
     ],
     queryFn: async () =>
-      await fetchPromptModelVersions(
-        supabase,
-        params?.promptModelUuid as string
-      ),
-    enabled: !!supabase && !!params?.promptModelUuid,
+      await fetchPromptModelVersions({
+        prompt_model_uuid: params?.promptModelUuid as string,
+      }),
+    enabled: !!params?.promptModelUuid,
   });
 
   const selectedPromptModelVersionUuid = useMemo(() => {
@@ -79,8 +73,10 @@ export const usePromptModelVersion = () => {
       { versionUuid: selectedPromptModelVersionUuid },
     ],
     queryFn: async () =>
-      await fetchPrompts(supabase, selectedPromptModelVersionUuid),
-    enabled: !!supabase && !!selectedPromptModelVersionUuid,
+      await fetchPrompts({
+        prompt_model_version_uuid: selectedPromptModelVersionUuid,
+      }),
+    enabled: !!selectedPromptModelVersionUuid,
   });
 
   const { data: originalPromptModelVersionData } = useQuery({
@@ -89,8 +85,8 @@ export const usePromptModelVersion = () => {
       { uuid: selectedPromptModelVersionUuid },
     ],
     queryFn: async () =>
-      await fetchPromptModelVersion(supabase, selectedPromptModelVersionUuid),
-    enabled: !!supabase && !!selectedPromptModelVersionUuid,
+      await fetchPromptModelVersion({ uuid: selectedPromptModelVersionUuid }),
+    enabled: !!selectedPromptModelVersionUuid,
   });
 
   useEffect(() => {
@@ -111,7 +107,9 @@ export const usePromptModelVersion = () => {
       setSelectedModel(originalPromptModelVersionData?.model);
     }
     if (originalPromptModelVersionData?.parsing_type != null) {
-      setSelectedParser(originalPromptModelVersionData?.parsing_type);
+      setSelectedParser(
+        originalPromptModelVersionData?.parsing_type as ParsingType
+      );
       setOutputKeys(originalPromptModelVersionData?.output_keys);
     } else {
       setSelectedParser(null);

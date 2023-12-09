@@ -76,7 +76,7 @@ export function NewPromptButton({ prompts, setPrompts }) {
                 setPrompts(newPrompts);
               }}
             >
-              {role.charAt(0).toUpperCase() + role.slice(1)}
+              {role?.charAt(0).toUpperCase() + role?.slice(1)}
             </button>
           ))}
         </motion.div>
