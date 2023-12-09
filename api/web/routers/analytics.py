@@ -34,11 +34,11 @@ async def fetch_daily_run_log_metrics(
                     .where(DailyRunLogMetric.prompt_model_uuid == prompt_model_uuid)
                     .where(
                         DailyRunLogMetric.day
-                        >= datetime.strptime(start_day, "%Y-%m-%d").date()
+                        >= datetime.strptime(start_day, "%Y-%m-%dT%H:%M:%S.%fZ").date()
                     )
                     .where(
                         DailyRunLogMetric.day
-                        <= datetime.strptime(end_day, "%Y-%m-%d").date()
+                        <= datetime.strptime(end_day, "%Y-%m-%dT%H:%M:%S.%fZ").date()
                     )
                     .order_by(asc(DailyRunLogMetric.day))
                 )
@@ -55,11 +55,11 @@ async def fetch_daily_run_log_metrics(
                     .where(DailyRunLogMetric.prompt_model_uuid == prompt_model_uuid)
                     .where(
                         DailyRunLogMetric.day
-                        >= datetime.strptime(start_day, "%Y-%m-%d").date()
+                        >= datetime.strptime(start_day, "%Y-%m-%dT%H:%M:%S.%fZ").date()
                     )
                     .where(
                         DailyRunLogMetric.day
-                        <= datetime.strptime(end_day, "%Y-%m-%d").date()
+                        <= datetime.strptime(end_day, "%Y-%m-%dT%H:%M:%S.%fZ").date()
                     )
                     .order_by(asc(DailyRunLogMetric.day))
                 )
@@ -91,11 +91,11 @@ async def fetch_daily_chat_log_metrics(
                     .where(DailyChatLogMetric.chat_model_uuid == chat_model_uuid)
                     .where(
                         DailyChatLogMetric.day
-                        >= datetime.strptime(start_day, "%Y-%m-%d").date()
+                        >= datetime.strptime(start_day, "%Y-%m-%dT%H:%M:%S.%fZ").date()
                     )
                     .where(
                         DailyChatLogMetric.day
-                        <= datetime.strptime(end_day, "%Y-%m-%d").date()
+                        <= datetime.strptime(end_day, "%Y-%m-%dT%H:%M:%S.%fZ").date()
                     )
                     .order_by(asc(DailyChatLogMetric.day))
                 )

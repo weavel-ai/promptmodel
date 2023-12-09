@@ -3,6 +3,25 @@ from typing import Dict, Optional, Any
 from modules.types import PMObject
 
 
+class ChatLogInstance(PMObject):
+    id: int
+    created_at: str
+    uuid: str
+
+    role: str
+    name: Optional[str] = None
+    content: Optional[str] = None
+    tool_calls: Optional[Dict[str, Any]] = None
+
+    token_usage: Optional[int] = None
+
+    latency: Optional[float] = None
+    cost: Optional[float] = None
+    chat_log_metadata: Optional[Dict[str, Any]] = None
+
+    session_uuid: str
+
+
 class ChatLogViewInstance(PMObject):
     assistant_log_id: int
     project_uuid: str

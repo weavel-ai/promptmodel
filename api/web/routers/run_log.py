@@ -90,16 +90,12 @@ async def fetch_run_logs_count(
     try:
         try:
             run_logs_count: int = (
-                (
-                    await session.execute(
-                        select(RunLogsCount).where(
-                            RunLogsCount.project_uuid == project_uuid
-                        )
+                await session.execute(
+                    select(RunLogsCount.run_logs_count).where(
+                        RunLogsCount.project_uuid == project_uuid
                     )
                 )
-                .scalar_one()
-                .model_dump()
-            )
+            ).scalar_one()
         except Exception as e:
             logger.error(e)
             raise HTTPException(
@@ -107,7 +103,7 @@ async def fetch_run_logs_count(
                 detail="RunLogsCount with given id not found",
             )
 
-        return RunLogsCountInstance(**run_logs_count)
+        return RunLogsCountInstance(project_uuid=project_uuid, count=run_logs_count)
     except HTTPException as http_exc:
         logger.error(http_exc)
         raise http_exc

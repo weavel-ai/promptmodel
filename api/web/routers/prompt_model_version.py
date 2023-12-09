@@ -13,7 +13,11 @@ from utils.logger import logger
 
 from base.database import get_session
 from db_models import *
-from ..models import PromptModelVersionInstance, UpdatePublishedPromptModelVersionBody
+from ..models import (
+    PromptModelVersionInstance,
+    UpdatePublishedPromptModelVersionBody,
+    UpdatePromptModelVersionTagsBody,
+)
 
 router = APIRouter()
 
@@ -124,9 +128,10 @@ async def update_published_prompt_model_version(
 @router.patch("/{uuid}/tags/", response_model=PromptModelVersionInstance)
 async def update_prompt_model_version_tags(
     uuid: str,
-    tags: Optional[List[str]] = None,
+    body: UpdatePromptModelVersionTagsBody,
     session: AsyncSession = Depends(get_session),
 ):
+    tags: Optional[List[str]] = body.tags
     try:
         if tags == []:
             tags = None

@@ -1,9 +1,10 @@
 from .analytics import DailyRunLogMetricInstance, DailyChatLogMetricInstance
-from .chat_log_session import ChatLogInstance
-from .chat_log import ChatLogViewInstance, ChatLogCountInstance
+from .chat_log_session import ChatLogSessionInstance
+from .chat_log import ChatLogInstance, ChatLogViewInstance, ChatLogCountInstance
 from .chat_model_version import (
     ChatModelVersionInstance,
     UpdatePublishedChatModelVersionBody,
+    UpdateChatModelVersionTagsBody,
 )
 from .chat_model import ChatModelInstance, CreateChatModelBody
 from .cli_access import UpdateCliAccessKeyBody, CliAccessInstance
@@ -14,6 +15,7 @@ from .project import ProjectInstance, CreateProjectBody
 from .prompt_model_version import (
     PromptModelVersionInstance,
     UpdatePublishedPromptModelVersionBody,
+    UpdatePromptModelVersionTagsBody,
 )
 
 from .prompt_model import PromptModelInstance, CreatePromptModelBody

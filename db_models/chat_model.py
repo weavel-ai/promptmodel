@@ -135,7 +135,7 @@ class ChatLog(Base):
     content: Optional[str] = Column(Text, nullable=True)
     tool_calls: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
 
-    token_usage: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
+    token_usage: Optional[int] = Column(BigInteger, nullable=True)
 
     latency: Optional[float] = Column(Float, nullable=True)
     cost: Optional[float] = Column(Float, nullable=True)

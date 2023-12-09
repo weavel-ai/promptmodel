@@ -27,3 +27,7 @@ class UpdatePublishedChatModelVersionBody(PMObject):
     project_uuid: str
     project_version: int
     previous_published_version_uuid: Optional[str] = None
+
+
+class UpdateChatModelVersionTagsBody(PMObject):
+    tags: Optional[List[str]] = None

@@ -14,7 +14,11 @@ from utils.logger import logger
 
 from base.database import get_session
 from db_models import *
-from ..models import ChatModelVersionInstance, UpdatePublishedChatModelVersionBody
+from ..models import (
+    ChatModelVersionInstance,
+    UpdatePublishedChatModelVersionBody,
+    UpdateChatModelVersionTagsBody,
+)
 
 router = APIRouter()
 
@@ -132,9 +136,10 @@ async def update_published_chat_model_version(
 @router.patch("/{uuid}/tags/", response_model=ChatModelVersionInstance)
 async def update_chat_model_version_tags(
     uuid: str,
-    tags: Optional[List[str]] = None,
+    body: UpdateChatModelVersionTagsBody,
     session: AsyncSession = Depends(get_session),
 ):
+    tags: Optional[List[str]] = body.tags
     try:
         if tags == []:
             tags = None

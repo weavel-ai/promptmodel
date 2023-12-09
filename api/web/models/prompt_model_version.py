@@ -30,3 +30,7 @@ class UpdatePublishedPromptModelVersionBody(PMObject):
     project_uuid: str
     project_version: int
     previous_published_version_uuid: Optional[str] = None
+
+
+class UpdatePromptModelVersionTagsBody(PMObject):
+    tags: Optional[List[str]] = None
