@@ -19,13 +19,13 @@ import { AnimatedUnderline } from "../AnimatedUnderline";
 import { useSupabaseClient } from "@/apis/supabase";
 import { CaretRight } from "@phosphor-icons/react";
 import { Michroma, Russo_One } from "next/font/google";
-import { updateOrganization } from "@/apis/organization";
 import { useOrgData } from "@/hooks/useOrgData";
 import { useProject } from "@/hooks/useProject";
 import { usePromptModel } from "@/hooks/usePromptModel";
 import { SelectNavigator } from "../SelectNavigator";
 import { useChatModel } from "@/hooks/useChatModel";
 import { LocalConnectionStatus } from "../LocalConnectionStatus";
+import { updateOrganization } from "@/apis/organizations";
 
 const michroma = Michroma({
   weight: ["400"],
@@ -77,12 +77,11 @@ export const DeploymentNavbar = (props: NavbarProps) => {
         orgData.name != organization?.name ||
         orgData.slug != organization?.slug
       ) {
-        updateOrganization(
-          supabase,
-          organization?.id,
-          organization?.name,
-          organization?.slug
-        ).then(() => {
+        updateOrganization({
+          organization_id: organization?.id,
+          name: organization?.name,
+          slug: organization?.slug,
+        }).then(() => {
           refetchOrgData();
         });
         // From the current route path, replace the current org_slug with the new org_slug

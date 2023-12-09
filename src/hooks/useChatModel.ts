@@ -1,13 +1,12 @@
 import { useSupabaseClient } from "@/apis/supabase";
-import { fetchOrganization } from "@/apis/organization";
-import { fetchProject, fetchProjects } from "@/apis/project";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
-import { fetchChatModels, subscribeChatModel } from "@/apis/chatModel";
 import { useEffect, useMemo } from "react";
 import { useRealtimeStore } from "@/stores/realtimeStore";
 import { toast } from "react-toastify";
+import { fetchChatModels } from "@/apis/chat_models";
+import { subscribeChatModel } from "@/apis/chatModel";
 
 export const useChatModel = () => {
   const params = useParams();
@@ -21,8 +20,8 @@ export const useChatModel = () => {
         "modelListData",
         { type: "ChatModel", projectUuid: projectUuid },
       ],
-      queryFn: async () => await fetchChatModels(supabase, projectUuid),
-      enabled: !!supabase && !!projectUuid,
+      queryFn: async () => await fetchChatModels({ project_uuid: projectUuid }),
+      enabled: !!projectUuid,
     });
 
   const chatModelData = useMemo(() => {

@@ -1,4 +1,3 @@
-import { editor } from "monaco-editor";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import classNames from "classnames";

@@ -10,7 +10,7 @@ import { PromptmodelLogo } from "@/components/PromptmodelLogo";
 import Link from "next/link";
 import { toast } from "react-toastify";
 import { createUser } from "@/apis/users";
-import { CreateUserRequest } from "@/types/user";
+import { CreateUserRequest } from "@/types/User";
 import { useSession } from "next-auth/react";
 
 let validationSchema = z

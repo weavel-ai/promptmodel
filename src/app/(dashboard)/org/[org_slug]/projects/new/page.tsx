@@ -5,7 +5,6 @@ import { createProject } from "@/apis/project";
 import { InputField } from "@/components/InputField";
 import { useOrgData } from "@/hooks/useOrgData";
 import { useProject } from "@/hooks/useProject";
-import { X } from "@phosphor-icons/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "react-toastify";

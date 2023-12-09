@@ -1,13 +1,11 @@
 import { useSupabaseClient } from "@/apis/supabase";
-import { fetchOrganization } from "@/apis/organization";
-import { fetchProject, fetchProjects } from "@/apis/project";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
-import { fetchPromptModels, subscribePromptModel } from "@/apis/promptModel";
-import { useEffect, useMemo } from "react";
-import { toast } from "react-toastify";
+import { subscribePromptModel } from "@/apis/promptModel";
+import { useMemo } from "react";
 import { useRealtimeStore } from "@/stores/realtimeStore";
+import { fetchPromptModels } from "@/apis/prompt_models";
 
 export const usePromptModel = () => {
   const params = useParams();
@@ -21,8 +19,9 @@ export const usePromptModel = () => {
         "modelListData",
         { type: "PromptModel", projectUuid: projectUuid },
       ],
-      queryFn: async () => await fetchPromptModels(supabase, projectUuid),
-      enabled: !!supabase && !!projectUuid,
+      queryFn: async () =>
+        await fetchPromptModels({ project_uuid: projectUuid }),
+      enabled: !!projectUuid,
     });
 
   const promptModelData = useMemo(() => {

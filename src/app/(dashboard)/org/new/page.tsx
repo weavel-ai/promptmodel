@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 export default function Page() {
   const params = useSearchParams();
-  const router = useRouter();
 
   return (
     <div className="w-screen h-screen flex justify-center items-center">

@@ -1,4 +1,4 @@
-import { User, AuthorizeUserRequest } from "@/types/user";
+import { User, AuthorizeUserRequest } from "@/types/User";
 import { railwayWebClient } from "@/apis/base";
 
 /**

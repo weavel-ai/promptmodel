@@ -12,7 +12,7 @@ import Link from "next/link";
 import { Editor } from "@monaco-editor/react";
 import { registerCustomTheme } from "@/lib/promptLanguage";
 import { IKeyboardEvent, editor } from "monaco-editor";
-import { createSampleInput } from "@/apis/sampleInput";
+import { createSampleInput } from "@/apis/sample_inputs";
 
 interface Input {
   id: string;
@@ -70,12 +70,11 @@ export const CreateSampleInputModal = ({
 
   async function handleCreateSampleInput() {
     const toastId = toast.loading("Creating...");
-    const resData = await createSampleInput(
-      supabase,
-      params.projectUuid as string,
-      name,
-      content
-    );
+    await createSampleInput({
+      project_uuid: params.projectUuid as string,
+      name: name,
+      content: JSON.parse(content),
+    });
     toast.update(toastId, {
       containerId: "default",
       render: `Created ${name}!`,

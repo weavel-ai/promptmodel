@@ -1,12 +1,9 @@
-import { useSupabaseClient } from "@/apis/supabase";
-import { fetchChatLogSessions } from "@/apis/chatLog";
+import { fetchChatLogSessions } from "@/apis/chat_log_sessions";
 import { useQuery } from "@tanstack/react-query";
 
 export const NEW_CHAT_LABEL = "New chat";
 
 export const useChatLogSessions = (versionUuid: string) => {
-  const { supabase } = useSupabaseClient();
-
   const {
     data: chatLogSessionListData,
     refetch: refetchChatLogSessionListData,
@@ -19,14 +16,13 @@ export const useChatLogSessions = (versionUuid: string) => {
       if (versionUuid != "new") {
         sessions.push(
           ...(await fetchChatLogSessions({
-            supabaseClient: supabase,
-            versionUuid: versionUuid,
+            chat_model_version_uuid: versionUuid,
           }))
         );
       }
       return sessions;
     },
-    enabled: !!supabase && !!versionUuid,
+    enabled: !!versionUuid,
   });
 
   return {

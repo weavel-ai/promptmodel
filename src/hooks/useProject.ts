@@ -1,13 +1,14 @@
 "use client";
 
 import { useSupabaseClient } from "@/apis/supabase";
-import { fetchProject, fetchProjects, subscribeProject } from "@/apis/project";
+import { subscribeProject } from "@/apis/project";
 import { useRealtimeStore } from "@/stores/realtimeStore";
 import { useOrganization } from "@/hooks/auth/useOrganization";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
+import { fetchOrgProjects, fetchProject } from "@/apis/projects";
 
 export const useProject = () => {
   const params = useParams();
@@ -19,15 +20,16 @@ export const useProject = () => {
 
   const { data: projectListData, refetch: refetchProjectListData } = useQuery({
     queryKey: ["projectListData", { orgId: organization?.id }],
-    queryFn: async () => await fetchProjects(supabase, organization?.id),
-    enabled: !!supabase && !!organization?.id,
+    queryFn: async () =>
+      await fetchOrgProjects({ organization_id: organization?.id }),
+    enabled: !!organization?.id,
   });
 
   const { data: projectData, refetch: refetchProjectData } = useQuery({
     queryKey: ["projectData", { projectUuid: params?.projectUuid }],
     queryFn: async () =>
-      await fetchProject(supabase, params?.projectUuid as string),
-    enabled: !!supabase && !!params?.projectUuid,
+      await fetchProject({ uuid: params?.projectUuid as string }),
+    enabled: !!params?.projectUuid,
   });
 
   useEffect(() => {

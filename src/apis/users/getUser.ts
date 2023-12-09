@@ -1,4 +1,4 @@
-import { ReadUserRequest, User } from "@/types/user";
+import { ReadUserRequest, User } from "@/types/User";
 import { railwayWebClient } from "../base";
 
 /**

@@ -12,8 +12,8 @@ import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
 import { GetServerSidePropsContext } from "next";
 import { getUser } from "./users";
-import { authorizeUser } from "./users/authorizeUser";
-import { User } from "@/types/user";
+import { authorizeUser } from "./users";
+import { User } from "@/types/User";
 import { AxiosError } from "axios";
 
 const providers: Provider[] = [

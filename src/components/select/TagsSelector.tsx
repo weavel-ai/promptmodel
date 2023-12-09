@@ -13,13 +13,13 @@ import {
   generateRandomPastelColor,
 } from "@/utils";
 import { useProject } from "@/hooks/useProject";
-import { updatePromptModelVersionTags } from "@/apis/promptModelVersion";
-import { updateChatModelVersionTags } from "@/apis/chatModelVersion";
 import { Badge } from "../ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { usePromptModel } from "@/hooks/usePromptModel";
 import { useChatModel } from "@/hooks/useChatModel";
+import { updateChatModelVersionTags } from "@/apis/chat_model_versions";
+import { updatePromptModelVersionTags } from "@/apis/prompt_model_versions";
 
 interface TagsSelectorProps {
   modelType: "PromptModel" | "ChatModel";
@@ -115,21 +115,26 @@ export function TagsSelector({
         tagsListData?.filter((tagOption) => tagOption.name === tag)?.length == 0
       ) {
         // Add tag
-        await createTag(
-          supabase,
-          projectUuid,
-          tag,
-          generateRandomPastelColor()
-        );
+        await createTag({
+          project_uuid: projectUuid,
+          name: tag,
+          color: generateRandomPastelColor(),
+        });
       }
       newTagCreated = true;
     }
     if (modelType === "PromptModel") {
       // Update PromptModel version tags
-      await updatePromptModelVersionTags(supabase, versionUuid, selectedTags);
+      await updatePromptModelVersionTags({
+        uuid: versionUuid,
+        tags: selectedTags,
+      });
     } else if (modelType === "ChatModel") {
       // Update ChatModel version tags
-      await updateChatModelVersionTags(supabase, versionUuid, selectedTags);
+      await updateChatModelVersionTags({
+        uuid: versionUuid,
+        tags: selectedTags,
+      });
     }
     if (newTagCreated) {
       await queryClient.invalidateQueries([

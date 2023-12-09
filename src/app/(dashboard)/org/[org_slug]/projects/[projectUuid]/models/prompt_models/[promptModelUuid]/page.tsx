@@ -25,10 +25,6 @@ import {
   XCircle,
 } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import {
-  updatePromptModelVersionMemo,
-  updatePublishedPromptModelVersion,
-} from "@/apis/promptModelVersion";
 import { useSupabaseClient } from "@/apis/supabase";
 import "reactflow/dist/style.css";
 import { editor } from "monaco-editor";
@@ -65,6 +61,11 @@ import { TagsSelector } from "@/components/select/TagsSelector";
 import { ClickToEditInput } from "@/components/inputs/ClickToEditInput";
 import { VersionTag } from "@/components/VersionTag";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { ParsingType } from "@/types/ParsingType";
+import {
+  updatePromptModelVersionMemo,
+  updatePublishedPromptModelVersion,
+} from "@/apis/prompt_model_versions";
 dayjs.extend(relativeTime);
 
 const initialNodes = [];
@@ -666,13 +667,12 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
       (v) => v.is_published
     )?.uuid;
 
-    await updatePublishedPromptModelVersion(
-      supabase,
-      selectedPromptModelVersionUuid,
-      previousPublishedUuid,
-      projectData?.version,
-      projectData?.uuid
-    );
+    await updatePublishedPromptModelVersion({
+      project_uuid: projectData?.uuid,
+      project_version: projectData?.version,
+      uuid: selectedPromptModelVersionUuid,
+      previous_published_version_uuid: previousPublishedUuid,
+    });
     await refetchPromptModelVersionListData();
     queryClient.invalidateQueries({
       predicate: (query: any) => query.queryKey[0] === "promptModelVersionData",
@@ -688,11 +688,10 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
   }
 
   async function handleSetMemo(newMemo: string) {
-    await updatePromptModelVersionMemo(
-      supabase,
-      selectedPromptModelVersionUuid,
-      newMemo
-    );
+    await updatePromptModelVersionMemo({
+      uuid: selectedPromptModelVersionUuid,
+      memo: newMemo,
+    });
     queryClient.invalidateQueries([
       "promptModelVersionData",
       { uuid: selectedPromptModelVersionUuid },
@@ -865,7 +864,9 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                       <span className="label-text">Output parser type</span>
                     </label>
                     <ParserTypeSelector
-                      parser={originalPromptModelVersionData?.parsing_type}
+                      parser={
+                        originalPromptModelVersionData?.parsing_type as ParsingType
+                      }
                     />
                   </div>
                   <div className="w-auto flex flex-col items-start justify-start">
@@ -1003,7 +1004,9 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     <span className="label-text">Output parser type</span>
                   </label>
                   <ParserTypeSelector
-                    parser={originalPromptModelVersionData?.parsing_type}
+                    parser={
+                      originalPromptModelVersionData?.parsing_type as ParsingType
+                    }
                   />
                 </div>
                 <div className="w-auto flex flex-col items-start justify-start">

@@ -1,18 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
-import { useSupabaseClient } from "@/apis/supabase";
-import { ChatLog, fetchSessionChatLogs } from "@/apis/chatLog";
 import { useEffect, useState } from "react";
+import { ChatLog } from "@/types/ChatLog";
+import { fetchSessionChatLogs } from "@/apis/chat_logs";
 
 export const useSessionChatLogs = (sessionUuid: string | null) => {
-  const { supabase } = useSupabaseClient();
-  const [chatLogListData, setChatLogListData] = useState<ChatLog[] | any[]>([]);
+  const [chatLogListData, setChatLogListData] = useState<Array<ChatLog>>([]);
 
   const { data: fetchedChatLogListData, refetch: refetchChatLogListData } =
     useQuery({
       queryKey: ["chatLogListData", { sessionUuid: sessionUuid }],
-      queryFn: async () => await fetchSessionChatLogs(supabase, sessionUuid),
+      queryFn: async () =>
+        await fetchSessionChatLogs({
+          chat_session_uuid: sessionUuid,
+          page: 1,
+          rows_per_page: 100,
+        }),
 
-      enabled: !!supabase && !!sessionUuid,
+      enabled: !!sessionUuid,
     });
 
   useEffect(() => {
