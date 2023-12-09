@@ -1,3 +1,5 @@
+import hashlib
+from typing import Annotated
 from fastapi import WebSocket, HTTPException, Security, Depends
 from fastapi.security.api_key import APIKeyHeader
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
@@ -5,12 +7,21 @@ from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import Result, select, asc, desc, update
 
+from fastapi_nextauth_jwt import NextAuthJWT
 from utils.logger import logger
 from base.database import get_session, get_session_context
 from db_models import *
 
 API_KEY_HEADER = "Authorization"
 api_key_header = APIKeyHeader(name=API_KEY_HEADER, auto_error=False)
+JWT = NextAuthJWT()
+
+
+async def get_user_id(
+    jwt: Annotated[Dict, Depends(JWT)],
+):
+    print(jwt)
+    return jwt["user_id"]
 
 
 async def get_project(
@@ -69,3 +80,19 @@ async def get_api_key(
         raise HTTPException(
             status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
         )
+
+
+def create_hashed_identifier(prefix: str, value: str):
+    """Create a hashed identifier from a prefix and value."""
+    # Hash the value
+    hash_object = hashlib.sha256(value.encode())
+    hex_dig = hash_object.hexdigest()
+
+    # Truncate the hash for the identifier and prepend the prefix
+    identifier = f"{prefix}_{hex_dig[:24]}"
+    return identifier
+
+
+# Utility function to hash a password
+def hash_password(password):
+    return pwd_context.hash(password)

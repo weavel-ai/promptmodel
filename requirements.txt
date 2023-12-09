@@ -10,7 +10,7 @@ Requests
 markdown
 APScheduler
 pytz
-pydantic>=2.4.2
+pydantic[email]>=2.4.2
 python-multipart
 pytest
 pytest-asyncio
@@ -21,4 +21,6 @@ sqlalchemy>=2.0.0
 python-dotenv
 alembic
 asyncpg
-fastapi-nextauth-jwt
+fastapi_nextauth_jwt
+passlib
+bcrypt

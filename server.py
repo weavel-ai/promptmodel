@@ -9,7 +9,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
 
-from api import cli, web, dev
+from api import cli, web, dev, web_auth
 
 app = FastAPI()
 
@@ -42,6 +42,8 @@ app.add_middleware(
 #     print(f"Response: {response.status_code}")
 #     return response
 
+# temporary
+app.include_router(web_auth.router, prefix="/api/web/v1", tags=["web/v1"])
 
 app.include_router(cli.router, prefix="/api/cli", tags=["cli"])
 app.include_router(web.router, prefix="/api/web")

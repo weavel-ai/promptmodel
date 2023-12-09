@@ -1,5 +1,6 @@
 from typing import Optional, List, Dict, Any, Union, Tuple, TYPE_CHECKING
 from datetime import datetime
+from uuid import uuid4, UUID as UUIDType
 from sqlalchemy import (
     Column,
     ForeignKey,
@@ -15,15 +16,17 @@ from sqlalchemy import (
     Identity,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from uuid import uuid4, UUID as UUIDType
 from sqlalchemy.sql import func, text
 from base.database import Base
+from passlib.context import CryptContext
 
 if TYPE_CHECKING:
     from .chat_model import ChatModel
     from .prompt_model import PromptModel
     from .function_schema import FunctionSchema
     from .sample_input import SampleInput
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class Organization(Base):
@@ -52,9 +55,14 @@ class User(Base):
     user_id: str = Column(Text, primary_key=True, unique=True)
 
     email: int = Column(Text, nullable=False)
+    hashed_password: str = Column(Text, nullable=True)
+    first_name: str = Column(Text, nullable=True)
+    last_name: str = Column(Text, nullable=True)
     is_test: bool = Column(Boolean, nullable=False, default=False)
 
-    # cli_access: "CliAccess" = Relationship(back_populates="user")
+    # cli_access: "CliAccess" = Relationship(back_populates="user"
+    def verify_password(self, password):
+        return pwd_context.verify(password, self.hashed_password)
 
 
 class CliAccess(Base):
