@@ -6,7 +6,7 @@ import classNames from "classnames";
 import { motion } from "framer-motion";
 import { Check } from "@phosphor-icons/react";
 import { createTag } from "@/apis/tags";
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import {
   arePrimitiveListsEqual,
   cloneDeep,

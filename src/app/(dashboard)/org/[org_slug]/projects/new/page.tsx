@@ -1,6 +1,6 @@
 "use client";
 
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { createProject } from "@/apis/project";
 import { InputField } from "@/components/InputField";
 import { useOrgData } from "@/hooks/useOrgData";

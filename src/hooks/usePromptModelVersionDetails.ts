@@ -1,4 +1,4 @@
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { fetchPromptModelVersion } from "@/apis/promptModelVersion";
 import { fetchPrompts } from "@/apis/prompt";
 import { useQuery } from "@tanstack/react-query";

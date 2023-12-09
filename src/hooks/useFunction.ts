@@ -1,4 +1,4 @@
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { fetchFunctions, subscribeFunctions } from "@/apis/functionSchema";
 import { fetchVersionRunLogs } from "@/apis/runlog";
 import { useRealtimeStore } from "@/stores/realtimeStore";

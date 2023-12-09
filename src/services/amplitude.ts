@@ -1,8 +1,8 @@
 import * as amplitude from "@amplitude/analytics-browser";
-import { AMPLITUDE_API_KEY, PRODUCT_NAME } from "@/constants";
+import { env, PRODUCT_NAME } from "@/constants";
 
 export const initAmplitude = () => {
-  amplitude.init(AMPLITUDE_API_KEY, undefined, {
+  amplitude.init(env.AMPLITUDE_API_KEY, undefined, {
     defaultTracking: {
       sessions: true,
       pageViews: false,

@@ -29,7 +29,7 @@ import { Modal } from "@/components/modals/Modal";
 import { InputField } from "@/components/InputField";
 import { toast } from "react-toastify";
 import { deletePromptModel, editPromptModelName } from "@/apis/promptModel";
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { deleteChatModel, editChatModelName } from "@/apis/chatModel";
 
 dayjs.extend(relativeTime);

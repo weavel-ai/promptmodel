@@ -1,4 +1,4 @@
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { fetchSampleInputs, subscribeSampleInputs } from "@/apis/sampleInput";
 import { useRealtimeStore } from "@/stores/realtimeStore";
 import { useQuery } from "@tanstack/react-query";

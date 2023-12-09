@@ -1,11 +1,9 @@
 "use client";
 
-import { useSupabaseClient } from "@/apis/base";
-import { fetchOrganization } from "@/apis/organization";
+import { useSupabaseClient } from "@/apis/supabase";
 import { fetchProject, fetchProjects, subscribeProject } from "@/apis/project";
-import { fetchUser } from "@/apis/user";
 import { useRealtimeStore } from "@/stores/realtimeStore";
-import { useOrganization } from "@clerk/nextjs";
+import { useOrganization } from "@/hooks/auth/useOrganization";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";

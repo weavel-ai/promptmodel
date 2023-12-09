@@ -1,13 +1,12 @@
 "use client";
 
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { upsertCliAccess } from "@/apis/cliAccess";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import Confetti from "react-confetti";
-import classNames from "classnames";
 
 export default function Page() {
   const searchParams = useSearchParams();

@@ -1,9 +1,8 @@
 "use client";
 
-import { useOrgData } from "@/hooks/useOrgData";
 import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
 import { usePromptModelVersionStore } from "@/stores/promptModelVersionStore";
-import { useOrganization } from "@clerk/nextjs";
+import { useOrganization } from "@/hooks/auth/useOrganization";
 import {
   DiscordLogo,
   GearSix,

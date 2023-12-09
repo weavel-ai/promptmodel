@@ -1,8 +1,7 @@
 "use client";
 
-import { CreateOrganization, useAuth } from "@clerk/nextjs";
+import { CreateOrganization } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
 
 export default function Page() {
   const params = useSearchParams();

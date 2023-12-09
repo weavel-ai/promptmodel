@@ -1,18 +1,28 @@
-export const ENDPOINT_URL = process.env.NEXT_PUBLIC_ENDPOINT_URL;
-export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-export const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_KEY;
-// export const CHANNEL_TALK_KEY = process.env.NEXT_PUBLIC_CHANNEL_TALK_KEY;
-export const AMPLITUDE_API_KEY = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY;
-// export const LEMONSQUEEZY_PRODUCTION_API_KEY =
-//   process.env.NEXT_PUBLIC_LEMONSQUEEZY_PRODUCTION_API_KEY;
-// export const LEMONSQUEEZY_DEVELOPMENT_API_KEY =
-//   process.env.NEXT_PUBLIC_LEMONSQUEEZY_DEVELOPMENT_API_KEY;
-// export const LEMONSQUEEZY_API_ENDPOINT_URL = "https://api.lemonsqueezy.com/v1";
-// export const LEMONSQUEEZY_STORE_ID = 33533;
 export const PRODUCT_NAME = "Promptmodel";
-// export const PRICE_PER_CHUNK = 60;
 
 export class Routes {
   // static PAST_EXAMS: string = "/past-exams"
   // static CREATE_ANSWER: string = "/create"
+}
+
+export class env {
+  static SELF_HOSTED: boolean = process.env.NEXT_PUBLIC_SELF_HOSTED == "true";
+  static ENDPOINT_URL: string = process.env.NEXT_PUBLIC_ENDPOINT_URL;
+  static SUPABASE_URL: string = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  static SUPABASE_KEY: string = process.env.NEXT_PUBLIC_SUPABASE_KEY;
+  static AMPLITUDE_API_KEY: string = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY;
+
+  // Variables below are used for self-hosted instances
+  static NEXTAUTH_URL: string = process.env.NEXTAUTH_URL;
+  static ORG_NAME: string = process.env.NEXT_PUBLIC_ORG_NAME ?? "admin";
+  static ORG_SLUG: string = process.env.NEXT_PUBLIC_ORG_SLUG ?? "admin";
+
+  static AUTH_GOOGLE_CLIENT_ID: string | null =
+    process.env.NEXT_PUBLIC_AUTH_GOOGLE_CLIENT_ID || null;
+  static AUTH_GOOGLE_CLIENT_SECRET: string | null =
+    process.env.NEXT_PUBLIC_AUTH_GOOGLE_CLIENT_SECRET || null;
+  static AUTH_GITHUB_CLIENT_ID: string | null =
+    process.env.NEXT_PUBLIC_AUTH_GITHUB_CLIENT_ID || null;
+  static AUTH_GITHUB_CLIENT_SECRET: string | null =
+    process.env.NEXT_PUBLIC_AUTH_GITHUB_CLIENT_SECRET || null;
 }

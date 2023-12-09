@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { ChatLog, fetchSessionChatLogs } from "@/apis/chatLog";
 import { useEffect, useState } from "react";
 

@@ -1,4 +1,4 @@
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { fetchTags } from "@/apis/tags";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";

@@ -29,7 +29,7 @@ import {
   updatePromptModelVersionMemo,
   updatePublishedPromptModelVersion,
 } from "@/apis/promptModelVersion";
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import "reactflow/dist/style.css";
 import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -1240,15 +1240,14 @@ const PromptComponent = ({
     editor.onDidFocusEditorWidget(() => {
       setFocusedEditor(editorRef.current);
     });
-  };
 
-  useEffect(() => {
-    const contentHeight = editorRef.current?.getContentHeight();
+    // Set height
+    const contentHeight = editor?.getContentHeight();
     const maxHeight = windowHeight * 0.7;
-    if (contentHeight) {
+    if (!!contentHeight) {
       setHeight(Math.min(contentHeight, maxHeight) + 20);
     }
-  }, [windowHeight, setHeight]);
+  };
 
   return (
     <motion.div
@@ -1365,30 +1364,19 @@ const PromptDiffComponent = ({ originalPrompt, setModifiedPrompts }) => {
             modifiedEditorRef.current?.getValue();
         }
         setModifiedPrompts(newPrompts);
-        // Set height
-        const originalHeight = originalEditorRef.current?.getContentHeight();
-        const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
-        const maxHeight = windowHeight * 0.7;
-        if (modifiedHeight > originalHeight) {
-          setHeight(Math.min(modifiedHeight, maxHeight) + 20);
-        } else {
-          setHeight(Math.min(originalHeight, maxHeight) + 20);
-        }
       }
     );
-  };
-
-  useEffect(() => {
     // Set height
     const originalHeight = originalEditorRef.current?.getContentHeight();
     const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
     const maxHeight = windowHeight * 0.7;
+    console.log(originalHeight, modifiedHeight);
     if (modifiedHeight > originalHeight) {
       setHeight(Math.min(modifiedHeight, maxHeight) + 20);
     } else {
       setHeight(Math.min(originalHeight, maxHeight) + 20);
     }
-  }, [windowHeight, setHeight, open]);
+  };
 
   return (
     <motion.div
