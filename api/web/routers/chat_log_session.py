@@ -12,19 +12,19 @@ from utils.logger import logger
 
 from base.database import get_session
 from db_models import *
-from ..models import ChatLogInstance
+from ..models import ChatLogSessionInstance
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[ChatLogInstance])
+@router.get("/", response_model=List[ChatLogSessionInstance])
 async def fetch_chat_log_sessions(
     chat_model_version_uuid: str,
     db_session: AsyncSession = Depends(get_session),
 ):
     try:
-        chat_log_sessions: List[ChatLogInstance] = [
-            ChatLogInstance(**chat_log_session.model_dump())
+        chat_log_sessions: List[ChatLogSessionInstance] = [
+            ChatLogSessionInstance(**chat_log_session.model_dump())
             for chat_log_session in (
                 await db_session.execute(
                     select(ChatLogSession)

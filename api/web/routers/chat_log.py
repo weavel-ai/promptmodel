@@ -13,13 +13,13 @@ from utils.logger import logger
 
 from base.database import get_session
 from db_models import *
-from ..models import ChatLogViewInstance, ChatLogCountInstance
+from ..models import ChatLogInstance, ChatLogViewInstance, ChatLogCountInstance
 
 router = APIRouter()
 
 
 # ChatLog Endpoints
-@router.get("/session/", response_model=List[ChatLogViewInstance])
+@router.get("/session/", response_model=List[ChatLogInstance])
 async def fetch_session_chat_logs(
     chat_session_uuid: str,
     page: int,
@@ -34,7 +34,7 @@ async def fetch_session_chat_logs(
                     select(ChatLogView)
                     .where(ChatLogView.session_uuid == chat_session_uuid)
                     .order_by(asc(ChatLogView.created_at))
-                    .offset((page - 1) * rows_per_page)
+                    .offset(max(0, (page - 1)) * rows_per_page)
                     .limit(rows_per_page)
                 )
             )

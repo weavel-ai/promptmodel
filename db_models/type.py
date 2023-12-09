@@ -23,6 +23,4 @@ from base.database import Base
 class ParsingType(Base):
     __tablename__ = "parsing_type"
 
-    id: int = Column(BigInteger, Identity(), primary_key=True, unique=True)
-
     type: str = Column(Text, primary_key=True, unique=True)

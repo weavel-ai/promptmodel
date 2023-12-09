@@ -181,7 +181,7 @@ async def run_cloud_prompt_model(
                         "content": prompt.content,
                     }
                 )
-                prompt_row = session.merge(prompt_row)
+                prompt_row = await session.merge(prompt_row)
                 session.add(prompt_row)
                 await session.commit()
 

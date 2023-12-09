@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 from modules.types import PMObject
 
 
-class ChatLogInstance(PMObject):
+class ChatLogSessionInstance(PMObject):
     id: int
     created_at: str
     uuid: str
