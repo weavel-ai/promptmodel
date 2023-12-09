@@ -2,47 +2,8 @@ from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from enum import Enum
 from uuid import UUID
-
-
-class PromptConfig(BaseModel):
-    role: str
-    step: int
-    content: str
-
-
-class PromptModelRunConfig(BaseModel):
-    prompt_model_uuid: str
-    prompts: List[PromptConfig]
-    model: Optional[str] = "gpt-3.5-turbo"
-    from_version: Optional[int] = None
-    version_uuid: Optional[str] = None
-    sample_name: Optional[str] = None
-    parsing_type: Optional[str] = None
-    output_keys: Optional[List[str]] = None
-    functions: Optional[List[str]] = []
-
-
-class ChatModelRunConfig(BaseModel):
-    chat_model_uuid: str
-    system_prompt: str
-    user_input: str
-    model: Optional[str] = "gpt-3.5-turbo"
-    from_version: Optional[int] = None
-    session_uuid: Optional[str] = None
-    version_uuid: Optional[str] = None
-    functions: Optional[List[str]] = []
-
-
-class RunLog(BaseModel):
-    inputs: Dict[str, Any]
-    raw_output: str
-    parsed_outputs: Dict[str, Any]
-
-
-class ChatLog(BaseModel):
-    role: str
-    content: str
-    tool_calls: Optional[Dict[str, Any]] = None
+from datetime import datetime, date
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
 
 class LocalTaskErrorType(str, Enum):
@@ -59,54 +20,18 @@ class InstanceType(str, Enum):
     ChatLogSession = "ChatLogSession"
 
 
-class WeavelObject(BaseModel):
+class PMObject(BaseModel):
     def __init__(self, **data: Any):
         for key, value in data.items():
             if key in self.__annotations__ and self.__annotations__[key] == str:
-                try:
-                    data[key] = str(value)
-                except:
-                    data[key] = value
+                if (
+                    isinstance(value, UUID)
+                    or isinstance(value, PGUUID)
+                    or isinstance(value, datetime)
+                    or isinstance(value, date)
+                ):
+                    try:
+                        data[key] = str(value)
+                    except:
+                        data[key] = value
         super().__init__(**data)
-
-
-class DeployedPromptModelVersionInstance(WeavelObject):
-    uuid: str
-    from_version: Optional[int]
-    prompt_model_uuid: str
-    model: str
-    is_published: bool
-    is_ab_test: Optional[bool]
-    ratio: Optional[float]
-    parsing_type: Optional[str]
-    output_keys: Optional[List[str]]
-
-
-class DeployedChatModelVersionInstance(WeavelObject):
-    uuid: str
-    from_version: Optional[int]
-    chat_model_uuid: str
-    model: str
-    is_published: bool
-    is_ab_test: Optional[bool]
-    ratio: Optional[float]
-    system_prompt: str
-
-
-class DeployedPromptModelInstance(WeavelObject):
-    uuid: str
-    name: str
-
-
-class DeployedPromptInstance(WeavelObject):
-    version_uuid: str
-    role: str
-    content: str
-    step: int
-
-
-class DeployedChatLogInstance(WeavelObject):
-    role: str
-    name: Optional[str] = None
-    content: Optional[str] = None
-    tool_calls: Optional[Dict[str, Any]] = None

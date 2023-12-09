@@ -27,7 +27,7 @@ class UserOrganizations(Base):
     __tablename__ = "user_organizations"
 
     user_id: str = Column(Text, primary_key=True)
-    organization_id: str = Column(Text)
+    organization_id: str = Column(Text, primary_key=True)
 
     name: str = Column(Text)
     slug: str = Column(Text)
@@ -36,12 +36,12 @@ class UserOrganizations(Base):
 class ChatLogView(Base):
     __tablename__ = "chat_log_view"
 
-    assistant_log_id: int = Column(BigInteger)
+    assistant_log_id: int = Column(BigInteger, primary_key=True)
     # TODO: fix this into UUID
 
     project_uuid: UUIDType = Column(UUID(as_uuid=True))
 
-    chat_model_uuid: UUIDType = Column(UUID(as_uuid=True), primary_key=True)
+    chat_model_uuid: UUIDType = Column(UUID(as_uuid=True))
 
     chat_model_name: str = Column(Text)
 
@@ -87,9 +87,9 @@ class DailyChatLogMetric(Base):
 
     chat_model_name: str = Column(Text)
 
-    day: date = Column(Date)
-    total_cost: float = Column(Float)
-    avg_latency: float = Column(Float)
+    day: date = Column(Date, primary_key=True)
+    total_cost: Optional[float] = Column(Float)
+    avg_latency: Optional[float] = Column(Float)
     total_token_usage: Dict[str, Any] = Column(JSONB)
     total_chat_sessions: int = Column(BigInteger)
 
@@ -101,9 +101,9 @@ class DailyRunLogMetric(Base):
 
     prompt_model_name: str = Column(Text)
 
-    day: date = Column(Date)
-    total_cost: float = Column(Float)
-    avg_latency: float = Column(Float)
+    day: date = Column(Date, primary_key=True)
+    total_cost: Optional[float] = Column(Float)
+    avg_latency: Optional[float] = Column(Float)
     total_token_usage: Dict[str, Any] = Column(JSONB)
     total_runs: int = Column(BigInteger)
 
@@ -150,9 +150,10 @@ class DeployedPromptModelVersion(Base):
 class DeploymentRunLogView(Base):
     __tablename__ = "deployment_run_log_view"
 
+    run_log_uuid: UUIDType = Column(UUID(as_uuid=True), primary_key=True)
     project_uuid: UUIDType = Column(UUID(as_uuid=True))
 
-    prompt_model_uuid: UUIDType = Column(UUID(as_uuid=True), primary_key=True)
+    prompt_model_uuid: UUIDType = Column(UUID(as_uuid=True))
 
     prompt_model_name: str = Column(Text)
 

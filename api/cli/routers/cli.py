@@ -1,9 +1,7 @@
 """APIs for package management"""
-import asyncio
-from operator import truediv
-from uuid import UUID, uuid4
+from uuid import uuid4
 
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import Result, select, asc, desc, update
 
@@ -12,9 +10,7 @@ from fastapi import (
     Response,
     HTTPException,
     WebSocket,
-    WebSocketDisconnect,
     Depends,
-    Query,
 )
 from fastapi.responses import JSONResponse
 from starlette.status import (
@@ -27,26 +23,32 @@ from starlette.status import (
 )
 
 from utils.security import get_api_key, get_project, get_cli_user_id
-from utils.dependency import get_websocket_token
+from api.dependency import get_websocket_token
 from utils.logger import logger
 
 from base.database import get_session
 from base.websocket_connection import websocket_manager
 from crud import update_instances, pull_instances, save_instances
 from db_models import *
-from modules.types import (
-    InstanceType,
+from modules.types import InstanceType
+from litellm.utils import completion_cost
+from ..models import (
     DeployedPromptModelVersionInstance,
     DeployedChatModelVersionInstance,
     DeployedPromptInstance,
     DeployedPromptModelInstance,
+    UsersOrganizationsInstance,
+    CliProjectInstance,
+    CheckUpdateResponseInstance,
+    FetchPromptModelVersionResponseInstance,
+    FetchChatModelVersionResponseInstance,
+    CliChatLogInstance,
 )
-from litellm.utils import completion_cost
 
 router = APIRouter()
 
 
-@router.get("/check_cli_access")
+@router.get("/check_cli_access", response_model=bool)
 async def check_cli_access(
     api_key: str = Depends(get_api_key), session: AsyncSession = Depends(get_session)
 ):
@@ -59,14 +61,14 @@ async def check_cli_access(
     return True  # Response(status_code=HTTP_200_OK)
 
 
-@router.get("/list_orgs")
+@router.get("/list_orgs", response_model=List[UsersOrganizationsInstance])
 async def list_orgs(
     user_id: str = Depends(get_cli_user_id),
     session: AsyncSession = Depends(get_session),
 ):
     """List user's organizations"""
     try:
-        res: Result = (
+        res = (
             (
                 await session.execute(
                     select(
@@ -86,7 +88,7 @@ async def list_orgs(
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.get("/list_projects")
+@router.get("/list_projects", response_model=List[CliProjectInstance])
 async def list_projects(
     organization_id: str,
     user_id: str = Depends(get_cli_user_id),
@@ -99,13 +101,13 @@ async def list_projects(
                 Project.uuid, Project.name, Project.description, Project.version
             ).where(Project.organization_id == organization_id)
         )
-        return res.mappings().all()
+        return [dict(x) for x in res.mappings().all()]
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.get("/get_project_version")
+@router.get("/get_project_version", response_model=int)
 async def get_project_version(
     project_uuid: str,
     user_id: str = Depends(get_cli_user_id),
@@ -158,6 +160,7 @@ async def check_update(
                 "version": project_version,
                 "project_status": None,
             }
+            print(res)
             return JSONResponse(res, status_code=HTTP_200_OK)
         else:
             need_update = True
@@ -232,7 +235,10 @@ async def check_update(
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.get("/fetch_prompt_model_version")
+@router.get(
+    "/fetch_prompt_model_version",
+    response_model=FetchPromptModelVersionResponseInstance,
+)
 async def fetch_prompt_model_version(
     prompt_model_name: str,
     version: Optional[Union[str, int]] = "deploy",
@@ -287,7 +293,6 @@ async def fetch_prompt_model_version(
                     DeployedPromptModelVersionInstance(**x.model_dump()).model_dump()
                     for x in deployed_prompt_model_versions
                 ]
-
                 versions_uuid_list = [
                     str(x["uuid"]) for x in deployed_prompt_model_versions
                 ]
@@ -405,7 +410,10 @@ async def fetch_prompt_model_version(
         ) from exc
 
 
-@router.get("/fetch_chat_model_version_with_chat_log")
+@router.get(
+    "/fetch_chat_model_version_with_chat_log",
+    response_model=FetchChatModelVersionResponseInstance,
+)
 async def fetch_chat_model_version_with_chat_log(
     chat_model_name: str,
     session_uuid: Optional[str] = None,
@@ -838,6 +846,7 @@ async def save_instances_in_code(
             session.add_all(changelogs_rows)
             await session.commit()
 
+        return Response(status_code=HTTP_200_OK)
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc

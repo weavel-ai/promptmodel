@@ -1,23 +1,14 @@
 """APIs for promptmodel webpage"""
 import re
 import json
-import secrets
 from datetime import datetime, timezone
-from operator import eq
-from typing import Any, AsyncGenerator, Dict, List, Optional, Sequence, Tuple, Union
-from pydantic import BaseModel
+from typing import Any, AsyncGenerator, Dict, Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Result, select, asc, desc, update
+from sqlalchemy import select, asc, desc, update
 
-from fastapi import APIRouter, HTTPException, Depends, Response
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
-    HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 from promptmodel.llms.llm_dev import LLMDev
@@ -27,38 +18,10 @@ from utils.logger import logger
 from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from modules.types import PromptModelRunConfig, ChatModelRunConfig
+from api.common.models import PromptModelRunConfig, ChatModelRunConfig
 from db_models import *
 
 router = APIRouter()
-
-
-class ProjectInstance(BaseModel):
-    name: str
-    organization_id: str
-
-
-@router.post("/project")
-async def create_project(
-    project: ProjectInstance, session: AsyncSession = Depends(get_session)
-):
-    """Generate a safe API key and create new project."""
-    api_key = secrets.token_urlsafe(32)  # generate a random URL-safe key
-    try:
-        new_project = Project(
-            name=project.name, organization_id=project.organization_id, api_key=api_key
-        )
-        session.add(new_project)
-        await session.commit()
-        await session.refresh(new_project)
-
-        return new_project
-
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
-        ) from exc
 
 
 @router.post("/run_prompt_model")
@@ -67,25 +30,7 @@ async def run_prompt_model(
     run_config: PromptModelRunConfig,
     session: AsyncSession = Depends(get_session),
 ):
-    """Run PromptModel for cloud development environment.
-
-    Args:
-        run_config (PromptModelRunConfig):
-            prompt_model_uuid: str
-            prompts: List of prompts (type, step, content)
-            model: str
-            from_version: previous version number (Optional)
-            version_uuid: current version uuid (Optional if from_version is provided)
-            sample_name: Sample name (Optional)
-            parsing_type: ParsingType (colon, square_bracket, double_square_bracket, html)
-            output_keys: List of output keys (Optional)
-            functions: List of function schemas (Optional)
-    Output:
-        StreamingResponse
-            raw_output: str
-            parsed_outputs: Dict
-            status: "completed" | "failed" | "running"
-    """
+    """Run PromptModel for cloud development environment."""
 
     async def stream_run():
         async for chunk in run_cloud_prompt_model(
@@ -448,27 +393,7 @@ async def run_chat_model(
     chat_config: ChatModelRunConfig,
     session: AsyncSession = Depends(get_session),
 ):
-    """Run ChatModel from web.
-
-    Args:
-        chat_config (ChatModelRunConfig):
-            chat_model_uuid: (str)
-            system_prompt: str
-            user_input: str
-            model: str
-            from_version: previous version number (Optional)
-            session_uuid: current session uuid (Optional)
-            version_uuid: current version uuid (Optional if from_version is provided)
-            functions: List of functions (Optional)
-
-    Raises:
-        HTTPException: 500
-
-    Returns:
-        StreamingResponse
-            raw_output: str
-            status: "completed" | "failed" | "running"
-    """
+    """Run ChatModel from web."""
 
     async def stream_run():
         async for chunk in run_cloud_chat_model(
