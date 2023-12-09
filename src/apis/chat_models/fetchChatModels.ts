@@ -1,6 +1,6 @@
 import { railwayWebClient } from "@/apis/base";
 import { ReadChatModelsRequest } from "@/types/ChatModel";
-import { ChatModel } from "../chatModel";
+import { ChatModel } from "@/types/ChatModel";
 
 /**
  * Reads a project's ChatModels.

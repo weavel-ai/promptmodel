@@ -206,7 +206,7 @@ export default function Page() {
             of{" "}
             {Math.ceil(
               (selectedTab == Tab.PROMPT_MODEL
-                ? runLogCountData?.run_logs_count
+                ? runLogCountData?.count
                 : chatLogCountData?.count) / ROWS_PER_PAGE
             )}
           </p>
@@ -217,7 +217,7 @@ export default function Page() {
                 page <
                 Math.ceil(
                   (selectedTab == Tab.PROMPT_MODEL
-                    ? runLogCountData?.run_logs_count
+                    ? runLogCountData?.count
                     : chatLogCountData?.count) / ROWS_PER_PAGE
                 )
               ) {
@@ -236,7 +236,7 @@ export default function Page() {
           <p className="text-muted-content">
             Total{" "}
             {selectedTab == Tab.PROMPT_MODEL
-              ? runLogCountData?.run_logs_count
+              ? runLogCountData?.count
               : chatLogCountData?.count}{" "}
             runs
           </p>

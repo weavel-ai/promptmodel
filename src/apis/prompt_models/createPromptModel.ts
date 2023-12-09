@@ -1,6 +1,6 @@
 import { railwayWebClient } from "@/apis/base";
 import { CreatePromptModelRequest } from "@/types/PromptModel";
-import { PromptModel } from "../promptModel";
+import { PromptModel } from "@/types/PromptModel";
 
 /**
  * Creates a new PromptModel in the system.

@@ -1,6 +1,6 @@
 import { railwayWebClient } from "@/apis/base";
 import { ReadPromptModelsRequest } from "@/types/PromptModel";
-import { PromptModel } from "../promptModel";
+import { PromptModel } from "@/types/PromptModel";
 
 /**
  * Reads a project's PromptModels.

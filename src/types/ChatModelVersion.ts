@@ -20,7 +20,7 @@ export interface ReadChatModelVersionRequest {
 export interface UpdatePublishedChatModelVersionRequest {
   uuid: string; // ChatModelVersion UUID
   project_uuid: string;
-  project_version: string;
+  project_version: number;
   previous_published_version_uuid: string;
 }
 

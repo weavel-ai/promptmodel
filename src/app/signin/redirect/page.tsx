@@ -1,17 +1,20 @@
 "use client";
 
 import { useSupabaseClient } from "@/apis/supabase";
-import { createUser, fetchUser } from "@/apis/user";
+import { fetchUser } from "@/apis/users";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { env } from "@/constants";
+/**
+ * @todo Change this to use backend server
+ */
+import { createUser } from "@/apis/user";
 
 export default function Page() {
   const router = useRouter();
-  const params = useSearchParams();
   const { supabase } = useSupabaseClient();
-  const { userId, isSignedIn, user } = useAuth();
+  const { isSignedIn, user, userId } = useAuth();
 
   // Save Clerk user id and email to supabase if user not created yet
   useEffect(() => {
@@ -19,9 +22,9 @@ export default function Page() {
       if (!isSignedIn) return;
     } else {
       if (!isSignedIn || !supabase) return;
-      fetchUser(supabase, userId)
+      fetchUser({ email: user.email })
         .then(async (data) => {
-          if (!data || data.length == 0) {
+          if (!data) {
             createUser(supabase, userId, user.email);
           }
         })

@@ -1,6 +1,6 @@
 import { railwayWebClient } from "@/apis/base";
 import { CreateChatModelRequest } from "@/types/ChatModel";
-import { ChatModel } from "../chatModel";
+import { ChatModel } from "@/types/ChatModel";
 
 /**
  * Creates a new ChatModel in the system.

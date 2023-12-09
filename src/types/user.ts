@@ -20,6 +20,17 @@ export interface CreateUserRequest {
 }
 
 /**
+ * Interface for Clerk registered user creation request.
+ * Includes all necessary fields for creating a new Clerk registered user account.
+ */
+export interface CreateClerkUserRequest {
+  userId: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+/**
  * Interface for the request to read a user's information.
  */
 export interface ReadUserRequest {

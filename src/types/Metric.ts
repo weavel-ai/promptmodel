@@ -41,8 +41,8 @@ export interface RunLogMetric extends Metric {
  * General interface for ChatLogMetric.
  */
 export interface ChatLogMetric extends Metric {
-  project_name: string;
-  chat_model_uuid: string;
-  chat_model_name: string;
+  project_name?: string;
+  chat_model_uuid?: string;
+  chat_model_name?: string;
   total_chat_sessions: number;
 }

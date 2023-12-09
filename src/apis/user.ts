@@ -1,15 +1,15 @@
-// import { SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 
-// export async function createUser(
-//   supabaseClient: SupabaseClient,
-//   userId: string,
-//   email: string
-// ) {
-//   const res = await supabaseClient
-//     .from("user")
-//     .insert({ user_id: userId, email: email });
-//   return res.data;
-// }
+export async function createUser(
+  supabaseClient: SupabaseClient,
+  userId: string,
+  email: string
+) {
+  const res = await supabaseClient
+    .from("user")
+    .insert({ user_id: userId, email: email });
+  return res.data;
+}
 
 // export async function fetchUser(
 //   supabaseClient: SupabaseClient,
