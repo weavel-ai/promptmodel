@@ -2,15 +2,12 @@
 
 import { useChangeLog } from "@/hooks/useChangelog";
 import { useProject } from "@/hooks/useProject";
-import { CaretLeft } from "@phosphor-icons/react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { motion } from "framer-motion";
-import classNames from "classnames";
 import { useRunLogCount } from "@/hooks/useRunLogCount";
-import { useChatLogCount } from "@/hooks/useChatLogCount";
+import { useChatLogCount } from "@/hooks/useChatMessagesCount";
 dayjs.extend(relativeTime);
 
 export default function Page() {
@@ -18,7 +15,7 @@ export default function Page() {
   const { projectData } = useProject();
   const { changeLogListData } = useChangeLog();
   const { runLogCountData } = useRunLogCount();
-  const { chatLogCountData } = useChatLogCount();
+  const { chatMessagesCountData: chatLogCountData } = useChatLogCount();
 
   return (
     <div className="w-full h-full pl-28 pt-20 pb-8">
@@ -41,10 +38,7 @@ export default function Page() {
               </p>
               <p className="text-sm text-neutral-content">
                 Total runs:{" "}
-                <b>
-                  {runLogCountData?.run_logs_count +
-                    chatLogCountData?.chat_logs_count}
-                </b>
+                <b>{runLogCountData?.count + chatLogCountData?.count}</b>
               </p>
               {/* TODO */}
             </div>

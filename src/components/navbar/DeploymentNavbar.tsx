@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { PRODUCT_NAME } from "@/constants";
+import { PRODUCT_NAME, env } from "@/constants";
 import classNames from "classnames";
 import {
   useParams,
@@ -10,25 +10,22 @@ import {
   useRouter,
   useSearchParams,
 } from "next/navigation";
-import {
-  OrganizationSwitcher,
-  useAuth,
-  useOrganization,
-  useUser,
-} from "@clerk/nextjs";
+import { OrganizationSwitcher } from "@clerk/nextjs";
+import { useAuth } from "@/hooks/auth/useAuth";
+import { useOrganization } from "@/hooks/auth/useOrganization";
 import { SignInButton } from "../buttons/SignInButton";
 import { useMediaQuery } from "react-responsive";
 import { AnimatedUnderline } from "../AnimatedUnderline";
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import { CaretRight } from "@phosphor-icons/react";
 import { Michroma, Russo_One } from "next/font/google";
-import { fetchOrganization, updateOrganization } from "@/apis/organization";
 import { useOrgData } from "@/hooks/useOrgData";
 import { useProject } from "@/hooks/useProject";
-import { usePromptModel } from "@/hooks/usePromptModel";
+import { useFunctionModel } from "@/hooks/useFunctionModel";
 import { SelectNavigator } from "../SelectNavigator";
 import { useChatModel } from "@/hooks/useChatModel";
 import { LocalConnectionStatus } from "../LocalConnectionStatus";
+import { updateOrganization } from "@/apis/organizations";
 
 const michroma = Michroma({
   weight: ["400"],
@@ -49,18 +46,18 @@ export const DeploymentNavbar = (props: NavbarProps) => {
   const { organization } = useOrganization();
   const { orgData, refetchOrgData } = useOrgData();
   const { projectData, projectListData } = useProject();
-  const { promptModelListData } = usePromptModel();
+  const { functionModelListData } = useFunctionModel();
   const { chatModelListData } = useChatModel();
   // Mobile
   const isMobile = useMediaQuery({ query: "(max-width: 768px)" });
   const [showDropdown, setShowDropdown] = useState(false);
 
   const modelType = useMemo(() => {
-    if (params?.promptModelUuid) return "PromptModel";
+    if (params?.functionModelUuid) return "FunctionModel";
     if (params?.chatModelUuid) return "ChatModel";
 
     return null;
-  }, [params?.promptModelUuid, params?.chatModelUuid]);
+  }, [params?.functionModelUuid, params?.chatModelUuid]);
 
   useEffect(() => {
     if (isMobile) {
@@ -80,12 +77,11 @@ export const DeploymentNavbar = (props: NavbarProps) => {
         orgData.name != organization?.name ||
         orgData.slug != organization?.slug
       ) {
-        updateOrganization(
-          supabase,
-          organization?.id,
-          organization?.name,
-          organization?.slug
-        ).then(() => {
+        updateOrganization({
+          organization_id: organization?.id,
+          name: organization?.name,
+          slug: organization?.slug,
+        }).then(() => {
           refetchOrgData();
         });
         // From the current route path, replace the current org_slug with the new org_slug
@@ -116,8 +112,8 @@ export const DeploymentNavbar = (props: NavbarProps) => {
           pathname == "/signup" ||
           pathname == "/signin"
           ? "max-w-6xl w-full self-center"
-          : "w-screen px-6",
-        "flex justify-center h-12 py-2 transition-all",
+          : "w-screen",
+        "flex justify-center h-12 py-2 px-6 transition-all",
         "fixed top-0",
         "bg-base-100/5 backdrop-blur-sm z-50"
       )}
@@ -154,12 +150,18 @@ export const DeploymentNavbar = (props: NavbarProps) => {
               </div>
             ) : (
               <div className="h-[32px]">
-                <OrganizationSwitcher
-                  hidePersonal
-                  afterCreateOrganizationUrl="/org/redirect"
-                  afterSelectOrganizationUrl="/org/redirect"
-                  createOrganizationUrl="/org/new"
-                />
+                {env?.SELF_HOSTED ? (
+                  <div className="py-1 px-2 rounded-md bg-base-300 font-sans font-medium ">
+                    {organization?.name}
+                  </div>
+                ) : (
+                  <OrganizationSwitcher
+                    hidePersonal
+                    afterCreateOrganizationUrl="/org/redirect"
+                    afterSelectOrganizationUrl="/org/redirect"
+                    createOrganizationUrl="/org/new"
+                  />
+                )}
               </div>
             )}
             {/* Project navigator */}
@@ -195,26 +197,26 @@ export const DeploymentNavbar = (props: NavbarProps) => {
                   />
                 </div>
               )}
-              {/* PromptModel navigator */}
-              {params?.promptModelUuid && (
+              {/* FunctionModel navigator */}
+              {params?.functionModelUuid && (
                 <SelectNavigator
                   statusType="usage"
                   current={{
-                    label: promptModelListData?.find(
-                      (promptModel) =>
-                        promptModel.uuid == params?.promptModelUuid
+                    label: functionModelListData?.find(
+                      (functionModel) =>
+                        functionModel.uuid == params?.functionModelUuid
                     )?.name,
-                    online: promptModelListData?.find(
-                      (promptModel) =>
-                        promptModel.uuid == params?.promptModelUuid
+                    online: functionModelListData?.find(
+                      (functionModel) =>
+                        functionModel.uuid == params?.functionModelUuid
                     )?.online,
-                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/prompt_models/${params?.promptModelUuid}`,
+                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/function_models/${params?.functionModelUuid}`,
                   }}
-                  options={promptModelListData?.map((promptModel) => {
+                  options={functionModelListData?.map((functionModel) => {
                     return {
-                      label: promptModel.name,
-                      online: promptModel.online,
-                      href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/prompt_models/${promptModel.uuid}`,
+                      label: functionModel.name,
+                      online: functionModel.online,
+                      href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/function_models/${functionModel.uuid}`,
                     };
                   })}
                 />

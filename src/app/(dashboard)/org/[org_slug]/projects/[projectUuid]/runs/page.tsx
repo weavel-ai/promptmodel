@@ -3,36 +3,25 @@
 import { useProject } from "@/hooks/useProject";
 import { useEffect, useState, useCallback } from "react";
 import classNames from "classnames";
-import {
-  ArrowLeft,
-  ArrowRight,
-  CloudArrowDown,
-  FileArrowDown,
-} from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, CloudArrowDown } from "@phosphor-icons/react";
 import ReactJson from "react-json-view";
-import {
-  fetchRunLogs,
-  fetchRunLogsCount,
-  subscribeRunLogs,
-} from "@/apis/runlog";
-import { useSupabaseClient } from "@/apis/base";
+import { subscribeRunLogs } from "@/apis/runlog";
+import { useSupabaseClient } from "@/apis/supabase";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { CSVLink } from "react-csv";
 import { SelectTab } from "@/components/SelectTab";
-import {
-  fetchChatLogs,
-  fetchChatLogsCount,
-  subscribeChatLogs,
-} from "@/apis/chatLog";
 import { cloneDeep, escapeCSV } from "@/utils";
 import { useRunLogCount } from "@/hooks/useRunLogCount";
-import { useChatLogCount } from "@/hooks/useChatLogCount";
+import { useChatLogCount } from "@/hooks/useChatMessagesCount";
+import { fetchProjectChatMessages } from "@/apis/chat_messages";
+import { subscribeChatLogs } from "@/apis/chatLog";
+import { fetchProjectRunLogs } from "@/apis/run_logs";
 
 const ROWS_PER_PAGE = 50;
 
 enum Tab {
-  PROMPT_MODEL = "PromptModel",
+  PROMPT_MODEL = "FunctionModel",
   CHAT_MODEL = "ChatModel",
 }
 
@@ -68,11 +57,18 @@ export default function Page() {
   } = useQuery({
     queryKey: ["runLogList", { projectUuid: projectData?.uuid, page: page }],
     queryFn: async () =>
-      await fetchRunLogs(supabase, projectData?.uuid, page, ROWS_PER_PAGE),
-    enabled: !!supabase && !!projectData?.uuid,
+      await fetchProjectRunLogs({
+        project_uuid: projectData?.uuid,
+        page: page,
+        rows_per_page: ROWS_PER_PAGE,
+      }),
+    enabled: !!projectData?.uuid,
   });
 
-  const { chatLogCountData, refetchChatLogCountData } = useChatLogCount();
+  const {
+    chatMessagesCountData: chatLogCountData,
+    refetchChatMessagesCountData: refetchChatLogCountData,
+  } = useChatLogCount();
 
   const {
     data: chatLogListData,
@@ -81,8 +77,12 @@ export default function Page() {
   } = useQuery({
     queryKey: ["chatLogList", { projectUuid: projectData?.uuid, page: page }],
     queryFn: async () =>
-      await fetchChatLogs(supabase, projectData?.uuid, page, ROWS_PER_PAGE),
-    enabled: !!supabase && !!projectData?.uuid,
+      await fetchProjectChatMessages({
+        project_uuid: projectData?.uuid,
+        page: page,
+        rows_per_page: ROWS_PER_PAGE,
+      }),
+    enabled: !!projectData?.uuid,
   });
 
   const subscribeToRunLogs = useCallback(async () => {
@@ -209,8 +209,8 @@ export default function Page() {
             of{" "}
             {Math.ceil(
               (selectedTab == Tab.PROMPT_MODEL
-                ? runLogCountData?.run_logs_count
-                : chatLogCountData?.chat_logs_count) / ROWS_PER_PAGE
+                ? runLogCountData?.count
+                : chatLogCountData?.count) / ROWS_PER_PAGE
             )}
           </p>
           <button
@@ -220,8 +220,8 @@ export default function Page() {
                 page <
                 Math.ceil(
                   (selectedTab == Tab.PROMPT_MODEL
-                    ? runLogCountData?.run_logs_count
-                    : chatLogCountData?.chat_logs_count) / ROWS_PER_PAGE
+                    ? runLogCountData?.count
+                    : chatLogCountData?.count) / ROWS_PER_PAGE
                 )
               ) {
                 setPage(page + 1);
@@ -239,8 +239,8 @@ export default function Page() {
           <p className="text-muted-content">
             Total{" "}
             {selectedTab == Tab.PROMPT_MODEL
-              ? runLogCountData?.run_logs_count
-              : chatLogCountData?.chat_logs_count}{" "}
+              ? runLogCountData?.count
+              : chatLogCountData?.count}{" "}
             runs
           </p>
         </div>
@@ -252,7 +252,7 @@ export default function Page() {
 const LogsUI = ({ logData, type }) => {
   const [showRaw, setShowRaw] = useState(true);
 
-  const isPromptModel = type == "PromptModel";
+  const isFunctionModel = type == "FunctionModel";
 
   return (
     <div
@@ -281,14 +281,14 @@ const LogsUI = ({ logData, type }) => {
                 </td>
                 <td>
                   <p className="text-lg font-medium">
-                    {isPromptModel ? "Input" : "User input"}
+                    {isFunctionModel ? "Input" : "User input"}
                   </p>
                 </td>
                 <td className="flex flex-row gap-x-6 items-center pe-8">
                   <p className="text-lg font-medium">
-                    {isPromptModel ? "Output" : "Assistant output"}
+                    {isFunctionModel ? "Output" : "Assistant output"}
                   </p>
-                  {isPromptModel && (
+                  {isFunctionModel && (
                     <div className="join">
                       <button
                         className={classNames(
@@ -333,19 +333,19 @@ const LogsUI = ({ logData, type }) => {
                 return (
                   <tr key={idx} className="border-b-2 border-base-300">
                     <td className="align-top">
-                      {isPromptModel
-                        ? log.prompt_model_name
+                      {isFunctionModel
+                        ? log.function_model_name
                         : log.chat_model_name}
                     </td>
                     <td className="align-top text-lg">
-                      {isPromptModel
-                        ? log.prompt_model_version
+                      {isFunctionModel
+                        ? log.function_model_version
                         : log.chat_model_version}
                     </td>
                     <td className="align-top">
                       {dayjs(log.created_at).format("YYYY. MM. DD HH:mm:ss")}
                     </td>
-                    {isPromptModel ? (
+                    {isFunctionModel ? (
                       <td className="align-top">
                         {log?.inputs == null ? (
                           <p>None</p>
@@ -365,7 +365,7 @@ const LogsUI = ({ logData, type }) => {
                     ) : (
                       <td className="align-top">{log?.user_input}</td>
                     )}
-                    {isPromptModel ? (
+                    {isFunctionModel ? (
                       <td className="align-top">
                         {showRaw ? (
                           <p className="whitespace-break-spaces">
@@ -388,7 +388,7 @@ const LogsUI = ({ logData, type }) => {
                     ) : (
                       <td className="align-top">{log?.assistant_output}</td>
                     )}
-                    {isPromptModel ? (
+                    {isFunctionModel ? (
                       <td className="align-top">
                         {log?.function_call == null ? (
                           <p>None</p>

@@ -1,29 +1,28 @@
-import { useSupabaseClient } from "@/apis/base";
 import { useQuery } from "@tanstack/react-query";
-import { usePromptModel } from "./usePromptModel";
-import {
-  fetchDailyChatLogMetrics,
-  fetchDailyRunLogMetrics,
-} from "@/apis/analytics";
+import { useFunctionModel } from "./useFunctionModel";
 import { useChatModel } from "./useChatModel";
+import { fetchDailyRunLogMetrics } from "@/apis/metrics/fetchDailyRunLogMetrics";
+import { fetchDailyChatLogMetrics } from "@/apis/metrics/fetchDailyChatLogMetrics";
 
-export const useDailyRunLogMetrics = (startDay, endDay) => {
-  const { promptModelUuid } = usePromptModel();
-  const { supabase } = useSupabaseClient();
+export const useDailyRunLogMetrics = (startDay: string, endDay: string) => {
+  const { functionModelUuid } = useFunctionModel();
 
   const { data: dailyRunLogMetrics } = useQuery({
     queryKey: [
       "dailyRunLogMetrics",
-      { promptModelUuid: promptModelUuid, startDay: startDay, endDay: endDay },
+      {
+        functionModelUuid: functionModelUuid,
+        startDay: startDay,
+        endDay: endDay,
+      },
     ],
     queryFn: async () =>
-      await fetchDailyRunLogMetrics(
-        supabase,
-        promptModelUuid,
-        startDay,
-        endDay
-      ),
-    enabled: !!supabase && !!promptModelUuid,
+      await fetchDailyRunLogMetrics({
+        function_model_uuid: functionModelUuid,
+        start_day: startDay,
+        end_day: endDay,
+      }),
+    enabled: !!functionModelUuid,
   });
 
   return {
@@ -33,7 +32,6 @@ export const useDailyRunLogMetrics = (startDay, endDay) => {
 
 export const useDailyChatLogMetrics = (startDay, endDay) => {
   const { chatModelUuid } = useChatModel();
-  const { supabase } = useSupabaseClient();
 
   const { data: dailyChatLogMetrics } = useQuery({
     queryKey: [
@@ -41,8 +39,12 @@ export const useDailyChatLogMetrics = (startDay, endDay) => {
       { chatModelUuid: chatModelUuid, startDay: startDay, endDay: endDay },
     ],
     queryFn: async () =>
-      await fetchDailyChatLogMetrics(supabase, chatModelUuid, startDay, endDay),
-    enabled: !!supabase && !!chatModelUuid,
+      await fetchDailyChatLogMetrics({
+        chat_model_uuid: chatModelUuid,
+        start_day: startDay,
+        end_day: endDay,
+      }),
+    enabled: !!chatModelUuid,
   });
 
   return {

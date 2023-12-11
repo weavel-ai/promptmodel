@@ -1,12 +1,9 @@
-import { useSupabaseClient } from "@/apis/base";
+import { fetchChatModelVersions } from "@/apis/chat_model_versions";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { fetchChatModelVersions } from "@/apis/chatModelVersion";
-import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
 
 export const useChatModelVersion = () => {
   const params = useParams();
-  const { supabase } = useSupabaseClient();
 
   const {
     data: chatModelVersionListData,
@@ -17,8 +14,10 @@ export const useChatModelVersion = () => {
       { chatModelUuid: params?.chatModelUuid },
     ],
     queryFn: async () =>
-      await fetchChatModelVersions(supabase, params?.chatModelUuid as string),
-    enabled: !!supabase && !!params?.chatModelUuid,
+      await fetchChatModelVersions({
+        chat_model_uuid: params?.chatModelUuid as string,
+      }),
+    enabled: !!params?.chatModelUuid,
   });
 
   return {

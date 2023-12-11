@@ -1,8 +1,8 @@
 import { fetchStream } from "./base";
 
-export async function streamPromptModelRun({
+export async function streamFunctionModelRun({
   projectUuid,
-  promptModelUuid,
+  functionModelUuid,
   prompts,
   model,
   fromVersion,
@@ -14,7 +14,7 @@ export async function streamPromptModelRun({
   onNewData,
 }: {
   projectUuid: string;
-  promptModelUuid: string;
+  functionModelUuid: string;
   prompts: { role: string; step: number; content: string }[];
   model: string;
   fromVersion?: string | null;
@@ -26,12 +26,12 @@ export async function streamPromptModelRun({
   onNewData?: (data: Record<string, any>) => void;
 }) {
   await fetchStream({
-    url: "/web/run_prompt_model",
+    url: "/web/run_function_model",
     params: {
       project_uuid: projectUuid,
     },
     body: {
-      prompt_model_uuid: promptModelUuid,
+      function_model_uuid: functionModelUuid,
       prompts: prompts,
       model: model,
       from_version: fromVersion,
@@ -45,9 +45,9 @@ export async function streamPromptModelRun({
   });
 }
 
-export async function streamLocalPromptModelRun({
+export async function streamLocalFunctionModelRun({
   projectUuid,
-  promptModelUuid,
+  functionModelUuid,
   prompts,
   model,
   fromVersion,
@@ -59,7 +59,7 @@ export async function streamLocalPromptModelRun({
   onNewData,
 }: {
   projectUuid: string;
-  promptModelUuid: string;
+  functionModelUuid: string;
   prompts: { role: string; step: number; content: string }[];
   model: string;
   fromVersion?: string | null;
@@ -71,12 +71,12 @@ export async function streamLocalPromptModelRun({
   onNewData?: (data: Record<string, any>) => void;
 }) {
   await fetchStream({
-    url: "/dev/run_prompt_model",
+    url: "/dev/run_function_model",
     params: {
       project_uuid: projectUuid,
     },
     body: {
-      prompt_model_uuid: promptModelUuid,
+      function_model_uuid: functionModelUuid,
       prompts: prompts,
       model: model,
       from_version: fromVersion,

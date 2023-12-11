@@ -14,8 +14,8 @@ import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useChatModelVersion } from "@/hooks/useChatModelVersion";
-import { useChatLogSessions } from "@/hooks/useChatLogSession";
-import { useSessionChatLogs } from "@/hooks/useSessionChatLogs";
+import { useChatSessions } from "@/hooks/useChatSession";
+import { useSessionChatMessages } from "@/hooks/useSessionChatMessages";
 import { streamChatModelRun, streamLocalChatModelRun } from "@/apis/stream";
 import { useChatModel } from "@/hooks/useChatModel";
 import { useProject } from "@/hooks/useProject";
@@ -36,8 +36,8 @@ export function ChatUI({
   const { chatModelUuid, chatModelData } = useChatModel();
   const { chatModelVersionListData, refetchChatModelVersionListData } =
     useChatModelVersion();
-  const { chatLogSessionListData, refetchChatLogSessionListData } =
-    useChatLogSessions(versionUuid);
+  const { chatSessionListData, refetchChatSessionListData } =
+    useChatSessions(versionUuid);
   const {
     fullScreenChatVersion,
     newVersionCache,
@@ -50,13 +50,18 @@ export function ChatUI({
     setNewVersionCache,
     setFullScreenChatVersion,
   } = useChatModelVersionStore();
+  const sessionUuidRef = useRef(null);
   const {
-    chatLogListData,
-    setChatLogListData,
-    refetchChatLogListData,
-    resetChatLogListData,
-  } = useSessionChatLogs(selectedSessionUuid);
+    chatMessageListData,
+    setChatMessageListData,
+    refetchChatMessageListData,
+    resetChatMessageListData,
+  } = useSessionChatMessages(sessionUuidRef.current);
   const scrollDivRef = useRef(null);
+
+  useEffect(() => {
+    sessionUuidRef.current = selectedSessionUuid;
+  }, [selectedSessionUuid]);
 
   // useEffect(() => {
   //   resetChatLogListData();
@@ -64,12 +69,12 @@ export function ChatUI({
 
   // Set initial session uuid
   useEffect(() => {
-    if (chatLogSessionListData?.length > 1) {
-      setSelectedSessionUuid(chatLogSessionListData[1].uuid);
+    if (chatSessionListData?.length > 1) {
+      setSelectedSessionUuid(chatSessionListData[1].uuid);
     } else {
       setSelectedSessionUuid(null);
     }
-  }, [chatLogSessionListData, selectedChatModelVersion]);
+  }, [chatSessionListData, selectedChatModelVersion]);
 
   // Scroll to bottom whenever chatLogListData changes
   useEffect(() => {
@@ -79,13 +84,13 @@ export function ChatUI({
         behavior: "smooth",
       });
     }
-  }, [chatLogListData, generatedMessage]);
+  }, [chatMessageListData, generatedMessage]);
 
   // Run ChatModel
   async function handleSubmit() {
     const userInput = chatInput;
-    setChatLogListData([
-      ...chatLogListData,
+    setChatMessageListData([
+      ...chatMessageListData,
       {
         role: "user",
         content: chatInput,
@@ -121,20 +126,17 @@ export function ChatUI({
         ? selectedFunctions
         : originalVersionData?.functions,
       onNewData: async (data) => {
-        console.log(data);
         switch (data?.status) {
           case "completed":
-            await refetchChatLogListData();
+            await refetchChatMessageListData();
             setGeneratedMessage(null);
-            setIsLoading(false);
             break;
           case "failed":
-            await refetchChatLogListData();
-            setGeneratedMessage(null);
+            await refetchChatMessageListData();
             toast.error(data?.log, {
               autoClose: 4000,
             });
-            setIsLoading(false);
+            setGeneratedMessage(null);
             break;
         }
         if (data?.chat_model_version_uuid && isNewVersion) {
@@ -146,9 +148,9 @@ export function ChatUI({
             functions: cloneDeep(selectedFunctions),
           });
         }
-        if (data?.chat_log_session_uuid) {
-          await refetchChatLogSessionListData();
-          setSelectedSessionUuid(data.chat_log_session_uuid);
+        if (data?.chat_session_uuid) {
+          setSelectedSessionUuid(data.chat_session_uuid);
+          await refetchChatSessionListData();
         }
         if (data?.raw_output) {
           cacheRawOutput += data?.raw_output;
@@ -162,6 +164,7 @@ export function ChatUI({
     } else {
       await streamChatModelRun(args);
     }
+
     setIsLoading(false);
 
     if (isNewVersion) {
@@ -202,7 +205,7 @@ export function ChatUI({
       <div className="flex flex-col justify-between w-full h-full overflow-hidden">
         <div ref={scrollDivRef} className="flex-grow w-full overflow-auto">
           <div className="flex-grow w-full flex flex-col justify-start gap-y-2 p-2">
-            {chatLogListData?.map((chatLog, idx) => {
+            {chatMessageListData?.map((chatLog, idx) => {
               return (
                 <div
                   className={classNames(
@@ -225,17 +228,17 @@ export function ChatUI({
                   >
                     {chatLog.content}
                   </div>
-                  {chatLog.token_usage && (
+                  {chatLog.tokens_count && (
                     <div className="chat-footer opacity-50">
-                      {chatLog.token_usage} tokens
+                      {chatLog?.tokens_count} tokens
                     </div>
                   )}
                 </div>
               );
             })}
             {generatedMessage != null &&
-              chatLogListData?.length > 0 &&
-              chatLogListData[chatLogListData?.length - 1]?.content !=
+              chatMessageListData?.length > 0 &&
+              chatMessageListData[chatMessageListData?.length - 1]?.content !=
                 generatedMessage && (
                 <div className="chat chat-start">
                   <div className="chat-header">

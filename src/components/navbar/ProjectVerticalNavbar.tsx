@@ -1,9 +1,8 @@
 "use client";
 
-import { useOrgData } from "@/hooks/useOrgData";
 import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
-import { usePromptModelVersionStore } from "@/stores/promptModelVersionStore";
-import { useOrganization } from "@clerk/nextjs";
+import { useFunctionModelVersionStore } from "@/stores/functionModelVersionStore";
+import { useOrganization } from "@/hooks/auth/useOrganization";
 import {
   DiscordLogo,
   GearSix,
@@ -24,25 +23,25 @@ export const ProjectVerticalNavbar = () => {
     setIsCreateVariantOpen: setIsCreateChatModelVariantOpen,
   } = useChatModelVersionStore();
   const {
-    isCreateVariantOpen: isCreatePromptModelVariantOpen,
-    setIsCreateVariantOpen: setIsCreatePromptModelVariantOpen,
-  } = usePromptModelVersionStore();
+    isCreateVariantOpen: isCreateFunctionModelVariantOpen,
+    setIsCreateVariantOpen: setIsCreateFunctionModelVariantOpen,
+  } = useFunctionModelVersionStore();
 
   useEffect(() => {
-    if (!params?.promptModelUuid) {
-      setIsCreatePromptModelVariantOpen(false);
+    if (!params?.functionModelUuid) {
+      setIsCreateFunctionModelVariantOpen(false);
     }
     if (!params?.chatModelUuid) {
       setIsCreateChatModelVariantOpen(false);
     }
   }, [
-    params?.promptModelUuid,
+    params?.functionModelUuid,
     params?.chatModelUuid,
     setIsCreateChatModelVariantOpen,
-    setIsCreatePromptModelVariantOpen,
+    setIsCreateFunctionModelVariantOpen,
   ]);
 
-  if (isCreateChatModelVariantOpen || isCreatePromptModelVariantOpen)
+  if (isCreateChatModelVariantOpen || isCreateFunctionModelVariantOpen)
     return null;
 
   return (

@@ -12,7 +12,7 @@ import ReactFlow, {
 import { motion } from "framer-motion";
 import { GitBranch, RocketLaunch, XCircle } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import { useSupabaseClient } from "@/apis/base";
+import { useSupabaseClient } from "@/apis/supabase";
 import "reactflow/dist/style.css";
 import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -36,10 +36,6 @@ import { useChatModelVersion } from "@/hooks/useChatModelVersion";
 import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
 import { useChatModelVersionDetails } from "@/hooks/useChatModelVersionDetails";
 import { ModelDisplay, ModelSelector } from "@/components/ModelSelector";
-import {
-  updateChatModelVersionMemo,
-  updatePublishedChatModelVersion,
-} from "@/apis/chatModelVersion";
 import { ChatUI } from "@/components/ChatUI";
 import { useWindowHeight, useWindowSize } from "@react-hook/window-size";
 import { FunctionSelector } from "@/components/select/FunctionSelector";
@@ -49,6 +45,10 @@ import { arePrimitiveListsEqual, cloneDeep, countStretchNodes } from "@/utils";
 import { ClickToEditInput } from "@/components/inputs/ClickToEditInput";
 import { VersionTag } from "@/components/VersionTag";
 import { TagsSelector } from "@/components/select/TagsSelector";
+import {
+  updateChatModelVersionMemo,
+  updatePublishedChatModelVersion,
+} from "@/apis/chat_model_versions";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -604,14 +604,12 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     const previousPublishedUuid = chatModelVersionListData?.find(
       (v) => v.is_published
     )?.uuid;
-
-    await updatePublishedChatModelVersion(
-      supabase,
-      selectedChatModelVersionUuid,
-      previousPublishedUuid,
-      projectData?.version,
-      projectData?.uuid
-    );
+    await updatePublishedChatModelVersion({
+      uuid: selectedChatModelVersionUuid,
+      project_uuid: projectData?.uuid,
+      previous_published_version_uuid: previousPublishedUuid,
+      project_version: projectData?.version,
+    });
     await refetchChatModelVersionListData();
     queryClient.invalidateQueries({
       predicate: (query: any) => query.queryKey[0] === "chatModelVersionData",
@@ -627,11 +625,10 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
   }
 
   async function handleSetMemo(newMemo: string) {
-    await updateChatModelVersionMemo(
-      supabase,
-      selectedChatModelVersionUuid,
-      newMemo
-    );
+    await updateChatModelVersionMemo({
+      uuid: selectedChatModelVersionUuid,
+      memo: newMemo,
+    });
     queryClient.invalidateQueries([
       "chatModelVersionData",
       { uuid: selectedChatModelVersionUuid },

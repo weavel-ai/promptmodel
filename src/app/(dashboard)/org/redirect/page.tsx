@@ -1,11 +1,13 @@
 "use client";
 
-import { useSupabaseClient } from "@/apis/base";
-import { createOrganization, fetchOrganization } from "@/apis/organization";
+import { useSupabaseClient } from "@/apis/supabase";
 import { logEvent } from "@/services/amplitude";
-import { useAuth, useOrganization } from "@clerk/nextjs";
+import { useAuth } from "@/hooks/auth/useAuth";
+import { useOrganization } from "@/hooks/auth/useOrganization";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { env } from "@/constants";
+import { createOrganization, fetchOrganization } from "@/apis/organizations";
 
 export default function Page() {
   const router = useRouter();
@@ -29,18 +31,28 @@ export default function Page() {
   }, [loadingTime, organization?.id]);
 
   useEffect(() => {
+    console.log(organization);
+  }, [organization]);
+
+  useEffect(() => {
+    if (env.SELF_HOSTED && organization?.slug != null) {
+      router.push(`/org/${organization.slug}`);
+      return;
+    }
     if (!isLoaded || !supabase) return;
     if (organization?.id != null && organization?.slug != null) {
-      fetchOrganization(supabase, organization.id)
+      fetchOrganization({ organization_id: organization.id })
         .then(async (data) => {
-          if (data?.length == 0) {
-            await createOrganization(
-              supabase,
-              organization.id,
-              organization?.slug,
-              userId,
-              organization.name
-            );
+          if (!data) {
+            /**
+             * @todo Test this
+             */
+            await createOrganization({
+              organization_id: organization.id,
+              slug: organization?.slug,
+              user_id: userId,
+              name: organization.name,
+            });
 
             logEvent("org_created", { user_id: userId });
           }

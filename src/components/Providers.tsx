@@ -1,11 +1,13 @@
 "use client";
 
+import { SessionProvider } from "next-auth/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "react-toastify/dist/ReactToastify.css";
 import { ToastContainer, toast } from "react-toastify";
 import { initAmplitude } from "@/services/amplitude";
 import { RealtimeProvider } from "./providers/RealtimeProvider";
 import { useEffect } from "react";
+import { env } from "@/constants";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,12 +17,12 @@ const queryClient = new QueryClient({
   },
 });
 
-export function Providers({ children }) {
+export function Providers({ children, session }) {
   if (typeof window !== "undefined") {
     initAmplitude();
   }
 
-  return (
+  const content = (
     <QueryClientProvider client={queryClient}>
       <ToastContainer
         position="top-right"
@@ -39,4 +41,10 @@ export function Providers({ children }) {
       {/* </ThemeProvider> */}
     </QueryClientProvider>
   );
+
+  if (env.SELF_HOSTED) {
+    return <SessionProvider session={session}>{content}</SessionProvider>;
+  }
+
+  return content;
 }

@@ -1,13 +1,12 @@
 "use client";
 
-import { useSupabaseClient } from "@/apis/base";
-import { upsertCliAccess } from "@/apis/cliAccess";
-import { useAuth } from "@clerk/nextjs";
+import { useSupabaseClient } from "@/apis/supabase";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import Confetti from "react-confetti";
-import classNames from "classnames";
+import { updateCliAccess } from "@/apis/cli_access";
 
 export default function Page() {
   const searchParams = useSearchParams();
@@ -32,7 +31,10 @@ export default function Page() {
       router.push("/org/redirect");
       setLoading(false);
     }
-    const res = await upsertCliAccess(supabase, userId, token);
+    const res = await updateCliAccess({
+      user_id: userId,
+      api_key: token,
+    });
     if (!res) {
       toast.error("Failed to grant access.");
       setLoading(false);
@@ -74,7 +76,7 @@ export default function Page() {
         <div className="bg-gradient-to-br from-base-200/50 to-base-200 rounded-box p-6 flex flex-col gap-y-2 justify-start items-start">
           <p className="text-base-content font-semibold text-2xl">CLI Login</p>
           <p className="text-base-content">
-            PromptModel CLI you are running is requesting access to your
+            FunctionModel CLI you are running is requesting access to your
             account.
           </p>
           <button

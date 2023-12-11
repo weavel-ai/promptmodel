@@ -1,6 +1,6 @@
-import { RunLog } from "@/apis/runlog";
+import { RunLog } from "@/types/RunLog";
 import { useRunLogs } from "@/hooks/useRunLog";
-import { usePromptModelVersionStore } from "@/stores/promptModelVersionStore";
+import { useFunctionModelVersionStore } from "@/stores/functionModelVersionStore";
 import { CornersOut } from "@phosphor-icons/react";
 import classNames from "classnames";
 import { useEffect, useState } from "react";
@@ -22,7 +22,7 @@ export function RunLogUI({
     runLogs,
     fullScreenRunVersionUuid,
     setFullScreenRunVersionUuid,
-  } = usePromptModelVersionStore();
+  } = useFunctionModelVersionStore();
   const [runLogList, setRunLogList] = useState<RunLog[]>([]);
 
   useEffect(() => {
@@ -42,12 +42,12 @@ export function RunLogUI({
         ...runLogData.map((log) => {
           let parsedInputs, parsedOutputs;
           try {
-            parsedInputs = JSON.parse(log.inputs);
+            parsedInputs = log.inputs;
           } catch (e) {
             parsedInputs = log.inputs;
           }
           try {
-            parsedOutputs = JSON.parse(log.parsed_outputs);
+            parsedOutputs = log.parsed_outputs;
           } catch (e) {
             parsedOutputs = log.parsed_outputs;
           }
@@ -185,8 +185,6 @@ const RunLogComponent = ({
       <td className="align-top w-fit">
         {runLogData?.inputs == null ? (
           <p>None</p>
-        ) : typeof runLogData?.inputs == "string" ? (
-          <p>{runLogData?.inputs?.toString()}</p>
         ) : (
           <ReactJson
             src={runLogData?.inputs as Record<string, any>}
@@ -218,8 +216,6 @@ const RunLogComponent = ({
       <td className="align-top w-fit">
         {runLogData?.function_call == null ? (
           <p>None</p>
-        ) : typeof runLogData?.function_call == "string" ? (
-          <p>{runLogData?.function_call?.toString()}</p>
         ) : (
           <ReactJson
             src={{
