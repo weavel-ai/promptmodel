@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_DB: yourdbname
+      POSTGRES_USER: youruser
+      POSTGRES_PASSWORD: yourpassword
+    volumes:
+      - ./volumes/db/data:/var/lib/postgresql/data:Z
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: ./backend
+    environment:
+      - DB_HOST=db
+      - DB_NAME=yourdbname
+      - DB_USER=youruser
+      - DB_PASSWORD=yourpassword
+      - DB_PORT=5432
+    command: uvicorn server:app --host 0.0.0.0 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    command: pnpm 
+
+volumes:
+  postgres_data:
