@@ -6,8 +6,8 @@ from modules.types import PMObject
 
 
 class DailyRunLogMetricInstance(PMObject):
-    prompt_model_uuid: str
-    prompt_model_name: str
+    function_model_uuid: str
+    function_model_name: str
     day: str
     total_cost: Optional[float]
     avg_latency: Optional[float]

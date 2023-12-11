@@ -34,6 +34,7 @@ class ChatModel(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
+        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 
@@ -62,6 +63,7 @@ class ChatModelVersion(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
+        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 
@@ -82,13 +84,13 @@ class ChatModelVersion(Base):
     )
 
     # chat_model: "ChatModel" = Relationship(back_populates="chat_model_versions")
-    # chat_log_sessions: List["ChatLogSession"] = Relationship(
+    # chat_sessions: List["ChatSession"] = Relationship(
     #     back_populates="chat_model_version"
     # )
 
 
-class ChatLogSession(Base):
-    __tablename__ = "chat_log_session"
+class ChatSession(Base):
+    __tablename__ = "chat_session"
 
     id: int = Column(BigInteger, Identity(), unique=True)
     created_at: datetime = Column(
@@ -98,6 +100,7 @@ class ChatLogSession(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
+        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 
@@ -110,9 +113,43 @@ class ChatLogSession(Base):
     )
 
     # chat_model_version: "ChatModelVersion" = Relationship(
-    #     back_populates="chat_log_sessions"
+    #     back_populates="chat_sessions"
     # )
-    # chat_logs: List["ChatLog"] = Relationship(back_populates="chat_log_session")
+    # chat_messages: List["ChatMessage"] = Relationship(back_populates="chat_session")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_message"
+
+    id: int = Column(BigInteger, Identity(), unique=True)
+    created_at: datetime = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        unique=True,
+        server_default=text("gen_random_uuid()"),
+    )
+
+    role: str = Column(Text, nullable=False)
+
+    name: Optional[str] = Column(Text, nullable=True)
+    content: Optional[str] = Column(Text, nullable=True)
+    tool_calls: Optional[List[Dict[str, Any]]] = Column(ARRAY(JSONB), nullable=True)
+    function_call: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
+
+    token_count: Optional[int] = Column(BigInteger, nullable=True)
+    chat_message_metadata: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
+
+    session_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey(column="chat_session.uuid"),
+        nullable=False,
+    )
+
+    # chat_session: "ChatSession" = Relationship(back_populates="chat_messages")
 
 
 class ChatLog(Base):
@@ -126,25 +163,34 @@ class ChatLog(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
+        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 
-    role: str = Column(Text, nullable=False)
-
-    name: Optional[str] = Column(Text, nullable=True)
-    content: Optional[str] = Column(Text, nullable=True)
-    tool_calls: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
-
-    token_usage: Optional[int] = Column(BigInteger, nullable=True)
-
-    latency: Optional[float] = Column(Float, nullable=True)
-    cost: Optional[float] = Column(Float, nullable=True)
-    chat_log_metadata: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
-
-    session_uuid: UUIDType = Column(
+    user_message_uuid: UUIDType = Column(
         UUID(as_uuid=True),
-        ForeignKey(column="chat_log_session.uuid"),
+        ForeignKey(column="chat_message.uuid"),
         nullable=False,
     )
 
-    # chat_log_session: "ChatLogSession" = Relationship(back_populates="chat_logs")
+    assistant_message_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey(column="chat_message.uuid"),
+        nullable=False,
+    )
+
+    project_uuid: UUIDType = Column(
+        UUID(as_uuid=True), ForeignKey("project.uuid"), nullable=False
+    )
+
+    session_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey(column="chat_session.uuid"),
+        nullable=False,
+    )
+
+    prompt_tokens: Optional[int] = Column(BigInteger, nullable=True)
+    completion_tokens: Optional[int] = Column(BigInteger, nullable=True)
+    total_tokens: Optional[int] = Column(BigInteger, nullable=True)
+    latency: Optional[float] = Column(Float, nullable=True)
+    cost: Optional[float] = Column(Float, nullable=True)

@@ -24,7 +24,7 @@ def upgrade() -> None:
 create
 or replace function update_instances (
   input_project_uuid uuid,
-  prompt_model_names text[],
+  function_model_names text[],
   chat_model_names text[],
   sample_input_names text[],
   function_schema_names text[],
@@ -33,13 +33,13 @@ or replace function update_instances (
 ) returns table (sample_input_rows json, function_schema_rows json) as $$
 BEGIN
     -- Set all to offline for given project_uuid
-    UPDATE prompt_model SET online = FALSE WHERE project_uuid = input_project_uuid and name != ALL(prompt_model_names) and online = TRUE;
+    UPDATE function_model SET online = FALSE WHERE project_uuid = input_project_uuid and name != ALL(function_model_names) and online = TRUE;
     UPDATE chat_model SET online = FALSE WHERE project_uuid = input_project_uuid and name != ALL(chat_model_names) and online = TRUE;
     UPDATE sample_input SET online = FALSE WHERE project_uuid = input_project_uuid and name != ALL(sample_input_names) and online = TRUE;
     UPDATE function_schema SET online = FALSE WHERE project_uuid = input_project_uuid and name != ALL(function_schema_names) and online = TRUE;
 
     -- Update and set online = TRUE for specific uuids
-    UPDATE prompt_model SET online = TRUE WHERE name = ANY(prompt_model_names) AND prompt_model.project_uuid = input_project_uuid and online = FALSE;
+    UPDATE function_model SET online = TRUE WHERE name = ANY(function_model_names) AND function_model.project_uuid = input_project_uuid and online = FALSE;
     UPDATE chat_model SET online = TRUE WHERE name = ANY(chat_model_names) AND chat_model.project_uuid = input_project_uuid and online = FALSE;
     UPDATE sample_input SET online = TRUE WHERE name = ANY(sample_input_names) AND sample_input.project_uuid = input_project_uuid and online = FALSE;
     UPDATE function_schema SET online = TRUE WHERE name = ANY(function_schema_names) AND function_schema.project_uuid = input_project_uuid and online = FALSE;
@@ -98,7 +98,7 @@ END; $$ language plpgsql;
         SET cli_access_key = NULL, online = FALSE
         WHERE cli_access_key = token;
 
-        UPDATE prompt_model
+        UPDATE function_model
         SET online = FALSE
         WHERE project_uuid = found_project_uuid;
 

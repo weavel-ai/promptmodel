@@ -1,10 +1,10 @@
-"""APIs for PromptModelVersion"""
+"""APIs for FunctionModelVersion"""
 from typing import List, Optional
 
 from modules.types import PMObject
 
 
-class PromptModelVersionInstance(PMObject):
+class FunctionModelVersionInstance(PMObject):
     id: int
     created_at: str
     uuid: str
@@ -23,14 +23,14 @@ class PromptModelVersionInstance(PMObject):
     tags: Optional[List[str]] = None
     memo: Optional[str] = None
 
-    prompt_model_uuid: str
+    function_model_uuid: str
 
 
-class UpdatePublishedPromptModelVersionBody(PMObject):
+class UpdatePublishedFunctionModelVersionBody(PMObject):
     project_uuid: str
     project_version: int
     previous_published_version_uuid: Optional[str] = None
 
 
-class UpdatePromptModelVersionTagsBody(PMObject):
+class UpdateFunctionModelVersionTagsBody(PMObject):
     tags: Optional[List[str]] = None

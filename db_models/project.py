@@ -22,7 +22,7 @@ from passlib.context import CryptContext
 
 if TYPE_CHECKING:
     from .chat_model import ChatModel
-    from .prompt_model import PromptModel
+    from .function_model import FunctionModel
     from .function_schema import FunctionSchema
     from .sample_input import SampleInput
 
@@ -80,7 +80,7 @@ class CliAccess(Base):
 
     user_id: str = Column(Text, ForeignKey("user.user_id"), primary_key=True)
 
-    api_key: str = Column(Text)
+    api_key: str = Column(Text, unique=True)
 
     # user: "User" = Relationship(back_populates="cli_access")
 
@@ -126,7 +126,7 @@ class Project(Base):
     # project_changelogs: List["ProjectChangelog"] = Relationship(
     #     back_populates="project"
     # )
-    # prompt_models: List["PromptModel"] = Relationship(back_populates="project")
+    # function_models: List["FunctionModel"] = Relationship(back_populates="project")
     # chat_models: List["ChatModel"] = Relationship(back_populates="project")
     # function_schemas: List["FunctionSchema"] = Relationship(back_populates="project")
     # sample_inputs: List["SampleInput"] = Relationship(back_populates="project")

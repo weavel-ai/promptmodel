@@ -1,4 +1,4 @@
-"""APIs for PromptModel"""
+"""APIs for FunctionModel"""
 from datetime import datetime
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,31 +14,31 @@ from utils.logger import logger
 
 from base.database import get_session
 from db_models import *
-from ..models import PromptModelInstance, CreatePromptModelBody
+from ..models import FunctionModelInstance, CreateFunctionModelBody
 
 router = APIRouter()
 
 
-# PromptModel Endpoints
-@router.get("/", response_model=List[PromptModelInstance])
-async def fetch_prompt_models(
+# FunctionModel Endpoints
+@router.get("/", response_model=List[FunctionModelInstance])
+async def fetch_function_models(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        prompt_models: List[PromptModelInstance] = [
-            PromptModelInstance(**prompt_model.model_dump())
-            for prompt_model in (
+        function_models: List[FunctionModelInstance] = [
+            FunctionModelInstance(**function_model.model_dump())
+            for function_model in (
                 await session.execute(
-                    select(PromptModel)
-                    .where(PromptModel.project_uuid == project_uuid)
-                    .order_by(desc(PromptModel.created_at))
+                    select(FunctionModel)
+                    .where(FunctionModel.project_uuid == project_uuid)
+                    .order_by(desc(FunctionModel.created_at))
                 )
             )
             .scalars()
             .all()
         ]
-        return prompt_models
+        return function_models
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -46,30 +46,32 @@ async def fetch_prompt_models(
         )
 
 
-@router.post("/", response_model=PromptModelInstance)
-async def create_prompt_model(
-    body: CreatePromptModelBody,
+@router.post("/", response_model=FunctionModelInstance)
+async def create_function_model(
+    body: CreateFunctionModelBody,
     session: AsyncSession = Depends(get_session),
 ):
     try:
         # check same name
-        prompt_model_in_db = (
+        function_model_in_db = (
             await session.execute(
-                select(PromptModel)
-                .where(PromptModel.name == body.name)
-                .where(PromptModel.project_uuid == body.project_uuid)
+                select(FunctionModel)
+                .where(FunctionModel.name == body.name)
+                .where(FunctionModel.project_uuid == body.project_uuid)
             )
         ).scalar_one_or_none()
-        if prompt_model_in_db:
+        if function_model_in_db:
             raise HTTPException(
                 status_code=HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Same name in project",
             )
-        new_prompt_model = PromptModel(name=body.name, project_uuid=body.project_uuid)
-        session.add(new_prompt_model)
+        new_function_model = FunctionModel(
+            name=body.name, project_uuid=body.project_uuid
+        )
+        session.add(new_function_model)
         await session.commit()
-        await session.refresh(new_prompt_model)
-        return PromptModelInstance(**new_prompt_model.model_dump())
+        await session.refresh(new_function_model)
+        return FunctionModelInstance(**new_function_model.model_dump())
     except HTTPException as http_exc:
         logger.error(http_exc)
         raise http_exc
@@ -80,8 +82,8 @@ async def create_prompt_model(
         )
 
 
-@router.patch("/{uuid}/", response_model=PromptModelInstance)
-async def edit_prompt_model_name(
+@router.patch("/{uuid}/", response_model=FunctionModelInstance)
+async def edit_function_model_name(
     uuid: str,
     name: str,
     session: AsyncSession = Depends(get_session),
@@ -90,17 +92,17 @@ async def edit_prompt_model_name(
         updated_model = (
             (
                 await session.execute(
-                    update(PromptModel)
-                    .where(PromptModel.uuid == uuid)
+                    update(FunctionModel)
+                    .where(FunctionModel.uuid == uuid)
                     .values(name=name)
-                    .returning(PromptModel)
+                    .returning(FunctionModel)
                 )
             )
             .scalar_one()
             .model_dump()
         )
         await session.commit()
-        return PromptModelInstance(**updated_model)
+        return FunctionModelInstance(**updated_model)
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -108,8 +110,8 @@ async def edit_prompt_model_name(
         )
 
 
-@router.delete("/{uuid}", response_model=PromptModelInstance)
-async def delete_prompt_model(
+@router.delete("/{uuid}", response_model=FunctionModelInstance)
+async def delete_function_model(
     uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
@@ -117,16 +119,16 @@ async def delete_prompt_model(
         deleted_model = (
             (
                 await session.execute(
-                    delete(PromptModel)
-                    .where(PromptModel.uuid == uuid)
-                    .returning(PromptModel)
+                    delete(FunctionModel)
+                    .where(FunctionModel.uuid == uuid)
+                    .returning(FunctionModel)
                 )
             )
             .scalar_one()
             .model_dump()
         )
         await session.commit()
-        return PromptModelInstance(**deleted_model)
+        return FunctionModelInstance(**deleted_model)
     except Exception as e:
         logger.error(e)
         raise HTTPException(

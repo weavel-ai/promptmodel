@@ -1,6 +1,10 @@
 from .analytics import DailyRunLogMetricInstance, DailyChatLogMetricInstance
-from .chat_log_session import ChatLogSessionInstance
-from .chat_log import ChatLogInstance, ChatLogViewInstance, ChatLogCountInstance
+from .chat_session import ChatSessionInstance
+from .chat_message import (
+    ChatMessageInstance,
+    ChatLogViewInstance,
+    ChatLogsCountInstance,
+)
 from .chat_model_version import (
     ChatModelVersionInstance,
     UpdatePublishedChatModelVersionBody,
@@ -12,13 +16,13 @@ from .function_schema import FunctionSchemaInstance
 from .organization import OrganizationInstance, CreateOrganizationBody
 from .project_changelog import ProjectChangelogInstance
 from .project import ProjectInstance, CreateProjectBody
-from .prompt_model_version import (
-    PromptModelVersionInstance,
-    UpdatePublishedPromptModelVersionBody,
-    UpdatePromptModelVersionTagsBody,
+from .function_model_version import (
+    FunctionModelVersionInstance,
+    UpdatePublishedFunctionModelVersionBody,
+    UpdateFunctionModelVersionTagsBody,
 )
 
-from .prompt_model import PromptModelInstance, CreatePromptModelBody
+from .function_model import FunctionModelInstance, CreateFunctionModelBody
 from .prompt import PromptInstance
 from .run_log import RunLogInstance, DeploymentRunLogViewInstance, RunLogsCountInstance
 from .sample_input import SampleInputInstance, CreateSampleInputBody

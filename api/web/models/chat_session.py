@@ -1,9 +1,9 @@
-"""APIs for ChatLogSession"""
+"""APIs for ChatSession"""
 from typing import Any, Dict, Optional
 from modules.types import PMObject
 
 
-class ChatLogSessionInstance(PMObject):
+class ChatSessionInstance(PMObject):
     id: int
     created_at: str
     uuid: str

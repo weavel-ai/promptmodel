@@ -18,22 +18,22 @@ from utils.logger import logger
 from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from api.common.models import PromptModelRunConfig, ChatModelRunConfig
+from api.common.models import FunctionModelRunConfig, ChatModelRunConfig
 from db_models import *
 
 router = APIRouter()
 
 
-@router.post("/run_prompt_model")
-async def run_prompt_model(
+@router.post("/run_function_model")
+async def run_function_model(
     project_uuid: str,
-    run_config: PromptModelRunConfig,
+    run_config: FunctionModelRunConfig,
     session: AsyncSession = Depends(get_session),
 ):
-    """Run PromptModel for cloud development environment."""
+    """Run FunctionModel for cloud development environment."""
 
     async def stream_run():
-        async for chunk in run_cloud_prompt_model(
+        async for chunk in run_cloud_function_model(
             session=session, project_uuid=project_uuid, run_config=run_config
         ):
             yield json.dumps(chunk)
@@ -49,10 +49,10 @@ async def run_prompt_model(
         ) from exc
 
 
-async def run_cloud_prompt_model(
-    session: AsyncSession, project_uuid: str, run_config: PromptModelRunConfig
+async def run_cloud_function_model(
+    session: AsyncSession, project_uuid: str, run_config: FunctionModelRunConfig
 ):
-    """Run PromptModel on the cloud, request from web."""
+    """Run FunctionModel on the cloud, request from web."""
     sample_input: Dict[str, Any] = {}
     # get sample from db
 
@@ -108,39 +108,39 @@ async def run_cloud_prompt_model(
             }
             yield data
             return
-    # Start PromptModel Running
+    # Start FunctionModel Running
     output = {"raw_output": "", "parsed_outputs": {}}
     function_call = None
     try:
-        # create prompt_model_dev_instance
-        prompt_model_dev = LLMDev()
-        # find prompt_model_uuid from local db
-        prompt_model_version_uuid: Optional[str] = run_config.version_uuid
-        # If prompt_model_version_uuid is None, create new version & prompt
+        # create function_model_dev_instance
+        function_model_dev = LLMDev()
+        # find function_model_uuid from local db
+        function_model_version_uuid: Optional[str] = run_config.version_uuid
+        # If function_model_version_uuid is None, create new version & prompt
         changelogs = []
         need_project_version_update = False
 
-        if prompt_model_version_uuid is None:
+        if function_model_version_uuid is None:
             if run_config.from_version is None:
                 version = 1
                 need_project_version_update = True
             else:
                 latest_version = (
                     await session.execute(
-                        select(PromptModelVersion.version)
+                        select(FunctionModelVersion.version)
                         .where(
-                            PromptModelVersion.prompt_model_uuid
-                            == run_config.prompt_model_uuid
+                            FunctionModelVersion.function_model_uuid
+                            == run_config.function_model_uuid
                         )
-                        .order_by(desc(PromptModelVersion.version))
+                        .order_by(desc(FunctionModelVersion.version))
                         .limit(1)
                     )
                 ).scalar_one()
 
                 version = latest_version + 1
-            new_prompt_model_version_row = PromptModelVersion(
+            new_function_model_version_row = FunctionModelVersion(
                 **{
-                    "prompt_model_uuid": run_config.prompt_model_uuid,
+                    "function_model_uuid": run_config.function_model_uuid,
                     "from_version": run_config.from_version,
                     "version": version,
                     "model": run_config.model,
@@ -150,14 +150,14 @@ async def run_cloud_prompt_model(
                     "is_published": True if version == 1 else False,
                 }
             )
-            session.add(new_prompt_model_version_row)
+            session.add(new_function_model_version_row)
             await session.commit()
-            await session.refresh(new_prompt_model_version_row)
+            await session.refresh(new_function_model_version_row)
 
             changelogs.append(
                 {
-                    "subject": "prompt_model_version",
-                    "identifier": [str(new_prompt_model_version_row.uuid)],
+                    "subject": "function_model_version",
+                    "identifier": [str(new_function_model_version_row.uuid)],
                     "action": "ADD",
                 }
             )
@@ -165,17 +165,17 @@ async def run_cloud_prompt_model(
             if need_project_version_update:
                 changelogs.append(
                     {
-                        "subject": "prompt_model_version",
-                        "identifier": [str(new_prompt_model_version_row.uuid)],
+                        "subject": "function_model_version",
+                        "identifier": [str(new_function_model_version_row.uuid)],
                         "action": "PUBLISH",
                     }
                 )
 
-            prompt_model_version_uuid: str = str(new_prompt_model_version_row.uuid)
+            function_model_version_uuid: str = str(new_function_model_version_row.uuid)
             for prompt in run_config.prompts:
                 prompt_row = Prompt(
                     **{
-                        "version_uuid": prompt_model_version_uuid,
+                        "version_uuid": function_model_version_uuid,
                         "role": prompt.role,
                         "step": prompt.step,
                         "content": prompt.content,
@@ -186,7 +186,7 @@ async def run_cloud_prompt_model(
                 await session.commit()
 
             data = {
-                "prompt_model_version_uuid": prompt_model_version_uuid,
+                "function_model_version_uuid": function_model_version_uuid,
                 "version": version,
                 "status": "running",
             }
@@ -236,7 +236,7 @@ async def run_cloud_prompt_model(
             .all()
         )
 
-        res: AsyncGenerator[LLMStreamResponse, None] = prompt_model_dev.dev_run(
+        res: AsyncGenerator[LLMStreamResponse, None] = function_model_dev.dev_run(
             messages=messages,
             parsing_type=parsing_type,
             functions=function_schemas,
@@ -289,7 +289,7 @@ async def run_cloud_prompt_model(
             # Create run log
             run_log_row = RunLog(
                 **{
-                    "version_uuid": prompt_model_version_uuid,
+                    "version_uuid": function_model_version_uuid,
                     "inputs": sample_input,
                     "raw_output": output["raw_output"],
                     "parsed_outputs": output["parsed_outputs"],
@@ -336,7 +336,7 @@ async def run_cloud_prompt_model(
         session.add(
             RunLog(
                 **{
-                    "version_uuid": prompt_model_version_uuid,
+                    "version_uuid": function_model_version_uuid,
                     "inputs": sample_input,
                     "raw_output": output["raw_output"],
                     "parsed_outputs": output["parsed_outputs"],
@@ -433,7 +433,7 @@ async def run_cloud_chat_model(
     Returns:
         AsyncGenerator: Dict[str, Any]
             status: "completed" | "failed" | "running"
-            chat_log_session_uuid: Optional[str]
+            chat_session_uuid: Optional[str]
             log: Optional[str]
 
     """
@@ -509,7 +509,7 @@ async def run_cloud_chat_model(
 
         # If session uuid is None, create new session
         if session_uuid is None:
-            new_session = ChatLogSession(
+            new_session = ChatSession(
                 **{
                     "version_uuid": chat_model_version_uuid,
                     "run_from_deployment": False,
@@ -522,29 +522,29 @@ async def run_cloud_chat_model(
             session_uuid: str = str(new_session.uuid)
 
             data = {
-                "chat_log_session_uuid": session_uuid,
+                "chat_session_uuid": session_uuid,
                 "status": "running",
             }
             yield data
         else:
             # If session exists, fetch session chat logs from cloud db
-            session_chat_logs = (
+            session_chat_messages = (
                 (
                     await session.execute(
                         select(
-                            ChatLog.role,
-                            ChatLog.name,
-                            ChatLog.content,
-                            ChatLog.tool_calls,
+                            ChatMessage.role,
+                            ChatMessage.name,
+                            ChatMessage.content,
+                            ChatMessage.tool_calls,
                         )
-                        .where(ChatLog.session_uuid == session_uuid)
-                        .order_by(asc(ChatLog.created_at))
+                        .where(ChatMessage.session_uuid == session_uuid)
+                        .order_by(asc(ChatMessage.created_at))
                     )
                 )
                 .mappings()
                 .all()
             )
-            messages += session_chat_logs
+            messages += session_chat_messages
             messages = [
                 {k: v for k, v in message.items() if v is not None}
                 for message in messages
@@ -587,9 +587,12 @@ async def run_cloud_chat_model(
             yield data
 
         # Create chat log
+        user_message_uuid = str(uuid4())
+        assistant_message_uuid = str(uuid4())
         session.add(
-            ChatLog(
+            ChatMessage(
                 **{
+                    "uuid": user_message_uuid,
                     "created_at": start_timestampz_iso,
                     "session_uuid": session_uuid,
                     "role": "user",
@@ -598,15 +601,26 @@ async def run_cloud_chat_model(
             )
         )
         session.add(
-            ChatLog(
+            ChatMessage(
                 **{
+                    "uuid": assistant_message_uuid,
                     "session_uuid": session_uuid,
                     "role": "assistant",
                     "content": raw_output,
-                    "tool_calls": [function_call],
+                    "function_call": function_call,
                 }
             )
         )
+        await session.flush()
+        session.add(
+            ChatLog(
+                user_message_uuid=user_message_uuid,
+                assistant_message_uuid=assistant_message_uuid,
+                session_uuid=session_uuid,
+                porject_uuid=project_uuid,
+            )
+        )
+        
         await session.commit()
 
         data = {

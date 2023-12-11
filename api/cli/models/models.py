@@ -3,10 +3,10 @@ from typing import Optional, List, Dict, Any
 from modules.types import PMObject
 
 
-class DeployedPromptModelVersionInstance(PMObject):
+class DeployedFunctionModelVersionInstance(PMObject):
     uuid: str
     from_version: Optional[int]
-    prompt_model_uuid: str
+    function_model_uuid: str
     model: str
     is_published: bool
     is_ab_test: Optional[bool]
@@ -26,7 +26,7 @@ class DeployedChatModelVersionInstance(PMObject):
     system_prompt: str
 
 
-class DeployedPromptModelInstance(PMObject):
+class DeployedFunctionModelInstance(PMObject):
     uuid: str
     name: str
 
@@ -52,8 +52,8 @@ class CliProjectInstance(PMObject):
 
 
 class ProjectStatus(PMObject):
-    prompt_models: List[DeployedPromptModelInstance]
-    prompt_model_versions: List[DeployedPromptModelVersionInstance]
+    function_models: List[DeployedFunctionModelInstance]
+    function_model_versions: List[DeployedFunctionModelVersionInstance]
     prompts: List[DeployedPromptInstance]
 
 
@@ -63,12 +63,12 @@ class CheckUpdateResponseInstance(PMObject):
     project_status: Optional[ProjectStatus] = None
 
 
-class FetchPromptModelVersionResponseInstance(PMObject):
-    prompt_model_versions: List[DeployedPromptModelVersionInstance]
+class FetchFunctionModelVersionResponseInstance(PMObject):
+    function_model_versions: List[DeployedFunctionModelVersionInstance]
     prompts: List[DeployedPromptInstance]
 
 
-class CliChatLogInstance(PMObject):
+class CliChatMessageInstance(PMObject):
     role: str
     name: Optional[str] = None
     content: Optional[str] = None
@@ -77,4 +77,4 @@ class CliChatLogInstance(PMObject):
 
 class FetchChatModelVersionResponseInstance(PMObject):
     chat_model_versions: List[DeployedChatModelVersionInstance]
-    chat_logs: List[CliChatLogInstance]
+    chat_messages: List[CliChatMessageInstance]

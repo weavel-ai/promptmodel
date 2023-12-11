@@ -36,29 +36,29 @@ class UserOrganizations(Base):
 class ChatLogView(Base):
     __tablename__ = "chat_log_view"
 
-    assistant_log_id: int = Column(BigInteger, primary_key=True)
-    # TODO: fix this into UUID
-
     project_uuid: UUIDType = Column(UUID(as_uuid=True))
 
     chat_model_uuid: UUIDType = Column(UUID(as_uuid=True))
-
     chat_model_name: str = Column(Text)
 
     chat_model_version_uuid: UUIDType = Column(UUID(as_uuid=True))
     chat_model_version: int = Column(BigInteger)
 
     session_uuid: UUIDType = Column(UUID(as_uuid=True))
+    assistant_message_uuid: UUIDType = Column(UUID(as_uuid=True), primary_key=True)
 
     created_at: datetime = Column(TIMESTAMP)
 
     user_input: str = Column(Text)
     assistant_output: Optional[str] = Column(Text, nullable=True)
-    tool_calls: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
+    tool_calls: Optional[List[Dict[str, Any]]] = Column(ARRAY(JSONB), nullable=True)
+    function_call: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
 
     latency: Optional[float] = Column(Float, nullable=True)
     cost: Optional[float] = Column(Float, nullable=True)
-    token_usage: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
+    prompt_tokens: Optional[int] = Column(BigInteger, nullable=True)
+    completion_tokens: Optional[int] = Column(BigInteger, nullable=True)
+    total_tokens: Optional[int] = Column(BigInteger, nullable=True)
 
     run_from_deployment: bool = Column(Boolean)
 
@@ -80,11 +80,11 @@ class RunLogsCount(Base):
 
 
 class DailyChatLogMetric(Base):
-    __tablename__ = "daily_chat_log_metric"
+    __tablename__ = "daily_chat_message_metric"
 
     project_name: str = Column(Text)
-    chat_model_uuid: UUIDType = Column(UUID(as_uuid=True), primary_key=True)
 
+    chat_model_uuid: UUIDType = Column(UUID(as_uuid=True), primary_key=True)
     chat_model_name: str = Column(Text)
 
     day: date = Column(Date, primary_key=True)
@@ -97,9 +97,9 @@ class DailyChatLogMetric(Base):
 class DailyRunLogMetric(Base):
     __tablename__ = "daily_run_log_metric"
 
-    prompt_model_uuid: UUIDType = Column(UUID(as_uuid=True), primary_key=True)
+    function_model_uuid: UUIDType = Column(UUID(as_uuid=True), primary_key=True)
 
-    prompt_model_name: str = Column(Text)
+    function_model_name: str = Column(Text)
 
     day: date = Column(Date, primary_key=True)
     total_cost: Optional[float] = Column(Float)
@@ -127,8 +127,8 @@ class DeployedChatModelVersion(Base):
     chat_model_uuid: UUIDType = Column(UUID(as_uuid=True))
 
 
-class DeployedPromptModelVersion(Base):
-    __tablename__ = "deployed_prompt_model_version"
+class DeployedFunctionModelVersion(Base):
+    __tablename__ = "deployed_function_model_version"
 
     id: int = Column(BigInteger)
     created_at: datetime = Column(TIMESTAMP)
@@ -144,7 +144,7 @@ class DeployedPromptModelVersion(Base):
     ratio: Optional[float] = Column(Float, nullable=True)
 
     from_version: Optional[int] = Column(BigInteger, nullable=True)
-    prompt_model_uuid: UUIDType = Column(UUID(as_uuid=True))
+    function_model_uuid: UUIDType = Column(UUID(as_uuid=True))
 
 
 class DeploymentRunLogView(Base):
@@ -153,12 +153,11 @@ class DeploymentRunLogView(Base):
     run_log_uuid: UUIDType = Column(UUID(as_uuid=True), primary_key=True)
     project_uuid: UUIDType = Column(UUID(as_uuid=True))
 
-    prompt_model_uuid: UUIDType = Column(UUID(as_uuid=True))
+    function_model_uuid: UUIDType = Column(UUID(as_uuid=True))
+    function_model_name: str = Column(Text)
 
-    prompt_model_name: str = Column(Text)
-
-    prompt_model_version_uuid: UUIDType = Column(UUID(as_uuid=True))
-    prompt_model_version: int = Column(BigInteger)
+    function_model_version_uuid: UUIDType = Column(UUID(as_uuid=True))
+    function_model_version: int = Column(BigInteger)
 
     created_at: datetime = Column(TIMESTAMP)
 
@@ -167,9 +166,11 @@ class DeploymentRunLogView(Base):
     parsed_outputs: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
 
     function_call: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
+    tool_calls: Optional[List[Dict[str, Any]]] = Column(ARRAY(JSONB), nullable=True)
 
-    token_usage: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
-
+    prompt_tokens: Optional[int] = Column(BigInteger, nullable=True)
+    completion_tokens: Optional[int] = Column(BigInteger, nullable=True)
+    total_tokens: Optional[int] = Column(BigInteger, nullable=True)
     latency: Optional[float] = Column(Float, nullable=True)
     cost: Optional[float] = Column(Float, nullable=True)
 

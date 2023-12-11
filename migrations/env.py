@@ -27,19 +27,21 @@ config.set_main_option("sqlalchemy.url", sqlalchemy_url)
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 
-from sqlalchemy.ext.declarative import declarative_base
+# from sqlalchemy.ext.declarative import declarative_base
 
-Base = declarative_base()
+# Base = declarative_base()
+from db_models import *
+from base.database import Base
 
 view_name_list = [
     "user_organizations",
     "chat_log_view",
     "chat_logs_count",
     "run_logs_count",
-    "daily_chat_log_metric",
+    "daily_chat_message_metric",
     "daily_run_log_metric",
     "deployed_chat_model_version",
-    "deployed_prompt_model_version",
+    "deployed_function_model_version",
     "deployment_run_log_view",
 ]
 

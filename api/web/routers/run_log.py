@@ -28,7 +28,7 @@ router = APIRouter()
 
 @router.get("/version/", response_model=List[RunLogInstance])
 async def fetch_version_run_logs(
-    prompt_model_version_uuid: str,
+    function_model_version_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
@@ -37,7 +37,7 @@ async def fetch_version_run_logs(
             for run_log in (
                 await session.execute(
                     select(RunLog)
-                    .where(RunLog.version_uuid == prompt_model_version_uuid)
+                    .where(RunLog.version_uuid == function_model_version_uuid)
                     .order_by(desc(RunLog.created_at))
                 )
             )

@@ -21,7 +21,7 @@ router = APIRouter()
 
 @router.get("/", response_model=List[PromptInstance])
 async def fetch_prompts(
-    prompt_model_version_uuid: str,
+    function_model_version_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
@@ -30,7 +30,7 @@ async def fetch_prompts(
             for prompt in (
                 await session.execute(
                     select(Prompt)
-                    .where(Prompt.version_uuid == prompt_model_version_uuid)
+                    .where(Prompt.version_uuid == function_model_version_uuid)
                     .order_by(asc(Prompt.step))
                 )
             )

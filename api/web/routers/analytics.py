@@ -19,9 +19,9 @@ from ..models import DailyRunLogMetricInstance, DailyChatLogMetricInstance
 router = APIRouter()
 
 
-@router.get("/prompt_model/", response_model=List[DailyRunLogMetricInstance])
+@router.get("/function_model/", response_model=List[DailyRunLogMetricInstance])
 async def fetch_daily_run_log_metrics(
-    prompt_model_uuid: str,
+    function_model_uuid: str,
     start_day: str,
     end_day: str,
     session: AsyncSession = Depends(get_session),
@@ -31,7 +31,7 @@ async def fetch_daily_run_log_metrics(
             (
                 await session.execute(
                     select(DailyRunLogMetric)
-                    .where(DailyRunLogMetric.prompt_model_uuid == prompt_model_uuid)
+                    .where(DailyRunLogMetric.function_model_uuid == function_model_uuid)
                     .where(
                         DailyRunLogMetric.day
                         >= datetime.strptime(start_day, "%Y-%m-%dT%H:%M:%S.%fZ").date()
@@ -52,7 +52,7 @@ async def fetch_daily_run_log_metrics(
             for metric in (
                 await session.execute(
                     select(DailyRunLogMetric)
-                    .where(DailyRunLogMetric.prompt_model_uuid == prompt_model_uuid)
+                    .where(DailyRunLogMetric.function_model_uuid == function_model_uuid)
                     .where(
                         DailyRunLogMetric.day
                         >= datetime.strptime(start_day, "%Y-%m-%dT%H:%M:%S.%fZ").date()
@@ -76,7 +76,7 @@ async def fetch_daily_run_log_metrics(
 
 
 @router.get("/chat_model/", response_model=List[DailyChatLogMetricInstance])
-async def fetch_daily_chat_log_metrics(
+async def fetch_daily_chat_message_metrics(
     chat_model_uuid: str,
     start_day: str,
     end_day: str,

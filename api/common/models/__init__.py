@@ -1,5 +1,5 @@
 from .models import (
     PromptConfig,
-    PromptModelRunConfig,
+    FunctionModelRunConfig,
     ChatModelRunConfig,
 )

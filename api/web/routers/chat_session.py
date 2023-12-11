@@ -1,4 +1,4 @@
-"""APIs for ChatLogSession"""
+"""APIs for ChatSession"""
 from typing import Any, Dict, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
@@ -12,30 +12,30 @@ from utils.logger import logger
 
 from base.database import get_session
 from db_models import *
-from ..models import ChatLogSessionInstance
+from ..models import ChatSessionInstance
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[ChatLogSessionInstance])
-async def fetch_chat_log_sessions(
+@router.get("/", response_model=List[ChatSessionInstance])
+async def fetch_chat_sessions(
     chat_model_version_uuid: str,
     db_session: AsyncSession = Depends(get_session),
 ):
     try:
-        chat_log_sessions: List[ChatLogSessionInstance] = [
-            ChatLogSessionInstance(**chat_log_session.model_dump())
-            for chat_log_session in (
+        chat_sessions: List[ChatSessionInstance] = [
+            ChatSessionInstance(**chat_session.model_dump())
+            for chat_session in (
                 await db_session.execute(
-                    select(ChatLogSession)
-                    .where(ChatLogSession.version_uuid == chat_model_version_uuid)
-                    .order_by(desc(ChatLogSession.created_at))
+                    select(ChatSession)
+                    .where(ChatSession.version_uuid == chat_model_version_uuid)
+                    .order_by(desc(ChatSession.created_at))
                 )
             )
             .scalars()
             .all()
         ]
-        return chat_log_sessions
+        return chat_sessions
     except Exception as e:
         logger.error(e)
         raise HTTPException(

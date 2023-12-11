@@ -22,30 +22,30 @@ from utils.logger import logger
 
 from base.database import get_session
 from base.websocket_connection import websocket_manager, LocalTask
-from modules.websocket.run_model_generators import run_local_prompt_model_generator
+from modules.websocket.run_model_generators import run_local_function_model_generator
 from .dev_chat import router as chat_router
-from api.common.models import PromptModelRunConfig
+from api.common.models import FunctionModelRunConfig
 from db_models import *
 
 router = APIRouter()
 router.include_router(chat_router)
 
 
-@router.post("/run_prompt_model")
-async def run_prompt_model(
+@router.post("/run_function_model")
+async def run_function_model(
     project_uuid: str,
-    run_config: PromptModelRunConfig,
+    run_config: FunctionModelRunConfig,
     session: AsyncSession = Depends(get_session),
 ):
     """
-    <h2>Send run_prompt_model request to the local server  </h2>
+    <h2>Send run_function_model request to the local server  </h2>
 
     <h3>Input:</h3>
     <ul>
         <li><b>project_uuid:</b> project uuid</li>
         <li><b>run_config:</b></li>
         <ul>
-            prompt_model_uuid: str
+            function_model_uuid: str
             prompts: List of prompts (type, step, content)
             model: str
             from_version: previous version number (Optional)
@@ -96,7 +96,7 @@ async def run_prompt_model(
 
         try:
             return StreamingResponse(
-                run_local_prompt_model_generator(
+                run_local_function_model_generator(
                     session, project[0], cli_access_key, run_config
                 )
             )
@@ -114,8 +114,8 @@ async def run_prompt_model(
         ) from exc
 
 
-@router.get("/list_prompt_models")
-async def list_prompt_models(
+@router.get("/list_function_models")
+async def list_function_models(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
@@ -126,7 +126,7 @@ async def list_prompt_models(
     Output:
         Response
             - correlation_id: str
-            - prompt_models: list
+            - function_models: list
                 - used_in_code
                 - is_deployed
                 - uuid
@@ -186,7 +186,7 @@ async def list_functions(
     Output:
         Response
             - correlation_id: str
-            - prompt_models: list
+            - function_models: list
                 - used_in_code
                 - is_deployed
                 - uuid
