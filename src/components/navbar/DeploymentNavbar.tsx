@@ -21,7 +21,7 @@ import { CaretRight } from "@phosphor-icons/react";
 import { Michroma, Russo_One } from "next/font/google";
 import { useOrgData } from "@/hooks/useOrgData";
 import { useProject } from "@/hooks/useProject";
-import { usePromptModel } from "@/hooks/usePromptModel";
+import { useFunctionModel } from "@/hooks/useFunctionModel";
 import { SelectNavigator } from "../SelectNavigator";
 import { useChatModel } from "@/hooks/useChatModel";
 import { LocalConnectionStatus } from "../LocalConnectionStatus";
@@ -46,18 +46,18 @@ export const DeploymentNavbar = (props: NavbarProps) => {
   const { organization } = useOrganization();
   const { orgData, refetchOrgData } = useOrgData();
   const { projectData, projectListData } = useProject();
-  const { promptModelListData } = usePromptModel();
+  const { functionModelListData } = useFunctionModel();
   const { chatModelListData } = useChatModel();
   // Mobile
   const isMobile = useMediaQuery({ query: "(max-width: 768px)" });
   const [showDropdown, setShowDropdown] = useState(false);
 
   const modelType = useMemo(() => {
-    if (params?.promptModelUuid) return "PromptModel";
+    if (params?.functionModelUuid) return "FunctionModel";
     if (params?.chatModelUuid) return "ChatModel";
 
     return null;
-  }, [params?.promptModelUuid, params?.chatModelUuid]);
+  }, [params?.functionModelUuid, params?.chatModelUuid]);
 
   useEffect(() => {
     if (isMobile) {
@@ -197,26 +197,26 @@ export const DeploymentNavbar = (props: NavbarProps) => {
                   />
                 </div>
               )}
-              {/* PromptModel navigator */}
-              {params?.promptModelUuid && (
+              {/* FunctionModel navigator */}
+              {params?.functionModelUuid && (
                 <SelectNavigator
                   statusType="usage"
                   current={{
-                    label: promptModelListData?.find(
-                      (promptModel) =>
-                        promptModel.uuid == params?.promptModelUuid
+                    label: functionModelListData?.find(
+                      (functionModel) =>
+                        functionModel.uuid == params?.functionModelUuid
                     )?.name,
-                    online: promptModelListData?.find(
-                      (promptModel) =>
-                        promptModel.uuid == params?.promptModelUuid
+                    online: functionModelListData?.find(
+                      (functionModel) =>
+                        functionModel.uuid == params?.functionModelUuid
                     )?.online,
-                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/prompt_models/${params?.promptModelUuid}`,
+                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/function_models/${params?.functionModelUuid}`,
                   }}
-                  options={promptModelListData?.map((promptModel) => {
+                  options={functionModelListData?.map((functionModel) => {
                     return {
-                      label: promptModel.name,
-                      online: promptModel.online,
-                      href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/prompt_models/${promptModel.uuid}`,
+                      label: functionModel.name,
+                      online: functionModel.online,
+                      href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models/function_models/${functionModel.uuid}`,
                     };
                   })}
                 />

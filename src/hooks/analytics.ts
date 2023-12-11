@@ -1,24 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
-import { usePromptModel } from "./usePromptModel";
+import { useFunctionModel } from "./useFunctionModel";
 import { useChatModel } from "./useChatModel";
 import { fetchDailyRunLogMetrics } from "@/apis/metrics/fetchDailyRunLogMetrics";
 import { fetchDailyChatLogMetrics } from "@/apis/metrics/fetchDailyChatLogMetrics";
 
 export const useDailyRunLogMetrics = (startDay: string, endDay: string) => {
-  const { promptModelUuid } = usePromptModel();
+  const { functionModelUuid } = useFunctionModel();
 
   const { data: dailyRunLogMetrics } = useQuery({
     queryKey: [
       "dailyRunLogMetrics",
-      { promptModelUuid: promptModelUuid, startDay: startDay, endDay: endDay },
+      {
+        functionModelUuid: functionModelUuid,
+        startDay: startDay,
+        endDay: endDay,
+      },
     ],
     queryFn: async () =>
       await fetchDailyRunLogMetrics({
-        prompt_model_uuid: promptModelUuid,
+        function_model_uuid: functionModelUuid,
         start_day: startDay,
         end_day: endDay,
       }),
-    enabled: !!promptModelUuid,
+    enabled: !!functionModelUuid,
   });
 
   return {

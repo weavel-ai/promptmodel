@@ -2,16 +2,16 @@ import { useEffect } from "react";
 import { useProject } from "./useProject";
 import { useChatModel } from "./useChatModel";
 import { useFunctions } from "./useFunction";
-import { usePromptModel } from "./usePromptModel";
+import { useFunctionModel } from "./useFunctionModel";
 import { useSamples } from "./useSample";
 
 export function useRealtimeSubscription() {
   const { subscribeToProject, subscriptionDep: projectSubscriptionDep } =
     useProject();
   const {
-    subscribeToPromptModel,
-    subscriptionDep: promptModelSubscriptionDep,
-  } = usePromptModel();
+    subscribeToFunctionModel,
+    subscriptionDep: functionModelSubscriptionDep,
+  } = useFunctionModel();
   const { subscribeToChatModel, subscriptionDep: chatModelSubscriptionDep } =
     useChatModel();
   const { subscribeToFunctions, subscriptionDep: functionSubscriptionDep } =
@@ -22,8 +22,8 @@ export function useRealtimeSubscription() {
   // Subscribe to project changes
   useAsyncSubscription(subscribeToProject, projectSubscriptionDep);
 
-  // Subscribe to PromptModel changes
-  useAsyncSubscription(subscribeToPromptModel, promptModelSubscriptionDep);
+  // Subscribe to FunctionModel changes
+  useAsyncSubscription(subscribeToFunctionModel, functionModelSubscriptionDep);
 
   // Subscribe to ChatModel changes
   useAsyncSubscription(subscribeToChatModel, chatModelSubscriptionDep);

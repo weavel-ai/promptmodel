@@ -11,8 +11,5 @@ export async function createChatModel(
   chatModelData: CreateChatModelRequest
 ): Promise<ChatModel> {
   const response = await railwayWebClient.post("/chat_models", chatModelData);
-  if (response.status !== 201) {
-    throw new Error("Error creating ChatModel: " + response.status);
-  }
   return response.data;
 }

@@ -7,7 +7,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useRunLogCount } from "@/hooks/useRunLogCount";
-import { useChatLogCount } from "@/hooks/useChatLogCount";
+import { useChatLogCount } from "@/hooks/useChatMessagesCount";
 dayjs.extend(relativeTime);
 
 export default function Page() {
@@ -15,7 +15,7 @@ export default function Page() {
   const { projectData } = useProject();
   const { changeLogListData } = useChangeLog();
   const { runLogCountData } = useRunLogCount();
-  const { chatLogCountData } = useChatLogCount();
+  const { chatMessagesCountData: chatLogCountData } = useChatLogCount();
 
   return (
     <div className="w-full h-full pl-28 pt-20 pb-8">

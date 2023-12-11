@@ -10,8 +10,5 @@ export async function createProject(
   projectData: CreateProjectRequest
 ): Promise<Project> {
   const response = await railwayWebClient.post("/projects", projectData);
-  if (response.status !== 201) {
-    throw new Error("Error creating project: " + response.status);
-  }
   return response.data;
 }

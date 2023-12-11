@@ -3,14 +3,14 @@
 // // View
 // export async function fetchDailyRunLogMetrics(
 //   supabaseClient: SupabaseClient,
-//   promptModelUuid: string,
+//   functionModelUuid: string,
 //   start_day: string,
 //   end_day: string
 // ) {
 //   const res = await supabaseClient
 //     .from("daily_run_log_metric")
 //     .select("day, total_cost, avg_latency, total_token_usage, total_runs")
-//     .eq("uuid", promptModelUuid)
+//     .eq("uuid", functionModelUuid)
 //     .gte("day", start_day)
 //     .lte("day", end_day)
 //     .order("day", { ascending: true });

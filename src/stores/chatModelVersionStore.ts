@@ -41,7 +41,7 @@ type Actions = {
   setModifiedSystemPrompt: (prompt: string) => void;
   setNewVersionCache: (cache: NewVersionCache | null) => void;
   updateChatModelVersionLists: (
-    promptModelUuid: string,
+    functionModelUuid: string,
     versionList: any
   ) => void;
   setFocusedEditor: (editor: editor.ICodeEditor | null) => void;

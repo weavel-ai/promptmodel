@@ -9,9 +9,6 @@ import { CreateSampleInputRequest, SampleInput } from "@/types/SampleInput";
 export async function createSampleInput(
   requestData: CreateSampleInputRequest
 ): Promise<SampleInput> {
-  const response = await railwayWebClient.post("/chat_models", requestData);
-  if (response.status !== 201) {
-    throw new Error("Error creating sample input: " + response.status);
-  }
+  const response = await railwayWebClient.post("/sample_inputs", requestData);
   return response.data;
 }

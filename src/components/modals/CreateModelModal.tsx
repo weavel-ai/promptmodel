@@ -9,7 +9,7 @@ import { useSupabaseClient } from "@/apis/supabase";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createChatModel } from "@/apis/chat_models";
-import { createPromptModel } from "@/apis/prompt_models";
+import { createFunctionModel } from "@/apis/function_models";
 
 export const CreateModelModal = ({
   isOpen,
@@ -19,7 +19,7 @@ export const CreateModelModal = ({
 }: {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  type: "PromptModel" | "ChatModel";
+  type: "FunctionModel" | "ChatModel";
   onCreated: () => void;
 }) => {
   const { supabase } = useSupabaseClient();
@@ -34,11 +34,12 @@ export const CreateModelModal = ({
   }, [isOpen]);
 
   async function handleCreateModel() {
-    // TODO: Add PromptModel / ChatModel types
+    // TODO: Add FunctionModel / ChatModel types
     const toastId = toast.loading("Creating...");
+    setIsOpen(false);
     let resData;
-    if (modelType == "PromptModel") {
-      resData = await createPromptModel({
+    if (modelType == "FunctionModel") {
+      resData = await createFunctionModel({
         project_uuid: params.projectUuid as string,
         name: name,
       });
@@ -55,11 +56,10 @@ export const CreateModelModal = ({
       isLoading: false,
       autoClose: 2000,
     });
-    setIsOpen(false);
     onCreated();
-    if (modelType == "PromptModel")
+    if (modelType == "FunctionModel")
       router.push(
-        `/org/${params.org_slug}/projects/${params.projectUuid}/models/prompt_models/${resData.uuid}`
+        `/org/${params.org_slug}/projects/${params.projectUuid}/models/function_models/${resData.uuid}`
       );
     else if (modelType == "ChatModel") {
       router.push(
@@ -91,11 +91,11 @@ export const CreateModelModal = ({
         <p className="text-popover-content font-bold text-2xl mb-2">
           Create {modelType}
         </p>
-        {modelType == "PromptModel" && (
+        {modelType == "FunctionModel" && (
           <p className="text-muted-content text-sm">
-            A <strong>PromptModel</strong> is a blend of system, user, assistant
-            prompts, and LLM type, designed to work as a universal semantic
-            function.
+            A <strong>FunctionModel</strong> is a blend of system, user,
+            assistant prompts, and LLM type, designed to work as a universal
+            semantic function.
           </p>
         )}
         {modelType == "ChatModel" && (
@@ -107,7 +107,7 @@ export const CreateModelModal = ({
         )}
         <Link
           href={`https://www.promptmodel.run/docs/integrations/python-sdk/${
-            modelType == "PromptModel" ? "promptmodel" : "chatmodel"
+            modelType == "FunctionModel" ? "promptmodel" : "chatmodel"
           }`}
           target="_blank"
           className="text-muted-content link link-accent"

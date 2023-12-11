@@ -1,10 +1,10 @@
 // Interfaces for Prompt retrieval processes
 
 /**
- * Interface for request to read PromptModelVersion's Prompts.
+ * Interface for request to read FunctionModelVersion's Prompts.
  */
 export interface ReadPromptsRequest {
-  prompt_model_version_uuid: string;
+  function_model_version_uuid: string;
 }
 
 /**

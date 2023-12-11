@@ -4,7 +4,7 @@ import { create } from "zustand";
 // Zustand store
 type Store = {
   projectStream: RealtimeChannel;
-  promptModelStream: RealtimeChannel;
+  functionModelStream: RealtimeChannel;
   chatModelStream: RealtimeChannel;
   functionStream: RealtimeChannel;
   sampleInputStream: RealtimeChannel;
@@ -12,7 +12,7 @@ type Store = {
 
 type Actions = {
   setProjectStream: (projectStream: RealtimeChannel) => void;
-  setPromptModelStream: (promptModelStream: RealtimeChannel) => void;
+  setFunctionModelStream: (functionModelStream: RealtimeChannel) => void;
   setChatModelStream: (chatModelStream: RealtimeChannel) => void;
   setFunctionStream: (functionStream: RealtimeChannel) => void;
   setSampleInputStream: (sampleInputStream: RealtimeChannel) => void;
@@ -20,13 +20,13 @@ type Actions = {
 
 export const useRealtimeStore = create<Store & Actions>((set) => ({
   projectStream: null,
-  promptModelStream: null,
+  functionModelStream: null,
   chatModelStream: null,
   functionStream: null,
   sampleInputStream: null,
   setProjectStream: (projectStream) => set({ projectStream: projectStream }),
-  setPromptModelStream: (promptModelStream) =>
-    set({ promptModelStream: promptModelStream }),
+  setFunctionModelStream: (functionModelStream) =>
+    set({ functionModelStream: functionModelStream }),
   setChatModelStream: (chatModelStream) =>
     set({ chatModelStream: chatModelStream }),
   setFunctionStream: (functionStream) =>

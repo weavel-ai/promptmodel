@@ -1,10 +1,10 @@
 // Interfaces for RunLog retrieval processes
 
 /**
- * Interface for request to read PromptModelVersion's RunLogs.
+ * Interface for request to read FunctionModelVersion's RunLogs.
  */
 export interface ReadVersionRunLogsRequest {
-  prompt_model_version_uuid: string;
+  function_model_version_uuid: string;
 }
 
 /**
@@ -46,7 +46,9 @@ export interface RunLog {
   function_call: Record<string, any>;
   run_log_metadata: Record<string, any>;
   score: number;
-  token_usage: Record<string, any>;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
   latency: number;
   cost: number;
   version_uuid: string;
