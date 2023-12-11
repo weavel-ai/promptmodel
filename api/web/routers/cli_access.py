@@ -18,7 +18,7 @@ router = APIRouter()
 
 
 # CliAccess Endpoints
-@router.patch("/", response_model=CliAccessInstance)
+@router.patch("", response_model=CliAccessInstance)
 async def update_cli_access(
     cli_access: UpdateCliAccessKeyBody,
     session: AsyncSession = Depends(get_session),

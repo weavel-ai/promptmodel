@@ -20,7 +20,7 @@ router = APIRouter()
 
 
 # FunctionModel Endpoints
-@router.get("/", response_model=List[FunctionModelInstance])
+@router.get("", response_model=List[FunctionModelInstance])
 async def fetch_function_models(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -46,7 +46,7 @@ async def fetch_function_models(
         )
 
 
-@router.post("/", response_model=FunctionModelInstance)
+@router.post("", response_model=FunctionModelInstance)
 async def create_function_model(
     body: CreateFunctionModelBody,
     session: AsyncSession = Depends(get_session),
@@ -82,7 +82,7 @@ async def create_function_model(
         )
 
 
-@router.patch("/{uuid}/", response_model=FunctionModelInstance)
+@router.patch("/{uuid}", response_model=FunctionModelInstance)
 async def edit_function_model_name(
     uuid: str,
     name: str,

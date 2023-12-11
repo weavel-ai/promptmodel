@@ -24,7 +24,7 @@ router = APIRouter()
 
 
 # ChatModelVersion Endpoints
-@router.get("/", response_model=List[ChatModelVersionInstance])
+@router.get("", response_model=List[ChatModelVersionInstance])
 async def fetch_chat_model_versions(
     chat_model_uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -133,7 +133,7 @@ async def update_published_chat_model_version(
         )
 
 
-@router.patch("/{uuid}/tags/", response_model=ChatModelVersionInstance)
+@router.patch("/{uuid}/tags", response_model=ChatModelVersionInstance)
 async def update_chat_model_version_tags(
     uuid: str,
     body: UpdateChatModelVersionTagsBody,
@@ -164,7 +164,7 @@ async def update_chat_model_version_tags(
         )
 
 
-@router.patch("/{uuid}/memo/", response_model=ChatModelVersionInstance)
+@router.patch("/{uuid}/memo", response_model=ChatModelVersionInstance)
 async def update_chat_model_version_memo(
     uuid: str,
     memo: Optional[str] = None,

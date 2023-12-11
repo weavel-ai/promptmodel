@@ -19,7 +19,7 @@ router = APIRouter()
 # Prompt Endpoint
 
 
-@router.get("/", response_model=List[PromptInstance])
+@router.get("", response_model=List[PromptInstance])
 async def fetch_prompts(
     function_model_version_uuid: str,
     session: AsyncSession = Depends(get_session),

@@ -19,7 +19,7 @@ router = APIRouter()
 
 
 # ChatModel Endpoints
-@router.get("/", response_model=List[ChatModelInstance])
+@router.get("", response_model=List[ChatModelInstance])
 async def fetch_chat_models(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -45,7 +45,7 @@ async def fetch_chat_models(
         )
 
 
-@router.post("/", response_model=ChatModelInstance)
+@router.post("", response_model=ChatModelInstance)
 async def create_chat_model(
     body: CreateChatModelBody,
     session: AsyncSession = Depends(get_session),
@@ -79,7 +79,7 @@ async def create_chat_model(
         )
 
 
-@router.patch("/{uuid}/", response_model=ChatModelInstance)
+@router.patch("/{uuid}", response_model=ChatModelInstance)
 async def edit_chat_model_name(
     uuid: str,
     name: str,

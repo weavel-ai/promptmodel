@@ -19,7 +19,7 @@ from ..models import DailyRunLogMetricInstance, DailyChatLogMetricInstance
 router = APIRouter()
 
 
-@router.get("/function_model/", response_model=List[DailyRunLogMetricInstance])
+@router.get("/function_model", response_model=List[DailyRunLogMetricInstance])
 async def fetch_daily_run_log_metrics(
     function_model_uuid: str,
     start_day: str,
@@ -75,8 +75,8 @@ async def fetch_daily_run_log_metrics(
         )
 
 
-@router.get("/chat_model/", response_model=List[DailyChatLogMetricInstance])
-async def fetch_daily_chat_message_metrics(
+@router.get("/chat_model", response_model=List[DailyChatLogMetricInstance])
+async def fetch_daily_chat_log_metrics(
     chat_model_uuid: str,
     start_day: str,
     end_day: str,

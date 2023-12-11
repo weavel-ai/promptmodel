@@ -17,7 +17,7 @@ from ..models import ChatSessionInstance
 router = APIRouter()
 
 
-@router.get("/", response_model=List[ChatSessionInstance])
+@router.get("", response_model=List[ChatSessionInstance])
 async def fetch_chat_sessions(
     chat_model_version_uuid: str,
     db_session: AsyncSession = Depends(get_session),

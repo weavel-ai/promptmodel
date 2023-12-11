@@ -21,7 +21,7 @@ router = APIRouter()
 
 
 # Organization Endpoints
-@router.post("/", response_model=OrganizationInstance)
+@router.post("", response_model=OrganizationInstance)
 async def create_organization(
     body: CreateOrganizationBody,
     # jwt: Annotated[dict, Depends(JWT)],
@@ -53,7 +53,7 @@ async def create_organization(
         )
 
 
-@router.patch("/{organization_id}/", response_model=OrganizationInstance)
+@router.patch("/{organization_id}", response_model=OrganizationInstance)
 async def update_organization(
     organization_id: str,
     name: str,

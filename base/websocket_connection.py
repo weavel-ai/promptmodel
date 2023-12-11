@@ -425,15 +425,13 @@ class ConnectionManager:
                     # delete if len(identifiers) == 0
                     changelogs = [x for x in changelogs if len(x["identifiers"]) > 0]
                     # save changelog
+                    changelogs_rows = [
+                        ProjectChangelog(logs=[x], project_uuid=project_uuid)
+                        for x in changelogs
+                    ]
+                    # save changelog
                     if len(changelogs) > 0:
-                        session.add(
-                            ProjectChangelog(
-                                **{
-                                    "logs": changelogs,
-                                    "project_uuid": str(project_uuid),
-                                }
-                            )
-                        )
+                        session.add_all(changelogs_rows)
                         await session.commit()
 
                     ws = self.connected_locals.get(token)

@@ -20,7 +20,7 @@ router = APIRouter()
 
 
 # Tags Endpoints
-@router.get("/", response_model=List[TagsInstance])
+@router.get("", response_model=List[TagsInstance])
 async def fetch_tags(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -46,7 +46,7 @@ async def fetch_tags(
         )
 
 
-@router.post("/", response_model=TagsInstance)
+@router.post("", response_model=TagsInstance)
 async def create_tag(
     body: CreateTagsBody,
     session: AsyncSession = Depends(get_session),

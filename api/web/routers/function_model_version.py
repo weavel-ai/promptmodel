@@ -23,7 +23,7 @@ router = APIRouter()
 
 
 # FunctionModelVersion Endpoints
-@router.get("/", response_model=List[FunctionModelVersionInstance])
+@router.get("", response_model=List[FunctionModelVersionInstance])
 async def fetch_function_model_versions(
     function_model_uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -86,7 +86,7 @@ async def fetch_function_model_version(
         )
 
 
-@router.post("/{uuid}/publish/", response_model=FunctionModelVersionInstance)
+@router.post("/{uuid}/publish", response_model=FunctionModelVersionInstance)
 async def update_published_function_model_version(
     uuid: str,
     body: UpdatePublishedFunctionModelVersionBody,
@@ -129,7 +129,7 @@ async def update_published_function_model_version(
         )
 
 
-@router.patch("/{uuid}/tags/", response_model=FunctionModelVersionInstance)
+@router.patch("/{uuid}/tags", response_model=FunctionModelVersionInstance)
 async def update_function_model_version_tags(
     uuid: str,
     body: UpdateFunctionModelVersionTagsBody,
@@ -160,7 +160,7 @@ async def update_function_model_version_tags(
         )
 
 
-@router.patch("/{uuid}/memo/", response_model=FunctionModelVersionInstance)
+@router.patch("/{uuid}/memo", response_model=FunctionModelVersionInstance)
 async def update_function_model_version_memo(
     uuid: str,
     memo: Optional[str] = None,

@@ -22,7 +22,7 @@ def upgrade() -> None:
     # Drop the dependent view
     op.execute("DROP VIEW IF EXISTS chat_logs_count")
     op.execute("DROP VIEW IF EXISTS chat_log_view")
-    op.execute("DROP VIEW IF EXISTS daily_chat_message_metric")
+    op.execute("DROP VIEW IF EXISTS daily_chat_log_metric")
 
     # Alter the column type
     op.execute(
@@ -106,7 +106,7 @@ def upgrade() -> None:
     )
     op.execute(
         """
-        CREATE VIEW public.daily_chat_message_metric AS
+        CREATE VIEW public.daily_chat_log_metric AS
         SELECT
         p.name AS project_name,
         cm.name AS chat_model_name,

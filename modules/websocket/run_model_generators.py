@@ -123,14 +123,11 @@ async def run_local_function_model_generator(
 
     run_log: Dict[str, Any] = {
         "inputs": sample_input,
-        "raw_output": "",
+        "raw_output": None,
         "parsed_outputs": {},
         "function_call": None,
         "input_register_name": run_config.sample_name,
         "version_uuid": run_config.version_uuid,
-        "token_usage": None,  # TODO: add token usage, latency, cost on testing
-        "latency": None,
-        "cost": None,
         "run_log_metadata": None,
         "run_from_deployment": False,
     }
@@ -238,6 +235,8 @@ async def run_local_function_model_generator(
     async for chunk in res:
         # check output and update DB
         if "raw_output" in chunk:
+            if run_log["raw_output"] is None:
+                run_log["raw_output"] = ""
             run_log["raw_output"] += chunk["raw_output"]
 
         if "parsed_outputs" in chunk:
@@ -256,16 +255,15 @@ async def run_local_function_model_generator(
         if chunk["status"] in ["completed", "failed"]:
             error_type = chunk["error_type"] if "error_type" in chunk else None
             error_log = chunk["log"] if "log" in chunk else None
+            await save_run_log(
+                session,
+                function_model_version_config,
+                run_log,
+                error_type,
+                error_log,
+            )
 
         yield json.dumps(chunk)
-
-    await save_run_log(
-        session,
-        function_model_version_config,
-        run_log,
-        error_type,
-        error_log,
-    )
 
     if need_project_version_update:
         await session.execute(
@@ -310,6 +308,7 @@ async def run_local_chat_model_generator(
                         ChatMessage.name,
                         ChatMessage.content,
                         ChatMessage.tool_calls,
+                        ChatMessage.function_call,
                     )
                     .where(ChatMessage.session_uuid == session_uuid)
                     .order_by(asc(ChatMessage.created_at))
@@ -493,17 +492,17 @@ async def run_local_chat_model_generator(
                     error_type = chunk["error_type"] if "error_type" in chunk else None
                     error_log = chunk["log"] if "log" in chunk else None
                     response_messages.append(current_message)
+                    await save_chat_messages(
+                        project["uuid"],
+                        session,
+                        session_uuid,
+                        new_messages,
+                        response_messages,
+                        error_type,
+                        error_log,
+                    )
 
         yield json.dumps(chunk)
-
-    await save_chat_messages(
-        session,
-        session_uuid,
-        new_messages,
-        response_messages,
-        error_type,
-        error_log,
-    )
 
     if need_project_version_update:
         await session.execute(
@@ -565,6 +564,7 @@ async def save_run_log(
 
 
 async def save_chat_messages(
+    project_uuid: str,
     session: AsyncSession,
     session_uuid: Optional[str] = None,
     new_messages: Optional[List[Dict[str, Any]]] = None,
@@ -590,11 +590,7 @@ async def save_chat_messages(
 
             # save response messages
             for message in response_messages:
-                message["tool_calls"] = None
                 message["name"] = None if "name" not in message else message["name"]
-                if "function_call" in message:
-                    message["tool_calls"] = [message["function_call"]]
-                    del message["function_call"]
                 message["session_uuid"] = session_uuid
 
             response_messages[-1]["chat_message_metadata"] = {
@@ -606,6 +602,30 @@ async def save_chat_messages(
                 ChatMessage(**message) for message in response_messages
             ]
             session.add_all(response_chat_message_rows)
+            await session.flush()
+            # get last 2 messages
+            last_two_messages = (
+                (
+                    await session.execute(
+                        select(ChatMessage)
+                        .where(ChatMessage.session_uuid == session_uuid)
+                        .order_by(desc(ChatMessage.created_at))
+                        .limit(2)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
+            # make ChatLog
+            chat_log = ChatLog(
+                user_message_uuid=last_two_messages[1].uuid,
+                assistant_message_uuid=last_two_messages[0].uuid,
+                session_uuid=session_uuid,
+                project_uuid=project_uuid,
+            )
+            session.add(chat_log)
+
             await session.commit()
             return
         else:
@@ -620,16 +640,36 @@ async def save_chat_messages(
         # save response messages
         for message in response_messages:
             message["session_uuid"] = session_uuid
-            message["tool_calls"] = None
             message["name"] = None if "name" not in message else message["name"]
-            if "function_call" in message:
-                message["tool_calls"] = [message["function_call"]]
-                del message["function_call"]
 
         response_chat_message_rows = [
             ChatMessage(**message) for message in response_messages
         ]
         session.add_all(response_chat_message_rows)
+
+        # get last 2 messages
+        last_two_messages = (
+            (
+                await session.execute(
+                    select(ChatMessage)
+                    .where(ChatMessage.session_uuid == session_uuid)
+                    .order_by(desc(ChatMessage.created_at))
+                    .limit(2)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        # make ChatLog
+        chat_log = ChatLog(
+            user_message_uuid=last_two_messages[1].uuid,
+            assistant_message_uuid=last_two_messages[0].uuid,
+            session_uuid=session_uuid,
+            project_uuid=project_uuid,
+        )
+        session.add(chat_log)
+
         await session.commit()
 
         return

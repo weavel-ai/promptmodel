@@ -21,7 +21,7 @@ router = APIRouter()
 # User Endpoints
 
 
-@router.post("/", response_model=UserInstance)
+@router.post("", response_model=UserInstance)
 async def create_user(
     body: CreateUserBody,
     session: AsyncSession = Depends(get_session),

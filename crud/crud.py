@@ -42,31 +42,24 @@ async def save_instances(
 
         await session.flush()
 
-        result = await session.execute(
-            select(FunctionModel).where(FunctionModel.created_at >= current_time)
-        )
-        function_model_rows = result.scalars().all()
+        for obj in function_models:
+            await session.refresh(obj)
 
-        result = await session.execute(
-            select(ChatModel).where(ChatModel.created_at >= current_time)
-        )
-        chat_model_rows = result.scalars().all()
+        for obj in chat_models:
+            await session.refresh(obj)
 
-        result = await session.execute(
-            select(SampleInput).where(SampleInput.created_at >= current_time)
-        )
-        sample_input_rows = result.scalars().all()
+        for obj in sample_inputs:
+            await session.refresh(obj)
 
-        result = await session.execute(
-            select(FunctionSchema).where(FunctionSchema.created_at >= current_time)
-        )
-        function_schema_rows = result.scalars().all()
+        for obj in function_schemas:
+            await session.refresh(obj)
 
+        print(function_models)
         return {
-            "function_model_rows": [r.model_dump() for r in function_model_rows],
-            "chat_model_rows": [r.model_dump() for r in chat_model_rows],
-            "sample_input_rows": [r.model_dump() for r in sample_input_rows],
-            "function_schema_rows": [r.model_dump() for r in function_schema_rows],
+            "function_model_rows": [r.model_dump() for r in function_models],
+            "chat_model_rows": [r.model_dump() for r in chat_models],
+            "sample_input_rows": [r.model_dump() for r in sample_inputs],
+            "function_schema_rows": [r.model_dump() for r in function_schemas],
         }
 
 

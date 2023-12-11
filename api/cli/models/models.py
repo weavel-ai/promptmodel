@@ -1,6 +1,7 @@
 from typing import Optional, List, Dict, Any
 
 from modules.types import PMObject
+from litellm.utils import ModelResponse
 
 
 class DeployedFunctionModelVersionInstance(PMObject):
@@ -78,3 +79,17 @@ class CliChatMessageInstance(PMObject):
 class FetchChatModelVersionResponseInstance(PMObject):
     chat_model_versions: List[DeployedChatModelVersionInstance]
     chat_messages: List[CliChatMessageInstance]
+
+
+class ChatLogRequestBody(PMObject):
+    uuid: Optional[str] = None
+    message: Dict[str, Any]
+    metadata: Optional[Dict[str, Any]] = None
+    api_response: Optional[ModelResponse] = None
+
+
+class RunLogRequestBody(PMObject):
+    uuid: Optional[str] = None
+    inputs: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict] = None
+    api_response: Optional[ModelResponse] = None

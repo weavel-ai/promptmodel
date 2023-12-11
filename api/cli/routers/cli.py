@@ -31,7 +31,7 @@ from base.websocket_connection import websocket_manager
 from crud import update_instances, pull_instances, save_instances
 from db_models import *
 from modules.types import InstanceType
-from litellm.utils import completion_cost
+from litellm.utils import completion_cost, token_counter
 from ..models import (
     DeployedFunctionModelVersionInstance,
     DeployedChatModelVersionInstance,
@@ -43,6 +43,7 @@ from ..models import (
     FetchFunctionModelVersionResponseInstance,
     FetchChatModelVersionResponseInstance,
     CliChatMessageInstance,
+    ChatLogRequestBody,
 )
 
 router = APIRouter()
@@ -412,10 +413,10 @@ async def fetch_function_model_version(
 
 
 @router.get(
-    "/fetch_chat_model_version_with_chat_message",
+    "/fetch_chat_model_version_with_chat_log",
     response_model=FetchChatModelVersionResponseInstance,
 )
-async def fetch_chat_model_version_with_chat_message(
+async def fetch_chat_model_version_with_chat_log(
     chat_model_name: str,
     session_uuid: Optional[str] = None,
     version: Optional[Union[str, int]] = "deploy",
@@ -487,6 +488,7 @@ async def fetch_chat_model_version_with_chat_message(
                             ChatMessage.name,
                             ChatMessage.content,
                             ChatMessage.tool_calls,
+                            ChatMessage.function_call,
                         )
                         .where(ChatMessage.session_uuid == session_uuid)
                         .order_by(asc(ChatMessage.created_at))
@@ -499,7 +501,7 @@ async def fetch_chat_model_version_with_chat_message(
 
             res = {
                 "chat_model_versions": session_chat_model_version,
-                "chat_messages": chat_messages,
+                "chat_logs": chat_messages,
             }
         elif isinstance(version, int):
             # find chat_model_version
@@ -536,7 +538,7 @@ async def fetch_chat_model_version_with_chat_message(
                 for x in chat_model_version
             ]
 
-            res = {"chat_model_versions": chat_model_version, "chat_messages": []}
+            res = {"chat_model_versions": chat_model_version, "chat_logs": []}
         else:
             try:
                 chat_model = (
@@ -576,7 +578,7 @@ async def fetch_chat_model_version_with_chat_message(
 
             res = {
                 "chat_model_versions": deployed_chat_model_versions,
-                "chat_messages": [],
+                "chat_logs": [],
             }
 
         return JSONResponse(res, status_code=HTTP_200_OK)
@@ -843,7 +845,7 @@ async def save_instances_in_code(
         # delete if len(identifiers) == 0
         changelogs = [x for x in changelogs if len(x["identifiers"]) > 0]
         changelogs_rows = [
-            ProjectChangelog(logs=x, project_uuid=project_uuid) for x in changelogs
+            ProjectChangelog(logs=[x], project_uuid=project_uuid) for x in changelogs
         ]
         # save changelog
         if len(changelogs) > 0:
@@ -1107,10 +1109,8 @@ async def log_deployment_run(
 @router.post("/log_deployment_chat")
 async def log_deployment_chat(
     session_uuid: str,
-    log_uuid_list: List[str],
-    version_uuid: str,
-    messages: List[Dict[str, Any]] = [],
-    metadata: Optional[List[Dict[str, Any]]] = None,
+    version_uuid: Optional[str],
+    chat_log_request_body: List[ChatLogRequestBody],
     project: dict = Depends(get_project),
     db_session: AsyncSession = Depends(get_session),
 ):
@@ -1125,74 +1125,94 @@ async def log_deployment_chat(
             .scalars()
             .all()
         )
+        version_uuid = session[0].version_uuid
 
         if len(session) == 0:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND, detail="Session not found"
             )
 
-        # make logs
-        logs: List[ChatMessage] = []
-        for log_uuid, message, meta in zip(log_uuid_list, messages, metadata):
+        model: str = (
+            await db_session.execute(
+                select(ChatModelVersion.model).where(
+                    ChatModelVersion.uuid == version_uuid
+                )
+            )
+        ).scalar_one()
+
+        # make ChatMessage
+        messages: List[ChatMessage] = []
+        for chat_log_request in chat_log_request_body:
             token_usage = {}
             latency = 0
-            cost = completion_cost(meta["api_response"]) if meta else None
-            if "token_usage" in meta:
-                token_usage = meta["token_usage"]
-                del meta["token_usage"]
-            if "response_ms" in meta:
-                latency = meta["response_ms"]
-                del meta["response_ms"]
-            if "_response_ms" in meta:
-                latency = meta["_response_ms"]
-                del meta["_response_ms"]
-            if "latency" in meta:
-                latency = meta["latency"]
-                del meta["latency"]
-            logs.append(
+            token_count = token_counter(model, chat_log_request.message["content"])
+            cost = None
+            token_usage = None
+            latency = None
+
+            if chat_log_request.api_response:
+                cost = completion_cost(chat_log_request.api_response)
+                token_usage = (
+                    chat_log_request.api_response["usage"]
+                    if "usage" in chat_log_request.api_response
+                    else None
+                )
+                latency = (
+                    chat_log_request.api_response["_response_ms"]
+                    if "_response_ms" in chat_log_request.api_response
+                    else None
+                )
+
+            messages.append(
                 ChatMessage(
                     **{
-                        "uuid": log_uuid,
+                        "uuid": chat_log_request.uuid,
                         "session_uuid": session_uuid,
-                        "role": message["role"],
-                        "content": message["content"],
-                        "name": message["name"] if "name" in message else None,
-                        "function_call": message["function_call"]
-                        if "function_call" in message
+                        "role": chat_log_request.message["role"],
+                        "content": chat_log_request.message["content"],
+                        "name": chat_log_request.message["name"]
+                        if "name" in chat_log_request.message
                         else None,
-                        "tool_calls": message["tool_calls"]
-                        if "tool_calls" in message
+                        "function_call": chat_log_request.message["function_call"]
+                        if "function_call" in chat_log_request.message
                         else None,
-                        "chat_message_metadata": meta,
+                        "tool_calls": chat_log_request.message["tool_calls"]
+                        if "tool_calls" in chat_log_request.message
+                        else None,
+                        "chat_message_metadata": chat_log_request.metadata,
+                        "token_count": token_count,
                     }
                 )
             )
 
+        db_session.add_all(messages)
+
         # get latest chat_message
-        latest_chat_message = (
-            await db_session.execute(
-                select(ChatMessage)
-                .where(ChatMessage.session_uuid == session_uuid)
-                .order_by(desc(ChatMessage.created_at))
-                .limit(1)
+        if chat_log_request.message["role"] == "assistant":
+            latest_chat_message = (
+                await db_session.execute(
+                    select(ChatMessage)
+                    .where(ChatMessage.session_uuid == session_uuid)
+                    .where(ChatMessage.role.in_(["user", "function"]))
+                    .order_by(desc(ChatMessage.created_at))
+                    .limit(1)
+                )
+            ).scalar_one()
+            
+            # save log
+            chat_log = ChatLog(
+                user_message_uuid=latest_chat_message.uuid,
+                assistant_message_uuid=messages[-1].uuid,
+                session_uuid=session_uuid,
+                project_uuid=project["uuid"],
+                prompt_tokens=token_usage["prompt_tokens"],
+                completion_tokens=token_usage["completion_tokens"],
+                total_tokens=token_usage["total_tokens"],
+                latency=latency,
+                cost=cost,
             )
-        ).scalar_one()
-        # save logs
-        db_session.add_all(logs)
-        # TODO: add ChatLog
-        chat_log = ChatLog(
-            user_message_uuid=latest_chat_message.uuid,
-            assistant_message_uuid=logs[0].uuid,
-            session_uuid=session_uuid,
-            project_uuid=project["uuid"],
-            prompt_tokens=token_usage["prompt_tokens"],
-            completion_tokens=token_usage["completion_tokens"],
-            total_tokens=token_usage["total_tokens"],
-            latency=latency,
-            cost=cost,
-        )
-        await db_session.flush()
-        db_session.add(chat_log)
+            await db_session.flush()
+            db_session.add(chat_log)
 
         await db_session.commit()
         return Response(status_code=HTTP_200_OK)

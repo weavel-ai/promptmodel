@@ -33,6 +33,7 @@ class ChatLogViewInstance(PMObject):
     assistant_message_uuid: str
 
     created_at: str
+
     user_input: str
     assistant_output: Optional[str] = None
     tool_calls: Optional[List[Dict[str, Any]]] = None

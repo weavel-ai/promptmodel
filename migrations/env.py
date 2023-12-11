@@ -38,7 +38,7 @@ view_name_list = [
     "chat_log_view",
     "chat_logs_count",
     "run_logs_count",
-    "daily_chat_message_metric",
+    "daily_chat_log_metric",
     "daily_run_log_metric",
     "deployed_chat_model_version",
     "deployed_function_model_version",

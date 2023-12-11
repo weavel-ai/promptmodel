@@ -19,7 +19,7 @@ router = APIRouter()
 
 
 # Changelog Endpoints
-@router.get("/", response_model=List[ProjectChangelogInstance])
+@router.get("", response_model=List[ProjectChangelogInstance])
 async def fetch_changelogs(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),

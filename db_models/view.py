@@ -80,7 +80,7 @@ class RunLogsCount(Base):
 
 
 class DailyChatLogMetric(Base):
-    __tablename__ = "daily_chat_message_metric"
+    __tablename__ = "daily_chat_log_metric"
 
     project_name: str = Column(Text)
 

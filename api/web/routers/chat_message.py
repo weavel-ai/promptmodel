@@ -23,7 +23,7 @@ router = APIRouter()
 
 
 # ChatMessage Endpoints
-@router.get("/session/", response_model=List[ChatMessageInstance])
+@router.get("/session", response_model=List[ChatMessageInstance])
 async def fetch_session_chat_messages(
     chat_session_uuid: str,
     page: int,
@@ -31,13 +31,13 @@ async def fetch_session_chat_messages(
     db_session: AsyncSession = Depends(get_session),
 ):
     try:
-        chat_messages: List[ChatLogViewInstance] = [
-            ChatLogViewInstance(**chat_message.model_dump())
+        chat_messages: List[ChatMessageInstance] = [
+            ChatMessageInstance(**chat_message.model_dump())
             for chat_message in (
                 await db_session.execute(
-                    select(ChatLogView)
-                    .where(ChatLogView.session_uuid == chat_session_uuid)
-                    .order_by(asc(ChatLogView.created_at))
+                    select(ChatMessage)
+                    .where(ChatMessage.session_uuid == chat_session_uuid)
+                    .order_by(asc(ChatMessage.created_at))
                     .offset(max(0, (page - 1)) * rows_per_page)
                     .limit(rows_per_page)
                 )
@@ -53,7 +53,7 @@ async def fetch_session_chat_messages(
         )
 
 
-@router.get("/project/", response_model=List[ChatLogViewInstance])
+@router.get("/project", response_model=List[ChatLogViewInstance])
 async def fetch_project_chat_messages(
     project_uuid: str,
     page: int,
@@ -83,7 +83,7 @@ async def fetch_project_chat_messages(
         )
 
 
-@router.get("/count/", response_model=ChatLogsCountInstance)
+@router.get("/count", response_model=ChatLogsCountInstance)
 async def fetch_chat_logs_count(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),

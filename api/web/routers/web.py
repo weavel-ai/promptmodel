@@ -536,6 +536,7 @@ async def run_cloud_chat_model(
                             ChatMessage.name,
                             ChatMessage.content,
                             ChatMessage.tool_calls,
+                            ChatMessage.function_call,
                         )
                         .where(ChatMessage.session_uuid == session_uuid)
                         .order_by(asc(ChatMessage.created_at))
@@ -617,10 +618,10 @@ async def run_cloud_chat_model(
                 user_message_uuid=user_message_uuid,
                 assistant_message_uuid=assistant_message_uuid,
                 session_uuid=session_uuid,
-                porject_uuid=project_uuid,
+                project_uuid=project_uuid,
             )
         )
-        
+
         await session.commit()
 
         data = {

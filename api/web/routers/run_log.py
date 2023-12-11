@@ -26,7 +26,7 @@ router = APIRouter()
 # RunLog Endpoints
 
 
-@router.get("/version/", response_model=List[RunLogInstance])
+@router.get("/version", response_model=List[RunLogInstance])
 async def fetch_version_run_logs(
     function_model_version_uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -52,7 +52,7 @@ async def fetch_version_run_logs(
         )
 
 
-@router.get("/project/", response_model=List[DeploymentRunLogViewInstance])
+@router.get("/project", response_model=List[DeploymentRunLogViewInstance])
 async def fetch_run_logs(
     project_uuid: str,
     page: int,
@@ -82,7 +82,7 @@ async def fetch_run_logs(
         )
 
 
-@router.get("/count/", response_model=RunLogsCountInstance)
+@router.get("/count", response_model=RunLogsCountInstance)
 async def fetch_run_logs_count(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
