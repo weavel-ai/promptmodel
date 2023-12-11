@@ -2,8 +2,8 @@ from fastapi import APIRouter
 
 from .web import router as web_router
 from .analytics import router as analytics_router
-from .chat_log_session import router as chat_log_session_router
-from .chat_log import router as chat_log_router
+from .chat_session import router as chat_session_router
+from .chat_message import router as chat_message_router
 from .chat_model_version import router as chat_model_version_router
 from .chat_model import router as chat_model_router
 from .cli_access import router as cli_access_router
@@ -11,8 +11,8 @@ from .function_schema import router as function_schema_router
 from .organization import router as organization_router
 from .project_changelog import router as project_changelog_router
 from .project import router as project_router
-from .prompt_model_version import router as prompt_model_version_router
-from .prompt_model import router as prompt_model_router
+from .function_model_version import router as function_model_version_router
+from .function_model import router as function_model_router
 from .prompt import router as prompt_router
 from .run_log import router as run_log_router
 from .sample_input import router as sample_input_router
@@ -38,17 +38,19 @@ router.include_router(
     tags=["chat_model_version"],
 )
 router.include_router(
-    chat_log_session_router, prefix="/chat_log_sessions", tags=["chat_log_session"]
+    chat_session_router, prefix="/chat_sessions", tags=["chat_session"]
 )
-router.include_router(chat_log_router, prefix="/chat_logs", tags=["chat_log"])
+router.include_router(
+    chat_message_router, prefix="/chat_messages", tags=["chat_message"]
+)
 
 router.include_router(
-    prompt_model_router, prefix="/prompt_models", tags=["prompt_model"]
+    function_model_router, prefix="/function_models", tags=["function_model"]
 )
 router.include_router(
-    prompt_model_version_router,
-    prefix="/prompt_model_versions",
-    tags=["prompt_model_version"],
+    function_model_version_router,
+    prefix="/function_model_versions",
+    tags=["function_model_version"],
 )
 router.include_router(prompt_router, prefix="/prompts", tags=["prompt"])
 router.include_router(run_log_router, prefix="/run_logs", tags=["run_log"])

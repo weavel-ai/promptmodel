@@ -15,16 +15,16 @@ from base.websocket_connection import websocket_manager, LocalTask
 from api.common.models import (
     ChatModelRunConfig,
     PromptConfig,
-    PromptModelRunConfig,
+    FunctionModelRunConfig,
 )
 from db_models import *
 
 
-async def run_local_prompt_model_generator(
+async def run_local_function_model_generator(
     session: AsyncSession,
     project: Dict,
     cli_access_key: str,
-    run_config: PromptModelRunConfig,
+    run_config: FunctionModelRunConfig,
 ):
     sample_name: Optional[str] = run_config.sample_name
     prompts: List[PromptConfig] = run_config.prompts
@@ -123,22 +123,19 @@ async def run_local_prompt_model_generator(
 
     run_log: Dict[str, Any] = {
         "inputs": sample_input,
-        "raw_output": "",
+        "raw_output": None,
         "parsed_outputs": {},
         "function_call": None,
         "input_register_name": run_config.sample_name,
         "version_uuid": run_config.version_uuid,
-        "token_usage": None,  # TODO: add token usage, latency, cost on testing
-        "latency": None,
-        "cost": None,
         "run_log_metadata": None,
         "run_from_deployment": False,
     }
 
-    prompt_model_version_config: Dict[str, Any] = {
+    function_model_version_config: Dict[str, Any] = {
         "version": 0,
         "uuid": run_config.version_uuid,
-        "prompt_model_uuid": run_config.prompt_model_uuid,
+        "function_model_uuid": run_config.function_model_uuid,
         "model": run_config.model,
         "from_version": run_config.from_version,
         "parsing_type": run_config.parsing_type,
@@ -147,59 +144,59 @@ async def run_local_prompt_model_generator(
     }
     need_project_version_update = False
     changelogs = []
-    if prompt_model_version_config["uuid"] is None:
-        del prompt_model_version_config["uuid"]
+    if function_model_version_config["uuid"] is None:
+        del function_model_version_config["uuid"]
         # find latest version
         if run_config.from_version is None:
-            prompt_model_version_config["is_published"] = True
-            prompt_model_version_config["version"] = 1
-            new_prompt_model_version_row = PromptModelVersion(
-                **prompt_model_version_config
+            function_model_version_config["is_published"] = True
+            function_model_version_config["version"] = 1
+            new_function_model_version_row = FunctionModelVersion(
+                **function_model_version_config
             )
-            session.add(new_prompt_model_version_row)
+            session.add(new_function_model_version_row)
             await session.commit()
-            await session.refresh(new_prompt_model_version_row)
+            await session.refresh(new_function_model_version_row)
 
             # update project version
             need_project_version_update = True
             changelogs += [
                 {
-                    "subject": "prompt_model_version",
-                    "identifier": [str(new_prompt_model_version_row.uuid)],
+                    "subject": "function_model_version",
+                    "identifier": [str(new_function_model_version_row.uuid)],
                     "action": "ADD",
                 },
                 {
-                    "subject": "prompt_model_version",
-                    "identifier": [str(new_prompt_model_version_row.uuid)],
+                    "subject": "function_model_version",
+                    "identifier": [str(new_function_model_version_row.uuid)],
                     "action": "PUBLISH",
                 },
             ]
         else:
             latest_version = (
                 await session.execute(
-                    select(PromptModelVersion.version)
+                    select(FunctionModelVersion.version)
                     .where(
-                        PromptModelVersion.prompt_model_uuid
-                        == run_config.prompt_model_uuid
+                        FunctionModelVersion.function_model_uuid
+                        == run_config.function_model_uuid
                     )
-                    .order_by(desc(PromptModelVersion.version))
+                    .order_by(desc(FunctionModelVersion.version))
                     .limit(1)
                 )
             ).scalar_one()
 
-            prompt_model_version_config["version"] = latest_version + 1
+            function_model_version_config["version"] = latest_version + 1
 
-            new_prompt_model_version_row = PromptModelVersion(
-                **prompt_model_version_config
+            new_function_model_version_row = FunctionModelVersion(
+                **function_model_version_config
             )
-            session.add(new_prompt_model_version_row)
+            session.add(new_function_model_version_row)
             await session.commit()
-            await session.refresh(new_prompt_model_version_row)
+            await session.refresh(new_function_model_version_row)
 
             changelogs.append(
                 {
-                    "subject": "prompt_model_version",
-                    "identifier": [str(new_prompt_model_version_row.uuid)],
+                    "subject": "function_model_version",
+                    "identifier": [str(new_function_model_version_row.uuid)],
                     "action": "ADD",
                 }
             )
@@ -207,17 +204,17 @@ async def run_local_prompt_model_generator(
         # add res[0]["uuid"] for each prompt
         prompt_dict = [p.model_dump() for p in prompts]
         for prompt in prompt_dict:
-            prompt["version_uuid"] = str(new_prompt_model_version_row.uuid)
+            prompt["version_uuid"] = str(new_function_model_version_row.uuid)
 
         prompt_row_list = [Prompt(**prompt) for prompt in prompt_dict]
         session.add_all(prompt_row_list)
         await session.commit()
 
-        prompt_model_version_config["uuid"] = str(new_prompt_model_version_row.uuid)
+        function_model_version_config["uuid"] = str(new_function_model_version_row.uuid)
 
         data = {
-            "prompt_model_version_uuid": prompt_model_version_config["uuid"],
-            "version": prompt_model_version_config["version"],
+            "function_model_version_uuid": function_model_version_config["uuid"],
+            "version": function_model_version_config["version"],
             "status": "running",
         }
         yield json.dumps(data)
@@ -238,6 +235,8 @@ async def run_local_prompt_model_generator(
     async for chunk in res:
         # check output and update DB
         if "raw_output" in chunk:
+            if run_log["raw_output"] is None:
+                run_log["raw_output"] = ""
             run_log["raw_output"] += chunk["raw_output"]
 
         if "parsed_outputs" in chunk:
@@ -256,16 +255,15 @@ async def run_local_prompt_model_generator(
         if chunk["status"] in ["completed", "failed"]:
             error_type = chunk["error_type"] if "error_type" in chunk else None
             error_log = chunk["log"] if "log" in chunk else None
+            await save_run_log(
+                session,
+                function_model_version_config,
+                run_log,
+                error_type,
+                error_log,
+            )
 
         yield json.dumps(chunk)
-
-    await save_run_log(
-        session,
-        prompt_model_version_config,
-        run_log,
-        error_type,
-        error_log,
-    )
 
     if need_project_version_update:
         await session.execute(
@@ -302,20 +300,24 @@ async def run_local_chat_model_generator(
 
     old_messages = [{"role": "system", "content": run_config.system_prompt}]
     if session_uuid:
-        chat_logs: List[Dict] = (
+        chat_messages: List[Dict] = (
             (
                 await session.execute(
                     select(
-                        ChatLog.role, ChatLog.name, ChatLog.content, ChatLog.tool_calls
+                        ChatMessage.role,
+                        ChatMessage.name,
+                        ChatMessage.content,
+                        ChatMessage.tool_calls,
+                        ChatMessage.function_call,
                     )
-                    .where(ChatLog.session_uuid == session_uuid)
-                    .order_by(asc(ChatLog.created_at))
+                    .where(ChatMessage.session_uuid == session_uuid)
+                    .order_by(asc(ChatMessage.created_at))
                 )
             )
             .mappings()
             .all()
         )
-        old_messages += chat_logs
+        old_messages += chat_messages
         # delete None values
         old_messages = [
             {k: v for k, v in message.items() if v is not None}
@@ -406,7 +408,7 @@ async def run_local_chat_model_generator(
 
     # make session
     if session_uuid is None:
-        new_session = ChatLogSession(
+        new_session = ChatSession(
             **{
                 "version_uuid": chat_model_version_config["uuid"],
                 "run_from_deployment": False,
@@ -419,7 +421,7 @@ async def run_local_chat_model_generator(
         session_uuid: str = str(new_session.uuid)
 
         data = {
-            "chat_log_session_uuid": session_uuid,
+            "chat_session_uuid": session_uuid,
             "status": "running",
         }
         yield json.dumps(data)
@@ -490,17 +492,17 @@ async def run_local_chat_model_generator(
                     error_type = chunk["error_type"] if "error_type" in chunk else None
                     error_log = chunk["log"] if "log" in chunk else None
                     response_messages.append(current_message)
+                    await save_chat_messages(
+                        project["uuid"],
+                        session,
+                        session_uuid,
+                        new_messages,
+                        response_messages,
+                        error_type,
+                        error_log,
+                    )
 
         yield json.dumps(chunk)
-
-    await save_chat_logs(
-        session,
-        session_uuid,
-        new_messages,
-        response_messages,
-        error_type,
-        error_log,
-    )
 
     if need_project_version_update:
         await session.execute(
@@ -524,7 +526,7 @@ async def run_local_chat_model_generator(
 
 async def save_run_log(
     session: AsyncSession,
-    prompt_model_version_config: Optional[Dict[str, Any]] = None,
+    function_model_version_config: Optional[Dict[str, Any]] = None,
     run_log: Optional[Dict[str, Any]] = None,
     local_task_error_type: Optional[LocalTaskErrorType] = None,
     error_log: Optional[str] = None,
@@ -541,7 +543,7 @@ async def save_run_log(
             or local_task_error_type == LocalTaskErrorType.PARSING_FAILED_ERROR.value
         ):
             # add version_uuid for run_log
-            run_log["version_uuid"] = prompt_model_version_config["uuid"]
+            run_log["version_uuid"] = function_model_version_config["uuid"]
 
             # add error logs for run_log
             run_log["run_log_metadata"] = {"error_occurs": True, "error_log": error_log}
@@ -554,14 +556,15 @@ async def save_run_log(
 
     else:
         # add version_uuid for run_log
-        run_log["version_uuid"] = prompt_model_version_config["uuid"]
+        run_log["version_uuid"] = function_model_version_config["uuid"]
         session.add(RunLog(**run_log))
         await session.commit()
 
         return
 
 
-async def save_chat_logs(
+async def save_chat_messages(
+    project_uuid: str,
     session: AsyncSession,
     session_uuid: Optional[str] = None,
     new_messages: Optional[List[Dict[str, Any]]] = None,
@@ -581,28 +584,48 @@ async def save_chat_logs(
             or local_task_error_type == LocalTaskErrorType.PARSING_FAILED_ERROR.value
         ):
             # save new messages
-            new_chat_log_rows = [ChatLog(**message) for message in new_messages]
-            session.add_all(new_chat_log_rows)
+            new_chat_message_rows = [ChatMessage(**message) for message in new_messages]
+            session.add_all(new_chat_message_rows)
             await session.commit()
 
             # save response messages
             for message in response_messages:
-                message["tool_calls"] = None
                 message["name"] = None if "name" not in message else message["name"]
-                if "function_call" in message:
-                    message["tool_calls"] = [message["function_call"]]
-                    del message["function_call"]
                 message["session_uuid"] = session_uuid
 
-            response_messages[-1]["chat_log_metadata"] = {
+            response_messages[-1]["chat_message_metadata"] = {
                 "error_occurs": True,
                 "error_log": error_log,
             }
 
-            response_chat_log_rows = [
-                ChatLog(**message) for message in response_messages
+            response_chat_message_rows = [
+                ChatMessage(**message) for message in response_messages
             ]
-            session.add_all(response_chat_log_rows)
+            session.add_all(response_chat_message_rows)
+            await session.flush()
+            # get last 2 messages
+            last_two_messages = (
+                (
+                    await session.execute(
+                        select(ChatMessage)
+                        .where(ChatMessage.session_uuid == session_uuid)
+                        .order_by(desc(ChatMessage.created_at))
+                        .limit(2)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
+            # make ChatLog
+            chat_log = ChatLog(
+                user_message_uuid=last_two_messages[1].uuid,
+                assistant_message_uuid=last_two_messages[0].uuid,
+                session_uuid=session_uuid,
+                project_uuid=project_uuid,
+            )
+            session.add(chat_log)
+
             await session.commit()
             return
         else:
@@ -610,21 +633,43 @@ async def save_chat_logs(
 
     else:
         # save new messages
-        new_chat_log_rows = [ChatLog(**message) for message in new_messages]
-        session.add_all(new_chat_log_rows)
+        new_chat_message_rows = [ChatMessage(**message) for message in new_messages]
+        session.add_all(new_chat_message_rows)
         await session.commit()
 
         # save response messages
         for message in response_messages:
             message["session_uuid"] = session_uuid
-            message["tool_calls"] = None
             message["name"] = None if "name" not in message else message["name"]
-            if "function_call" in message:
-                message["tool_calls"] = [message["function_call"]]
-                del message["function_call"]
 
-        response_chat_log_rows = [ChatLog(**message) for message in response_messages]
-        session.add_all(response_chat_log_rows)
+        response_chat_message_rows = [
+            ChatMessage(**message) for message in response_messages
+        ]
+        session.add_all(response_chat_message_rows)
+
+        # get last 2 messages
+        last_two_messages = (
+            (
+                await session.execute(
+                    select(ChatMessage)
+                    .where(ChatMessage.session_uuid == session_uuid)
+                    .order_by(desc(ChatMessage.created_at))
+                    .limit(2)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        # make ChatLog
+        chat_log = ChatLog(
+            user_message_uuid=last_two_messages[1].uuid,
+            assistant_message_uuid=last_two_messages[0].uuid,
+            session_uuid=session_uuid,
+            project_uuid=project_uuid,
+        )
+        session.add(chat_log)
+
         await session.commit()
 
         return

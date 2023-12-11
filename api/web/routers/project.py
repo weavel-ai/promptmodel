@@ -22,7 +22,7 @@ router = APIRouter()
 
 
 # Project Endpoints
-@router.post("/", response_model=ProjectInstance)
+@router.post("", response_model=ProjectInstance)
 async def create_project(
     body: CreateProjectBody,
     session: AsyncSession = Depends(get_session),
@@ -64,7 +64,7 @@ async def create_project(
         )
 
 
-@router.get("/", response_model=List[ProjectInstance])
+@router.get("", response_model=List[ProjectInstance])
 async def fetch_projects(
     organization_id: str,
     session: AsyncSession = Depends(get_session),

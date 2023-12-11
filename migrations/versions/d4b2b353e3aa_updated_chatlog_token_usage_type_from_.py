@@ -1,4 +1,4 @@
-"""Updated ChatLog token_usage type from json to bigint
+"""Updated ChatMessage token_usage type from json to bigint
 
 Revision ID: d4b2b353e3aa
 Revises: cbf7b3a6ba3c
@@ -27,7 +27,7 @@ def upgrade() -> None:
     # Alter the column type
     op.execute(
         """
-        ALTER TABLE chat_log
+        ALTER TABLE chat_message
         ALTER COLUMN token_usage
         TYPE bigint
         USING token_usage::text::bigint
@@ -42,23 +42,23 @@ def upgrade() -> None:
         with
         numberedmessages as (
             select
-            chat_log.id,
-            chat_log.created_at,
-            chat_log.session_uuid,
-            chat_log.role,
-            chat_log.content,
-            chat_log.tool_calls,
-            chat_log.latency,
-            chat_log.cost,
-            chat_log.token_usage,
+            chat_message.id,
+            chat_message.created_at,
+            chat_message.session_uuid,
+            chat_message.role,
+            chat_message.content,
+            chat_message.tool_calls,
+            chat_message.latency,
+            chat_message.cost,
+            chat_message.token_usage,
             row_number() over (
                 partition by
-                chat_log.session_uuid
+                chat_message.session_uuid
                 order by
-                chat_log.created_at
+                chat_message.created_at
             ) as msg_seq_num
             from
-            chat_log
+            chat_message
         )
         select
         cm.project_uuid,
@@ -80,7 +80,7 @@ def upgrade() -> None:
         numberedmessages user_msg
         join numberedmessages assistant_msg on user_msg.session_uuid = assistant_msg.session_uuid
         and assistant_msg.msg_seq_num = (user_msg.msg_seq_num + 1)
-        join chat_log_session session on user_msg.session_uuid = session.uuid
+        join chat_session session on user_msg.session_uuid = session.uuid
         join chat_model_version cv on session.version_uuid = cv.uuid
         join chat_model cm on cv.chat_model_uuid = cm.uuid
         where
@@ -124,8 +124,8 @@ def upgrade() -> None:
         project p
         LEFT JOIN chat_model cm ON cm.project_uuid = p.uuid
         LEFT JOIN chat_model_version v ON v.chat_model_uuid = cm.uuid
-        LEFT JOIN chat_log_session cs ON cs.version_uuid = v.uuid
-        LEFT JOIN chat_log cl ON cl.session_uuid = cs.uuid
+        LEFT JOIN chat_session cs ON cs.version_uuid = v.uuid
+        LEFT JOIN chat_message cl ON cl.session_uuid = cs.uuid
         GROUP BY
         p.name,
         cm.name,

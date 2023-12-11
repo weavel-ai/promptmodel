@@ -23,8 +23,8 @@ if TYPE_CHECKING:
     from .project import Project
 
 
-class PromptModel(Base):
-    __tablename__ = "prompt_model"
+class FunctionModel(Base):
+    __tablename__ = "function_model"
 
     id: int = Column(BigInteger, Identity())
     created_at: datetime = Column(
@@ -34,6 +34,7 @@ class PromptModel(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
+        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 
@@ -44,14 +45,14 @@ class PromptModel(Base):
         UUID(as_uuid=True), ForeignKey("project.uuid"), nullable=False
     )
 
-    # project: "Project" = Relationship(back_populates="prompt_models")
-    # prompt_model_versions: List["PromptModelVersion"] = Relationship(
-    #     back_populates="prompt_model"
+    # project: "Project" = Relationship(back_populates="function_models")
+    # function_model_versions: List["FunctionModelVersion"] = Relationship(
+    #     back_populates="function_model"
     # )
 
 
-class PromptModelVersion(Base):
-    __tablename__ = "prompt_model_version"
+class FunctionModelVersion(Base):
+    __tablename__ = "function_model_version"
 
     id: int = Column(BigInteger, Identity())
     created_at: datetime = Column(
@@ -61,6 +62,7 @@ class PromptModelVersion(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
+        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 
@@ -83,13 +85,13 @@ class PromptModelVersion(Base):
     tags: Optional[List[str]] = Column(ARRAY(Text), nullable=True)
     memo: Optional[str] = Column(Text, nullable=True)
 
-    prompt_model_uuid: UUIDType = Column(
-        UUID(as_uuid=True), ForeignKey("prompt_model.uuid"), nullable=False
+    function_model_uuid: UUIDType = Column(
+        UUID(as_uuid=True), ForeignKey("function_model.uuid"), nullable=False
     )
 
-    # prompt_model: "PromptModel" = Relationship(back_populates="prompt_model_versions")
-    # prompts: List["Prompt"] = Relationship(back_populates="prompt_model_version")
-    # run_logs: List["RunLog"] = Relationship(back_populates="prompt_model_version")
+    # function_model: "FunctionModel" = Relationship(back_populates="function_model_versions")
+    # prompts: List["Prompt"] = Relationship(back_populates="function_model_version")
+    # run_logs: List["RunLog"] = Relationship(back_populates="function_model_version")
 
 
 class Prompt(Base):
@@ -105,10 +107,10 @@ class Prompt(Base):
     content: str = Column(Text)
 
     version_uuid: UUIDType = Column(
-        UUID(as_uuid=True), ForeignKey("prompt_model_version.uuid"), nullable=False
+        UUID(as_uuid=True), ForeignKey("function_model_version.uuid"), nullable=False
     )
 
-    # prompt_model_version: "PromptModelVersion" = Relationship(back_populates="prompts")
+    # function_model_version: "FunctionModelVersion" = Relationship(back_populates="prompts")
 
 
 class RunLog(Base):
@@ -122,6 +124,7 @@ class RunLog(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
+        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 
@@ -135,15 +138,18 @@ class RunLog(Base):
     run_log_metadata: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
 
     function_call: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
+    tool_calls: Optional[List[Dict[str, Any]]] = Column(ARRAY(JSONB), nullable=True)
 
     score: Optional[int] = Column(BigInteger, nullable=True)
-    token_usage: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
 
+    prompt_tokens: Optional[int] = Column(BigInteger, nullable=True)
+    completion_tokens: Optional[int] = Column(BigInteger, nullable=True)
+    total_tokens: Optional[int] = Column(BigInteger, nullable=True)
     latency: Optional[float] = Column(Float, nullable=True)
     cost: Optional[float] = Column(Float, nullable=True)
 
     version_uuid: UUIDType = Column(
-        UUID(as_uuid=True), ForeignKey("prompt_model_version.uuid"), nullable=False
+        UUID(as_uuid=True), ForeignKey("function_model_version.uuid"), nullable=False
     )
 
-    # prompt_model_version: "PromptModelVersion" = Relationship(back_populates="run_logs")
+    # function_model_version: "FunctionModelVersion" = Relationship(back_populates="run_logs")

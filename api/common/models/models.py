@@ -9,8 +9,8 @@ class PromptConfig(PMObject):
     content: str
 
 
-class PromptModelRunConfig(PMObject):
-    prompt_model_uuid: str
+class FunctionModelRunConfig(PMObject):
+    function_model_uuid: str
     prompts: List[PromptConfig]
     model: Optional[str] = "gpt-3.5-turbo"
     from_version: Optional[int] = None

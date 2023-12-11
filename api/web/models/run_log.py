@@ -1,5 +1,5 @@
 """APIs for RunLog"""
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 from modules.types import PMObject
 
@@ -15,14 +15,17 @@ class RunLogInstance(PMObject):
     inputs: Optional[Dict[str, Any]] = None
     raw_output: Optional[str] = None
     parsed_outputs: Optional[Dict[str, Any]] = None
+    tool_calls: Optional[List[Dict[str, Any]]] = None
     function_call: Optional[Dict[str, Any]] = None
 
     run_log_metadata: Optional[Dict[str, Any]] = None
     score: Optional[int] = None
 
-    token_usage: Optional[Dict[str, Any]]
     latency: Optional[float] = None
     cost: Optional[float] = None
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
 
     version_uuid: str
 
@@ -31,20 +34,23 @@ class DeploymentRunLogViewInstance(PMObject):
     run_log_uuid: str
     project_uuid: str
 
-    prompt_model_uuid: str
-    prompt_model_name: str
+    function_model_uuid: str
+    function_model_name: str
 
-    prompt_model_version_uuid: str
-    prompt_model_version: int
+    function_model_version_uuid: str
+    function_model_version: int
 
     created_at: str
 
     inputs: Optional[Dict[str, Any]] = None
     raw_output: Optional[str] = None
     parsed_outputs: Optional[Dict[str, Any]] = None
+    tool_calls: Optional[List[Dict[str, Any]]] = None
     function_call: Optional[Dict[str, Any]] = None
 
-    token_usage: Optional[Dict[str, Any]] = None
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
     latency: Optional[float] = None
     cost: Optional[float] = None
 

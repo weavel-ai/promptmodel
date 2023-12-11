@@ -240,9 +240,9 @@ class ConnectionManager:
                         session=session, project_uuid=project_uuid
                     )
 
-                    prompt_models_in_db = (
-                        instances_in_db["prompt_model_data"]
-                        if instances_in_db["prompt_model_data"]
+                    function_models_in_db = (
+                        instances_in_db["function_model_data"]
+                        if instances_in_db["function_model_data"]
                         else []
                     )
                     chat_models_in_db = (
@@ -261,19 +261,19 @@ class ConnectionManager:
                         else []
                     )
 
-                    prompt_models_to_add = []
+                    function_models_to_add = []
                     chat_models_to_add = []
                     samples_to_add = []
                     schemas_to_add = []
 
-                    new_prompt_model_name_list = data["new_prompt_model"]
+                    new_function_model_name_list = data["new_function_model"]
                     new_chat_model_name_list = data["new_chat_model"]
                     new_samples = data["new_samples"]
                     new_function_schemas = data["new_schemas"]
 
-                    old_names = [x["name"] for x in prompt_models_in_db]
-                    new_names = list(set(new_prompt_model_name_list) - set(old_names))
-                    prompt_models_to_add = [
+                    old_names = [x["name"] for x in function_models_in_db]
+                    new_names = list(set(new_function_model_name_list) - set(old_names))
+                    function_models_to_add = [
                         {"name": x, "project_uuid": project_uuid} for x in new_names
                     ]
 
@@ -333,15 +333,15 @@ class ConnectionManager:
                     # save instances
                     new_instances = await save_instances(
                         session=session,
-                        prompt_models=prompt_models_to_add,
+                        function_models=function_models_to_add,
                         chat_models=chat_models_to_add,
                         sample_inputs=samples_to_add,
                         function_schemas=schemas_to_add,
                     )
 
-                    created_prompt_models = (
-                        new_instances["prompt_model_rows"]
-                        if new_instances["prompt_model_rows"]
+                    created_function_models = (
+                        new_instances["function_model_rows"]
+                        if new_instances["function_model_rows"]
                         else []
                     )
                     created_chat_models = (
@@ -360,13 +360,13 @@ class ConnectionManager:
                         else []
                     )
 
-                    prompt_model_name_list_to_update = new_prompt_model_name_list
+                    function_model_name_list_to_update = new_function_model_name_list
                     chat_model_name_list_to_update = new_chat_model_name_list
                     # update instances
                     updated_instances = await update_instances(
                         session=session,
                         project_uuid=project_uuid,
-                        prompt_model_names=prompt_model_name_list_to_update,
+                        function_model_names=function_model_name_list_to_update,
                         chat_model_names=chat_model_name_list_to_update,
                         sample_input_names=[x["name"] for x in new_samples],
                         function_schema_names=[x["name"] for x in new_function_schemas],
@@ -388,9 +388,9 @@ class ConnectionManager:
                     # make changelog
                     changelogs = [
                         {
-                            "subject": f"prompt_model",
+                            "subject": f"function_model",
                             "identifiers": [
-                                str(x["uuid"]) for x in created_prompt_models
+                                str(x["uuid"]) for x in created_function_models
                             ],
                             "action": "ADD",
                         },
@@ -425,15 +425,13 @@ class ConnectionManager:
                     # delete if len(identifiers) == 0
                     changelogs = [x for x in changelogs if len(x["identifiers"]) > 0]
                     # save changelog
+                    changelogs_rows = [
+                        ProjectChangelog(logs=[x], project_uuid=project_uuid)
+                        for x in changelogs
+                    ]
+                    # save changelog
                     if len(changelogs) > 0:
-                        session.add(
-                            ProjectChangelog(
-                                **{
-                                    "logs": changelogs,
-                                    "project_uuid": str(project_uuid),
-                                }
-                            )
-                        )
+                        session.add_all(changelogs_rows)
                         await session.commit()
 
                     ws = self.connected_locals.get(token)

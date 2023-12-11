@@ -1,4 +1,4 @@
-"""APIs for ChatLog"""
+"""APIs for ChatMessage"""
 from typing import Dict, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc, desc
@@ -13,27 +13,31 @@ from utils.logger import logger
 
 from base.database import get_session
 from db_models import *
-from ..models import ChatLogInstance, ChatLogViewInstance, ChatLogCountInstance
+from ..models import (
+    ChatMessageInstance,
+    ChatLogViewInstance,
+    ChatLogsCountInstance,
+)
 
 router = APIRouter()
 
 
-# ChatLog Endpoints
-@router.get("/session/", response_model=List[ChatLogInstance])
-async def fetch_session_chat_logs(
+# ChatMessage Endpoints
+@router.get("/session", response_model=List[ChatMessageInstance])
+async def fetch_session_chat_messages(
     chat_session_uuid: str,
     page: int,
     rows_per_page: int,
     db_session: AsyncSession = Depends(get_session),
 ):
     try:
-        chat_logs: List[ChatLogViewInstance] = [
-            ChatLogViewInstance(**chat_log.model_dump())
-            for chat_log in (
+        chat_messages: List[ChatMessageInstance] = [
+            ChatMessageInstance(**chat_message.model_dump())
+            for chat_message in (
                 await db_session.execute(
-                    select(ChatLogView)
-                    .where(ChatLogView.session_uuid == chat_session_uuid)
-                    .order_by(asc(ChatLogView.created_at))
+                    select(ChatMessage)
+                    .where(ChatMessage.session_uuid == chat_session_uuid)
+                    .order_by(asc(ChatMessage.created_at))
                     .offset(max(0, (page - 1)) * rows_per_page)
                     .limit(rows_per_page)
                 )
@@ -41,7 +45,7 @@ async def fetch_session_chat_logs(
             .scalars()
             .all()
         ]
-        return chat_logs
+        return chat_messages
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -49,17 +53,17 @@ async def fetch_session_chat_logs(
         )
 
 
-@router.get("/project/", response_model=List[ChatLogViewInstance])
-async def fetch_project_chat_logs(
+@router.get("/project", response_model=List[ChatLogViewInstance])
+async def fetch_project_chat_messages(
     project_uuid: str,
     page: int,
     rows_per_page: int,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        chat_logs: List[ChatLogViewInstance] = [
-            ChatLogViewInstance(**chat_log.model_dump())
-            for chat_log in (
+        chat_messages: List[ChatLogViewInstance] = [
+            ChatLogViewInstance(**chat_message.model_dump())
+            for chat_message in (
                 await session.execute(
                     select(ChatLogView)
                     .where(ChatLogView.project_uuid == project_uuid)
@@ -71,7 +75,7 @@ async def fetch_project_chat_logs(
             .scalars()
             .all()
         ]
-        return chat_logs
+        return chat_messages
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -79,7 +83,7 @@ async def fetch_project_chat_logs(
         )
 
 
-@router.get("/count/", response_model=ChatLogCountInstance)
+@router.get("/count", response_model=ChatLogsCountInstance)
 async def fetch_chat_logs_count(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -100,7 +104,7 @@ async def fetch_chat_logs_count(
                 detail="ChatLogsCount with given project_uuid not found",
             )
 
-        return ChatLogCountInstance(project_uuid=project_uuid, count=chat_logs_count)
+        return ChatLogsCountInstance(project_uuid=project_uuid, count=chat_logs_count)
     except HTTPException as http_exc:
         logger.error(http_exc)
         raise http_exc

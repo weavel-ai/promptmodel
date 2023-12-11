@@ -1,4 +1,4 @@
-"""APIs for PromptModelVersion"""
+"""APIs for FunctionModelVersion"""
 from typing import Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc, update
@@ -14,34 +14,36 @@ from utils.logger import logger
 from base.database import get_session
 from db_models import *
 from ..models import (
-    PromptModelVersionInstance,
-    UpdatePublishedPromptModelVersionBody,
-    UpdatePromptModelVersionTagsBody,
+    FunctionModelVersionInstance,
+    UpdatePublishedFunctionModelVersionBody,
+    UpdateFunctionModelVersionTagsBody,
 )
 
 router = APIRouter()
 
 
-# PromptModelVersion Endpoints
-@router.get("/", response_model=List[PromptModelVersionInstance])
-async def fetch_prompt_model_versions(
-    prompt_model_uuid: str,
+# FunctionModelVersion Endpoints
+@router.get("", response_model=List[FunctionModelVersionInstance])
+async def fetch_function_model_versions(
+    function_model_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        prompt_model_versions: List[PromptModelVersionInstance] = [
-            PromptModelVersionInstance(**prompt_model_version.model_dump())
-            for prompt_model_version in (
+        function_model_versions: List[FunctionModelVersionInstance] = [
+            FunctionModelVersionInstance(**function_model_version.model_dump())
+            for function_model_version in (
                 await session.execute(
-                    select(PromptModelVersion)
-                    .where(PromptModelVersion.prompt_model_uuid == prompt_model_uuid)
-                    .order_by(asc(PromptModelVersion.version))
+                    select(FunctionModelVersion)
+                    .where(
+                        FunctionModelVersion.function_model_uuid == function_model_uuid
+                    )
+                    .order_by(asc(FunctionModelVersion.version))
                 )
             )
             .scalars()
             .all()
         ]
-        return prompt_model_versions
+        return function_model_versions
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -49,18 +51,18 @@ async def fetch_prompt_model_versions(
         )
 
 
-@router.get("/{uuid}", response_model=PromptModelVersionInstance)
-async def fetch_prompt_model_version(
+@router.get("/{uuid}", response_model=FunctionModelVersionInstance)
+async def fetch_function_model_version(
     uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
         try:
-            prompt_model_version: Dict = (
+            function_model_version: Dict = (
                 (
                     await session.execute(
-                        select(PromptModelVersion).where(
-                            PromptModelVersion.uuid == uuid
+                        select(FunctionModelVersion).where(
+                            FunctionModelVersion.uuid == uuid
                         )
                     )
                 )
@@ -71,9 +73,9 @@ async def fetch_prompt_model_version(
             logger.error(e)
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
-                detail="PromptModelVersion with given id not found",
+                detail="FunctionModelVersion with given id not found",
             )
-        return PromptModelVersionInstance(**prompt_model_version)
+        return FunctionModelVersionInstance(**function_model_version)
     except HTTPException as http_exc:
         logger.error(http_exc)
         raise http_exc
@@ -84,27 +86,29 @@ async def fetch_prompt_model_version(
         )
 
 
-@router.post("/{uuid}/publish/", response_model=PromptModelVersionInstance)
-async def update_published_prompt_model_version(
+@router.post("/{uuid}/publish", response_model=FunctionModelVersionInstance)
+async def update_published_function_model_version(
     uuid: str,
-    body: UpdatePublishedPromptModelVersionBody,
+    body: UpdatePublishedFunctionModelVersionBody,
     session: AsyncSession = Depends(get_session),
 ):
     try:
         if body.previous_published_version_uuid:
             await session.execute(
-                update(PromptModelVersion)
-                .where(PromptModelVersion.uuid == body.previous_published_version_uuid)
+                update(FunctionModelVersion)
+                .where(
+                    FunctionModelVersion.uuid == body.previous_published_version_uuid
+                )
                 .values(is_published=False)
             )
 
-        updated_prompt_model_version = (
+        updated_function_model_version = (
             (
                 await session.execute(
-                    update(PromptModelVersion)
-                    .where(PromptModelVersion.uuid == uuid)
+                    update(FunctionModelVersion)
+                    .where(FunctionModelVersion.uuid == uuid)
                     .values(is_published=True)
-                    .returning(PromptModelVersion)
+                    .returning(FunctionModelVersion)
                 )
             )
             .scalar_one()
@@ -117,7 +121,7 @@ async def update_published_prompt_model_version(
         )
 
         await session.commit()
-        return PromptModelVersionInstance(**updated_prompt_model_version)
+        return FunctionModelVersionInstance(**updated_function_model_version)
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -125,10 +129,10 @@ async def update_published_prompt_model_version(
         )
 
 
-@router.patch("/{uuid}/tags/", response_model=PromptModelVersionInstance)
-async def update_prompt_model_version_tags(
+@router.patch("/{uuid}/tags", response_model=FunctionModelVersionInstance)
+async def update_function_model_version_tags(
     uuid: str,
-    body: UpdatePromptModelVersionTagsBody,
+    body: UpdateFunctionModelVersionTagsBody,
     session: AsyncSession = Depends(get_session),
 ):
     tags: Optional[List[str]] = body.tags
@@ -138,17 +142,17 @@ async def update_prompt_model_version_tags(
         updated_version = (
             (
                 await session.execute(
-                    update(PromptModelVersion)
-                    .where(PromptModelVersion.uuid == uuid)
+                    update(FunctionModelVersion)
+                    .where(FunctionModelVersion.uuid == uuid)
                     .values(tags=tags)
-                    .returning(PromptModelVersion)
+                    .returning(FunctionModelVersion)
                 )
             )
             .scalar_one()
             .model_dump()
         )
         await session.commit()
-        return PromptModelVersionInstance(**updated_version)
+        return FunctionModelVersionInstance(**updated_version)
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -156,8 +160,8 @@ async def update_prompt_model_version_tags(
         )
 
 
-@router.patch("/{uuid}/memo/", response_model=PromptModelVersionInstance)
-async def update_prompt_model_version_memo(
+@router.patch("/{uuid}/memo", response_model=FunctionModelVersionInstance)
+async def update_function_model_version_memo(
     uuid: str,
     memo: Optional[str] = None,
     session: AsyncSession = Depends(get_session),
@@ -166,17 +170,17 @@ async def update_prompt_model_version_memo(
         updated_version = (
             (
                 await session.execute(
-                    update(PromptModelVersion)
-                    .where(PromptModelVersion.uuid == uuid)
+                    update(FunctionModelVersion)
+                    .where(FunctionModelVersion.uuid == uuid)
                     .values(memo=memo)
-                    .returning(PromptModelVersion)
+                    .returning(FunctionModelVersion)
                 )
             )
             .scalar_one()
             .model_dump()
         )
         await session.commit()
-        return PromptModelVersionInstance(**updated_version)
+        return FunctionModelVersionInstance(**updated_version)
     except Exception as e:
         logger.error(e)
         raise HTTPException(

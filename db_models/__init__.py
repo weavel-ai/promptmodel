@@ -1,5 +1,5 @@
-from .chat_model import ChatModel, ChatModelVersion, ChatLogSession, ChatLog
-from .prompt_model import PromptModel, PromptModelVersion, Prompt, RunLog
+from .chat_model import ChatModel, ChatModelVersion, ChatSession, ChatMessage, ChatLog
+from .function_model import FunctionModel, FunctionModelVersion, Prompt, RunLog
 from .project import (
     Organization,
     Project,

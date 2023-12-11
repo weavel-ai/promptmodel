@@ -13,7 +13,7 @@ from fastapi_nextauth_jwt import NextAuthJWT
 router = APIRouter(prefix="/users")
 
 
-@router.post("/", status_code=http_status.HTTP_201_CREATED, response_model=UserRead)
+@router.post("", status_code=http_status.HTTP_201_CREATED, response_model=UserRead)
 async def create_user(
     user: UserCreate, session: AsyncSession = Depends(get_session)
 ) -> UserRead:

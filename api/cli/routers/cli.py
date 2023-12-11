@@ -31,18 +31,19 @@ from base.websocket_connection import websocket_manager
 from crud import update_instances, pull_instances, save_instances
 from db_models import *
 from modules.types import InstanceType
-from litellm.utils import completion_cost
+from litellm.utils import completion_cost, token_counter
 from ..models import (
-    DeployedPromptModelVersionInstance,
+    DeployedFunctionModelVersionInstance,
     DeployedChatModelVersionInstance,
     DeployedPromptInstance,
-    DeployedPromptModelInstance,
+    DeployedFunctionModelInstance,
     UsersOrganizationsInstance,
     CliProjectInstance,
     CheckUpdateResponseInstance,
-    FetchPromptModelVersionResponseInstance,
+    FetchFunctionModelVersionResponseInstance,
     FetchChatModelVersionResponseInstance,
-    CliChatLogInstance,
+    CliChatMessageInstance,
+    ChatLogRequestBody,
 )
 
 router = APIRouter()
@@ -167,29 +168,30 @@ async def check_update(
 
         # get current project status
 
-        # get prompt_models
-        prompt_models = (
+        # get function_models
+        function_models = (
             (
                 await session.execute(
-                    select(PromptModel.uuid, PromptModel.name).where(
-                        PromptModel.project_uuid == project["uuid"]
+                    select(FunctionModel.uuid, FunctionModel.name).where(
+                        FunctionModel.project_uuid == project["uuid"]
                     )
                 )
             )
             .mappings()
             .all()
         )
-        prompt_models = [
-            DeployedPromptModelInstance(**dict(x)).model_dump() for x in prompt_models
+        function_models = [
+            DeployedFunctionModelInstance(**dict(x)).model_dump()
+            for x in function_models
         ]
 
-        # get published, ab_test prompt_model_versions
-        deployed_prompt_model_versions: List[DeployedPromptModelVersion] = (
+        # get published, ab_test function_model_versions
+        deployed_function_model_versions: List[DeployedFunctionModelVersion] = (
             (
                 await session.execute(
-                    select(DeployedPromptModelVersion).where(
-                        DeployedPromptModelVersion.prompt_model_uuid.in_(
-                            [str(x["uuid"]) for x in prompt_models]
+                    select(DeployedFunctionModelVersion).where(
+                        DeployedFunctionModelVersion.function_model_uuid.in_(
+                            [str(x["uuid"]) for x in function_models]
                         )
                     )
                 )
@@ -199,12 +201,12 @@ async def check_update(
         )
 
         # filter out columns
-        deployed_prompt_model_versions = [
-            DeployedPromptModelVersionInstance(**x.model_dump()).model_dump()
-            for x in deployed_prompt_model_versions
+        deployed_function_model_versions = [
+            DeployedFunctionModelVersionInstance(**x.model_dump()).model_dump()
+            for x in deployed_function_model_versions
         ]
 
-        versions_uuid_list = [str(x["uuid"]) for x in deployed_prompt_model_versions]
+        versions_uuid_list = [str(x["uuid"]) for x in deployed_function_model_versions]
         # get prompts
         prompts = (
             (
@@ -223,8 +225,8 @@ async def check_update(
             "need_update": need_update,
             "version": project_version,
             "project_status": {
-                "prompt_models": prompt_models,
-                "prompt_model_versions": deployed_prompt_model_versions,
+                "function_models": function_models,
+                "function_model_versions": deployed_function_model_versions,
                 "prompts": prompts,
             },
         }
@@ -236,35 +238,35 @@ async def check_update(
 
 
 @router.get(
-    "/fetch_prompt_model_version",
-    response_model=FetchPromptModelVersionResponseInstance,
+    "/fetch_function_model_version",
+    response_model=FetchFunctionModelVersionResponseInstance,
 )
-async def fetch_prompt_model_version(
-    prompt_model_name: str,
+async def fetch_function_model_version(
+    function_model_name: str,
     version: Optional[Union[str, int]] = "deploy",
     project: dict = Depends(get_project),
     session: AsyncSession = Depends(get_session),
 ):
     """
     Only use when use_cache = False.
-    Find published version of prompt_model_version and prompt and return them.
+    Find published version of function_model_version and prompt and return them.
 
     Input:
-        - prompt_model_name: name of prompt_model
+        - function_model_name: name of function_model
 
     Return:
-        - prompt_model_versions : List[Dict]
+        - function_model_versions : List[Dict]
         - prompts : List[Dict]
     """
     try:
-        # find_prompt_model
+        # find_function_model
         try:
-            prompt_model = (
+            function_model = (
                 (
                     await session.execute(
-                        select(PromptModel.uuid, PromptModel.name)
-                        .where(PromptModel.project_uuid == project["uuid"])
-                        .where(PromptModel.name == prompt_model_name)
+                        select(FunctionModel.uuid, FunctionModel.name)
+                        .where(FunctionModel.project_uuid == project["uuid"])
+                        .where(FunctionModel.name == function_model_name)
                     )
                 )
                 .mappings()
@@ -276,25 +278,25 @@ async def fetch_prompt_model_version(
             )
         try:
             if version == "deploy":
-                # get published, ab_test prompt_model_versions
-                deployed_prompt_model_versions = (
+                # get published, ab_test function_model_versions
+                deployed_function_model_versions = (
                     (
                         await session.execute(
-                            select(DeployedPromptModelVersion).where(
-                                DeployedPromptModelVersion.prompt_model_uuid
-                                == prompt_model["uuid"]
+                            select(DeployedFunctionModelVersion).where(
+                                DeployedFunctionModelVersion.function_model_uuid
+                                == function_model["uuid"]
                             )
                         )
                     )
                     .scalars()
                     .all()
                 )
-                deployed_prompt_model_versions = [
-                    DeployedPromptModelVersionInstance(**x.model_dump()).model_dump()
-                    for x in deployed_prompt_model_versions
+                deployed_function_model_versions = [
+                    DeployedFunctionModelVersionInstance(**x.model_dump()).model_dump()
+                    for x in deployed_function_model_versions
                 ]
                 versions_uuid_list = [
-                    str(x["uuid"]) for x in deployed_prompt_model_versions
+                    str(x["uuid"]) for x in deployed_function_model_versions
                 ]
                 # get prompts
                 prompts = (
@@ -316,7 +318,7 @@ async def fetch_prompt_model_version(
                 ]
 
                 res = {
-                    "prompt_model_versions": deployed_prompt_model_versions,
+                    "function_model_versions": deployed_function_model_versions,
                     "prompts": prompts,
                 }
             else:
@@ -326,52 +328,52 @@ async def fetch_prompt_model_version(
                     version = version
 
                 if isinstance(version, int):
-                    prompt_model_versions = (
+                    function_model_versions = (
                         (
                             await session.execute(
-                                select(PromptModelVersion)
+                                select(FunctionModelVersion)
                                 .where(
-                                    PromptModelVersion.prompt_model_uuid
-                                    == prompt_model["uuid"]
+                                    FunctionModelVersion.function_model_uuid
+                                    == function_model["uuid"]
                                 )
-                                .where(PromptModelVersion.version == version)
+                                .where(FunctionModelVersion.version == version)
                             )
                         )
                         .scalars()
                         .all()
                     )
 
-                    prompt_model_versions = [
-                        DeployedPromptModelVersionInstance(
+                    function_model_versions = [
+                        DeployedFunctionModelVersionInstance(
                             **x.model_dump()
                         ).model_dump()
-                        for x in prompt_model_versions
+                        for x in function_model_versions
                     ]
 
                 elif version == "latest":
-                    prompt_model_versions = (
+                    function_model_versions = (
                         (
                             await session.execute(
-                                select(PromptModelVersion)
+                                select(FunctionModelVersion)
                                 .where(
-                                    PromptModelVersion.prompt_model_uuid
-                                    == prompt_model["uuid"]
+                                    FunctionModelVersion.function_model_uuid
+                                    == function_model["uuid"]
                                 )
-                                .order_by(desc(PromptModelVersion.version))
+                                .order_by(desc(FunctionModelVersion.version))
                                 .limit(1)
                             )
                         )
                         .scalars()
                         .all()
                     )
-                    prompt_model_versions = [
-                        DeployedPromptModelVersionInstance(
+                    function_model_versions = [
+                        DeployedFunctionModelVersionInstance(
                             **x.model_dump()
                         ).model_dump()
-                        for x in prompt_model_versions
+                        for x in function_model_versions
                     ]
 
-                versions_uuid_list = [str(x["uuid"]) for x in prompt_model_versions]
+                versions_uuid_list = [str(x["uuid"]) for x in function_model_versions]
                 # get prompts
                 prompts = (
                     (
@@ -392,14 +394,14 @@ async def fetch_prompt_model_version(
                 ]
 
                 res = {
-                    "prompt_model_versions": prompt_model_versions,
+                    "function_model_versions": function_model_versions,
                     "prompts": prompts,
                 }
 
             return JSONResponse(res, status_code=HTTP_200_OK)
         except Exception as exc:
             raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND, detail="PromptModel Version Not Found"
+                status_code=HTTP_404_NOT_FOUND, detail="FunctionModel Version Not Found"
             ) from exc
     except HTTPException as http_exc:
         raise http_exc
@@ -448,8 +450,8 @@ async def fetch_chat_model_version_with_chat_log(
                 session = (
                     (
                         await db_session.execute(
-                            select(ChatLogSession.version_uuid).where(
-                                ChatLogSession.uuid == session_uuid
+                            select(ChatSession.version_uuid).where(
+                                ChatSession.uuid == session_uuid
                             )
                         )
                     )
@@ -478,27 +480,28 @@ async def fetch_chat_model_version_with_chat_log(
             ]
 
             # find chat logs
-            chat_logs = (
+            chat_messages = (
                 (
                     await db_session.execute(
                         select(
-                            ChatLog.role,
-                            ChatLog.name,
-                            ChatLog.content,
-                            ChatLog.tool_calls,
+                            ChatMessage.role,
+                            ChatMessage.name,
+                            ChatMessage.content,
+                            ChatMessage.tool_calls,
+                            ChatMessage.function_call,
                         )
-                        .where(ChatLog.session_uuid == session_uuid)
-                        .order_by(asc(ChatLog.created_at))
+                        .where(ChatMessage.session_uuid == session_uuid)
+                        .order_by(asc(ChatMessage.created_at))
                     )
                 )
                 .mappings()
                 .all()
             )
-            chat_logs = [dict(x) for x in chat_logs]
+            chat_messages = [dict(x) for x in chat_messages]
 
             res = {
                 "chat_model_versions": session_chat_model_version,
-                "chat_logs": chat_logs,
+                "chat_logs": chat_messages,
             }
         elif isinstance(version, int):
             # find chat_model_version
@@ -573,7 +576,10 @@ async def fetch_chat_model_version_with_chat_log(
                 for x in deployed_chat_model_versions
             ]
 
-            res = {"chat_model_versions": deployed_chat_model_versions, "chat_logs": []}
+            res = {
+                "chat_model_versions": deployed_chat_model_versions,
+                "chat_logs": [],
+            }
 
         return JSONResponse(res, status_code=HTTP_200_OK)
     except HTTPException as http_exc:
@@ -652,7 +658,7 @@ async def connect_cli_project(
 @router.post("/save_instances_in_code")
 async def save_instances_in_code(
     project_uuid: str,
-    prompt_models: list[str],
+    function_models: list[str],
     chat_models: list[str],
     samples: list[dict],
     function_schemas: list[dict],
@@ -665,9 +671,9 @@ async def save_instances_in_code(
             session=session, project_uuid=project_uuid
         )
 
-        prompt_models_in_db = (
-            instances_in_db["prompt_model_data"]
-            if instances_in_db["prompt_model_data"]
+        function_models_in_db = (
+            instances_in_db["function_model_data"]
+            if instances_in_db["function_model_data"]
             else []
         )
         chat_models_in_db = (
@@ -686,7 +692,7 @@ async def save_instances_in_code(
             else []
         )
 
-        prompt_models_to_add = []
+        function_models_to_add = []
         chat_models_to_add = []
         samples_to_add = []
         schemas_to_add = []
@@ -694,9 +700,9 @@ async def save_instances_in_code(
         samples_to_update = []
         schemas_to_update = []
 
-        old_names = [x["name"] for x in prompt_models_in_db]
-        new_names = list(set(prompt_models) - set(old_names))
-        prompt_models_to_add = [
+        old_names = [x["name"] for x in function_models_in_db]
+        new_names = list(set(function_models) - set(old_names))
+        function_models_to_add = [
             {"name": x, "project_uuid": project_uuid} for x in new_names
         ]
 
@@ -752,15 +758,15 @@ async def save_instances_in_code(
         # save instances
         new_instances = await save_instances(
             session=session,
-            prompt_models=prompt_models_to_add,
+            function_models=function_models_to_add,
             chat_models=chat_models_to_add,
             sample_inputs=samples_to_add,
             function_schemas=schemas_to_add,
         )
 
-        new_prompt_models = (
-            new_instances["prompt_model_rows"]
-            if new_instances["prompt_model_rows"]
+        new_function_models = (
+            new_instances["function_model_rows"]
+            if new_instances["function_model_rows"]
             else []
         )
         new_chat_models = (
@@ -777,14 +783,14 @@ async def save_instances_in_code(
             else []
         )
 
-        prompt_model_name_list_to_update = prompt_models
+        function_model_name_list_to_update = function_models
         chat_model_name_list_to_update = chat_models
 
         # update instances
         updated_instances = await update_instances(
             session=session,
             project_uuid=project_uuid,
-            prompt_model_names=prompt_model_name_list_to_update,
+            function_model_names=function_model_name_list_to_update,
             chat_model_names=chat_model_name_list_to_update,
             sample_input_names=[x["name"] for x in samples],
             function_schema_names=[x["name"] for x in function_schemas],
@@ -806,8 +812,8 @@ async def save_instances_in_code(
         # make changelog
         changelogs = [
             {
-                "subject": f"prompt_model",
-                "identifiers": [str(x["uuid"]) for x in new_prompt_models],
+                "subject": f"function_model",
+                "identifiers": [str(x["uuid"]) for x in new_function_models],
                 "action": "ADD",
             },
             {
@@ -839,7 +845,7 @@ async def save_instances_in_code(
         # delete if len(identifiers) == 0
         changelogs = [x for x in changelogs if len(x["identifiers"]) > 0]
         changelogs_rows = [
-            ProjectChangelog(logs=x, project_uuid=project_uuid) for x in changelogs
+            ProjectChangelog(logs=[x], project_uuid=project_uuid) for x in changelogs
         ]
         # save changelog
         if len(changelogs) > 0:
@@ -872,7 +878,7 @@ async def log_general(
                     # check ["uuid", "version_uuid"] in content
                     if "uuid" not in content or "version_uuid" not in content:
                         raise Exception
-                    session.add_all([RunLog(**x) for x in run_log_to_insert])
+                    session.add(RunLog(**run_log_to_insert))
                     await session.commit()
                 except Exception as exc:
                     raise HTTPException(
@@ -913,12 +919,12 @@ async def log_general(
                     .values(run_log_metadata=new_metadata)
                 )
 
-        elif type == InstanceType.ChatLog.value:
+        elif type == InstanceType.ChatMessage.value:
             if not identifier:
                 identifier = str(uuid4())
-                chat_log_to_insert = content
-                chat_log_to_insert["chat_log_metadata"] = metadata
-                chat_log_to_insert["uuid"] = identifier
+                chat_message_to_insert = content
+                chat_message_to_insert["chat_message_metadata"] = metadata
+                chat_message_to_insert["uuid"] = identifier
                 try:
                     if (
                         "uuid" not in content
@@ -926,21 +932,60 @@ async def log_general(
                         or "session_uuid" not in content
                     ):
                         raise Exception
-                    session.add_all([ChatLog(**x) for x in chat_log_to_insert])
+                    session.add(ChatMessage(**chat_message_to_insert))
+                    if chat_message_to_insert["role"] == "assistant":
+                        latest_chat_message = (
+                            await session.execute(
+                                select(ChatMessage)
+                                .where(
+                                    ChatMessage.session_uuid
+                                    == chat_message_to_insert["session_uuid"]
+                                )
+                                .order_by(desc(ChatMessage.created_at))
+                                .limit(1)
+                            )
+                        ).scalar_one()
+                    await session.flush()
+                    session.add(
+                        ChatLog(
+                            user_message_uuid=latest_chat_message.uuid,
+                            assistant_message_uuid=chat_message_to_insert["uuid"],
+                            session_uuid=chat_message_to_insert["session_uuid"],
+                            project_uuid=project["uuid"],
+                            prompt_tokens=chat_message_to_insert["prompt_tokens"]
+                            if "prompt_tokens" in metadata
+                            else None,
+                            completion_tokens=chat_message_to_insert[
+                                "completion_tokens"
+                            ]
+                            if "completion_tokens" in chat_message_to_insert
+                            else None,
+                            total_tokens=chat_message_to_insert["total_tokens"]
+                            if "total_tokens" in metadata
+                            else None,
+                            latency=chat_message_to_insert["response_ms"]
+                            if "response_ms" in metadata
+                            else None,
+                            cost=completion_cost(chat_message_to_insert["api_response"])
+                            if "api_response" in metadata
+                            else None,
+                        )
+                    )
+
                     await session.commit()
                 except Exception as exc:
                     raise HTTPException(
                         status_code=HTTP_406_NOT_ACCEPTABLE,
-                        detail="ChatLog Content Column is not valid",
+                        detail="ChatMessage Content Column is not valid",
                     ) from exc
             else:
                 try:
                     original_value = (
                         (
                             await session.execute(
-                                select(ChatLog.uuid, ChatLog.chat_log_metadata).where(
-                                    ChatLog.uuid == identifier
-                                )
+                                select(
+                                    ChatMessage.uuid, ChatMessage.chat_message_metadata
+                                ).where(ChatMessage.uuid == identifier)
                             )
                         )
                         .one()
@@ -950,24 +995,24 @@ async def log_general(
                 except:
                     raise HTTPException(
                         status_code=HTTP_404_NOT_FOUND,
-                        detail=f"ChatLog Not found for uuid {identifier}",
+                        detail=f"ChatMessage Not found for uuid {identifier}",
                     )
                 # update metadata in original_value
                 new_metadata = (
-                    original_value["chat_log_metadata"]
-                    if original_value["chat_log_metadata"] is not None
+                    original_value["chat_message_metadata"]
+                    if original_value["chat_message_metadata"] is not None
                     else {}
                 )
                 for key, value in metadata.items():
                     new_metadata[key] = value
 
                 await session.execute(
-                    update(ChatLog)
-                    .where(ChatLog.uuid == identifier)
-                    .values(chat_log_metadata=new_metadata)
+                    update(ChatMessage)
+                    .where(ChatMessage.uuid == identifier)
+                    .values(chat_message_metadata=new_metadata)
                 )
 
-        elif type == InstanceType.ChatLogSession.value:
+        elif type == InstanceType.ChatSession.value:
             if not identifier:
                 raise HTTPException(
                     status_code=HTTP_400_BAD_REQUEST, detail="Session uuid is required"
@@ -978,8 +1023,8 @@ async def log_general(
                         (
                             await session.execute(
                                 select(
-                                    ChatLogSession.uuid, ChatLogSession.session_metadata
-                                ).where(ChatLogSession.uuid == identifier)
+                                    ChatSession.uuid, ChatSession.session_metadata
+                                ).where(ChatSession.uuid == identifier)
                             )
                         )
                         .one()
@@ -1000,8 +1045,8 @@ async def log_general(
                 for key, value in metadata.items():
                     new_metadata[key] = value
                 await session.execute(
-                    update(ChatLogSession)
-                    .where(ChatLogSession.uuid == identifier)
+                    update(ChatSession)
+                    .where(ChatSession.uuid == identifier)
                     .values(session_metadata=new_metadata)
                 )
 
@@ -1039,7 +1084,15 @@ async def log_deployment_run(
             input_register_name=None,
             run_from_deployment=True,
             version_uuid=version_uuid,
-            token_usage=api_response["usage"] if api_response else None,
+            prompt_tokens=api_response["usage"]["prompt_tokens"]
+            if api_response
+            else None,
+            completion_tokens=api_response["usage"]["completion_tokens"]
+            if api_response
+            else None,
+            total_tokens=api_response["usage"]["total_tokens"]
+            if api_response
+            else None,
             latency=api_response["response_ms"] if api_response else None,
             cost=completion_cost(api_response) if api_response else None,
             run_log_metadata=metadata,
@@ -1056,10 +1109,8 @@ async def log_deployment_run(
 @router.post("/log_deployment_chat")
 async def log_deployment_chat(
     session_uuid: str,
-    log_uuid_list: List[str],
-    version_uuid: str,
-    messages: List[Dict[str, Any]] = [],
-    metadata: Optional[List[Dict[str, Any]]] = None,
+    version_uuid: Optional[str],
+    chat_log_request_body: List[ChatLogRequestBody],
     project: dict = Depends(get_project),
     db_session: AsyncSession = Depends(get_session),
 ):
@@ -1068,60 +1119,101 @@ async def log_deployment_chat(
         session = (
             (
                 await db_session.execute(
-                    select(ChatLogSession).where(ChatLogSession.uuid == session_uuid)
+                    select(ChatSession).where(ChatSession.uuid == session_uuid)
                 )
             )
             .scalars()
             .all()
         )
+        version_uuid = session[0].version_uuid
 
         if len(session) == 0:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND, detail="Session not found"
             )
 
-        # make logs
-        logs = []
-        for log_uuid, message, meta in zip(log_uuid_list, messages, metadata):
+        model: str = (
+            await db_session.execute(
+                select(ChatModelVersion.model).where(
+                    ChatModelVersion.uuid == version_uuid
+                )
+            )
+        ).scalar_one()
+
+        # make ChatMessage
+        messages: List[ChatMessage] = []
+        for chat_log_request in chat_log_request_body:
             token_usage = {}
             latency = 0
-            cost = completion_cost(meta["api_response"]) if meta else None
-            if "token_usage" in meta:
-                token_usage = meta["token_usage"]
-                del meta["token_usage"]
-            if "response_ms" in meta:
-                latency = meta["response_ms"]
-                del meta["response_ms"]
-            if "_response_ms" in meta:
-                latency = meta["_response_ms"]
-                del meta["_response_ms"]
-            if "latency" in meta:
-                latency = meta["latency"]
-                del meta["latency"]
+            token_count = token_counter(model, chat_log_request.message["content"])
+            cost = None
+            token_usage = None
+            latency = None
 
-            if "function_call" in message:
-                message["tool_calls"] = [message["function_call"]]
+            if chat_log_request.api_response:
+                cost = completion_cost(chat_log_request.api_response)
+                token_usage = (
+                    chat_log_request.api_response["usage"]
+                    if "usage" in chat_log_request.api_response
+                    else None
+                )
+                latency = (
+                    chat_log_request.api_response["_response_ms"]
+                    if "_response_ms" in chat_log_request.api_response
+                    else None
+                )
 
-            logs.append(
-                ChatLog(
+            messages.append(
+                ChatMessage(
                     **{
-                        "uuid": log_uuid,
+                        "uuid": chat_log_request.uuid,
                         "session_uuid": session_uuid,
-                        "role": message["role"],
-                        "content": message["content"],
-                        "name": message["name"] if "name" in message else None,
-                        "tool_calls": message["tool_calls"]
-                        if "tool_calls" in message
+                        "role": chat_log_request.message["role"],
+                        "content": chat_log_request.message["content"],
+                        "name": chat_log_request.message["name"]
+                        if "name" in chat_log_request.message
                         else None,
-                        "token_usage": token_usage,
-                        "latency": latency,
-                        "cost": cost,
-                        "chat_log_metadata": meta,
+                        "function_call": chat_log_request.message["function_call"]
+                        if "function_call" in chat_log_request.message
+                        else None,
+                        "tool_calls": chat_log_request.message["tool_calls"]
+                        if "tool_calls" in chat_log_request.message
+                        else None,
+                        "chat_message_metadata": chat_log_request.metadata,
+                        "token_count": token_count,
                     }
                 )
             )
-        # save logs
-        db_session.add_all(logs)
+
+        db_session.add_all(messages)
+
+        # get latest chat_message
+        if chat_log_request.message["role"] == "assistant":
+            latest_chat_message = (
+                await db_session.execute(
+                    select(ChatMessage)
+                    .where(ChatMessage.session_uuid == session_uuid)
+                    .where(ChatMessage.role.in_(["user", "function"]))
+                    .order_by(desc(ChatMessage.created_at))
+                    .limit(1)
+                )
+            ).scalar_one()
+            
+            # save log
+            chat_log = ChatLog(
+                user_message_uuid=latest_chat_message.uuid,
+                assistant_message_uuid=messages[-1].uuid,
+                session_uuid=session_uuid,
+                project_uuid=project["uuid"],
+                prompt_tokens=token_usage["prompt_tokens"],
+                completion_tokens=token_usage["completion_tokens"],
+                total_tokens=token_usage["total_tokens"],
+                latency=latency,
+                cost=cost,
+            )
+            await db_session.flush()
+            db_session.add(chat_log)
+
         await db_session.commit()
         return Response(status_code=HTTP_200_OK)
     except HTTPException as http_exc:
@@ -1159,7 +1251,7 @@ async def make_session(
                 status_code=HTTP_404_NOT_FOUND, detail="Chat Model Version not found"
             )
         # make Session
-        session_row = ChatLogSession(
+        session_row = ChatSession(
             uuid=session_uuid, version_uuid=version_uuid, run_from_deployment=True
         )
         db_session.add(session_row)

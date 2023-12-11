@@ -19,7 +19,7 @@ router = APIRouter()
 
 
 # FunctionSchema Endpoints
-@router.get("/", response_model=List[FunctionSchemaInstance])
+@router.get("", response_model=List[FunctionSchemaInstance])
 async def fetch_function_schemas(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),

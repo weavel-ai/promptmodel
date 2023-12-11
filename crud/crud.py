@@ -16,7 +16,7 @@ from modules.types import (
 
 async def save_instances(
     session: AsyncSession,
-    prompt_models: List[Dict],
+    function_models: List[Dict],
     chat_models: List[Dict],
     sample_inputs: List[Dict],
     function_schemas: List[Dict],
@@ -25,8 +25,8 @@ async def save_instances(
         # Insert prompt models
         current_time = datetime.utcnow()
 
-        prompt_models = [PromptModel(**data) for data in prompt_models]
-        session.add_all(prompt_models)
+        function_models = [FunctionModel(**data) for data in function_models]
+        session.add_all(function_models)
 
         # Insert chat models
         chat_models = [ChatModel(**data) for data in chat_models]
@@ -42,38 +42,31 @@ async def save_instances(
 
         await session.flush()
 
-        result = await session.execute(
-            select(PromptModel).where(PromptModel.created_at >= current_time)
-        )
-        prompt_model_rows = result.scalars().all()
+        for obj in function_models:
+            await session.refresh(obj)
 
-        result = await session.execute(
-            select(ChatModel).where(ChatModel.created_at >= current_time)
-        )
-        chat_model_rows = result.scalars().all()
+        for obj in chat_models:
+            await session.refresh(obj)
 
-        result = await session.execute(
-            select(SampleInput).where(SampleInput.created_at >= current_time)
-        )
-        sample_input_rows = result.scalars().all()
+        for obj in sample_inputs:
+            await session.refresh(obj)
 
-        result = await session.execute(
-            select(FunctionSchema).where(FunctionSchema.created_at >= current_time)
-        )
-        function_schema_rows = result.scalars().all()
+        for obj in function_schemas:
+            await session.refresh(obj)
 
+        print(function_models)
         return {
-            "prompt_model_rows": [r.model_dump() for r in prompt_model_rows],
-            "chat_model_rows": [r.model_dump() for r in chat_model_rows],
-            "sample_input_rows": [r.model_dump() for r in sample_input_rows],
-            "function_schema_rows": [r.model_dump() for r in function_schema_rows],
+            "function_model_rows": [r.model_dump() for r in function_models],
+            "chat_model_rows": [r.model_dump() for r in chat_models],
+            "sample_input_rows": [r.model_dump() for r in sample_inputs],
+            "function_schema_rows": [r.model_dump() for r in function_schemas],
         }
 
 
 async def pull_instances(session: AsyncSession, project_uuid: str) -> Dict[str, Any]:
-    # select PromptModel, ChatModel, SampleInput, FunctionSchema whose project_uuid is project_uuid
-    prompt_model_query = select(PromptModel).where(
-        PromptModel.project_uuid == project_uuid
+    # select FunctionModel, ChatModel, SampleInput, FunctionSchema whose project_uuid is project_uuid
+    function_model_query = select(FunctionModel).where(
+        FunctionModel.project_uuid == project_uuid
     )
     chat_model_query = select(ChatModel).where(ChatModel.project_uuid == project_uuid)
     sample_input_query = select(SampleInput).where(
@@ -83,14 +76,14 @@ async def pull_instances(session: AsyncSession, project_uuid: str) -> Dict[str, 
         FunctionSchema.project_uuid == project_uuid
     )
 
-    prompt_model_data = await session.execute(prompt_model_query)
+    function_model_data = await session.execute(function_model_query)
     chat_model_data = await session.execute(chat_model_query)
     sample_input_data = await session.execute(sample_input_query)
     function_schema_data = await session.execute(function_schema_query)
 
     return {
-        "prompt_model_data": [
-            r.model_dump() for r in prompt_model_data.scalars().all()
+        "function_model_data": [
+            r.model_dump() for r in function_model_data.scalars().all()
         ],
         "chat_model_data": [r.model_dump() for r in chat_model_data.scalars().all()],
         "sample_input_data": [
@@ -105,7 +98,7 @@ async def pull_instances(session: AsyncSession, project_uuid: str) -> Dict[str, 
 async def update_instances(
     session: AsyncSession,
     project_uuid: str,
-    prompt_model_names: List[str],
+    function_model_names: List[str],
     chat_model_names: List[str],
     sample_input_names: List[str],
     function_schema_names: List[str],
@@ -116,7 +109,7 @@ async def update_instances(
         """
         SELECT * FROM update_instances(
             :input_project_uuid,
-            :prompt_model_names,
+            :function_model_names,
             :chat_model_names,
             :sample_input_names,
             :function_schema_names,
@@ -129,7 +122,7 @@ async def update_instances(
         function_call,
         {
             "input_project_uuid": project_uuid,
-            "prompt_model_names": prompt_model_names,
+            "function_model_names": function_model_names,
             "chat_model_names": chat_model_names,
             "sample_input_names": sample_input_names,
             "function_schema_names": function_schema_names,
@@ -159,7 +152,7 @@ async def disconnect_local(token: str):
         SET cli_access_key = NULL, online = FALSE
         WHERE cli_access_key = token;
 
-        UPDATE prompt_model
+        UPDATE function_model
         SET online = FALSE
         WHERE project_uuid = found_project_uuid;
 

@@ -1,12 +1,14 @@
 from .models import (
     DeployedPromptInstance,
-    DeployedPromptModelInstance,
-    DeployedPromptModelVersionInstance,
+    DeployedFunctionModelInstance,
+    DeployedFunctionModelVersionInstance,
     DeployedChatModelVersionInstance,
     UsersOrganizationsInstance,
     CliProjectInstance,
     CheckUpdateResponseInstance,
-    FetchPromptModelVersionResponseInstance,
+    FetchFunctionModelVersionResponseInstance,
     FetchChatModelVersionResponseInstance,
-    CliChatLogInstance,
+    CliChatMessageInstance,
+    ChatLogRequestBody,
+    RunLogRequestBody,
 )

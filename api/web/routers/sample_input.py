@@ -20,7 +20,7 @@ router = APIRouter()
 
 
 # SampleInput Endpoints
-@router.get("/", response_model=List[SampleInputInstance])
+@router.get("", response_model=List[SampleInputInstance])
 async def fetch_sample_inputs(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -46,7 +46,7 @@ async def fetch_sample_inputs(
         )
 
 
-@router.post("/", response_model=SampleInputInstance)
+@router.post("", response_model=SampleInputInstance)
 async def create_sample_input(
     body: CreateSampleInputBody,
     session: AsyncSession = Depends(get_session),
