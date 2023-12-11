@@ -11,7 +11,7 @@ export function ModelNode({ data }) {
   return (
     <Link
       href={`${pathname}/${
-        data.type == "PromptModel" ? "prompt_models" : "chat_models"
+        data.type == "FunctionModel" ? "function_models" : "chat_models"
       }/${data.uuid}`}
       className={classNames(
         "bg-base-200 p-4 rounded-box flex flex-col gap-y-2 justify-between items-start",

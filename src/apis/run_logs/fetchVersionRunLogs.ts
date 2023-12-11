@@ -2,7 +2,7 @@ import { railwayWebClient } from "@/apis/base";
 import { ReadVersionRunLogsRequest, RunLog } from "@/types/RunLog";
 
 /**
- * Reads a PromptModelVersion's RunLogs.
+ * Reads a FunctionModelVersion's RunLogs.
  * @param requestData - The data required to fetch RunLogs.
  * @returns A promise that resolves to a list of the RunLog interface.
  */

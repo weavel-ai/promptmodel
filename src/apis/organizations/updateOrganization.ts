@@ -9,9 +9,13 @@ import { Organization, UpdateOrganizationRequest } from "@/types/Organization";
 export async function updateOrganization(
   organizationData: UpdateOrganizationRequest
 ): Promise<Organization> {
+  const { organization_id, ...params } = organizationData;
   const response = await railwayWebClient.patch(
-    "/organizations",
-    organizationData
+    `/organizations/${organization_id}?`,
+    {},
+    {
+      params: params,
+    }
   );
   return response.data;
 }

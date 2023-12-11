@@ -1,5 +1,5 @@
 "use client";
-import { usePromptModel } from "@/hooks/usePromptModel";
+import { useFunctionModel } from "@/hooks/useFunctionModel";
 import classNames from "classnames";
 import {
   ReactNode,
@@ -30,7 +30,7 @@ import { InputField } from "@/components/InputField";
 import { toast } from "react-toastify";
 import { useSupabaseClient } from "@/apis/supabase";
 import { deleteChatModel, editChatModel } from "@/apis/chat_models";
-import { deletePromptModel, editPromptModel } from "@/apis/prompt_models";
+import { deleteFunctionModel, editFunctionModel } from "@/apis/function_models";
 
 dayjs.extend(relativeTime);
 
@@ -42,7 +42,7 @@ const initialNodes = [];
 const initialEdges = [];
 
 enum Tab {
-  PROMPT_MODEL = "PromptModel",
+  PROMPT_MODEL = "FunctionModel",
   CHAT_MODEL = "ChatModel",
 }
 
@@ -54,7 +54,7 @@ export default function Page() {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
   const { chatModelListData } = useChatModel();
-  const { promptModelListData } = usePromptModel();
+  const { functionModelListData } = useFunctionModel();
   const [showCreateModelModal, setShowCreateModelModal] = useState(false);
   const [selectedTab, setSelectedTab] = useState(Tab.PROMPT_MODEL);
   const [menuData, setMenuData] = useState(null);
@@ -90,13 +90,13 @@ export default function Page() {
 
   // Build nodes
   useEffect(() => {
-    if (selectedTab === Tab.PROMPT_MODEL && !promptModelListData) return;
+    if (selectedTab === Tab.PROMPT_MODEL && !functionModelListData) return;
     if (selectedTab === Tab.CHAT_MODEL && !chatModelListData) return;
 
     // Calculations
     const totalNodes =
       selectedTab === Tab.PROMPT_MODEL
-        ? promptModelListData.length
+        ? functionModelListData.length
         : chatModelListData.length;
 
     let maxNodesPerRow = Math.floor(
@@ -109,7 +109,7 @@ export default function Page() {
 
     const modelListData =
       selectedTab === Tab.PROMPT_MODEL
-        ? promptModelListData
+        ? functionModelListData
         : chatModelListData;
     const newNodes = modelListData.map((model, index) => {
       const row = Math.floor(index / maxNodesPerRow);
@@ -140,7 +140,7 @@ export default function Page() {
     setNodes(newNodes);
   }, [
     selectedTab,
-    promptModelListData,
+    functionModelListData,
     chatModelListData,
     windowHeight,
     windowWidth,
@@ -271,12 +271,12 @@ function EditModelNameModal({
   modelUuid,
 }) {
   const { supabase } = useSupabaseClient();
-  const { promptModelListData } = usePromptModel();
+  const { functionModelListData } = useFunctionModel();
   const { chatModelListData } = useChatModel();
 
   const previousName = useMemo(() => {
     if (modelType === Tab.PROMPT_MODEL) {
-      const model = promptModelListData.find(
+      const model = functionModelListData.find(
         (model) => model?.uuid === modelUuid
       );
       return model.name;
@@ -284,7 +284,7 @@ function EditModelNameModal({
       const model = chatModelListData.find((model) => model.uuid === modelUuid);
       return model?.name;
     }
-  }, [modelType, modelUuid, promptModelListData, chatModelListData]);
+  }, [modelType, modelUuid, functionModelListData, chatModelListData]);
 
   const [name, setName] = useState(previousName);
 
@@ -300,7 +300,7 @@ function EditModelNameModal({
   async function handleSaveName() {
     const toastId = toast.loading("Saving...");
     if (modelType === Tab.PROMPT_MODEL) {
-      await editPromptModel({
+      await editFunctionModel({
         uuid: modelUuid,
         name: name,
       });
@@ -353,21 +353,21 @@ function DeleteModelModal({
   modelUuid,
 }) {
   const { supabase } = useSupabaseClient();
-  const { promptModelListData } = usePromptModel();
+  const { functionModelListData } = useFunctionModel();
   const { chatModelListData } = useChatModel();
 
   const model = useMemo(() => {
     if (modelType === Tab.PROMPT_MODEL) {
-      return promptModelListData.find((model) => model.uuid === modelUuid);
+      return functionModelListData.find((model) => model.uuid === modelUuid);
     } else if (modelType === Tab.CHAT_MODEL) {
       return chatModelListData.find((model) => model.uuid === modelUuid);
     }
-  }, [modelUuid, promptModelListData, chatModelListData, modelType]);
+  }, [modelUuid, functionModelListData, chatModelListData, modelType]);
 
   async function handleDeleteModel() {
     const toastId = toast.loading("Deleting...");
     if (modelType === Tab.PROMPT_MODEL) {
-      await deletePromptModel({
+      await deleteFunctionModel({
         uuid: modelUuid,
       });
     } else if (modelType === Tab.CHAT_MODEL) {

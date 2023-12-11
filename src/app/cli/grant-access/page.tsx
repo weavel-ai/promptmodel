@@ -76,7 +76,7 @@ export default function Page() {
         <div className="bg-gradient-to-br from-base-200/50 to-base-200 rounded-box p-6 flex flex-col gap-y-2 justify-start items-start">
           <p className="text-base-content font-semibold text-2xl">CLI Login</p>
           <p className="text-base-content">
-            PromptModel CLI you are running is requesting access to your
+            FunctionModel CLI you are running is requesting access to your
             account.
           </p>
           <button

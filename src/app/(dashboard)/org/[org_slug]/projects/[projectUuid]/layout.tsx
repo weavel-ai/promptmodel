@@ -2,7 +2,7 @@ import { Inter } from "next/font/google";
 import { ProjectVerticalNavbar } from "@/components/navbar/ProjectVerticalNavbar";
 
 export const metadata = {
-  title: "Dashboard - PromptModel",
+  title: "Dashboard - FunctionModel",
   description: "Scalable prompt management",
 };
 

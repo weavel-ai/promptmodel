@@ -23,7 +23,7 @@ import { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 //   const res = await supabaseClient
 //     .from("deployment_run_log_view")
 //     .select(
-//       "project_uuid, prompt_model_name, prompt_model_uuid, prompt_model_version_uuid, prompt_model_version, created_at, inputs, raw_output, parsed_outputs, function_call, latency, cost, token_usage, run_from_deployment"
+//       "project_uuid, function_model_name, function_model_uuid, function_model_version_uuid, function_model_version, created_at, inputs, raw_output, parsed_outputs, function_call, latency, cost, token_usage, run_from_deployment"
 //     )
 //     .eq("project_uuid", projectUuid)
 //     .order("created_at", { ascending: false })
@@ -51,17 +51,17 @@ export async function subscribeRunLogs(
   projectUuid: string,
   onUpdate: () => void
 ): Promise<RealtimeChannel> {
-  const promptModelList = await supabaseClient
-    .from("prompt_model")
+  const functionModelList = await supabaseClient
+    .from("function_model")
     .select("uuid")
     .eq("project_uuid", projectUuid);
 
-  const promptModelVersionList = await supabaseClient
-    .from("prompt_model_version")
+  const functionModelVersionList = await supabaseClient
+    .from("function_model_version")
     .select("uuid")
     .in(
-      "prompt_model_uuid",
-      promptModelList.data.map((item) => item.uuid)
+      "function_model_uuid",
+      functionModelList.data.map((item) => item.uuid)
     );
 
   const runLogsStream = supabaseClient
@@ -72,7 +72,7 @@ export async function subscribeRunLogs(
         event: "*",
         schema: "public",
         table: "run_log",
-        filter: `version_uuid=in.(${promptModelVersionList.data
+        filter: `version_uuid=in.(${functionModelVersionList.data
           .map((item) => `${item.uuid}`)
           .join(",")})`,
       },

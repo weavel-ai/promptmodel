@@ -1,4 +1,4 @@
-import { NEW_CHAT_LABEL, useChatLogSessions } from "@/hooks/useChatLogSession";
+import { NEW_CHAT_LABEL, useChatSessions } from "@/hooks/useChatSession";
 import classNames from "classnames";
 import dayjs from "dayjs";
 
@@ -9,7 +9,9 @@ interface ChatSessionSelectorProps {
 }
 
 export const ChatSessionSelector = (props: ChatSessionSelectorProps) => {
-  const { chatLogSessionListData } = useChatLogSessions(props.versionUuid);
+  const { chatSessionListData: chatLogSessionListData } = useChatSessions(
+    props.versionUuid
+  );
 
   return (
     <select

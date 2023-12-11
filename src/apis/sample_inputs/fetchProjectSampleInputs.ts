@@ -12,7 +12,7 @@ import {
 export async function fetchProjectSampleInputs(
   requestData: ReadProjectSampleInputsRequest
 ): Promise<Array<SampleInput>> {
-  const response = await railwayWebClient.get("sample_inputs", {
+  const response = await railwayWebClient.get("/sample_inputs", {
     params: requestData,
   });
   return response.data;

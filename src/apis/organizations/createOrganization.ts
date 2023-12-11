@@ -13,8 +13,5 @@ export async function createOrganization(
     "/organizations",
     organizationData
   );
-  if (response.status !== 201) {
-    throw new Error("Error creating organization: " + response.status);
-  }
   return response.data;
 }

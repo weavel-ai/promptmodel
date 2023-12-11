@@ -9,7 +9,7 @@ import { ReadDailyRunLogMetricsRequest, RunLogMetric } from "@/types/Metric";
 export async function fetchDailyRunLogMetrics(
   requestData: ReadDailyRunLogMetricsRequest
 ): Promise<Array<RunLogMetric>> {
-  const response = await railwayWebClient.get("/metrics/prompt_model", {
+  const response = await railwayWebClient.get("/metrics/function_model", {
     params: requestData,
   });
   return response.data;

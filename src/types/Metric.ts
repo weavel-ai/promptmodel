@@ -14,7 +14,7 @@ interface Metric {
  * Interface for request to read daily RunLogMetrics.
  */
 export interface ReadDailyRunLogMetricsRequest {
-  prompt_model_uuid: string;
+  function_model_uuid: string;
   start_day: string;
   end_day: string;
 }
@@ -32,8 +32,8 @@ export interface ReadDailyChatLogMetricsRequest {
  * General interface for RunLogMetric.
  */
 export interface RunLogMetric extends Metric {
-  prompt_model_uuid?: string;
-  prompt_model_name?: string;
+  function_model_uuid?: string;
+  function_model_name?: string;
   total_runs: number;
 }
 

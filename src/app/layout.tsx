@@ -13,7 +13,7 @@ import { authOptions } from "@/apis/auth";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "PromptModel",
+  title: "FunctionModel",
   description: "Prompt versioning on the cloud",
   icons: {
     icon: {

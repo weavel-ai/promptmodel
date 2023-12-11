@@ -123,7 +123,7 @@ export const CreateSampleInputModal = ({
           Add sample inputs
         </p>
         <p className="text-muted-content text-sm mb-1">
-          Sample inputs will be used to test your PromptModel.
+          Sample inputs will be used to test your FunctionModel.
           <br />
           These inputs will be shared throughout this current project.
           <br />

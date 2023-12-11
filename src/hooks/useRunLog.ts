@@ -8,7 +8,7 @@ export const useRunLogs = (versionUuid: string) => {
   const { data: runLogData, refetch: refetchRunLogData } = useQuery({
     queryKey: ["runLogData", { versionUuid: versionUuid }],
     queryFn: async () =>
-      await fetchVersionRunLogs({ prompt_model_version_uuid: versionUuid }),
+      await fetchVersionRunLogs({ function_model_version_uuid: versionUuid }),
     enabled: !!versionUuid,
   });
 

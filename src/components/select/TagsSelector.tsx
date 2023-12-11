@@ -16,13 +16,13 @@ import { useProject } from "@/hooks/useProject";
 import { Badge } from "../ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import { usePromptModel } from "@/hooks/usePromptModel";
+import { useFunctionModel } from "@/hooks/useFunctionModel";
 import { useChatModel } from "@/hooks/useChatModel";
 import { updateChatModelVersionTags } from "@/apis/chat_model_versions";
-import { updatePromptModelVersionTags } from "@/apis/prompt_model_versions";
+import { updateFunctionModelVersionTags } from "@/apis/function_model_versions";
 
 interface TagsSelectorProps {
-  modelType: "PromptModel" | "ChatModel";
+  modelType: "FunctionModel" | "ChatModel";
   versionUuid: string;
   previousTags: string[] | null;
 }
@@ -36,7 +36,7 @@ export function TagsSelector({
   const { supabase } = useSupabaseClient();
   const { tagsListData } = useTags();
   const { projectUuid } = useProject();
-  const { promptModelUuid } = usePromptModel();
+  const { functionModelUuid } = useFunctionModel();
   const { chatModelUuid } = useChatModel();
   const [isInputShown, setIsInputShown] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -123,9 +123,9 @@ export function TagsSelector({
       }
       newTagCreated = true;
     }
-    if (modelType === "PromptModel") {
-      // Update PromptModel version tags
-      await updatePromptModelVersionTags({
+    if (modelType === "FunctionModel") {
+      // Update FunctionModel version tags
+      await updateFunctionModelVersionTags({
         uuid: versionUuid,
         tags: selectedTags,
       });
@@ -142,14 +142,14 @@ export function TagsSelector({
         { projectUuid: projectUuid },
       ]);
     }
-    if (modelType === "PromptModel") {
+    if (modelType === "FunctionModel") {
       await queryClient.invalidateQueries([
-        "promptModelVersionData",
+        "functionModelVersionData",
         { uuid: versionUuid },
       ]);
       await queryClient.invalidateQueries([
-        "promptModelVersionListData",
-        { promptModelUuid: promptModelUuid },
+        "functionModelVersionListData",
+        { functionModelUuid: functionModelUuid },
       ]);
     } else if (modelType === "ChatModel") {
       await queryClient.invalidateQueries([

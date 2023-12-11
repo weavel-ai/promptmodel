@@ -8,8 +8,5 @@ import { CreateTagRequest, Tag } from "@/types/Tag";
  */
 export async function createTag(requestData: CreateTagRequest): Promise<Tag> {
   const response = await railwayWebClient.post("/tags", requestData);
-  if (response.status !== 201) {
-    throw new Error("Error creating tag: " + response.status);
-  }
   return response.data;
 }

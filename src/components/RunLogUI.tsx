@@ -1,6 +1,6 @@
 import { RunLog } from "@/types/RunLog";
 import { useRunLogs } from "@/hooks/useRunLog";
-import { usePromptModelVersionStore } from "@/stores/promptModelVersionStore";
+import { useFunctionModelVersionStore } from "@/stores/functionModelVersionStore";
 import { CornersOut } from "@phosphor-icons/react";
 import classNames from "classnames";
 import { useEffect, useState } from "react";
@@ -22,7 +22,7 @@ export function RunLogUI({
     runLogs,
     fullScreenRunVersionUuid,
     setFullScreenRunVersionUuid,
-  } = usePromptModelVersionStore();
+  } = useFunctionModelVersionStore();
   const [runLogList, setRunLogList] = useState<RunLog[]>([]);
 
   useEffect(() => {
