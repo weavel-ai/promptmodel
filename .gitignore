@@ -1,36 +1,38 @@
 # frontend
+## turbo
+frontend/.turbo
 
-# dependencies
+## dependencies
 frontend/node_modules
 frontend/.pnp
 frontend/.pnp.js
 
-# testing
+## testing
 frontend/coverage
 
-# next.js
+## next.js
 frontend/.next/
 frontend/out/
 
-# production
+## production
 frontend/build
 
-# misc
+## misc
 frontend/.DS_Store
 *.pem
 
-# debug
+## debug
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
 
-# local env files
+## local env files
 frontend/.env*.local
 
-# vercel
+## vercel
 frontend/.vercel
 
-# typescript
+## typescript
 *.tsbuildinfo
 frontend/next-env.d.ts
 

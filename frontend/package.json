@@ -30,6 +30,8 @@
     "daisyui": "^3.9.4",
     "date-fns": "^2.30.0",
     "dayjs": "^1.11.10",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-config-turbo": "^1.11.1",
     "framer-motion": "^10.16.12",
     "lucide-react": "^0.289.0",
     "monaco-editor": "^0.44.0",
@@ -56,7 +58,6 @@
     "tailwind-merge": "^1.14.0",
     "tailwind-scrollbar-hide": "^1.1.7",
     "tailwindcss-animate": "^1.0.7",
-    "tsconfig": "link:../../packages/tsconfig",
     "uuid": "^9.0.1",
     "zod": "^3.22.4",
     "zustand": "^4.4.7"

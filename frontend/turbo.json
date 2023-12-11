@@ -1,0 +1,33 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["**/.env.*local"],
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "env": [
+        "NODE_ENV",
+        "NEXT_PUBLIC_ENDPOINT_URL",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_KEY",
+        "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+        "CLERK_SECRET_KEY",
+        "NEXT_PUBLIC_AMPLITUDE_API_KEY",
+        "NEXT_PUBLIC_SELF_HOSTED",
+        "NEXTAUTH_URL",
+        "NEXTAUTH_SECRET",
+        "NEXT_PUBLIC_ORG_NAME",
+        "NEXT_PUBLIC_ORG_SLUG",
+        "NEXT_PUBLIC_AUTH_GOOGLE_CLIENT_ID",
+        "NEXT_PUBLIC_AUTH_GOOGLE_CLIENT_SECRET",
+        "NEXT_PUBLIC_AUTH_GITHUB_CLIENT_ID",
+        "NEXT_PUBLIC_AUTH_GITHUB_CLIENT_SECRET"
+      ],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "lint": {},
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
