@@ -30,9 +30,32 @@ services:
     depends_on:
       - db
 
-  # frontend:
-  #   build: ./frontend
-  #   command: pnpm start
+  frontend:
+    build: ./frontend
+    environment:
+      - NODE_ENV=yournodeenv
+      - NEXT_PUBLIC_ENDPOINT_URL=http://localhost:8000
+      - NEXT_PUBLIC_SUPABASE_URL=yoursupabaseurl
+      - NEXT_PUBLIC_SUPABASE_KEY=yoursupabasekey
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=yourclerkpublishablekey
+      - CLERK_SECRET_KEY=yourclerksecretkey
+      - NEXT_PUBLIC_AMPLITUDE_API_KEY=youramplitudeapikey
+      - NEXT_PUBLIC_SELF_HOSTED=yourselfhosted
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=yoursecret
+      - NEXT_PUBLIC_ORG_NAME=yourorgname
+      - NEXT_PUBLIC_ORG_SLUG=yourorgslug
+      - NEXT_PUBLIC_AUTH_GOOGLE_CLIENT_ID=yourgoogleclientid
+      - NEXT_PUBLIC_AUTH_GOOGLE_CLIENT_SECRET=yourgoogleclientsecret
+      - NEXT_PUBLIC_AUTH_GITHUB_CLIENT_ID=yourgithubclientid
+      - NEXT_PUBLIC_AUTH_GITHUB_CLIENT_SECRET=yourgithubclientsecret
+    command: pnpm start
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:
