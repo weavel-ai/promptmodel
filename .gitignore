@@ -1,35 +1,54 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# frontend
 
 # dependencies
-/node_modules
-/.pnp
-.pnp.js
+frontend/node_modules
+frontend/.pnp
+frontend/.pnp.js
 
 # testing
-/coverage
+frontend/coverage
 
 # next.js
-/.next/
-/out/
+frontend/.next/
+frontend/out/
 
 # production
-/build
+frontend/build
 
 # misc
-.DS_Store
+frontend/.DS_Store
 *.pem
 
 # debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
 
 # local env files
-.env*.local
+frontend/.env*.local
 
 # vercel
-.vercel
+frontend/.vercel
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
+frontend/next-env.d.ts
+
+# backend
+backend/.venv
+backend/venv
+backend/.ipynb_checkpoints
+backend/*.ipynb
+backend/.env
+
+backend/test_notebooks
+
+
+*/__pycache__
+__pycache__
+
+backend/.vscode
+backend/.vscode/*
+*/.DS_Store
+*.egg-info
+*.key
