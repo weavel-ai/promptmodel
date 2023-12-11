@@ -52,3 +52,7 @@ backend/.vscode/*
 */.DS_Store
 *.egg-info
 *.key
+
+
+# overall
+volumes

@@ -141,7 +141,7 @@ class ProjectChangelog(Base):
     )
 
     logs: List[Dict[str, Any]] = Column(
-        ARRAY(JSONB), nullable=False, server_default="[]"
+        ARRAY(JSONB), nullable=False, server_default=text("'{}'::jsonb[]")
     )
 
     project_uuid: UUIDType = Column(

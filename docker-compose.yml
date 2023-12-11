@@ -19,6 +19,9 @@ services:
       - DB_USER=youruser
       - DB_PASSWORD=yourpassword
       - DB_PORT=5432
+      - SQLALCHEMY_URL=postgresql://youruser:yourpassword@db:5432/yourdbname
+      - NEXTAUTH_SECRET=yoursecret
+      - NEXTAUTH_URL=http://localhost:3000
     command: uvicorn server:app --host 0.0.0.0 --reload
     volumes:
       - ./backend:/app
@@ -27,9 +30,9 @@ services:
     depends_on:
       - db
 
-  frontend:
-    build: ./frontend
-    command: pnpm 
+  # frontend:
+  #   build: ./frontend
+  #   command: pnpm start
 
 volumes:
   postgres_data:
