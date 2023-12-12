@@ -67,3 +67,4 @@ backend/.vscode/*
 
 # overall
 volumes
+.env

@@ -10,7 +10,7 @@ pg_conn = psycopg2.connect(
     dbname=os.environ.get("POSTGRES_DB"), 
     user=os.environ.get("POSTGRES_USER"), 
     password=os.environ.get("POSTGRES_PASSWORD"), 
-    host=os.environ("POSTGRES_HOST")  # use the service name as the hostname
+    host=os.environ.get("POSTGRES_HOST")  # use the service name as the hostname
 )
 pg_conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
 

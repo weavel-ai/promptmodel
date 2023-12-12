@@ -3,13 +3,11 @@ services:
   db:
     image: postgres
     environment:
-      POSTGRES_DB: yourdbname
-      POSTGRES_USER: youruser
-      POSTGRES_PASSWORD: yourpassword
+      - POSTGRES_DB=${POSTGRES_DB:-yourdbname}
+      - POSTGRES_USER=${POSTGRES_USER:-youruser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    #   - ./volumes/db/data:/var/lib/postgresql/data:Z
-    #   - postgres_data:/var/lib/postgresql/data:Z
+      - ./volumes/postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     networks:
@@ -28,7 +26,8 @@ services:
   pg-to-redis-listener:
     build: ./pg_to_redis_listener
     volumes:
-      - ./pg-to-redis-listener:/app
+      - ./pg_to_redis_listener:/app
+      - ./volumes/pg-to-redis-listener:/app
     environment:
       - POSTGRES_HOST=${POSTGRES_HOST:-db}
       - POSTGRES_DB=${POSTGRES_DB:-yourdbname}
@@ -37,10 +36,13 @@ services:
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - REDIS_HOST=${REDIS_HOST:-redis}
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
     networks:
       - server
+    restart: always
 
   backend:
     build: ./backend
@@ -57,12 +59,15 @@ services:
       - DB_PORT=5432
       - SQLALCHEMY_URL=postgresql://youruser:yourpassword@db:5432/yourdbname
       - NEXTAUTH_SECRET=yoursecret
-      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_URL=http://frontend:3000
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
     networks:
       - server
+    restart: always
     # develop:
     #   watch:
     #     - path: ./backend/requirements.txt
@@ -73,9 +78,6 @@ services:
 
   frontend:
     build: ./frontend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     ports:
       - "3000:3000"
     environment:
@@ -89,20 +91,26 @@ services:
       - NEXT_PUBLIC_SELF_HOSTED=yourselfhosted
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=yoursecret
-      - NEXT_PUBLIC_ORG_NAME=yourorgname
-      - NEXT_PUBLIC_ORG_SLUG=yourorgslug
-      - NEXT_PUBLIC_AUTH_GOOGLE_CLIENT_ID=yourgoogleclientid
-      - NEXT_PUBLIC_AUTH_GOOGLE_CLIENT_SECRET=yourgoogleclientsecret
-      - NEXT_PUBLIC_AUTH_GITHUB_CLIENT_ID=yourgithubclientid
-      - NEXT_PUBLIC_AUTH_GITHUB_CLIENT_SECRET=yourgithubclientsecret
+      - NEXT_PUBLIC_ENDPOINT_URL=${NEXT_PUBLIC_ENDPOINT_URL:-http://localhost:8000/api}
+      # - NEXT_PUBLIC_ENDPOINT_URL=https://promptmodel.up.railway.app/api
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_KEY=${NEXT_PUBLIC_SUPABASE_KEY}
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - NEXT_PUBLIC_AMPLITUDE_API_KEY=${NEXT_PUBLIC_AMPLITUDE_API_KEY}
+      - NEXT_PUBLIC_SELF_HOSTED=false
     command: npm run start
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+      pg-to-redis-listener:
+        condition: service_started
     networks:
       - server
-    x-watch:
-      - path: ./path_to_your_nextjs_app
-        action: sync+restart
+    # restart: always
+    # x-watch:
+    #   - path: ./path_to_your_nextjs_app
+    #     action: sync+restart
 
 networks:
   server:
