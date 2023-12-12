@@ -13,8 +13,8 @@ import { authOptions } from "@/apis/auth";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "FunctionModel",
-  description: "Prompt versioning on the cloud",
+  title: "Promptmodel",
+  description: "Collaborative prompt & model engineering for LLM product teams",
   icons: {
     icon: {
       url: "/promptmodel-favicon.png",

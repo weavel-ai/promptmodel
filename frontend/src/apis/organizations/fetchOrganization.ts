@@ -8,7 +8,7 @@ import { Organization, ReadOrganizationRequest } from "@/types/Organization";
  */
 export async function fetchOrganization(
   organizationData: ReadOrganizationRequest
-): Promise<Organization> {
+): Promise<Organization | null> {
   const response = await railwayWebClient.get(
     `/organizations/${organizationData.organization_id}`
   );

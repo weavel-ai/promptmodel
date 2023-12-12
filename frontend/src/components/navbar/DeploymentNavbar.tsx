@@ -16,7 +16,6 @@ import { useOrganization } from "@/hooks/auth/useOrganization";
 import { SignInButton } from "../buttons/SignInButton";
 import { useMediaQuery } from "react-responsive";
 import { AnimatedUnderline } from "../AnimatedUnderline";
-import { useSupabaseClient } from "@/apis/supabase";
 import { CaretRight } from "@phosphor-icons/react";
 import { Michroma, Russo_One } from "next/font/google";
 import { useOrgData } from "@/hooks/useOrgData";
@@ -41,7 +40,6 @@ export const DeploymentNavbar = (props: NavbarProps) => {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { supabase } = useSupabaseClient();
   const { isSignedIn, userId } = useAuth();
   const { organization } = useOrganization();
   const { orgData, refetchOrgData } = useOrgData();
@@ -70,8 +68,7 @@ export const DeploymentNavbar = (props: NavbarProps) => {
       organization?.name &&
       organization?.slug &&
       orgData?.name &&
-      orgData?.slug &&
-      supabase
+      orgData?.slug
     ) {
       if (
         orgData.name != organization?.name ||
@@ -97,7 +94,6 @@ export const DeploymentNavbar = (props: NavbarProps) => {
     organization?.id,
     organization?.name,
     organization?.slug,
-    supabase,
     pathname,
     router,
     refetchOrgData,

@@ -1,4 +1,3 @@
-import { useSupabaseClient } from "@/apis/supabase";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
@@ -24,7 +23,6 @@ import { ParsingType } from "@/types/ParsingType";
 export const useFunctionModelVersion = () => {
   const params = useParams();
   const queryClient = useQueryClient();
-  const { supabase } = useSupabaseClient();
   const { projectData } = useProject();
   const {
     newVersionCache,

@@ -1,4 +1,3 @@
-import { useSupabaseClient } from "@/apis/supabase";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
@@ -12,7 +11,6 @@ import { subscribeTable } from "@/apis/subscribe";
 export const useChatModel = () => {
   const params = useParams();
   const { projectUuid, syncToast } = useProject();
-  const { supabase } = useSupabaseClient();
   const { chatModelStream, setChatModelStream } = useRealtimeStore();
 
   const { data: chatModelListData, refetch: refetchChatModelListData } =

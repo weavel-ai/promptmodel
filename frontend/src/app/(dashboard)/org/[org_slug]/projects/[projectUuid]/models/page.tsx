@@ -14,8 +14,6 @@ import ReactFlow, { Background, BackgroundVariant } from "reactflow";
 
 import "reactflow/dist/style.css";
 import relativeTime from "dayjs/plugin/relativeTime";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import { useChatModel } from "@/hooks/useChatModel";
 import { ModelNode } from "@/components/nodes/ModelNode";
@@ -28,7 +26,6 @@ import { ContextMenu, ContextMenuItem } from "@/components/menu/ContextMenu";
 import { Modal } from "@/components/modals/Modal";
 import { InputField } from "@/components/InputField";
 import { toast } from "react-toastify";
-import { useSupabaseClient } from "@/apis/supabase";
 import { deleteChatModel, editChatModel } from "@/apis/chat_models";
 import { deleteFunctionModel, editFunctionModel } from "@/apis/function_models";
 
@@ -42,11 +39,11 @@ const initialNodes = [];
 const initialEdges = [];
 
 enum Tab {
-  PROMPT_MODEL = "FunctionModel",
+  FUNCTION_MODEL = "FunctionModel",
   CHAT_MODEL = "ChatModel",
 }
 
-const TABS = [Tab.PROMPT_MODEL, Tab.CHAT_MODEL];
+const TABS = [Tab.FUNCTION_MODEL, Tab.CHAT_MODEL];
 
 export default function Page() {
   const [windowWidth, windowHeight] = useWindowSize();
@@ -56,7 +53,7 @@ export default function Page() {
   const { chatModelListData } = useChatModel();
   const { functionModelListData } = useFunctionModel();
   const [showCreateModelModal, setShowCreateModelModal] = useState(false);
-  const [selectedTab, setSelectedTab] = useState(Tab.PROMPT_MODEL);
+  const [selectedTab, setSelectedTab] = useState(Tab.FUNCTION_MODEL);
   const [menuData, setMenuData] = useState(null);
   const reactFlowRef = useRef(null);
 
@@ -90,12 +87,12 @@ export default function Page() {
 
   // Build nodes
   useEffect(() => {
-    if (selectedTab === Tab.PROMPT_MODEL && !functionModelListData) return;
+    if (selectedTab === Tab.FUNCTION_MODEL && !functionModelListData) return;
     if (selectedTab === Tab.CHAT_MODEL && !chatModelListData) return;
 
     // Calculations
     const totalNodes =
-      selectedTab === Tab.PROMPT_MODEL
+      selectedTab === Tab.FUNCTION_MODEL
         ? functionModelListData.length
         : chatModelListData.length;
 
@@ -108,7 +105,7 @@ export default function Page() {
     const topPadding = (windowHeight - totalHeight) / 2;
 
     const modelListData =
-      selectedTab === Tab.PROMPT_MODEL
+      selectedTab === Tab.FUNCTION_MODEL
         ? functionModelListData
         : chatModelListData;
     const newNodes = modelListData.map((model, index) => {
@@ -270,12 +267,11 @@ function EditModelNameModal({
   modelType,
   modelUuid,
 }) {
-  const { supabase } = useSupabaseClient();
   const { functionModelListData } = useFunctionModel();
   const { chatModelListData } = useChatModel();
 
   const previousName = useMemo(() => {
-    if (modelType === Tab.PROMPT_MODEL) {
+    if (modelType === Tab.FUNCTION_MODEL) {
       const model = functionModelListData.find(
         (model) => model?.uuid === modelUuid
       );
@@ -299,7 +295,7 @@ function EditModelNameModal({
 
   async function handleSaveName() {
     const toastId = toast.loading("Saving...");
-    if (modelType === Tab.PROMPT_MODEL) {
+    if (modelType === Tab.FUNCTION_MODEL) {
       await editFunctionModel({
         uuid: modelUuid,
         name: name,
@@ -352,12 +348,11 @@ function DeleteModelModal({
   modelType,
   modelUuid,
 }) {
-  const { supabase } = useSupabaseClient();
   const { functionModelListData } = useFunctionModel();
   const { chatModelListData } = useChatModel();
 
   const model = useMemo(() => {
-    if (modelType === Tab.PROMPT_MODEL) {
+    if (modelType === Tab.FUNCTION_MODEL) {
       return functionModelListData.find((model) => model.uuid === modelUuid);
     } else if (modelType === Tab.CHAT_MODEL) {
       return chatModelListData.find((model) => model.uuid === modelUuid);
@@ -366,7 +361,7 @@ function DeleteModelModal({
 
   async function handleDeleteModel() {
     const toastId = toast.loading("Deleting...");
-    if (modelType === Tab.PROMPT_MODEL) {
+    if (modelType === Tab.FUNCTION_MODEL) {
       await deleteFunctionModel({
         uuid: modelUuid,
       });

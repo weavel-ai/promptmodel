@@ -6,7 +6,6 @@ import { Modal } from "./Modal";
 import classNames from "classnames";
 import { ArrowFatUp, KeyReturn } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import { useSupabaseClient } from "@/apis/supabase";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Editor } from "@monaco-editor/react";
@@ -54,7 +53,6 @@ export const CreateSampleInputModal = ({
   setIsOpen: (isOpen: boolean) => void;
   onCreated?: (name: string) => void;
 }) => {
-  const { supabase } = useSupabaseClient();
   const params = useParams();
   const [name, setName] = useState("");
   const [content, setContent] = useState("");

@@ -1,5 +1,3 @@
-import { useSupabaseClient } from "@/apis/supabase";
-import { subscribeFunctions } from "@/apis/functionSchema";
 import { useRealtimeStore } from "@/stores/realtimeStore";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
@@ -10,7 +8,6 @@ import { useCallback } from "react";
 
 export const useFunctions = () => {
   const params = useParams();
-  const { supabase } = useSupabaseClient();
   const { functionStream, setFunctionStream } = useRealtimeStore();
   const { syncToast } = useProject();
 

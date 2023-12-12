@@ -5,8 +5,6 @@ import { useEffect, useState, useCallback } from "react";
 import classNames from "classnames";
 import { ArrowLeft, ArrowRight, CloudArrowDown } from "@phosphor-icons/react";
 import ReactJson from "react-json-view";
-import { subscribeRunLogs } from "@/apis/runlog";
-import { useSupabaseClient } from "@/apis/supabase";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { CSVLink } from "react-csv";
@@ -15,7 +13,6 @@ import { cloneDeep, escapeCSV } from "@/utils";
 import { useRunLogCount } from "@/hooks/useRunLogCount";
 import { useChatLogCount } from "@/hooks/useChatMessagesCount";
 import { fetchProjectChatMessages } from "@/apis/chat_messages";
-import { subscribeChatLogs } from "@/apis/chatLog";
 import { fetchProjectRunLogs } from "@/apis/run_logs";
 import { subscribeTable } from "@/apis/subscribe";
 
@@ -43,7 +40,6 @@ const CHAT_CSV_HEADERS = [
 
 export default function Page() {
   const { projectData, projectUuid } = useProject();
-  const { supabase } = useSupabaseClient();
   const [page, setPage] = useState(1);
   const [isRealtime, setIsRealtime] = useState(false);
   const [selectedTab, setSelectedTab] = useState(Tab.FUNCTION_MODEL);
