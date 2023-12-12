@@ -289,6 +289,7 @@ async def run_cloud_function_model(
             # Create run log
             run_log_row = RunLog(
                 **{
+                    "project_uuid": project_uuid,
                     "version_uuid": function_model_version_uuid,
                     "inputs": sample_input,
                     "raw_output": output["raw_output"],
@@ -336,6 +337,7 @@ async def run_cloud_function_model(
         session.add(
             RunLog(
                 **{
+                    "project_uuid": project_uuid,
                     "version_uuid": function_model_version_uuid,
                     "inputs": sample_input,
                     "raw_output": output["raw_output"],

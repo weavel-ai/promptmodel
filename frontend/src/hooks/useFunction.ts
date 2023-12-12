@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
 import { fetchProjectFunctionSchemas } from "@/apis/function_schemas/fetchProjectFunctionSchemas";
+import { subscribeTable } from "@/apis/subscribe";
+import { useCallback } from "react";
 
 export const useFunctions = () => {
   const params = useParams();
@@ -23,33 +25,35 @@ export const useFunctions = () => {
     }
   );
 
-  async function subscribeToFunctions() {
-    if (!params?.projectUuid || functionStream || !supabase) return;
-    const newStream = await subscribeFunctions(
-      supabase,
-      params?.projectUuid as string,
-      async () => {
+  const subscribeToFunctions = useCallback(async () => {
+    if (!params?.projectUuid || !!functionStream) return;
+    const newStream: WebSocket = await subscribeTable({
+      tableName: "function_schema",
+      project_uuid: params?.projectUuid as string,
+      onMessage: async (event) => {
         syncToast.open();
         await refetchFunctionListData();
         syncToast.close();
-      }
-    );
+      },
+    });
     setFunctionStream(newStream);
 
     return () => {
       if (functionStream) {
-        functionStream.unsubscribe();
-        supabase.removeChannel(functionStream);
+        functionStream.close();
       }
     };
-  }
-
-  const subscriptionDep = [params?.projectUuid, functionStream, supabase];
+  }, [
+    params?.projectUuid,
+    functionStream,
+    setFunctionStream,
+    refetchFunctionListData,
+    syncToast,
+  ]);
 
   return {
     functionListData,
     refetchFunctionListData,
     subscribeToFunctions,
-    subscriptionDep,
   };
 };

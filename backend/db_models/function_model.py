@@ -151,5 +151,9 @@ class RunLog(Base):
     version_uuid: UUIDType = Column(
         UUID(as_uuid=True), ForeignKey("function_model_version.uuid"), nullable=False
     )
+    
+    project_uuid: UUIDType = Column(
+        UUID(as_uuid=True), ForeignKey("project.uuid"), nullable=True
+    )
 
     # function_model_version: "FunctionModelVersion" = Relationship(back_populates="run_logs")

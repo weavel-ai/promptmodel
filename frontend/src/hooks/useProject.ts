@@ -1,19 +1,17 @@
 "use client";
 
-import { useSupabaseClient } from "@/apis/supabase";
-import { subscribeProject } from "@/apis/project";
 import { useRealtimeStore } from "@/stores/realtimeStore";
 import { useOrganization } from "@/hooks/auth/useOrganization";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { fetchOrgProjects, fetchProject } from "@/apis/projects";
+import { subscribeTable } from "@/apis/subscribe";
 
 export const useProject = () => {
   const params = useParams();
   const { organization } = useOrganization();
-  const { supabase } = useSupabaseClient();
   const { projectStream, setProjectStream } = useRealtimeStore();
   const [toastId, setToastId] = useState(null);
   const isOnlineRef = useRef(false);
@@ -36,50 +34,49 @@ export const useProject = () => {
     isOnlineRef.current = projectData?.online;
   }, [projectData?.online]);
 
-  const syncToast = {
-    open: useCallback(() => {
-      if (isOnlineRef.current && !toast.isActive(toastId)) {
-        const toastId = toast.loading("Syncing..", {
-          toastId: "sync",
-          autoClose: 2000,
-        });
-        setToastId(toastId);
-      }
-    }, [toastId]),
-    close: useCallback(() => {
-      toast.dismiss("sync");
-    }, []),
-  };
+  const syncToast = useMemo(
+    () => ({
+      open: () => {
+        if (isOnlineRef.current && !toast.isActive(toastId)) {
+          const toastId = toast.loading("Syncing..", {
+            toastId: "sync",
+            autoClose: 2000,
+          });
+          setToastId(toastId);
+        }
+      },
+      close: () => toast.dismiss("sync"),
+    }),
+    [toastId]
+  );
 
-  async function subscribeToProject() {
-    if (!params?.projectUuid || !organization?.id || projectStream || !supabase)
-      return;
-    const newStream = await subscribeProject(
-      supabase,
-      organization?.id,
-      async () => {
+  const subscribeToProject = useCallback(async () => {
+    if (!organization?.id || !!projectStream) return;
+    const newStream: WebSocket = await subscribeTable({
+      tableName: "project",
+      organization_id: organization?.id,
+      onMessage: async (event) => {
         syncToast.open();
         await refetchProjectListData();
         await refetchProjectData();
         syncToast.close();
-      }
-    );
+      },
+    });
     setProjectStream(newStream);
 
     return () => {
-      if (projectStream) {
-        projectStream.unsubscribe();
-        supabase.removeChannel(projectStream);
+      if (!!projectStream) {
+        projectStream.close();
       }
     };
-  }
-
-  const subscriptionDep = [
-    params?.projectUuid,
+  }, [
     organization?.id,
     projectStream,
-    supabase,
-  ];
+    setProjectStream,
+    refetchProjectData,
+    refetchProjectListData,
+    syncToast,
+  ]);
 
   return {
     projectData,
@@ -87,7 +84,6 @@ export const useProject = () => {
     refetchProjectListData,
     projectUuid: params?.projectUuid as string,
     subscribeToProject,
-    subscriptionDep,
     syncToast,
   };
 };

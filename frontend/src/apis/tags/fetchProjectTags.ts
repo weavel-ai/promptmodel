@@ -3,7 +3,7 @@ import { ReadProjectTagsRequest, Tag } from "@/types/Tag";
 
 /**
  * Reads a Tag's information.
- * @param requestData - The data required to fetch a Tag.
+ * @param {ReadProjectTagsRequest} requestData - The data required to fetch a Tag.
  * @returns A promise that resolves to a Tag interface.
  */
 export async function fetchProjectTags(

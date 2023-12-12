@@ -122,6 +122,7 @@ async def run_local_function_model_generator(
     )  # function_schemas includes mock_response
 
     run_log: Dict[str, Any] = {
+        "project_uuid": project["uuid"],
         "inputs": sample_input,
         "raw_output": None,
         "parsed_outputs": {},

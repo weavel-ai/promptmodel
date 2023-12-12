@@ -2,11 +2,12 @@ import { useSupabaseClient } from "@/apis/supabase";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useRealtimeStore } from "@/stores/realtimeStore";
 import { toast } from "react-toastify";
 import { fetchChatModels } from "@/apis/chat_models";
 import { subscribeChatModel } from "@/apis/chatModel";
+import { subscribeTable } from "@/apis/subscribe";
 
 export const useChatModel = () => {
   const params = useParams();
@@ -33,34 +34,37 @@ export const useChatModel = () => {
     );
   }, [chatModelListData, params?.chatModelUuid]);
 
-  async function subscribeToChatModel() {
-    if (!projectUuid || chatModelStream || !supabase) return;
-    const newStream = await subscribeChatModel(
-      supabase,
-      projectUuid,
-      async () => {
+  const subscribeToChatModel = useCallback(async () => {
+    if (!projectUuid || chatModelStream) return;
+
+    const newStream: WebSocket = await subscribeTable({
+      tableName: "chat_model",
+      project_uuid: projectUuid,
+      onMessage: async (event) => {
         syncToast.open();
         await refetchChatModelListData();
         syncToast.close();
-      }
-    );
+      },
+    });
     setChatModelStream(newStream);
 
     return () => {
       if (chatModelStream) {
-        chatModelStream.unsubscribe();
-        supabase.removeChannel(chatModelStream);
+        chatModelStream.close();
       }
     };
-  }
-
-  const subscriptionDep = [projectUuid, chatModelStream, supabase];
+  }, [
+    projectUuid,
+    chatModelStream,
+    setChatModelStream,
+    refetchChatModelListData,
+    syncToast,
+  ]);
 
   return {
     chatModelUuid: params?.chatModelUuid as string,
     chatModelData,
     chatModelListData,
     subscribeToChatModel,
-    subscriptionDep,
   };
 };
