@@ -78,20 +78,16 @@ services:
 
   frontend:
     build: ./frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=yournodeenv
-      - NEXT_PUBLIC_ENDPOINT_URL=http://localhost:8000
-      - NEXT_PUBLIC_SUPABASE_URL=yoursupabaseurl
-      - NEXT_PUBLIC_SUPABASE_KEY=yoursupabasekey
-      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=yourclerkpublishablekey
-      - CLERK_SECRET_KEY=yourclerksecretkey
-      - NEXT_PUBLIC_AMPLITUDE_API_KEY=youramplitudeapikey
-      - NEXT_PUBLIC_SELF_HOSTED=yourselfhosted
+      - NODE_ENV=production
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=yoursecret
-      - NEXT_PUBLIC_ENDPOINT_URL=${NEXT_PUBLIC_ENDPOINT_URL:-http://localhost:8000/api}
+      - NEXT_PUBLIC_ENDPOINT_URL=${NEXT_PUBLIC_ENDPOINT_URL:-http://localhost:3000/api}
       # - NEXT_PUBLIC_ENDPOINT_URL=https://promptmodel.up.railway.app/api
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_KEY=${NEXT_PUBLIC_SUPABASE_KEY}
