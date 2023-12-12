@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 services:
   db:
     image: postgres
@@ -7,12 +7,48 @@ services:
       POSTGRES_USER: youruser
       POSTGRES_PASSWORD: yourpassword
     volumes:
-      - ./volumes/db/data:/var/lib/postgresql/data:Z
+      - postgres_data:/var/lib/postgresql/data
+    #   - ./volumes/db/data:/var/lib/postgresql/data:Z
+    #   - postgres_data:/var/lib/postgresql/data:Z
     ports:
       - "5432:5432"
+    networks:
+      - server
+
+  redis:
+    image: redis:latest
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+    networks:
+      - server
+
+  pg-to-redis-listener:
+    build: ./pg_to_redis_listener
+    volumes:
+      - ./pg-to-redis-listener:/app
+    environment:
+      - POSTGRES_HOST=${POSTGRES_HOST:-db}
+      - POSTGRES_DB=${POSTGRES_DB:-yourdbname}
+      - POSTGRES_USER=${POSTGRES_USER:-youruser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+    depends_on:
+      - db
+      - redis
+    networks:
+      - server
 
   backend:
     build: ./backend
+    command: uvicorn server:app --host 0.0.0.0 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
     environment:
       - DB_HOST=db
       - DB_NAME=yourdbname
@@ -22,16 +58,26 @@ services:
       - SQLALCHEMY_URL=postgresql://youruser:yourpassword@db:5432/yourdbname
       - NEXTAUTH_SECRET=yoursecret
       - NEXTAUTH_URL=http://localhost:3000
-    command: uvicorn server:app --host 0.0.0.0 --reload
-    volumes:
-      - ./backend:/app
-    ports:
-      - "8000:8000"
     depends_on:
       - db
+      - redis
+    networks:
+      - server
+    # develop:
+    #   watch:
+    #     - path: ./backend/requirements.txt
+    #       action: rebuild
+    #     - path: ./backend
+    #       target: /app/backend
+    # action: sync
 
   frontend:
     build: ./frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
     environment:
       - NODE_ENV=yournodeenv
       - NEXT_PUBLIC_ENDPOINT_URL=http://localhost:8000
@@ -49,13 +95,19 @@ services:
       - NEXT_PUBLIC_AUTH_GOOGLE_CLIENT_SECRET=yourgoogleclientsecret
       - NEXT_PUBLIC_AUTH_GITHUB_CLIENT_ID=yourgithubclientid
       - NEXT_PUBLIC_AUTH_GITHUB_CLIENT_SECRET=yourgithubclientsecret
-    command: pnpm start
-    volumes:
-      - ./frontend:/app
-    ports:
-      - "3000:3000"
+    command: npm run start
     depends_on:
       - backend
+    networks:
+      - server
+    x-watch:
+      - path: ./path_to_your_nextjs_app
+        action: sync+restart
+
+networks:
+  server:
+    driver: bridge
 
 volumes:
   postgres_data:
+  redis_data:

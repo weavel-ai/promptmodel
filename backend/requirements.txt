@@ -25,3 +25,5 @@ fastapi_nextauth_jwt
 passlib
 bcrypt
 psycopg2-binary
+greenlet
+redis
