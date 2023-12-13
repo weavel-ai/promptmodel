@@ -1,6 +1,12 @@
 # Use an official Python runtime as a parent image
 FROM python:3.9-slim
 ENV DOCKERIZE_VERSION v0.7.0
+ARG POSTGRES_HOST
+ARG POSTGRES_DB
+ARG POSTGRES_USER
+ARG POSTGRES_PASSWORD
+ARG POSTGRES_PORT
+ARG REDIS_HOST
 
 RUN apt-get update \
     && apt-get install -y wget \

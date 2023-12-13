@@ -11,11 +11,17 @@ export function subscribeTable(
   const { tableName, onMessage, ...params } = requestData;
 
   const queryParams = new URLSearchParams(Object.entries(params)).toString();
+  let endpoint: string;
+  // Format websocket endpoint (https:// or http:// -> ws:// or wss://)
+  if (env.ENDPOINT_URL.startsWith("https://")) {
+    endpoint = env.ENDPOINT_URL.replace("https://", "wss://");
+  } else if (env.ENDPOINT_URL.startsWith("http://")) {
+    endpoint = env.ENDPOINT_URL.replace("http://", "ws://");
+  } else {
+    throw new Error("Invalid endpoint URL");
+  }
   const ws = new WebSocket(
-    `${env.ENDPOINT_URL.replace(
-      "https://",
-      "wss://"
-    )}/web/subscribe/${tableName}?${queryParams}`
+    `${endpoint}/web/subscribe/${tableName}?${queryParams}`
   );
   return new Promise((resolve, reject) => {
     ws.onopen = () => {

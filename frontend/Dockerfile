@@ -1,14 +1,21 @@
 # Base image
 FROM node:20-alpine AS base
+ARG DATABASE_URL
+ARG NEXTAUTH_SECRET
+ARG NEXTAUTH_URL
+ARG SALT
 
-
-FROM base AS deps
 # It's important to update the index before installing packages to ensure you're getting the latest versions.
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
 RUN apk update && apk upgrade --no-cache libcrypto3 libssl3 libc6-compat
 
-WORKDIR /app
+FROM base AS deps
+ARG NEXTAUTH_URL_INTERNAL
+ARG NEXTAUTH_SECRET
+ARG NEXT_PUBLIC_ENDPOINT_URL
+ARG NEXT_PUBLIC_SELF_HOSTED
 
+WORKDIR /app
 
 # Install dependencies based on the preferred package manager
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
@@ -21,6 +28,12 @@ RUN \
 
 # Rebuild the source code only when needed
 FROM base AS builder
+ARG NEXTAUTH_URL_INTERNAL
+ARG NEXTAUTH_SECRET
+ARG NEXT_SERVER_ENDPOINT_URL
+ARG NEXT_PUBLIC_ENDPOINT_URL
+ARG NEXT_PUBLIC_SELF_HOSTED
+
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 # Copy the rest of the application source code
@@ -31,10 +44,17 @@ RUN npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
+ARG NEXTAUTH_URL_INTERNAL
+ARG NEXTAUTH_SECRET
+ARG NEXT_PUBLIC_ENDPOINT_URL
+ARG NEXT_PUBLIC_SELF_HOSTED
+
 WORKDIR /app
 
+RUN echo ${NEXT_PUBLIC_ENDPOINT_URL}
 
 ENV NODE_ENV production
+ENV NEXT_SHARP_PATH ./node_modules/sharp
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

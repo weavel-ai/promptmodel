@@ -8,9 +8,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { fetchOrgProjects, fetchProject } from "@/apis/projects";
 import { subscribeTable } from "@/apis/subscribe";
+import { useAuth } from "./auth/useAuth";
 
 export const useProject = () => {
   const params = useParams();
+  const {isSignedIn} = useAuth()
   const { organization } = useOrganization();
   const { projectStream, setProjectStream } = useRealtimeStore();
   const [toastId, setToastId] = useState(null);
@@ -20,7 +22,7 @@ export const useProject = () => {
     queryKey: ["projectListData", { orgId: organization?.id }],
     queryFn: async () =>
       await fetchOrgProjects({ organization_id: organization?.id }),
-    enabled: !!organization?.id,
+    enabled: !!organization?.id && isSignedIn,
   });
 
   const { data: projectData, refetch: refetchProjectData } = useQuery({

@@ -86,7 +86,7 @@ The maintainers are very active in the Promptmodel [Discord](https://discord.gg/
 
 Join the community [on Discord](https://discord.gg/2Y36M36tZf).
 
-To contribute, send us a PR, raise a GitHub issue, or email at contributing@promptmodel.com
+To contribute, send us a PR, raise a GitHub issue, or email at contributing@promptmodel.run
 
 ### Development setup
 

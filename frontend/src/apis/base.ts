@@ -16,6 +16,11 @@ export const railwayWebClient = axios.create({
   headers: AXIOS_HEADERS,
 });
 
+export const railwayWebServerClient = axios.create({
+  baseURL: `${env.ENDPOINT_URL_INTERNAL}/web`,
+  headers: AXIOS_HEADERS,
+});
+
 export const railwayDevClient = axios.create({
   baseURL: `${env.ENDPOINT_URL}/dev`,
   headers: AXIOS_HEADERS,

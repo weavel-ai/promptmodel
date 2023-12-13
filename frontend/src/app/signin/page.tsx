@@ -69,6 +69,7 @@ function SelfHostedSignIn() {
     await signIn("credentials", {
       email: data.email,
       password: data.password,
+      // redirect: false,
       redirect: true,
     }).then((res) => {
       if (res?.error) {
@@ -92,7 +93,7 @@ function SelfHostedSignIn() {
 
   useEffect(() => {
     const error = searchParams?.get("error");
-    if (error) {
+    if (!!error) {
       setError("email", { message: error, type: "error" });
     }
   }, [searchParams, setError]);

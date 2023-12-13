@@ -10,7 +10,7 @@ class Settings(BaseModel):
     DB_PASSWORD: str = os.environ.get("DB_PASSWORD")
     DB_USERNAME: str = os.environ.get("DB_USERNAME")
     DB_HOST: str = os.environ.get("DB_HOST")
-    DB_PORT: str = os.environ.get("DB_PORT")
+    DB_PORT: str = os.environ.get("DB_PORT", 5432)
     TESTMODE: bool = os.environ.get("TESTMODE", False)
 
 

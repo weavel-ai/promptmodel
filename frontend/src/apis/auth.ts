@@ -39,7 +39,7 @@ const providers: Provider[] = [
           return Promise.resolve(null);
         }
       } catch (error) {
-        console.log(error.response?.data);
+        console.log(error);
         // Reject this callback with an Error
         throw new Error(error.response?.data);
       }
@@ -83,19 +83,13 @@ export const authOptions: NextAuthOptions = {
         token.user_id = user?.user_id;
         token.name = user?.first_name + " " + user?.last_name;
       }
-      const currentUser: User = await fetchUser({ email: token?.email });
+      const currentUser: User = await fetchUser({ email: token?.email }, "server");
       if (currentUser) {
         token.user_id = currentUser.user_id;
         token.name = currentUser.first_name + " " + currentUser.last_name;
       }
       return token;
     },
-    // async session({ session, token }): Promise<Session> {
-    //   console.log("session callback");
-    //   console.log(session, token);
-
-    //   return session;
-    // },
   },
   providers,
   pages: {

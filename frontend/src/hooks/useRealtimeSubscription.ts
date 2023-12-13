@@ -4,6 +4,7 @@ import { useChatModel } from "./useChatModel";
 import { useFunctions } from "./useFunction";
 import { useFunctionModel } from "./useFunctionModel";
 import { useSamples } from "./useSample";
+import { useAuth } from "./auth/useAuth";
 
 export function useRealtimeSubscription() {
   const { subscribeToProject } = useProject();
@@ -29,7 +30,10 @@ export function useRealtimeSubscription() {
 }
 
 function useAsyncSubscription(subscribeFunction: () => Promise<() => void>) {
+  const {isSignedIn} = useAuth()
+
   useEffect(() => {
+    if (!isSignedIn) return
     let isActive = true;
     let cleanupFunction;
     if (!subscribeFunction) return;
@@ -50,5 +54,5 @@ function useAsyncSubscription(subscribeFunction: () => Promise<() => void>) {
       isActive = false;
       if (cleanupFunction) cleanupFunction();
     };
-  }, [subscribeFunction]);
+  }, [subscribeFunction, isSignedIn]);
 }

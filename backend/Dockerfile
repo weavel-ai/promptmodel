@@ -1,6 +1,15 @@
 FROM python:3.9
 ENV DOCKERIZE_VERSION v0.7.0
 
+ARG DB_HOST
+ARG DB_NAME
+ARG DB_USERNAME
+ARG DB_PASSWORD
+ARG DB_PORT
+ARG SQLALCHEMY_URL
+ARG NEXTAUTH_SECRET
+ARG NEXTAUTH_URL
+
 RUN apt-get update \
     && apt-get install -y wget \
     && wget -O - https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz | tar xzf - -C /usr/local/bin \
