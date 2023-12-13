@@ -32,11 +32,10 @@
 
 ### Interactive Demo
 
-<div style="position: relative; padding-bottom:calc(62.59780907668232% + 50px); height: 0;">
-<iframe src="https://app.guideflow.com/embed/zpeyyqh8rn" width="100%" height="100%" style="overflow:hidden;position:absolute;border:none" scrolling="no" allow="clipboard-read; clipboard-write" webkitallowfullscreen mozallowfullscreen allowfullscreen allowtransparency="true"></iframe>
-</div>
+[![Interactive demo](https://i.imgur.com/eAcIv7C.png)](https://app.guideflow.com/player/0p0229tyrl)
 
-Explore more demos [here](https://promptmodel.run/docs/demo)
+Click on the image above to start the interactive demo.  
+You can explore more demos [here](https://promptmodel.run/docs/demo).
 
 ## Get started
 

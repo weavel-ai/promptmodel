@@ -2,13 +2,9 @@
 
 import { fetchUser } from "@/apis/users";
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { env } from "@/constants";
-/**
- * @todo Change this to use backend server
- */
-import { createUser } from "@/apis/user";
 import { createClerkUser } from "@/apis/users/createClerkUser";
 import { AxiosError } from "axios";
 

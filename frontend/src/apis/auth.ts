@@ -2,7 +2,6 @@ import { env } from "@/constants";
 import {
   getServerSession,
   type NextAuthOptions,
-  type Session,
 } from "next-auth";
 
 // Providers
@@ -14,7 +13,6 @@ import { GetServerSidePropsContext } from "next";
 import { fetchUser } from "./users";
 import { authorizeUser } from "./users";
 import { User } from "@/types/User";
-import { AxiosError } from "axios";
 
 const providers: Provider[] = [
   CredentialsProvider({

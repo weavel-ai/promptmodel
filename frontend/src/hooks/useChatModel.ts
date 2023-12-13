@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useRealtimeStore } from "@/stores/realtimeStore";
 import { toast } from "react-toastify";
 import { fetchChatModels } from "@/apis/chat_models";
-import { subscribeChatModel } from "@/apis/chatModel";
 import { subscribeTable } from "@/apis/subscribe";
 
 export const useChatModel = () => {
