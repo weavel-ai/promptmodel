@@ -1,7 +1,8 @@
 import { User, AuthorizeUserRequest } from "@/types/User";
-import { railwayWebClient } from "@/apis/base";
+import { railwayWebServerClient } from "@/apis/base";
 
 /**
+ * @memo This can only be called from the Next.js server.
  * Creates a new user in the system.
  * @param userData - The data required to create a new user.
  * @returns A promise that resolves to the User interface.
@@ -9,7 +10,6 @@ import { railwayWebClient } from "@/apis/base";
 export async function authorizeUser(
   userData: AuthorizeUserRequest
 ): Promise<User> {
-  const response = await railwayWebClient.post("/v1/users/authorize", userData);
-
+  const response = await railwayWebServerClient.post("/v1/users/authorize", userData);
   return response.data;
 }

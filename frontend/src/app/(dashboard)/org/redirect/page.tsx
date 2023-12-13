@@ -1,6 +1,5 @@
 "use client";
 
-import { useSupabaseClient } from "@/apis/supabase";
 import { logEvent } from "@/services/amplitude";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useOrganization } from "@/hooks/auth/useOrganization";
@@ -8,10 +7,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { env } from "@/constants";
 import { createOrganization, fetchOrganization } from "@/apis/organizations";
+import { AxiosError } from "axios";
 
 export default function Page() {
   const router = useRouter();
-  const { supabase } = useSupabaseClient();
   const { organization } = useOrganization();
   const { userId } = useAuth();
   const [loadingTime, setLoadingTime] = useState(0);
@@ -31,22 +30,16 @@ export default function Page() {
   }, [loadingTime, organization?.id]);
 
   useEffect(() => {
-    console.log(organization);
-  }, [organization]);
-
-  useEffect(() => {
     if (env.SELF_HOSTED && organization?.slug != null) {
       router.push(`/org/${organization.slug}`);
       return;
     }
-    if (!isLoaded || !supabase) return;
+    if (!isLoaded) return;
     if (organization?.id != null && organization?.slug != null) {
       fetchOrganization({ organization_id: organization.id })
-        .then(async (data) => {
-          if (!data) {
-            /**
-             * @todo Test this
-             */
+        .catch(async (err: AxiosError) => {
+          console.log(err);
+          if (err.response.status == 404) {
             await createOrganization({
               organization_id: organization.id,
               slug: organization?.slug,
@@ -55,7 +48,11 @@ export default function Page() {
             });
 
             logEvent("org_created", { user_id: userId });
+
+            return Promise.resolve();
           }
+          // Propagate other errors
+          return Promise.reject(err);
         })
         .then(() => {
           router.push(`/org/${organization.slug}`);
@@ -71,7 +68,6 @@ export default function Page() {
     userId,
     isLoaded,
     router,
-    supabase,
   ]);
 
   return (

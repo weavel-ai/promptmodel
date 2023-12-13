@@ -12,7 +12,6 @@ import ReactFlow, {
 import { motion } from "framer-motion";
 import { GitBranch, RocketLaunch, XCircle } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import { useSupabaseClient } from "@/apis/supabase";
 import "reactflow/dist/style.css";
 import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -192,7 +191,6 @@ const AnalyticsPage = () => {
 
 // Versions Tab Page
 const VersionsPage = () => {
-  const { supabase } = useSupabaseClient();
   const { chatModelVersionListData, refetchChatModelVersionListData } =
     useChatModelVersion();
   const [nodes, setNodes] = useState(initialNodes);
@@ -461,7 +459,6 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
 }
 
 function VersionDetailsDrawer({ open }: { open: boolean }) {
-  const { supabase } = useSupabaseClient();
   const [windowWidth, windowHeight] = useWindowSize();
   const queryClient = useQueryClient();
   const { projectData } = useProject();

@@ -1,7 +1,7 @@
 "use client";
 
 import { SignUp } from "@clerk/nextjs";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,6 +40,7 @@ export default function Page() {
 }
 
 function SelfHostedSignUp() {
+  const router = useRouter();
   const {
     setError,
     reset,
@@ -55,6 +56,7 @@ function SelfHostedSignUp() {
     const toastId = toast.loading("Signing up...");
     try {
       const resData = await createUser(data);
+      console.log(resData)
       toast.update(toastId, {
         render: "Sign up successful",
         type: "success",
@@ -68,6 +70,7 @@ function SelfHostedSignUp() {
           name: resData.first_name + " " + resData.last_name,
         },
       });
+      router.push("/org/redirect")
       reset();
     } catch (error: any) {
       toast.update(toastId, {

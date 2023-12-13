@@ -18,6 +18,7 @@ from .run_log import router as run_log_router
 from .sample_input import router as sample_input_router
 from .tags import router as tags_router
 from .user import router as user_router
+from .subscribe import router as subscribe_router
 
 router = APIRouter()
 router.include_router(web_router, tags=["web"])
@@ -68,3 +69,5 @@ router.include_router(
 router.include_router(tags_router, prefix="/tags", tags=["tags"])
 
 router.include_router(analytics_router, prefix="/metrics", tags=["metric"])
+
+router.include_router(subscribe_router, prefix="/subscribe", tags=["subscribe"])

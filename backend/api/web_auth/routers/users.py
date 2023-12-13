@@ -85,8 +85,14 @@ async def read_user_me(
     session: AsyncSession = Depends(get_session),
 ) -> UserRead:
     """Return the current user."""
-    current_user = (
+    user_res = (
         await session.execute(select(User).where(User.email == email))
-    ).scalar_one()
+    ).all()
+    if not user_res:
+        return Response(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            content="User with this email does not exist",
+        )
+    current_user: User = user_res[0][0]
 
     return UserRead(**current_user.model_dump())

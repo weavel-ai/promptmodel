@@ -8,8 +8,5 @@ import { railwayWebClient } from "@/apis/base";
  */
 export async function createUser(userData: CreateUserRequest): Promise<User> {
   const response = await railwayWebClient.post("/v1/users", userData);
-  if (response.status !== 201) {
-    throw new Error("Error creating user: " + response.status);
-  }
   return response.data;
 }

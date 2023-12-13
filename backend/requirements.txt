@@ -23,5 +23,7 @@ alembic
 asyncpg
 fastapi_nextauth_jwt
 passlib
-bcrypt
+bcrypt==4.0.1
 psycopg2-binary
+greenlet
+redis

@@ -5,8 +5,6 @@ import { useEffect, useState, useCallback } from "react";
 import classNames from "classnames";
 import { ArrowLeft, ArrowRight, CloudArrowDown } from "@phosphor-icons/react";
 import ReactJson from "react-json-view";
-import { subscribeRunLogs } from "@/apis/runlog";
-import { useSupabaseClient } from "@/apis/supabase";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { CSVLink } from "react-csv";
@@ -15,17 +13,17 @@ import { cloneDeep, escapeCSV } from "@/utils";
 import { useRunLogCount } from "@/hooks/useRunLogCount";
 import { useChatLogCount } from "@/hooks/useChatMessagesCount";
 import { fetchProjectChatMessages } from "@/apis/chat_messages";
-import { subscribeChatLogs } from "@/apis/chatLog";
 import { fetchProjectRunLogs } from "@/apis/run_logs";
+import { subscribeTable } from "@/apis/subscribe";
 
 const ROWS_PER_PAGE = 50;
 
 enum Tab {
-  PROMPT_MODEL = "FunctionModel",
+  FUNCTION_MODEL = "FunctionModel",
   CHAT_MODEL = "ChatModel",
 }
 
-const TABS = [Tab.PROMPT_MODEL, Tab.CHAT_MODEL];
+const TABS = [Tab.FUNCTION_MODEL, Tab.CHAT_MODEL];
 
 const CHAT_CSV_HEADERS = [
   { label: "ChatModel Name", key: "chat_model_name" },
@@ -42,12 +40,9 @@ const CHAT_CSV_HEADERS = [
 
 export default function Page() {
   const { projectData, projectUuid } = useProject();
-  const { supabase } = useSupabaseClient();
   const [page, setPage] = useState(1);
   const [isRealtime, setIsRealtime] = useState(false);
-  const [selectedTab, setSelectedTab] = useState(Tab.PROMPT_MODEL);
-  const [runLogsCleanup, setRunLogsCleanup] = useState(null);
-  const [chatLogsCleanup, setChatLogsCleanup] = useState(null);
+  const [selectedTab, setSelectedTab] = useState(Tab.FUNCTION_MODEL);
 
   const { runLogCountData, refetchRunLogCountData } = useRunLogCount();
   const {
@@ -88,58 +83,75 @@ export default function Page() {
   const subscribeToRunLogs = useCallback(async () => {
     if (!projectUuid) return;
 
-    const runLogsStream = await subscribeRunLogs(supabase, projectUuid, () => {
-      refetchRunLogCountData();
-      refetchRunLogListData();
+    const runLogsStream: WebSocket = await subscribeTable({
+      tableName: "run_log",
+      project_uuid: projectUuid,
+      onMessage(message: any) {
+        refetchRunLogCountData();
+        refetchRunLogListData();
+      },
     });
+    console.log("runLogsStream", runLogsStream);
+    console.log(!!runLogsStream);
 
     // Cleanup function
     return () => {
-      if (runLogsStream) {
-        runLogsStream.unsubscribe();
-        supabase.removeChannel(runLogsStream);
+      if (!!runLogsStream) {
+        runLogsStream.close();
       }
     };
-  }, [projectUuid, supabase, refetchRunLogCountData, refetchRunLogListData]);
+  }, [
+    projectUuid,
+    subscribeTable,
+    refetchRunLogCountData,
+    refetchRunLogListData,
+  ]);
 
   const subscribeToChatLogs = useCallback(async () => {
     if (!projectUuid) return;
 
-    const chatLogsStream = await subscribeChatLogs(
-      supabase,
-      projectUuid,
-      () => {
+    const chatLogsStream: WebSocket = await subscribeTable({
+      tableName: "chat_log",
+      project_uuid: projectUuid,
+      onMessage(message: any) {
         refetchChatLogCountData();
         refetchChatLogListData();
-      }
-    );
+      },
+    });
 
     // Cleanup function
     return () => {
-      if (chatLogsStream) {
-        chatLogsStream.unsubscribe();
-        supabase.removeChannel(chatLogsStream);
+      if (!!chatLogsStream) {
+        chatLogsStream.close();
       }
     };
-  }, [projectUuid, supabase, refetchChatLogCountData, refetchChatLogListData]);
+  }, [
+    projectUuid,
+    subscribeTable,
+    refetchChatLogCountData,
+    refetchChatLogListData,
+  ]);
 
   useEffect(() => {
+    let runLogsCleanupFunction;
+    let chatLogsCleanupFunction;
     if (isRealtime) {
-      subscribeToRunLogs().then(setRunLogsCleanup);
-      subscribeToChatLogs().then(setChatLogsCleanup);
+      subscribeToRunLogs().then((cleanup) => {
+        runLogsCleanupFunction = cleanup;
+      });
+      subscribeToChatLogs().then((cleanup) => {
+        chatLogsCleanupFunction = cleanup;
+      });
     }
 
     return () => {
-      if (runLogsCleanup) runLogsCleanup();
-      if (chatLogsCleanup) chatLogsCleanup();
+      if (selectedTab == Tab.FUNCTION_MODEL) {
+        if (runLogsCleanupFunction) runLogsCleanupFunction();
+      } else {
+        if (chatLogsCleanupFunction) chatLogsCleanupFunction();
+      }
     };
-  }, [
-    isRealtime,
-    subscribeToRunLogs,
-    subscribeToChatLogs,
-    runLogsCleanup,
-    chatLogsCleanup,
-  ]);
+  }, [isRealtime, subscribeToRunLogs, subscribeToChatLogs]);
 
   return (
     <div className="w-full h-full pl-20 overflow-hidden">
@@ -183,7 +195,7 @@ export default function Page() {
         </div>
         <LogsUI
           logData={
-            selectedTab == Tab.PROMPT_MODEL ? runLogListData : chatLogListData
+            selectedTab == Tab.FUNCTION_MODEL ? runLogListData : chatLogListData
           }
           type={selectedTab}
         />
@@ -208,7 +220,7 @@ export default function Page() {
           <p className="flex-shrink-0">
             of{" "}
             {Math.ceil(
-              (selectedTab == Tab.PROMPT_MODEL
+              (selectedTab == Tab.FUNCTION_MODEL
                 ? runLogCountData?.count
                 : chatLogCountData?.count) / ROWS_PER_PAGE
             )}
@@ -219,7 +231,7 @@ export default function Page() {
               if (
                 page <
                 Math.ceil(
-                  (selectedTab == Tab.PROMPT_MODEL
+                  (selectedTab == Tab.FUNCTION_MODEL
                     ? runLogCountData?.count
                     : chatLogCountData?.count) / ROWS_PER_PAGE
                 )
@@ -238,7 +250,7 @@ export default function Page() {
           <div className="divider divider-horizontal" />
           <p className="text-muted-content">
             Total{" "}
-            {selectedTab == Tab.PROMPT_MODEL
+            {selectedTab == Tab.FUNCTION_MODEL
               ? runLogCountData?.count
               : chatLogCountData?.count}{" "}
             runs

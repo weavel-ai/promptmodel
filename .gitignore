@@ -45,6 +45,25 @@ backend/.env
 
 backend/test_notebooks
 
+# pg_to_redis_listener
+pg_to_redis_listener/.venv
+pg_to_redis_listener/venv
+pg_to_redis_listener/.ipynb_checkpoints
+pg_to_redis_listener/*.ipynb
+pg_to_redis_listener/.env
+
+pg_to_redis_listener/test_notebooks
+
+
+# pg_to_redis_listener
+pg_to_redis_listener/.venv
+pg_to_redis_listener/venv
+pg_to_redis_listener/.ipynb_checkpoints
+pg_to_redis_listener/*.ipynb
+pg_to_redis_listener/.env
+
+pg_to_redis_listener/test_notebooks
+
 
 */__pycache__
 __pycache__
@@ -58,3 +77,4 @@ backend/.vscode/*
 
 # overall
 volumes
+.env

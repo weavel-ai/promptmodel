@@ -1,21 +1,20 @@
-import { RealtimeChannel } from "@supabase/supabase-js";
 import { create } from "zustand";
 
 // Zustand store
 type Store = {
-  projectStream: RealtimeChannel;
-  functionModelStream: RealtimeChannel;
-  chatModelStream: RealtimeChannel;
-  functionStream: RealtimeChannel;
-  sampleInputStream: RealtimeChannel;
+  projectStream: WebSocket;
+  functionModelStream: WebSocket;
+  chatModelStream: WebSocket;
+  functionStream: WebSocket;
+  sampleInputStream: WebSocket;
 };
 
 type Actions = {
-  setProjectStream: (projectStream: RealtimeChannel) => void;
-  setFunctionModelStream: (functionModelStream: RealtimeChannel) => void;
-  setChatModelStream: (chatModelStream: RealtimeChannel) => void;
-  setFunctionStream: (functionStream: RealtimeChannel) => void;
-  setSampleInputStream: (sampleInputStream: RealtimeChannel) => void;
+  setProjectStream: (projectStream: WebSocket) => void;
+  setFunctionModelStream: (functionModelStream: WebSocket) => void;
+  setChatModelStream: (chatModelStream: WebSocket) => void;
+  setFunctionStream: (functionStream: WebSocket) => void;
+  setSampleInputStream: (sampleInputStream: WebSocket) => void;
 };
 
 export const useRealtimeStore = create<Store & Actions>((set) => ({

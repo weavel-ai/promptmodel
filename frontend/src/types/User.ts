@@ -24,7 +24,7 @@ export interface CreateUserRequest {
  * Includes all necessary fields for creating a new Clerk registered user account.
  */
 export interface CreateClerkUserRequest {
-  userId: string;
+  user_id: string;
   email: string;
   first_name?: string;
   last_name?: string;

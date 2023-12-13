@@ -1,7 +1,6 @@
 import { env } from "@/constants";
 import { useAuth as useClerkAuth, useUser } from "@clerk/nextjs";
 import { useSession } from "next-auth/react";
-import { useEffect } from "react";
 
 interface SessionUser {
   email?: string;

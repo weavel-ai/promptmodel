@@ -25,7 +25,6 @@ import {
   XCircle,
 } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
-import { useSupabaseClient } from "@/apis/supabase";
 import "reactflow/dist/style.css";
 import { editor } from "monaco-editor";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -597,7 +596,6 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
 }
 
 function VersionDetailsDrawer({ open }: { open: boolean }) {
-  const { supabase } = useSupabaseClient();
   const queryClient = useQueryClient();
   const { projectData } = useProject();
   const { functionModelData } = useFunctionModel();

@@ -9,13 +9,6 @@ import { railwayWebClient } from "@/apis/base";
 export async function createClerkUser(
   userData: CreateClerkUserRequest
 ): Promise<User> {
-  //   const response = await railwayWebClient.post("/v1/users", userData);
-  //   if (response.status !== 201) {
-  //     throw new Error("Error creating user: " + response.status);
-  //   }
-  //   return response.data;
-  /**
-   * @todo: Implement this function.
-   */
-  return {} as User;
+  const response = await railwayWebClient.post("/users", userData);
+  return response.data;
 }

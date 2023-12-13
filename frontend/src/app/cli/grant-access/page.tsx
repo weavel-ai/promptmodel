@@ -1,6 +1,5 @@
 "use client";
 
-import { useSupabaseClient } from "@/apis/supabase";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -10,7 +9,6 @@ import { updateCliAccess } from "@/apis/cli_access";
 
 export default function Page() {
   const searchParams = useSearchParams();
-  const { supabase } = useSupabaseClient();
   const router = useRouter();
   const { userId, isSignedIn, isLoaded } = useAuth();
   const [loading, setLoading] = useState(false);

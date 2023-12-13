@@ -1,4 +1,5 @@
 version: "3.8"
+
 services:
   db:
     image: postgres
@@ -23,6 +24,7 @@ services:
     networks:
       - server
 
+
   pg-to-redis-listener:
     build: 
       context: ./pg_to_redis_listener
@@ -33,9 +35,7 @@ services:
         - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
         - POSTGRES_PORT=${POSTGRES_PORT:-5432}
         - REDIS_HOST=redis
-    volumes:
-      - ./pg_to_redis_listener:/app
-      - ./volumes/pg-to-redis-listener:/app
+    command: python3 listener.py
     environment:
       - POSTGRES_HOST=${POSTGRES_HOST:-db}
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
@@ -58,21 +58,19 @@ services:
       args:
         - DB_HOST=db
         - DB_NAME=${POSTGRES_DB:-postgres}
-        - DB_USER=${POSTGRES_USER:-postgres}
+        - DB_USERNAME=${POSTGRES_USER:-postgres}
         - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
         - DB_PORT=${POSTGRES_PORT:-5432}
         - SQLALCHEMY_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
         - NEXTAUTH_URL=http://localhost:3000
     command: uvicorn server:app --host 0.0.0.0 --reload
-    volumes:
-      - ./backend:/app
     ports:
       - "8000:8000"
     environment:
       - DB_HOST=db
       - DB_NAME=${POSTGRES_DB:-postgres}
-      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_USERNAME=${POSTGRES_USER:-postgres}
       - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - DB_PORT=${POSTGRES_PORT:-5432}
       - SQLALCHEMY_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
@@ -86,13 +84,13 @@ services:
     networks:
       - server
     restart: always
-    # develop:
-    #   watch:
-    #     - path: ./backend/requirements.txt
-    #       action: rebuild
-    #     - path: ./backend
-    #       target: /app/backend
-    # action: sync
+    develop:
+      watch:
+        - path: ./backend/requirements.txt
+          action: rebuild
+        - path: ./backend
+          action: rebuild
+          # action: sync
 
   frontend:
     build:
@@ -100,16 +98,17 @@ services:
       args:
         - NEXTAUTH_URL=http://localhost:3000
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-        - NEXT_PUBLIC_ENDPOINT_URL=http://backend:8000/api
+        - NEXT_SERVER_ENDPOINT_URL=http://backend:8000/api
+        - NEXT_PUBLIC_ENDPOINT_URL=http://localhost:8000/api
         - NEXT_PUBLIC_SELF_HOSTED=true
-    volumes:
-      - /app/node_modules
+    # command: npm run dev
     ports:
       - "3000:3000"
     environment:
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-      - NEXT_PUBLIC_ENDPOINT_URL=server://backend:8000/api
+      - NEXT_SERVER_ENDPOINT_URL=http://backend:8000/api
+      - NEXT_PUBLIC_ENDPOINT_URL=http://localhost:8000/api
       - NEXT_PUBLIC_SELF_HOSTED=true
     depends_on:
       backend:
@@ -118,7 +117,14 @@ services:
         condition: service_started
     networks:
       - server
-    restart: always
+    # restart: always
+    develop:
+      watch:
+        - path: ./frontend
+          action: rebuild
+          # action: sync
+        - path: ./frontend/package.json
+          action: rebuild
 
 networks:
   server:

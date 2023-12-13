@@ -5,7 +5,6 @@ import { InputField } from "../InputField";
 import { Modal } from "./Modal";
 import classNames from "classnames";
 import { toast } from "react-toastify";
-import { useSupabaseClient } from "@/apis/supabase";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createChatModel } from "@/apis/chat_models";
@@ -22,7 +21,6 @@ export const CreateModelModal = ({
   type: "FunctionModel" | "ChatModel";
   onCreated: () => void;
 }) => {
-  const { supabase } = useSupabaseClient();
   const params = useParams();
   const router = useRouter();
   const [name, setName] = useState("");
