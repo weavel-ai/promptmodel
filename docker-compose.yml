@@ -79,7 +79,6 @@ services:
   frontend:
     build: ./frontend
     volumes:
-      - ./frontend:/app
       - /app/node_modules
     ports:
       - "3000:3000"
@@ -95,7 +94,6 @@ services:
       - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
       - NEXT_PUBLIC_AMPLITUDE_API_KEY=${NEXT_PUBLIC_AMPLITUDE_API_KEY}
       - NEXT_PUBLIC_SELF_HOSTED=${NEXT_PUBLIC_SELF_HOSTED:-true}
-    command: npm run start
     depends_on:
       backend:
         condition: service_started
