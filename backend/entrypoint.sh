@@ -1,6 +1,6 @@
 #!/bin/sh
 echo "wait db server"
-dockerize -wait tcp://db:5432 -timeout 20s
+dockerize -wait tcp://${POSTGRES_HOST}:${POSTGRES_PORT} -timeout 20s
 
 echo "Running migrations"
 alembic upgrade head
