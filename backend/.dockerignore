@@ -1,0 +1,4 @@
+venv
+tests
+node_modules 
+.env
