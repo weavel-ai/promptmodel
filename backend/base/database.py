@@ -10,15 +10,15 @@ from settings import Settings
 
 settings = Settings()
 
-username = settings.DB_USERNAME
-password = settings.DB_PASSWORD
-dbname = settings.DB_NAME
-db_port = settings.DB_PORT
-db_host = settings.DB_HOST
+username = settings.POSTGRES_USER
+password = settings.POSTGRES_PASSWORD
+dbname = settings.POSTGRES_NAME
+POSTGRES_PORT = settings.POSTGRES_PORT
+POSTGRES_HOST = settings.POSTGRES_HOST
 test_mode = settings.TESTMODE
 
 SQLALCHEMY_DATABASE_URL = (
-    f"postgresql+asyncpg://{username}:{password}@{db_host}:{db_port}/{dbname}"
+    f"postgresql+asyncpg://{username}:{password}@{POSTGRES_HOST}:{POSTGRES_PORT}/{dbname}"
 )
 
 if test_mode:
