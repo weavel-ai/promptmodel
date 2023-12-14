@@ -30,18 +30,18 @@ services:
       args:
         - POSTGRES_HOST=db
         - POSTGRES_DB=${POSTGRES_DB:-postgres}
-        - POSTGRES_USER=${POSTGRES_USER:-postgres}
-        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+        - POSTGRES_USER=${POSTGRES_USER:-youruser}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
         - POSTGRES_PORT=${POSTGRES_PORT:-5432}
         - REDIS_HOST=redis
     command: python3 listener.py
     environment:
-      - POSTGRES_HOST=${POSTGRES_HOST:-db}
+      - POSTGRES_HOST=db
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_USER=${POSTGRES_USER:-youruser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
-      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_HOST=redis
     depends_on:
       db:
         condition: service_started
@@ -57,10 +57,9 @@ services:
       args:
         - POSTGRES_HOST=db
         - POSTGRES_DB=${POSTGRES_DB:-postgres}
-        - POSTGRES_USER=${POSTGRES_USER:-postgres}
-        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+        - POSTGRES_USER=${POSTGRES_USER:-youruser}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
         - POSTGRES_PORT=${POSTGRES_PORT:-5432}
-        - SQLALCHEMY_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
         - NEXTAUTH_URL=http://localhost:3000
     command: uvicorn server:app --host 0.0.0.0 --reload
@@ -69,10 +68,9 @@ services:
     environment:
       - POSTGRES_HOST=db
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_USER=${POSTGRES_USER:-youruser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
-      - SQLALCHEMY_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
       - NEXTAUTH_URL=http://localhost:3000
     depends_on:
