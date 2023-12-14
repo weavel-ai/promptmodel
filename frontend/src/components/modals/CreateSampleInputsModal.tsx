@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { InputField } from "../InputField";
 import { Modal } from "./Modal";
 import classNames from "classnames";
-import { ArrowFatUp, KeyReturn } from "@phosphor-icons/react";
+import {
+  ArrowFatUp,
+  DotsSixVertical,
+  KeyReturn,
+  Plus,
+  Trash,
+} from "@phosphor-icons/react";
 import { toast } from "react-toastify";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -12,6 +18,7 @@ import { Editor } from "@monaco-editor/react";
 import { registerCustomTheme } from "@/lib/promptLanguage";
 import { IKeyboardEvent, editor } from "monaco-editor";
 import { createSampleInput } from "@/apis/sample_inputs";
+import { ReactSortable } from "react-sortablejs";
 
 interface Input {
   id: string;
@@ -55,23 +62,41 @@ export const CreateSampleInputModal = ({
 }) => {
   const params = useParams();
   const [name, setName] = useState("");
-  const [content, setContent] = useState("");
-  const [isContentValid, setIsContentValid] = useState(false);
-
-  const [createDisabled, setCreateDisabled] = useState(true);
+  const [inputs, setInputs] = useState<Array<Input>>([
+    {
+      id: Math.random().toString(),
+      key: "",
+      value: "",
+    },
+  ]);
 
   useEffect(() => {
     setName("");
-    setContent("");
-    setCreateDisabled(true);
+    setInputs([
+      {
+        id: Math.random().toString(),
+        key: "",
+        value: "",
+      },
+    ]);
   }, [isOpen]);
+
+  const createDisabled = useMemo(() => {
+    return (
+      name === "" ||
+      inputs.some((input) => input.key === "" || input.value === "")
+    );
+  }, [name, inputs]);
 
   async function handleCreateSampleInput() {
     const toastId = toast.loading("Creating...");
     await createSampleInput({
       project_uuid: params.projectUuid as string,
       name: name,
-      content: JSON.parse(content),
+      content: inputs.reduce((acc, input) => {
+        acc[input.key] = input.value;
+        return acc;
+      }, {}),
     });
     toast.update(toastId, {
       containerId: "default",
@@ -84,103 +109,65 @@ export const CreateSampleInputModal = ({
     setIsOpen(false);
   }
 
-  useEffect(() => {
-    if (isContentValid) {
-      try {
-        const parsedContent = JSON.parse(content);
-        if (Object.keys(parsedContent).length === 0) {
-          setIsContentValid(false);
-        }
-      } catch (e) {
-        setIsContentValid(false);
-      }
-    }
-  }, [isContentValid, content, setIsContentValid]);
-
-  useEffect(() => {
-    if (name && isContentValid) {
-      setCreateDisabled(false);
-    } else {
-      setCreateDisabled(true);
-    }
-  }, [name, isContentValid, setCreateDisabled]);
-
-  function handleValidate(markers: editor.IMarkerData[]) {
-    if (markers.length === 0) {
-      setIsContentValid(true);
-    }
-    return markers;
-  }
-
-  if (!isOpen) return null;
-
   return (
     <Modal isOpen={isOpen} setIsOpen={setIsOpen} zIndex={999999}>
-      <div className="bg-popover shadow-lg p-6 rounded-box flex flex-col gap-y-2 justify-start items-start min-w-[360px] max-h-[80vh]">
+      <div className="bg-popover shadow-lg p-6 rounded-box flex flex-col gap-y-2 justify-start items-start min-w-[60vw] max-h-[80vh]">
         <p className="text-popover-content font-bold text-2xl mb-2">
           Add sample inputs
         </p>
         <p className="text-muted-content text-sm mb-1">
-          Sample inputs will be used to test your FunctionModel.
-          <br />
-          These inputs will be shared throughout this current project.
-          <br />
-          You must write your inputs as a{" "}
-          <Link
-            className="link link-secondary"
-            target="_blank"
-            href="https://en.wikipedia.org/wiki/JSON"
-          >
-            JSON object.
-          </Link>
+          Sample inputs will be used to test your FunctionModel. These inputs
+          will be shared throughout this current project.
         </p>
-        <div className="flex flex-row w-full gap-x-8 justify-between items-end">
-          <InputField
-            value={name}
-            setValue={setName}
-            label="Sample name"
-            type="text"
-            autoComplete="off"
-            className="my-1"
-          />
-          <div
-            className="flex flex-row items-center gap-x-2 tooltip tooltip-left tooltip-info h-fit"
-            data-tip="Type Shift + Enter to insert a newline"
-          >
-            <kbd className="kbd">
-              <ArrowFatUp size={16} />
-            </kbd>
-            <kbd className="kbd">
-              <KeyReturn size={20} />
-            </kbd>
-          </div>
-        </div>
-        <Editor
-          language="json"
-          className="my-2"
-          value={content}
-          onChange={(value) => {
-            setContent(value);
-          }}
-          theme="promptmodelTheme"
-          beforeMount={registerCustomTheme}
-          height={300}
-          width="100%"
-          loading={<div className="loading loading-xs loading-dots" />}
-          options={{
-            scrollBeyondLastLine: false,
-            wordWrap: "on",
-            scrollbar: {
-              alwaysConsumeMouseWheel: false,
-            },
-            minimap: {
-              enabled: false,
-            },
-          }}
-          onValidate={handleValidate}
-          onMount={handleEditorDidMount}
+        <InputField
+          value={name}
+          setValue={setName}
+          placeholder="Sample name"
+          label="Sample name"
+          type="text"
+          autoComplete="off"
+          className="my-1"
         />
-
+        <div className="w-full max-h-[60vh] overflow-auto">
+          <ReactSortable
+            list={inputs}
+            setList={setInputs}
+            className="w-full"
+            handle=".drag-handle"
+          >
+            {inputs.map((input: Input) => (
+              <KeyValueInputField
+                key={input.id}
+                input={input}
+                setInput={(input) => {
+                  setInputs(inputs.map((i) => (i.id === input.id ? input : i)));
+                }}
+                onDelete={() => {
+                  setInputs(inputs.filter((i) => i.id !== input.id));
+                }}
+              />
+            ))}
+          </ReactSortable>
+        </div>
+        <button
+          className={classNames(
+            "flex flex-row gap-x-2 items-center backdrop-blur-sm",
+            "btn btn-sm normal-case font-normal h-10 hover:bg-neutral-content/20"
+          )}
+          onClick={() =>
+            setInputs([
+              ...inputs,
+              {
+                id: Math.random().toString(),
+                key: "",
+                value: "",
+              },
+            ])
+          }
+        >
+          <Plus className="text-base-content" size={20} weight="bold" />
+          <p className="text-base-content">Add new input</p>
+        </button>
         <div className="flex flex-row w-full justify-end">
           <button
             className={classNames(
@@ -197,3 +184,48 @@ export const CreateSampleInputModal = ({
     </Modal>
   );
 };
+
+interface KeyValueInputFieldProps {
+  input: Input;
+  setInput: (input: Input) => void;
+  onDelete: () => void;
+}
+
+function KeyValueInputField({
+  input,
+  setInput,
+  onDelete,
+}: KeyValueInputFieldProps) {
+  return (
+    <div className="flex flex-row gap-x-2 items-start justify-start w-full py-1">
+      <div className="mt-6 p-1 hover:bg-base-content/10 rounded-md cursor-pointer drag-handle">
+        <DotsSixVertical className="text-base-content" size={20} />
+      </div>
+      <InputField
+        value={input.key}
+        setValue={(key) => setInput({ ...input, key })}
+        placeholder="Key"
+        label="Key"
+        type="text"
+        autoComplete="off"
+      />
+      <InputField
+        textarea
+        value={input.value}
+        setValue={(value) => setInput({ ...input, value })}
+        placeholder="Value"
+        label="Value"
+        type="text"
+        autoComplete="off"
+        className="w-full"
+        inputClassName="leading-snug"
+      />
+      <button
+        className="mt-6 p-1 hover:bg-red-500/20 rounded-md cursor-pointer"
+        onClick={onDelete}
+      >
+        <Trash className="text-red-500" size={20} />
+      </button>
+    </div>
+  );
+}

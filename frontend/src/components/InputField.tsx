@@ -31,7 +31,7 @@ export const InputField = (
         <textarea
           className={classNames(
             "bg-base-100 outline-none hover:outline-none focus:outline-none",
-            "textarea textarea-bordered",
+            "textarea textarea-bordered w-full",
             props.inputClassName,
             validatorError && "input-error"
           )}
@@ -43,7 +43,7 @@ export const InputField = (
           {...props}
           className={classNames(
             "bg-base-100 outline-none hover:outline-none focus:outline-none",
-            "input input-bordered",
+            "input input-bordered w-full",
             props.inputClassName,
             validatorError && "input-error"
           )}
