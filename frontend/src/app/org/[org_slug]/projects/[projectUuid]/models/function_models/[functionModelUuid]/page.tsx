@@ -469,7 +469,7 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
       duration={200}
     >
       {open && (
-        <div className="flex flex-col justify-start w-full max-w-4xl h-full">
+        <div className="flex flex-col justify-start w-full max-w-5xl pl-16 h-full">
           <div className="flex flex-row justify-between items-center mb-2">
             <div className="flex flex-row justify-start items-center gap-x-4">
               <p className="text-2xl font-bold">{functionModelData?.name} V1</p>
@@ -1236,23 +1236,30 @@ const PromptComponent = ({
     setShowSlashOptions,
   } = useFunctionModelVersionStore();
 
+  function setEditorHeight(editor: editor.IStandaloneCodeEditor) {
+    const contentHeight = editor?.getContentHeight();
+    const maxHeight = windowHeight * 0.7;
+    if (!!contentHeight) {
+      setHeight(Math.min(contentHeight, maxHeight) + 20);
+    }
+  }
+
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
     editorRef.current = editor;
     editor.onKeyDown((e) => {
       if (e.code === "Slash" && (e.ctrlKey || e.metaKey)) {
+        // editor.getDomNode()?.blur();
         setShowSlashOptions(true);
       }
     });
     editor.onDidFocusEditorWidget(() => {
       setFocusedEditor(editorRef.current);
     });
+    setEditorHeight(editor);
 
-    // Set height
-    const contentHeight = editor?.getContentHeight();
-    const maxHeight = windowHeight * 0.7;
-    if (!!contentHeight) {
-      setHeight(Math.min(contentHeight, maxHeight) + 20);
-    }
+    editor.onDidChangeModelContent((e: editor.IModelContentChangedEvent) => {
+      setEditorHeight(editor);
+    });
   };
 
   return (

@@ -104,8 +104,8 @@ export const CreateModelModal = ({
           </p>
         )}
         <Link
-          href={`https://www.promptmodel.run/docs/integrations/python-sdk/${
-            modelType == "FunctionModel" ? "promptmodel" : "chatmodel"
+          href={`https://www.promptmodel.run/docs/python-sdk/${
+            modelType == "FunctionModel" ? "functionmodel" : "chatmodel"
           }`}
           target="_blank"
           className="text-muted-content link link-accent"

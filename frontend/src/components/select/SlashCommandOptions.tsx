@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import classNames from "classnames";
 import { ModalPortal } from "../ModalPortal";
@@ -9,6 +9,7 @@ import { Command, KeyReturn } from "@phosphor-icons/react";
 import { toast } from "react-toastify";
 import { useHotkeys } from "react-hotkeys-hook";
 import { ParsingType } from "@/types/ParsingType";
+import { Modal } from "../modals/Modal";
 
 const TYPES: string[] = ["str", "int", "float", "bool", "List", "Dict"];
 
@@ -25,6 +26,7 @@ export const SlashCommandOptions = ({
 }) => {
   const [outputKey, setOutputKey] = useState("");
   const [type, setType] = useState("");
+  const outputKeyRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -32,6 +34,10 @@ export const SlashCommandOptions = ({
         toast("Please select a parsing type to insert an output format.");
         setOpen(false);
       }
+      // Delay focusing the input a little to ensure the modal is fully rendered
+      setTimeout(() => {
+        outputKeyRef.current?.focus();
+      }, 100); // Adjust the delay as necessary
       setOutputKey("");
       setType("");
     }
@@ -87,78 +93,59 @@ export const SlashCommandOptions = ({
     }
   }
 
-  if (!open) return null;
-
   return (
-    <ModalPortal>
-      <div className="w-full h-full flex justify-center items-center fixed inset-0 z-[99999]">
-        <motion.div
-          className={classNames(
-            "w-fit min-h-fit bg-popover/80 backdrop-blur-sm rounded-box shadow-lg flex flex-col p-4 pt-2"
-          )}
-          initial={{
-            opacity: 0,
-          }}
-          animate={{
-            opacity: open ? 1 : 0,
-            height: open ? "auto" : 0,
-          }}
-        >
-          <div className="flex flex-row gap-x-2 justify-between items-center">
-            <div className="flex flex-col items-start">
-              <div className="label">
-                <p className="label-text">Output key</p>
-              </div>
-              <input
-                autoFocus
-                className="input bg-base-100 active:outline-none focus:outline-none focus-border-none"
-                value={outputKey}
-                onChange={(e) => setOutputKey(e.target.value)}
-              />
+    <Modal isOpen={open} setIsOpen={setOpen}>
+      <div className="w-fit min-h-fit bg-popover/80 backdrop-blur-sm rounded-box shadow-lg flex flex-col p-4 pt-2">
+        <div className="flex flex-row gap-x-2 justify-between items-center">
+          <div className="flex flex-col items-start">
+            <div className="label">
+              <p className="label-text">Output key</p>
             </div>
-            <div className="flex flex-col items-start">
-              <div className="label">
-                <p className="label-text">Type</p>
-              </div>
-              <SelectInputField
-                value={type}
-                setValue={setType}
-                options={TYPES}
-              />
+            <input
+              ref={outputKeyRef}
+              className="input bg-base-100 active:outline-none focus:outline-none focus-border-none"
+              value={outputKey}
+              onChange={(e) => setOutputKey(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col items-start">
+            <div className="label">
+              <p className="label-text">Type</p>
             </div>
+            <SelectInputField value={type} setValue={setType} options={TYPES} />
           </div>
-          <div className="divider after:bg-muted before:bg-muted px-2 mt-0" />
-          <p className="text-popover-content">
-            The output format prompt below will be inserted.
-          </p>
-          <SyntaxHighlighter language="python" style={coldarkDark}>
-            {outputFormatText}
-          </SyntaxHighlighter>
-          <div className="flex flex-row justify-end items-center gap-x-2">
-            <button
-              className="btn bg-muted hover:bg-muted/80 text-muted-content mt-2"
-              onClick={() => setOpen(false)}
-            >
-              <p>Cancel</p>
-              <div className="flex flex-row items-center">
-                <kbd className="kbd text-base-content">esc</kbd>
-              </div>
-            </button>
-            <button
-              className="btn bg-base-content hover:bg-base-content/80 text-base-100 mt-2"
-              onClick={handleClickInsert}
-            >
-              <p>Insert</p>
-              <div className="flex flex-row items-center">
-                <kbd className="kbd text-base-content">
-                  <Command size={16} />
-                </kbd>
-                <KeyReturn size={36} weight="fill" />
-              </div>
-            </button>
-          </div>
-        </motion.div>
+        </div>
+        <div className="divider after:bg-muted before:bg-muted px-2 mt-0" />
+        <p className="text-popover-content">
+          The output format prompt below will be inserted.
+        </p>
+        <SyntaxHighlighter language="python" style={coldarkDark}>
+          {outputFormatText}
+        </SyntaxHighlighter>
+        <div className="flex flex-row justify-end items-center gap-x-2">
+          <button
+            className="btn bg-muted hover:bg-muted/80 text-muted-content mt-2"
+            onClick={() => setOpen(false)}
+          >
+            <p>Cancel</p>
+            <div className="flex flex-row items-center">
+              <kbd className="kbd text-base-content">esc</kbd>
+            </div>
+          </button>
+          <button
+            className="btn bg-base-content hover:bg-base-content/80 text-base-100 mt-2"
+            onClick={handleClickInsert}
+          >
+            <p>Insert</p>
+            <div className="flex flex-row items-center">
+              <kbd className="kbd text-base-content">
+                <Command size={16} />
+              </kbd>
+              <KeyReturn size={36} weight="fill" />
+            </div>
+          </button>
+        </div>
       </div>
-    </ModalPortal>
+    </Modal>
   );
 };
