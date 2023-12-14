@@ -21,8 +21,9 @@ pg_conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
 
 redis_host = os.environ.get("REDIS_HOST") or 'localhost'
 redis_port = int(os.environ.get("REDIS_PORT")) or 6379
+redis_password = os.environ.get("REDIS_PASSWORD") or None
 # Connect to Redis
-redis_conn = redis.Redis(host=redis_host, port=redis_port, db=0)
+redis_conn = redis.Redis(host=redis_host, port=redis_port, db=0, password=redis_password)
 # redis_conn = redis.Redis(host='redis', port=6379, db=0)
 
 # Listen to the channel

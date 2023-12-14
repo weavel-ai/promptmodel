@@ -14,10 +14,11 @@ load_dotenv()
 
 redis_host = os.environ.get("REDIS_HOST", "localhost")
 redis_port = int(os.environ.get("REDIS_PORT", 6379))
+redis_password = os.environ.get("REDIS_PASSWORD", None)
 
 async def redis_listener(websocket: WebSocket, table_name: str, project_uuid: Optional[str] = None, organization_id: Optional[str] = None):
     print("Starting redis listener")
-    redis = aioredis.Redis(host=redis_host, port=redis_port, db=0)
+    redis = aioredis.Redis(host=redis_host, port=redis_port, db=0, password=redis_password)
     # redis = aioredis.Redis(host="redis", port=6379, db=0)
     pubsub = redis.pubsub()
     channel = f"{table_name}_channel"
