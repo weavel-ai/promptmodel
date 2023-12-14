@@ -56,7 +56,7 @@ services:
       context: ./backend
       args:
         - POSTGRES_HOST=db
-        - POSTGRES_NAME=${POSTGRES_DB:-postgres}
+        - POSTGRES_DB=${POSTGRES_DB:-postgres}
         - POSTGRES_USER=${POSTGRES_USER:-postgres}
         - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
         - POSTGRES_PORT=${POSTGRES_PORT:-5432}
@@ -68,7 +68,7 @@ services:
       - "8000:8000"
     environment:
       - POSTGRES_HOST=db
-      - POSTGRES_NAME=${POSTGRES_DB:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}

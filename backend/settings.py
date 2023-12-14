@@ -6,7 +6,7 @@ load_dotenv()
 
 
 class Settings(BaseModel):
-    POSTGRES_NAME: str = os.environ.get("POSTGRES_NAME")
+    POSTGRES_DB: str = os.environ.get("POSTGRES_DB")
     POSTGRES_PASSWORD: str = os.environ.get("POSTGRES_PASSWORD")
     POSTGRES_USER: str = os.environ.get("POSTGRES_USER")
     POSTGRES_HOST: str = os.environ.get("POSTGRES_HOST")
@@ -18,7 +18,7 @@ class Settings(BaseModel):
 
 
 # class Settings(BaseSettings):
-#     POSTGRES_NAME: str
+#     POSTGRES_DB: str
 #     POSTGRES_PASSWORD: str
 #     POSTGRES_USER: str
 #     POSTGRES_HOST: str

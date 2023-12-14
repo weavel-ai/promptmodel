@@ -12,7 +12,7 @@ settings = Settings()
 
 username = settings.POSTGRES_USER
 password = settings.POSTGRES_PASSWORD
-dbname = settings.POSTGRES_NAME
+dbname = settings.POSTGRES_DB
 POSTGRES_PORT = settings.POSTGRES_PORT
 POSTGRES_HOST = settings.POSTGRES_HOST
 test_mode = settings.TESTMODE
