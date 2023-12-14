@@ -74,9 +74,9 @@ docker compose up -d
 
 Fully async, typed SDKs to instrument any LLM application. Currently available for Python.
 
-| Package                                                                                                                                             | Description | Links                                                                                                                     |
-| --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------- |
-| [![PyPI Version](https://img.shields.io/pypi/v/promptmodel.svg?style=flat-square&label=pypi+promptmodel)](https://pypi.python.org/pypi/promptmodel) | Python      | [docs](https://www.promptmodel.run/docs/integrations/python-sdk), [repo](https://github.com/weavel-ai/promptmodel-python) |
+| Package                                                                                                                                             | Description | Links                                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------ |
+| [![PyPI Version](https://img.shields.io/pypi/v/promptmodel.svg?style=flat-square&label=pypi+promptmodel)](https://pypi.python.org/pypi/promptmodel) | Python      | [docs](https://www.promptmodel.run/docs/python-sdk), [repo](https://github.com/weavel-ai/promptmodel-python) |
 
 ## Questions / Feedback
 

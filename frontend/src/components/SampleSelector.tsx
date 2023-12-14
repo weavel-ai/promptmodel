@@ -196,7 +196,9 @@ export const SampleSelector = (props: SampleSelectorProps) => {
                     opacity: hoveredSample ? 1 : 0,
                     right: "100%",
                   }}
-                  className={classNames("absolute bg-transparent w-fit pr-2")}
+                  className={classNames(
+                    "absolute bg-transparent min-w-fit pr-2"
+                  )}
                 >
                   {hoveredSample && (
                     <div className="relative bg-popover/60 backdrop-blur-sm rounded-md pt-0 p-4 flex flex-col gap-y-2 items-start justify-start max-h-[60vh] overflow-auto">
