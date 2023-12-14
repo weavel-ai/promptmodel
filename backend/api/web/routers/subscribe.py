@@ -1,17 +1,28 @@
+import os
 import json
 from typing import Any, Dict, Optional
 from redis import asyncio as aioredis
 import asyncio
 import logging
-
+from dotenv import load_dotenv
 from fastapi import WebSocket, APIRouter
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+load_dotenv()
+
+redis_host = os.environ.get("REDIS_HOST", "localhost")
+redis_port = os.environ.get("REDIS_PORT", 6379)
+try:
+    redis_port = int(redis_port)
+except ValueError:
+    redis_port = 6379
+redis_password = os.environ.get("REDIS_PASSWORD", None)
+
 async def redis_listener(websocket: WebSocket, table_name: str, project_uuid: Optional[str] = None, organization_id: Optional[str] = None):
     print("Starting redis listener")
-    redis = aioredis.Redis(host="localhost", port=6379, db=0)
+    redis = aioredis.Redis(host=redis_host, port=redis_port, db=0, password=redis_password)
     # redis = aioredis.Redis(host="redis", port=6379, db=0)
     pubsub = redis.pubsub()
     channel = f"{table_name}_channel"
