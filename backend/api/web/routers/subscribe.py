@@ -13,7 +13,11 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 redis_host = os.environ.get("REDIS_HOST", "localhost")
-redis_port = int(os.environ.get("REDIS_PORT", 6379))
+redis_port = os.environ.get("REDIS_PORT", 6379)
+try:
+    redis_port = int(redis_port)
+except ValueError:
+    redis_port = 6379
 redis_password = os.environ.get("REDIS_PASSWORD", None)
 
 async def redis_listener(websocket: WebSocket, table_name: str, project_uuid: Optional[str] = None, organization_id: Optional[str] = None):
