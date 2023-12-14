@@ -6,11 +6,11 @@ load_dotenv()
 
 
 class Settings(BaseModel):
-    DB_NAME: str = os.environ.get("DB_NAME")
-    DB_PASSWORD: str = os.environ.get("DB_PASSWORD")
-    DB_USERNAME: str = os.environ.get("DB_USERNAME")
-    DB_HOST: str = os.environ.get("DB_HOST")
-    DB_PORT: str = os.environ.get("DB_PORT", 5432)
+    POSTGRES_NAME: str = os.environ.get("POSTGRES_NAME")
+    POSTGRES_PASSWORD: str = os.environ.get("POSTGRES_PASSWORD")
+    POSTGRES_USER: str = os.environ.get("POSTGRES_USER")
+    POSTGRES_HOST: str = os.environ.get("POSTGRES_HOST")
+    POSTGRES_PORT: str = os.environ.get("POSTGRES_PORT", 5432)
     TESTMODE: bool = os.environ.get("TESTMODE", False)
 
 
@@ -18,11 +18,11 @@ class Settings(BaseModel):
 
 
 # class Settings(BaseSettings):
-#     DB_NAME: str
-#     DB_PASSWORD: str
-#     DB_USERNAME: str
-#     DB_HOST: str
-#     DB_PORT: str
+#     POSTGRES_NAME: str
+#     POSTGRES_PASSWORD: str
+#     POSTGRES_USER: str
+#     POSTGRES_HOST: str
+#     POSTGRES_PORT: str
 
 #     class Config:
 #         env_file = ".env"

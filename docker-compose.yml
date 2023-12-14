@@ -24,7 +24,7 @@ services:
       - server
 
   pg-to-redis-listener:
-    build: 
+    build:
       context: ./pg_to_redis_listener
       args:
         - POSTGRES_HOST=db
@@ -53,14 +53,14 @@ services:
     restart: always
 
   backend:
-    build: 
+    build:
       context: ./backend
       args:
-        - DB_HOST=db
-        - DB_NAME=${POSTGRES_DB:-postgres}
-        - DB_USER=${POSTGRES_USER:-postgres}
-        - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-        - DB_PORT=${POSTGRES_PORT:-5432}
+        - POSTGRES_HOST=db
+        - POSTGRES_NAME=${POSTGRES_DB:-postgres}
+        - POSTGRES_USER=${POSTGRES_USER:-postgres}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+        - POSTGRES_PORT=${POSTGRES_PORT:-5432}
         - SQLALCHEMY_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
         - NEXTAUTH_URL=http://localhost:3000
@@ -70,11 +70,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DB_HOST=db
-      - DB_NAME=${POSTGRES_DB:-postgres}
-      - DB_USER=${POSTGRES_USER:-postgres}
-      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - DB_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_HOST=db
+      - POSTGRES_NAME=${POSTGRES_DB:-postgres}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - SQLALCHEMY_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
       - NEXTAUTH_URL=http://localhost:3000
