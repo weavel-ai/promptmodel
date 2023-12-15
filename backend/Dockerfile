@@ -1,6 +1,7 @@
 FROM python:3.9-slim AS builder
 ENV DOCKERIZE_VERSION v0.7.0
 
+ARG PORT
 ARG POSTGRES_HOST
 ARG POSTGRES_DB
 ARG POSTGRES_USER
@@ -36,4 +37,4 @@ RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]
 
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD uvicorn server:app --host 0.0.0.0 --port $PORT

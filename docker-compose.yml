@@ -63,7 +63,7 @@ services:
         - POSTGRES_PORT=${POSTGRES_PORT:-5432}
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
         - NEXTAUTH_URL=http://localhost:3000
-    command: uvicorn server:app --host 0.0.0.0 --reload
+        - PORT=8000
     volumes:
       - ./backend:/app
     ports:
@@ -76,6 +76,7 @@ services:
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
       - NEXTAUTH_URL=http://localhost:3000
+      - PORT=8000
     depends_on:
       db:
         condition: service_started
