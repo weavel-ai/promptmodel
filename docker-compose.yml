@@ -24,7 +24,6 @@ services:
       - server
 
   pg-to-redis-listener:
-    image: ghcr.io/weavel-ai/promptmodel/pg-to-redis-listener:latest
     build:
       context: ./pg_to_redis_listener
       args:
@@ -54,7 +53,6 @@ services:
     restart: always
 
   backend:
-    image: ghcr.io/weavel-ai/promptmodel/backend:latest
     build:
       context: ./backend
       args:
@@ -64,7 +62,7 @@ services:
         - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
         - POSTGRES_PORT=${POSTGRES_PORT:-5432}
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-        - NEXTAUTH_URL=http://localhost:3000
+        - NEXTAUTH_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
         - PORT=8000
     volumes:
       - ./backend:/app
@@ -77,7 +75,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
       - PORT=8000
     depends_on:
       db:
@@ -96,24 +94,23 @@ services:
     # action: sync
 
   frontend:
-    image: ghcr.io/weavel-ai/promptmodel/frontend:latest
     build:
       context: ./frontend
       args:
-        - NEXTAUTH_URL=http://localhost:3000
+        - NEXTAUTH_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
         - NEXT_SERVER_ENDPOINT_URL=http://backend:8000/api
-        - NEXT_PUBLIC_ENDPOINT_URL=http://localhost:8000/api
+        - NEXT_PUBLIC_ENDPOINT_URL=${BACKEND_PUBLIC_URL:-http://localhost:8000}/api
         - NEXT_PUBLIC_SELF_HOSTED=true
     volumes:
       - /app/node_modules
     ports:
       - "3000:3000"
     environment:
-      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
       - NEXT_SERVER_ENDPOINT_URL=http://backend:8000/api
-      - NEXT_PUBLIC_ENDPOINT_URL=http://localhost:8000/api
+      - NEXT_PUBLIC_ENDPOINT_URL=${BACKEND_PUBLIC_URL:-http://localhost:8000}/api
       - NEXT_PUBLIC_SELF_HOSTED=true
     depends_on:
       backend:
