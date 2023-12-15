@@ -981,23 +981,28 @@ const PromptComponent = ({
   const windowHeight = useWindowHeight();
   const { setFocusedEditor } = useChatModelVersionStore();
 
-  const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
-    const contentHeight = editor.getContentHeight();
-    editorRef.current = editor;
-
-    if (contentHeight) {
-      setHeight(contentHeight + 20);
-    }
-
-    editor.onDidFocusEditorWidget(() => {
-      setFocusedEditor(editorRef.current);
-    });
-
-    const minHeight = 200;
+  function setEditorHeight() {
+    const contentHeight = editorRef.current?.getContentHeight();
+    const minHeight = 120;
     const maxHeight = windowHeight * 0.7;
     if (contentHeight) {
       setHeight(Math.min(Math.max(minHeight, contentHeight), maxHeight) + 20);
     }
+  }
+
+  const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
+    const contentHeight = editor.getContentHeight();
+    editorRef.current = editor;
+    if (contentHeight) {
+      setHeight(contentHeight + 20);
+    }
+    editor.onDidFocusEditorWidget(() => {
+      setFocusedEditor(editorRef.current);
+    });
+    editor.onDidContentSizeChange(() => {
+      setEditorHeight();
+    });
+    setEditorHeight();
   };
 
   return (
@@ -1043,33 +1048,34 @@ const PromptDiffComponent = ({
   const modifiedEditorRef = useRef(null);
   const { setFocusedEditor } = useChatModelVersionStore();
 
+  function setEditorHeight() {
+    const originalHeight = originalEditorRef.current?.getContentHeight();
+    const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
+    const minHeight = 120;
+    const maxHeight = windowHeight * 0.7;
+    if (originalHeight && modifiedHeight) {
+      setHeight(
+        Math.min(
+          Math.max(minHeight, originalHeight, modifiedHeight),
+          maxHeight
+        ) + 20
+      );
+    }
+  }
+
   const handleEditorDidMount = (editor: MonacoDiffEditor, monaco: Monaco) => {
     originalEditorRef.current = editor.getOriginalEditor();
     modifiedEditorRef.current = editor.getModifiedEditor();
-    const originalHeight = originalEditorRef.current?.getContentHeight();
-    const maxHeight = windowHeight * 0.7;
-    if (originalHeight) {
-      setHeight(Math.min(originalHeight, maxHeight) + 20);
-    }
     modifiedEditorRef.current?.onDidFocusEditorWidget(() => {
       setFocusedEditor(modifiedEditorRef.current);
     });
-
     modifiedEditorRef.current.onDidChangeModelContent(() => {
       setSystemPrompt(modifiedEditorRef.current?.getValue());
-      const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
-      const maxHeight = windowHeight * 0.7;
-      if (modifiedHeight) {
-        setHeight(Math.min(modifiedHeight, maxHeight) + 20);
-      }
     });
-
-    const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
-    if (modifiedHeight > originalHeight) {
-      setHeight(Math.min(modifiedHeight, maxHeight) + 20);
-    } else {
-      setHeight(Math.min(originalHeight, maxHeight) + 20);
-    }
+    modifiedEditorRef.current.onDidContentSizeChange(() => {
+      setEditorHeight();
+    });
+    setEditorHeight();
   };
 
   return (

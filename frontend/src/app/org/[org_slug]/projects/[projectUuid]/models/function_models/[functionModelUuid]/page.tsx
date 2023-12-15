@@ -1236,8 +1236,8 @@ const PromptComponent = ({
     setShowSlashOptions,
   } = useFunctionModelVersionStore();
 
-  function setEditorHeight(editor: editor.IStandaloneCodeEditor) {
-    const contentHeight = editor?.getContentHeight();
+  function setEditorHeight() {
+    const contentHeight = editorRef.current.getContentHeight();
     const maxHeight = windowHeight * 0.7;
     if (!!contentHeight) {
       setHeight(Math.min(contentHeight, maxHeight) + 20);
@@ -1255,11 +1255,10 @@ const PromptComponent = ({
     editor.onDidFocusEditorWidget(() => {
       setFocusedEditor(editorRef.current);
     });
-    setEditorHeight(editor);
-
-    editor.onDidChangeModelContent((e: editor.IModelContentChangedEvent) => {
-      setEditorHeight(editor);
+    editor.onDidContentSizeChange((e) => {
+      setEditorHeight();
     });
+    setEditorHeight();
   };
 
   return (
@@ -1350,6 +1349,18 @@ const PromptDiffComponent = ({ originalPrompt, setModifiedPrompts }) => {
     modifiedPromptsRef.current = modifiedPrompts; // Keep a reference to the latest modifiedPrompts
   }, [modifiedPrompts]);
 
+  function setEditorHeight() {
+    const originalHeight = originalEditorRef.current?.getContentHeight();
+    const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
+    const maxHeight = windowHeight * 0.7;
+    console.log(originalHeight, modifiedHeight);
+    if (modifiedHeight > originalHeight) {
+      setHeight(Math.min(modifiedHeight, maxHeight) + 20);
+    } else {
+      setHeight(Math.min(originalHeight, maxHeight) + 20);
+    }
+  }
+
   const handleEditorDidMount = (editor: MonacoDiffEditor, monaco: Monaco) => {
     originalEditorRef.current = editor.getOriginalEditor();
     modifiedEditorRef.current = editor.getModifiedEditor();
@@ -1377,18 +1388,15 @@ const PromptDiffComponent = ({ originalPrompt, setModifiedPrompts }) => {
             modifiedEditorRef.current?.getValue();
         }
         setModifiedPrompts(newPrompts);
+        // setEditorHeight();
       }
     );
+
+    modifiedEditorRef.current.onDidContentSizeChange((e) => {
+      setEditorHeight();
+    });
     // Set height
-    const originalHeight = originalEditorRef.current?.getContentHeight();
-    const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
-    const maxHeight = windowHeight * 0.7;
-    console.log(originalHeight, modifiedHeight);
-    if (modifiedHeight > originalHeight) {
-      setHeight(Math.min(modifiedHeight, maxHeight) + 20);
-    } else {
-      setHeight(Math.min(originalHeight, maxHeight) + 20);
-    }
+    setEditorHeight();
   };
 
   return (
