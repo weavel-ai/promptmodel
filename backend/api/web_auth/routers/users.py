@@ -29,12 +29,17 @@ async def create_user(
             **user.model_dump(exclude={"password"})
         )
         session.add(new_user)
+        
+        print(new_user)
+        
         await session.flush()
         await session.refresh(new_user)
-        
+            
         org_list: List[Organization] = (
             await session.execute(select(Organization))
         ).all()
+
+        print(org_list)
         
         if len(org_list) == 0:
             # create Organization
@@ -52,8 +57,8 @@ async def create_user(
             
             # Create UsersOrganizations
             new_user_org = UsersOrganizations(
-                user_id=new_user.id,
-                organization_id=new_org.id,
+                user_id=new_user.user_id,
+                organization_id=new_org.organization_id,
             )
             session.add(new_user_org) 
             await session.flush()
