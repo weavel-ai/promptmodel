@@ -2,10 +2,7 @@
 
 import { Drawer } from "@/components/Drawer";
 import { useFunctionModelVersion } from "@/hooks/useFunctionModelVersion";
-import {
-  Prompt,
-  useFunctionModelVersionStore,
-} from "@/stores/functionModelVersionStore";
+import { useFunctionModelVersionStore } from "@/stores/functionModelVersionStore";
 import classNames from "classnames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
@@ -65,6 +62,7 @@ import {
   updateFunctionModelVersionMemo,
   updatePublishedFunctionModelVersion,
 } from "@/apis/function_model_versions";
+import { Prompt } from "@/types/Prompt";
 dayjs.extend(relativeTime);
 
 const initialNodes = [];
@@ -437,18 +435,15 @@ function VersionInfoOverlay({ versionData }) {
 
 function InitialVersionDrawer({ open }: { open: boolean }) {
   const { functionModelData } = useFunctionModel();
-  const { handleRun } = useFunctionModelVersion();
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
   const {
     modifiedPrompts,
     setModifiedPrompts,
-    selectedSample,
     selectedModel,
     outputKeys,
     selectedParser,
     selectedFunctions,
-    setSelectedSample,
     setOutputKeys,
     setSelectedModel,
     setSelectedParser,
@@ -458,8 +453,16 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
   useEffect(() => {
     if (!open) return;
     setModifiedPrompts([]);
-    setSelectedSample(null);
-  }, [open, setModifiedPrompts, setSelectedSample]);
+    setSelectedParser(null);
+    setOutputKeys([]);
+    setSelectedFunctions([]);
+  }, [
+    open,
+    setModifiedPrompts,
+    setSelectedParser,
+    setOutputKeys,
+    setSelectedFunctions,
+  ]);
 
   return (
     <Drawer
@@ -473,27 +476,6 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
           <div className="flex flex-row justify-between items-center mb-2">
             <div className="flex flex-row justify-start items-center gap-x-4">
               <p className="text-2xl font-bold">{functionModelData?.name} V1</p>
-            </div>
-            <div className="flex flex-row w-fit justify-end items-center gap-x-2">
-              <SampleSelector
-                sampleName={selectedSample}
-                setSample={setSelectedSample}
-              />
-              <ModelSelector
-                modelName={selectedModel}
-                setModel={setSelectedModel}
-              />
-              <button
-                className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20 disabled:bg-muted disabled:border-muted-content"
-                onClick={() => handleRun(true)}
-                disabled={
-                  !(modifiedPrompts?.length > 0) ||
-                  modifiedPrompts?.every?.((prompt) => prompt.content === "")
-                }
-              >
-                <p className="text-base-content">Run</p>
-                <Play className="text-base-content" size={20} weight="fill" />
-              </button>
             </div>
           </div>
           <div className="bg-base-200 flex-grow w-full p-4 rounded-t-box overflow-auto">
@@ -586,7 +568,11 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
               className="mt-4 backdrop-blur-sm"
               style={{ height: lowerBoxHeight }}
             >
-              <RunLogUI versionUuid={null} />
+              <RunLogUI
+                versionUuid={null}
+                isNewOrCachedVersion
+                isInitialVersion
+              />
             </div>
           </div>
         </div>
@@ -600,7 +586,6 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
   const { projectData } = useProject();
   const { functionModelData } = useFunctionModel();
   const {
-    handleRun,
     originalPromptListData,
     originalFunctionModelVersionData,
     functionModelVersionListData,
@@ -613,14 +598,12 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     newVersionCache,
     fullScreenRunVersionUuid,
     isCreateVariantOpen,
-    selectedSample,
     selectedModel,
     selectedFunctions,
     selectedParser,
     outputKeys,
     selectedFunctionModelVersion,
     setOutputKeys,
-    setSelectedSample,
     setSelectedFunctions,
     setSelectedModel,
     setSelectedParser,
@@ -633,10 +616,6 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     setShowSlashOptions,
   } = useFunctionModelVersionStore();
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
-  const isNewVersionReady = useMemo(
-    () => !isEqualToCache && !isEqualToOriginal,
-    [isEqualToCache, isEqualToOriginal]
-  );
 
   useHotkeys(
     "esc",
@@ -747,26 +726,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                   />
                 </div>
               </div>
-              {isCreateVariantOpen ? (
-                <div className="flex flex-row justify-end items-center gap-x-3">
-                  <SampleSelector
-                    sampleName={selectedSample}
-                    setSample={setSelectedSample}
-                  />
-                  <button
-                    className={classNames(
-                      "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
-                      "text-base-100 disabled:bg-muted disabled:text-muted-content disabled:border-muted-content"
-                    )}
-                    onClick={() => {
-                      handleRun(false);
-                    }}
-                  >
-                    <p>Run</p>
-                    <Play size={20} weight="fill" />
-                  </button>
-                </div>
-              ) : (
+              {!isCreateVariantOpen && (
                 <div className="flex flex-row gap-x-2 items-center justify-end">
                   {!originalFunctionModelVersionData?.is_published && (
                     <button
@@ -825,25 +785,6 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     From&nbsp;
                     <u>V{originalFunctionModelVersionData?.version}</u>
                   </p>
-                </div>
-                <div className="flex flex-row justify-end items-center gap-x-3">
-                  <SampleSelector
-                    sampleName={selectedSample}
-                    setSample={setSelectedSample}
-                  />
-                  <button
-                    className={classNames(
-                      "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
-                      "text-base-100 disabled:bg-muted disabled:text-muted-content disabled:border-muted-content"
-                    )}
-                    onClick={() => {
-                      handleRun(true);
-                    }}
-                    disabled={isEqualToOriginal}
-                  >
-                    <p>Run</p>
-                    <Play size={20} weight="fill" />
-                  </button>
                 </div>
               </div>
             )}
@@ -1133,12 +1074,15 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
             >
               <RunLogUI
                 versionUuid={selectedFunctionModelVersionUuid}
+                animateFrom={isCreateVariantOpen ? "bottomLeft" : "bottomRight"}
                 className={classNames(isCreateVariantOpen && "!w-1/2")}
+                isNewOrCachedVersion={false}
               />
               {isCreateVariantOpen && (
                 <RunLogUI
                   versionUuid={newVersionCache?.uuid}
                   className="!w-1/2"
+                  isNewOrCachedVersion
                 />
               )}
             </div>

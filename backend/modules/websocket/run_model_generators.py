@@ -26,22 +26,8 @@ async def run_local_function_model_generator(
     cli_access_key: str,
     run_config: FunctionModelRunConfig,
 ):
-    sample_name: Optional[str] = run_config.sample_name
+    sample_input: Dict[str, str] = run_config.sample_input if run_config.sample_input else {}
     prompts: List[PromptConfig] = run_config.prompts
-
-    # get sample from db
-    if sample_name:
-        sample_input_rows = (
-            await session.execute(
-                select(SampleInput.content)
-                .where(SampleInput.name == run_config.sample_name)
-                .where(SampleInput.project_uuid == project["uuid"])
-            )
-        ).scalar_one()
-
-        sample_input: Dict = sample_input_rows
-    else:
-        sample_input = None
 
     prompt_variables = []
 

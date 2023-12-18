@@ -1,6 +1,6 @@
 import { railwayWebClient } from "@/apis/base";
 import {
-  ReadProjectSampleInputsRequest,
+  ReadFunctionModelSampleInputsRequest,
   SampleInput,
 } from "@/types/SampleInput";
 
@@ -9,10 +9,10 @@ import {
  * @param requestData - The data required to fetch a SampleInput.
  * @returns A promise that resolves to a SampleInput interface.
  */
-export async function fetchProjectSampleInputs(
-  requestData: ReadProjectSampleInputsRequest
+export async function fetchFunctionModelSampleInputs(
+  requestData: ReadFunctionModelSampleInputsRequest
 ): Promise<Array<SampleInput>> {
-  const response = await railwayWebClient.get("/sample_inputs/project", {
+  const response = await railwayWebClient.get("/sample_inputs/function_model", {
     params: requestData,
   });
   return response.data;

@@ -28,16 +28,18 @@ export const InputField = (
     >
       <p className="label-text text-sm font-semibold mb-1">{props.label}</p>
       {props.textarea ? (
-        <textarea
-          className={classNames(
-            "bg-base-100 outline-none hover:outline-none focus:outline-none",
-            "textarea textarea-bordered w-full",
-            props.inputClassName,
-            validatorError && "input-error"
-          )}
-          value={props.value}
-          onChange={(e) => props.setValue(e.target.value)}
-        />
+        <div className="bg-input border-2 border-muted rounded-lg w-full px-4 py-2 resize-y">
+          <textarea
+            className={classNames(
+              "bg-transparent outline-none hover:outline-none focus:outline-none",
+              "w-full text-sm",
+              props.inputClassName,
+              validatorError && "input-error"
+            )}
+            value={props.value}
+            onChange={(e) => props.setValue(e.target.value)}
+          />
+        </div>
       ) : (
         <input
           {...props}

@@ -1,4 +1,5 @@
 import { ParsingType } from "@/types/ParsingType";
+import { Prompt } from "@/types/Prompt";
 import { editor } from "monaco-editor";
 import { create } from "zustand";
 
@@ -8,8 +9,6 @@ export type RunLog = {
   parsed_outputs?: Record<string, any> | string;
   function_call?: Record<string, any> | string;
 };
-
-export type Prompt = { role: string; step: number; content: string };
 
 type NewVersionCache = {
   uuid: string;

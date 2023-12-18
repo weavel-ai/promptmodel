@@ -5,8 +5,10 @@
  */
 export interface CreateSampleInputRequest {
   project_uuid: string;
-  name: string;
+  name?: string | null;
+  input_keys: Array<string>;
   content: Record<string, any>;
+  function_model_uuid?: string | null;
 }
 
 /**
@@ -14,6 +16,13 @@ export interface CreateSampleInputRequest {
  */
 export interface ReadProjectSampleInputsRequest {
   project_uuid: string;
+}
+
+/**
+ * Interface for request to read a FunctionModel's SampleInputs.
+ */
+export interface ReadFunctionModelSampleInputsRequest {
+  function_model_uuid: string;
 }
 
 /**
@@ -25,6 +34,8 @@ export interface SampleInput {
   uuid: string;
   name: string;
   content: Record<string, any>;
+  input_keys: Array<string>;
   online: true;
   project_uuid: string;
+  function_model_uuid: string;
 }

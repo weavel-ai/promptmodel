@@ -20,8 +20,8 @@ router = APIRouter()
 
 
 # SampleInput Endpoints
-@router.get("", response_model=List[SampleInputInstance])
-async def fetch_sample_inputs(
+@router.get("/project", response_model=List[SampleInputInstance])
+async def fetch_project_sample_inputs(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
@@ -32,6 +32,31 @@ async def fetch_sample_inputs(
                 await session.execute(
                     select(SampleInput)
                     .where(SampleInput.project_uuid == project_uuid)
+                    .order_by(desc(SampleInput.created_at))
+                )
+            )
+            .scalars()
+            .all()
+        ]
+        return sample_inputs
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+        )
+
+@router.get("/function_model", response_model=List[SampleInputInstance])
+async def fetch_function_model_sample_inputs(
+    function_model_uuid: str,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        sample_inputs: List[Dict] = [
+            SampleInputInstance(**sample_input.model_dump())
+            for sample_input in (
+                await session.execute(
+                    select(SampleInput)
+                    .where(SampleInput.function_model_uuid == function_model_uuid)
                     .order_by(desc(SampleInput.created_at))
                 )
             )

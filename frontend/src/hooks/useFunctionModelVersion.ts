@@ -2,10 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
 import { toast } from "react-toastify";
-import {
-  Prompt,
-  useFunctionModelVersionStore,
-} from "@/stores/functionModelVersionStore";
+import { useFunctionModelVersionStore } from "@/stores/functionModelVersionStore";
 import { v4 as uuidv4 } from "uuid";
 import { useEffect, useMemo } from "react";
 import {
@@ -19,6 +16,7 @@ import {
 } from "@/apis/function_model_versions";
 import { fetchPrompts } from "@/apis/prompts";
 import { ParsingType } from "@/types/ParsingType";
+import { Prompt } from "@/types/Prompt";
 
 export const useFunctionModelVersion = () => {
   const params = useParams();
@@ -189,12 +187,15 @@ export const useFunctionModelVersion = () => {
   ]);
 
   // Run LLM call
-  async function handleRun(onRightSide: boolean) {
+  async function handleRun(
+    isNewOrCachedVersion: boolean,
+    sampleInput?: Record<string, string>
+  ) {
     const toastId = toast.loading("Running...");
     let prompts: Prompt[];
     let versionUuid: string;
 
-    if (onRightSide) {
+    if (isNewOrCachedVersion) {
       prompts = modifiedPrompts;
       versionUuid = isEqualToCache ? newVersionCache?.uuid : null;
     } else {
@@ -210,23 +211,23 @@ export const useFunctionModelVersion = () => {
       projectUuid: params?.projectUuid as string,
       functionModelUuid: params?.functionModelUuid as string,
       prompts: prompts,
-      model: onRightSide
+      model: isNewOrCachedVersion
         ? selectedModel
         : originalFunctionModelVersionData.model,
-      fromVersion: onRightSide
+      fromVersion: isNewOrCachedVersion
         ? originalFunctionModelVersionData?.version
         : null,
-      versionUuid: onRightSide
+      versionUuid: isNewOrCachedVersion
         ? (isEqualToCache ? newVersionCache?.uuid : null) ?? null
         : originalFunctionModelVersionData?.uuid,
-      sampleName: selectedSample,
-      parsingType: onRightSide
+      sampleInput: sampleInput,
+      parsingType: isNewOrCachedVersion
         ? selectedParser
         : originalFunctionModelVersionData?.parsing_type,
-      outputKeys: onRightSide
+      outputKeys: isNewOrCachedVersion
         ? outputKeys
         : originalFunctionModelVersionData?.output_keys,
-      functions: onRightSide
+      functions: isNewOrCachedVersion
         ? selectedFunctions
         : originalFunctionModelVersionData?.functions,
       onNewData: async (data) => {
@@ -327,7 +328,7 @@ export const useFunctionModelVersion = () => {
       await streamFunctionModelRun(args);
     }
 
-    if (onRightSide) {
+    if (isNewOrCachedVersion) {
       await refetchFunctionModelVersionListData();
       if (!originalFunctionModelVersionData?.uuid) {
         setSelectedFunctionModelVersion(newVersionCache?.version);

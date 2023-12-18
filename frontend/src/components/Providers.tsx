@@ -35,6 +35,7 @@ export function Providers({ children, session }) {
         pauseOnHover={false}
         containerId="default"
         theme="dark"
+        className="z-[9999999999]"
       />
       {/* <ThemeProvider> */}
       <RealtimeProvider>{children}</RealtimeProvider>

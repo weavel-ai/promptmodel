@@ -19,12 +19,10 @@ import { registerCustomTheme } from "@/lib/promptLanguage";
 import { IKeyboardEvent, editor } from "monaco-editor";
 import { createSampleInput } from "@/apis/sample_inputs";
 import { ReactSortable } from "react-sortablejs";
-
-interface Input {
-  id: string;
-  key: string;
-  value: string;
-}
+import {
+  KeyValueInput,
+  KeyValueInputField,
+} from "../inputs/KeyValueInputField";
 
 function handleEditorDidMount(editor: editor.IStandaloneCodeEditor) {
   editor.onKeyDown((e: IKeyboardEvent) => {
@@ -62,7 +60,7 @@ export const CreateSampleInputModal = ({
 }) => {
   const params = useParams();
   const [name, setName] = useState("");
-  const [inputs, setInputs] = useState<Array<Input>>([
+  const [inputs, setInputs] = useState<Array<KeyValueInput>>([
     {
       id: Math.random().toString(),
       key: "",
@@ -135,7 +133,7 @@ export const CreateSampleInputModal = ({
             className="w-full"
             handle=".drag-handle"
           >
-            {inputs.map((input: Input) => (
+            {inputs.map((input: KeyValueInput) => (
               <KeyValueInputField
                 key={input.id}
                 input={input}
@@ -184,48 +182,3 @@ export const CreateSampleInputModal = ({
     </Modal>
   );
 };
-
-interface KeyValueInputFieldProps {
-  input: Input;
-  setInput: (input: Input) => void;
-  onDelete: () => void;
-}
-
-function KeyValueInputField({
-  input,
-  setInput,
-  onDelete,
-}: KeyValueInputFieldProps) {
-  return (
-    <div className="flex flex-row gap-x-2 items-start justify-start w-full py-1">
-      <div className="mt-6 p-1 hover:bg-base-content/10 rounded-md cursor-pointer drag-handle">
-        <DotsSixVertical className="text-base-content" size={20} />
-      </div>
-      <InputField
-        value={input.key}
-        setValue={(key) => setInput({ ...input, key })}
-        placeholder="Key"
-        label="Key"
-        type="text"
-        autoComplete="off"
-      />
-      <InputField
-        textarea
-        value={input.value}
-        setValue={(value) => setInput({ ...input, value })}
-        placeholder="Value"
-        label="Value"
-        type="text"
-        autoComplete="off"
-        className="w-full"
-        inputClassName="leading-snug"
-      />
-      <button
-        className="mt-6 p-1 hover:bg-red-500/20 rounded-md cursor-pointer"
-        onClick={onDelete}
-      >
-        <Trash className="text-red-500" size={20} />
-      </button>
-    </div>
-  );
-}
