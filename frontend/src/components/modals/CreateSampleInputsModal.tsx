@@ -91,6 +91,7 @@ export const CreateSampleInputModal = ({
     await createSampleInput({
       project_uuid: params.projectUuid as string,
       name: name,
+      input_keys: inputs.map((input) => input.key),
       content: inputs.reduce((acc, input) => {
         acc[input.key] = input.value;
         return acc;
