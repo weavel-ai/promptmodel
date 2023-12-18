@@ -8,7 +8,8 @@ ARG POSTGRES_USER
 ARG POSTGRES_PASSWORD
 ARG POSTGRES_PORT
 ARG NEXTAUTH_SECRET
-ARG NEXTAUTH_URL
+ARG FRONTEND_PUBLIC_URL
+ENV NEXTAUTH_URL=$FRONTEND_PUBLIC_URL
 
 RUN apt-get update \
     && apt-get install -y wget \
@@ -23,6 +24,7 @@ RUN pip install --no-cache-dir --upgrade -r requirements-prod.txt
 COPY . .
 
 FROM python:3.9-slim AS deployer
+ENV NEXTAUTH_URL=$FRONTEND_PUBLIC_URL
 COPY --from=builder /usr/local/bin/dockerize /usr/local/bin/dockerize
 COPY --from=builder /usr/local/bin/alembic /usr/local/bin/alembic
 COPY --from=builder /usr/local/bin/uvicorn /usr/local/bin/uvicorn
