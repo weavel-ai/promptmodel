@@ -34,9 +34,9 @@ async def create_user(
         
         org_list: List[Organization] = (
             await session.execute(select(Organization))
-        ).scalar_one_or_none()
+        ).all()
         
-        if not org_list:
+        if len(org_list) == 0:
             # create Organization
             org_name = os.environ.get("ORG_NAME", "admin")
             org_slug = os.environ.get("ORG_SLUG", "admin")
