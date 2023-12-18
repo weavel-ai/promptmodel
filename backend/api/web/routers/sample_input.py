@@ -77,21 +77,21 @@ async def create_sample_input(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        # check if same name in project
-        sample_input_in_db = (
-            await session.execute(
-                select(SampleInput)
-                .where(SampleInput.name == body.name)
-                .where(SampleInput.project_uuid == body.project_uuid)
-            )
-        ).scalar_one_or_none()
+        if body.name:
+            # check if same name in project
+            sample_input_in_db = (
+                await session.execute(
+                    select(SampleInput)
+                    .where(SampleInput.name == body.name)
+                    .where(SampleInput.project_uuid == body.project_uuid)
+                )
+            ).scalar_one_or_none()
 
-        if sample_input_in_db:
-            raise HTTPException(
-                status_code=HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Same name in project",
-            )
-
+            if sample_input_in_db:
+                raise HTTPException(
+                    status_code=HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Same name in project",
+                )
         new_sample_input = SampleInput(**body.model_dump())
         session.add(new_sample_input)
         await session.commit()
