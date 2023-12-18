@@ -370,7 +370,7 @@ const LogsUI = ({ logData, type }) => {
                             displayDataTypes={false}
                             displayObjectSize={false}
                             enableClipboard={false}
-                            theme="google"
+                            theme="harmonic"
                           />
                         )}
                       </td>
@@ -393,7 +393,7 @@ const LogsUI = ({ logData, type }) => {
                             displayDataTypes={false}
                             displayObjectSize={false}
                             enableClipboard={false}
-                            theme="google"
+                            theme="harmonic"
                           />
                         )}
                       </td>
@@ -413,7 +413,7 @@ const LogsUI = ({ logData, type }) => {
                             displayDataTypes={false}
                             displayObjectSize={false}
                             enableClipboard={false}
-                            theme="google"
+                            theme="harmonic"
                           />
                         )}
                       </td>
@@ -430,7 +430,7 @@ const LogsUI = ({ logData, type }) => {
                             displayDataTypes={false}
                             displayObjectSize={false}
                             enableClipboard={false}
-                            theme="google"
+                            theme="harmonic"
                           />
                         )}
                       </td>

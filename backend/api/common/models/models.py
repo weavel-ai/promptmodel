@@ -15,7 +15,7 @@ class FunctionModelRunConfig(PMObject):
     model: Optional[str] = "gpt-3.5-turbo"
     from_version: Optional[int] = None
     version_uuid: Optional[str] = None
-    sample_name: Optional[str] = None
+    sample_input: Optional[Dict[str, str]] = None
     parsing_type: Optional[str] = None
     output_keys: Optional[List[str]] = None
     functions: Optional[List[str]] = []

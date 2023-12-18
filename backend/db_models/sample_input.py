@@ -35,14 +35,21 @@ class SampleInput(Base):
         UUID(as_uuid=True), unique=True, server_default=text("gen_random_uuid()")
     )
 
-    name: str = Column(Text)
+    name: Optional[str] = Column(Text, nullable=True)
     content: Dict[str, Any] = Column(JSONB)
+    input_keys: List[str] = Column(ARRAY(String))
     online: bool = Column(Boolean, nullable=False, default=False)
 
     project_uuid: UUIDType = Column(
         UUID(as_uuid=True),
         ForeignKey("project.uuid", onupdate="CASCADE"),
         nullable=False,
+    )
+    
+    function_model_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey("function_model.uuid", onupdate="SET NULL"),
+        nullable=True,
     )
 
     # project: "Project" = Relationship(back_populates="sample_inputs")

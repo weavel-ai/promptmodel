@@ -1,29 +1,146 @@
 import { RunLog } from "@/types/RunLog";
 import { useRunLogs } from "@/hooks/useRunLog";
 import { useFunctionModelVersionStore } from "@/stores/functionModelVersionStore";
-import { CornersOut } from "@phosphor-icons/react";
+import { ArrowSquareIn, CornersOut, Play } from "@phosphor-icons/react";
 import classNames from "classnames";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ModalPortal } from "./ModalPortal";
 import ReactJson from "react-json-view";
+import { cva } from "class-variance-authority";
+import { SelectTab } from "./SelectTab";
+import { useFunctionModelVersion } from "@/hooks/useFunctionModelVersion";
+import { KeyValueInput, KeyValueInputField } from "./inputs/KeyValueInputField";
+import { toast } from "react-toastify";
+import { Badge } from "./ui/badge";
+import { SelectSampleInputsModal } from "./modals/SelectSampleInputsModal";
+import { arePrimitiveListsEqual } from "@/utils";
+import { createSampleInput } from "@/apis/sample_inputs";
+import { useProject } from "@/hooks/useProject";
+
+const modalVariants = cva(
+  "fixed z-[999999] bg-base-200/70 backdrop-blur-md p-4 flex justify-center items-center",
+  {
+    variants: {
+      animateFrom: {
+        bottomRight: "bottom-0 right-0",
+        bottomLeft: "bottom-0 left-0",
+        topRight: "top-0 right-0",
+        topLeft: "top-0 left-0",
+      },
+    },
+    defaultVariants: {
+      animateFrom: "bottomRight",
+    },
+  }
+);
+
+enum Tab {
+  Test = "Test",
+  RunLogs = "Run Logs",
+}
+
+const TABS = [Tab.Test, Tab.RunLogs];
 
 export function RunLogUI({
   versionUuid,
+  isNewOrCachedVersion,
+  isInitialVersion = false,
+  animateFrom,
   className,
 }: {
   versionUuid: string | null;
+  isNewOrCachedVersion: boolean;
+  isInitialVersion?: boolean;
+  animateFrom?: "bottomRight" | "bottomLeft" | "topRight" | "topLeft";
   className?: string;
 }) {
-  // const [showRaw, setShowRaw] = useState(true);
+  const { projectUuid } = useProject();
+  const { handleRun, functionModelUuid } = useFunctionModelVersion();
   const { runLogData } = useRunLogs(versionUuid);
+  const { originalPromptListData, isEqualToOriginal } =
+    useFunctionModelVersion();
   const {
+    modifiedPrompts,
     runTasksCount,
     runLogs,
     fullScreenRunVersionUuid,
     setFullScreenRunVersionUuid,
   } = useFunctionModelVersionStore();
   const [runLogList, setRunLogList] = useState<RunLog[]>([]);
+  const [selectedTab, setSelectedTab] = useState(Tab.Test);
+  const [inputs, setInputs] = useState<Array<KeyValueInput>>([
+    {
+      id: Math.random().toString(),
+      key: "",
+      value: "",
+    },
+  ]);
+  const [inputsCache, setInputsCache] = useState<Array<KeyValueInput>>([]);
+  const prompts = useMemo(
+    () => (isNewOrCachedVersion ? modifiedPrompts : originalPromptListData),
+    [isNewOrCachedVersion, modifiedPrompts, originalPromptListData]
+  );
+
+  const inputKeys: Array<string> = useMemo(() => {
+    if (prompts == null || prompts.length == 0) {
+      return [];
+    }
+    // For each prompt.content, extract the string between {} and add it to the inputKeys array
+    const extractedInputKeys: Array<string> = [];
+    prompts.forEach((prompt) => {
+      const inputKey = prompt.content.match(/\{(.*?)\}/g);
+      if (inputKey != null) {
+        inputKey.forEach((key) => {
+          const newInputKey = key.slice(1, -1);
+          if (extractedInputKeys.includes(newInputKey)) return;
+          extractedInputKeys.push(newInputKey);
+        });
+      }
+    });
+    return extractedInputKeys;
+  }, [prompts]);
+
+  useEffect(() => {
+    if (inputKeys.length == 0 || inputs.length == 0 || !inputs) return;
+    if (arePrimitiveListsEqual(inputKeys, Object.keys(inputs))) return;
+    const newInputs = inputKeys.map((key) => {
+      if (inputs.some((input) => input?.key == key)) {
+        return inputs.find((input) => input?.key == key);
+      }
+      return {
+        id: Math.random().toString(),
+        key: key,
+        value: "",
+      };
+    });
+    setInputs(newInputs);
+  }, [inputKeys]);
+
+  const isRunDisabled = useMemo(() => {
+    if (isNewOrCachedVersion) {
+      if (isInitialVersion) {
+        if (
+          !(modifiedPrompts?.length > 0) ||
+          modifiedPrompts?.every?.((prompt) => prompt.content === "")
+        )
+          return true;
+      } else {
+        return isEqualToOriginal;
+      }
+    }
+    if (inputKeys.length == 0) {
+      return true;
+    }
+    return inputs.some((input) => input.value.trim().length == 0);
+  }, [
+    inputs,
+    inputKeys,
+    isNewOrCachedVersion,
+    isEqualToOriginal,
+    isInitialVersion,
+    modifiedPrompts,
+  ]);
 
   useEffect(() => {
     if (
@@ -39,8 +156,9 @@ export function RunLogUI({
 
     if (runLogData?.length > 0) {
       updatedRunLogList = [
-        ...runLogData.map((log) => {
-          let parsedInputs, parsedOutputs;
+        ...runLogData.map((log: RunLog) => {
+          let parsedInputs: Record<string, any>,
+            parsedOutputs: Record<string, any>;
           try {
             parsedInputs = log.inputs;
           } catch (e) {
@@ -67,10 +185,50 @@ export function RunLogUI({
     setRunLogList(updatedRunLogList);
   }, [versionUuid, runLogData, runTasksCount, runLogs]);
 
+  async function handleClickRun() {
+    const inputsObject: Record<string, string> = inputs.reduce(
+      (acc, { key, value }) => {
+        acc[key] = value;
+        return acc;
+      },
+      {}
+    );
+
+    handleRun(isNewOrCachedVersion, inputsObject);
+    // If inputsObject if different from inputsCache, create new sample input
+    let newSample: boolean = false;
+    if (!!inputsCache && inputsCache.length > 0) {
+      for (const inputKey in inputsObject) {
+        if (
+          inputsObject[inputKey] !=
+          inputsCache.find((input) => input.key == inputKey)?.value
+        ) {
+          newSample = true;
+          break;
+        }
+      }
+    }
+    if (newSample) {
+      setInputsCache(inputs);
+      await createSampleInput({
+        project_uuid: projectUuid,
+        function_model_uuid: functionModelUuid,
+        input_keys: Object.keys(inputsObject),
+        content: inputsObject,
+      });
+    }
+  }
+
   const mainUI = (
-    <div className="w-full h-full flex flex-col gap-y-2">
+    <div className="w-full h-full flex flex-col gap-y-2 p-4 overflow-hidden">
       <div className="w-full flex flex-row justify-between items-center">
-        <p className="text-xl font-semibold ps-2">Run Log</p>
+        <SelectTab
+          tabs={TABS}
+          selectedTab={selectedTab}
+          onSelect={(tab: string) => setSelectedTab(tab as Tab)}
+          variant="underline"
+          selectorZIndex={0}
+        />
         {versionUuid != null && (
           <button
             className="btn btn-sm bg-transparent border-transparent items-center hover:bg-neutral-content/20"
@@ -89,7 +247,19 @@ export function RunLogUI({
           </button>
         )}
       </div>
-      <RunLogTable runLogList={runLogList} />
+      {selectedTab == Tab.Test && (
+        <div className="h-full pb-6">
+          <TestUI
+            inputKeys={inputKeys}
+            inputs={inputs}
+            setInputs={setInputs}
+            setInputsCache={setInputsCache}
+            handleClickRun={handleClickRun}
+            isRunDisabled={isRunDisabled}
+          />
+        </div>
+      )}
+      {selectedTab == Tab.RunLogs && <RunLogTable runLogList={runLogList} />}
     </div>
   );
 
@@ -97,7 +267,7 @@ export function RunLogUI({
     return (
       <div
         className={classNames(
-          "w-full h-full rounded-box bg-base-200 p-4",
+          "w-full h-full rounded-box bg-base-200",
           className
         )}
       >
@@ -108,7 +278,7 @@ export function RunLogUI({
     return (
       <ModalPortal>
         <motion.div
-          className="fixed bottom-0 right-0 z-[999999] bg-base-200/70 backdrop-blur-md p-4 flex justify-center items-center"
+          className={classNames(modalVariants({ animateFrom: animateFrom }))}
           initial={{ width: "50vw", height: "40vh" }}
           animate={{
             width: "100vw",
@@ -122,8 +292,104 @@ export function RunLogUI({
   }
 }
 
+function TestUI({
+  inputKeys,
+  inputs,
+  setInputs,
+  setInputsCache,
+  handleClickRun,
+  isRunDisabled,
+}: {
+  inputKeys: Array<string>;
+  inputs: Array<KeyValueInput>;
+  setInputs: (inputs: Array<KeyValueInput>) => void;
+  setInputsCache: (inputs: Array<KeyValueInput>) => void;
+  handleClickRun: () => void;
+  isRunDisabled: boolean;
+}) {
+  const [isSelectSampleInputsModalOpen, setIsSelectSampleInputsModalOpen] =
+    useState(false);
+
+  return (
+    <div className="flex flex-col gap-y-3 h-full">
+      <div className="flex flex-row justify-between w-full">
+        <div className="w-auto flex flex-col items-start justify-start">
+          <label className="label text-xs font-medium">
+            <span className="label-text">Input keys</span>
+          </label>
+          <div className="w-fit flex flex-wrap items-start gap-x-1 gap-y-2">
+            {inputKeys?.map((key) => (
+              <Badge key={key} className="text-sm" variant="secondary">
+                {key}
+              </Badge>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-row justify-end items-center flex-shrink gap-x-3">
+          <button
+            className={classNames(
+              "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-transparent hover:bg-base-content/10",
+              "!border-base-content/80 !text-base-content/80"
+            )}
+            onClick={() => setIsSelectSampleInputsModalOpen(true)}
+          >
+            <p>Import inputs</p>
+            <ArrowSquareIn size={20} weight="fill" />
+          </button>
+          <button
+            className={classNames(
+              "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
+              "text-base-100 disabled:bg-muted disabled:text-muted-content disabled:border-muted-content"
+            )}
+            onClick={handleClickRun}
+            disabled={isRunDisabled}
+          >
+            <p>Run</p>
+            <Play size={20} weight="fill" />
+          </button>
+        </div>
+      </div>
+      <div className="w-full h-full overflow-y-auto">
+        <div className="flex flex-col gap-y-2 h-full">
+          {inputKeys?.map((key) => (
+            <KeyValueInputField
+              key={key}
+              isKeyEditable={false}
+              input={inputs?.find((input) => input && input?.key == key)}
+              setInput={(input) => {
+                setInputs(
+                  inputs?.map((i) => (i?.key === input?.key ? input : i))
+                );
+              }}
+              onDelete={() => {
+                toast.error("This input is required");
+              }}
+            />
+          ))}
+        </div>
+      </div>
+      <SelectSampleInputsModal
+        isOpen={isSelectSampleInputsModalOpen}
+        inputKeys={inputKeys}
+        setIsOpen={setIsSelectSampleInputsModalOpen}
+        onSelect={(sampleInput) => {
+          const newInputs = Object.keys(sampleInput.content).map((inputKey) => {
+            return {
+              id: Math.random().toString(),
+              key: inputKey,
+              value: sampleInput.content[inputKey],
+            };
+          });
+          setInputsCache(newInputs);
+          setInputs(newInputs);
+        }}
+      />
+    </div>
+  );
+}
+
 const RunLogTable = ({ runLogList }) => {
-  const [showRaw, setShowRaw] = useState(true);
+  const [showRaw, setShowRaw] = useState(false);
 
   return (
     <div className="overflow-auto">
@@ -165,7 +431,7 @@ const RunLogTable = ({ runLogList }) => {
         </thead>
         <tbody className="bg-base-100">
           {runLogList?.map((log, idx) => (
-            <RunLogComponent key={idx} showRaw={showRaw} runLogData={log} />
+            <RunLogRow key={idx} showRaw={showRaw} runLogData={log} />
           ))}
         </tbody>
       </table>
@@ -173,7 +439,7 @@ const RunLogTable = ({ runLogList }) => {
   );
 };
 
-const RunLogComponent = ({
+const RunLogRow = ({
   showRaw,
   runLogData,
 }: {
@@ -192,7 +458,7 @@ const RunLogComponent = ({
             displayDataTypes={false}
             displayObjectSize={false}
             enableClipboard={false}
-            theme="google"
+            theme="harmonic"
           />
         )}
       </td>
@@ -209,7 +475,7 @@ const RunLogComponent = ({
             displayDataTypes={false}
             displayObjectSize={false}
             enableClipboard={false}
-            theme="google"
+            theme="harmonic"
           />
         )}
       </td>
@@ -227,7 +493,7 @@ const RunLogComponent = ({
             displayDataTypes={false}
             displayObjectSize={false}
             enableClipboard={false}
-            theme="google"
+            theme="harmonic"
           />
         )}
       </td>

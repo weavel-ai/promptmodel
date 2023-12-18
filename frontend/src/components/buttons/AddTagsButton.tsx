@@ -12,13 +12,13 @@ export function AddTagsButton({
     <button
       className={classNames(
         "flex flex-row gap-x-2 rounded-full px-2 py-1 btn btn-xs btn-outline outline-1 outline-base-content bg-transparent text-base-content",
-        "hover:bg-base-content/10 hover:text-base-content normal-case font-medium",
+        "hover:bg-base-content/10 hover:text-base-content normal-case font-medium flex-shrink",
         className
       )}
       onClick={onClick}
     >
       <Plus weight="bold" />
-      <p>Add tags</p>
+      <p className="flex-shrink overflow-ellipsis">Add tags</p>
     </button>
   );
 }

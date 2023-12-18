@@ -7,7 +7,7 @@ export async function streamFunctionModelRun({
   model,
   fromVersion,
   versionUuid,
-  sampleName,
+  sampleInput,
   parsingType,
   outputKeys,
   functions,
@@ -19,7 +19,7 @@ export async function streamFunctionModelRun({
   model: string;
   fromVersion?: string | null;
   versionUuid?: string | null;
-  sampleName: string;
+  sampleInput?: Record<string, string>;
   parsingType?: string | null;
   outputKeys?: string[] | null;
   functions?: string[] | null;
@@ -36,7 +36,7 @@ export async function streamFunctionModelRun({
       model: model,
       from_version: fromVersion,
       version_uuid: versionUuid,
-      sample_name: sampleName,
+      sample_input: sampleInput,
       parsing_type: parsingType,
       output_keys: outputKeys,
       functions: functions,
@@ -52,7 +52,7 @@ export async function streamLocalFunctionModelRun({
   model,
   fromVersion,
   versionUuid,
-  sampleName,
+  sampleInput,
   parsingType,
   outputKeys,
   functions,
@@ -64,7 +64,7 @@ export async function streamLocalFunctionModelRun({
   model: string;
   fromVersion?: string | null;
   versionUuid?: string | null;
-  sampleName: string;
+  sampleInput?: Record<string, string>;
   parsingType?: string | null;
   outputKeys?: string[] | null;
   functions?: string[] | null;
@@ -81,7 +81,7 @@ export async function streamLocalFunctionModelRun({
       model: model,
       from_version: fromVersion,
       version_uuid: versionUuid,
-      sample_name: sampleName,
+      sample_input: sampleInput,
       parsing_type: parsingType,
       output_keys: outputKeys,
       functions: functions,

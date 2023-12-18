@@ -1,5 +1,5 @@
 """APIs for SampleInput"""
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 from modules.types import PMObject
 
@@ -9,14 +9,18 @@ class SampleInputInstance(PMObject):
     created_at: str
     uuid: str
 
-    name: str
+    name: Optional[str] = None
     content: Dict[str, Any]
+    input_keys: Optional[List[str]] = None
     online: bool
 
     project_uuid: str
+    function_model_uuid: str
 
 
 class CreateSampleInputBody(PMObject):
     project_uuid: str
-    name: str
+    name: Optional[str] = None
     content: Dict[str, Any]
+    function_model_uuid: Optional[str] = None
+    input_keys: List[str]

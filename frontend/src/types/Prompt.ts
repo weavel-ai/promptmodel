@@ -11,10 +11,10 @@ export interface ReadPromptsRequest {
  * General interface for Prompt.
  */
 export interface Prompt {
-  id: number;
-  created_at: string;
+  id?: number;
+  created_at?: string;
   role: string;
   step: number;
   content: string;
-  version_uuid: string;
+  version_uuid?: string;
 }
