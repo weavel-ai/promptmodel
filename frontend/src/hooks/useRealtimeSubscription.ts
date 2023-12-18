@@ -5,8 +5,11 @@ import { useFunctions } from "./useFunction";
 import { useFunctionModel } from "./useFunctionModel";
 import { useSamples } from "./useSample";
 import { useAuth } from "./auth/useAuth";
+import { useFunctionModelSampleInputs } from "./useFunctionModelSampleInputs";
+import { useParams } from "next/navigation";
 
 export function useRealtimeSubscription() {
+  const params = useParams();
   const { subscribeToProject } = useProject();
   const { subscribeToFunctionModel } = useFunctionModel();
   const { subscribeToChatModel } = useChatModel();
@@ -30,10 +33,10 @@ export function useRealtimeSubscription() {
 }
 
 function useAsyncSubscription(subscribeFunction: () => Promise<() => void>) {
-  const {isSignedIn} = useAuth()
+  const { isSignedIn } = useAuth();
 
   useEffect(() => {
-    if (!isSignedIn) return
+    if (!isSignedIn) return;
     let isActive = true;
     let cleanupFunction;
     if (!subscribeFunction) return;

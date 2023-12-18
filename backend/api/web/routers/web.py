@@ -53,18 +53,7 @@ async def run_cloud_function_model(
     session: AsyncSession, project_uuid: str, run_config: FunctionModelRunConfig
 ):
     """Run FunctionModel on the cloud, request from web."""
-    sample_input: Dict[str, Any] = {}
-    # get sample from db
-
-    if run_config.sample_name:
-        sample_input = (
-            await session.execute(
-                select(SampleInput.content).where(
-                    (SampleInput.project_uuid == project_uuid)
-                    & (SampleInput.name == run_config.sample_name)
-                )
-            )
-        ).scalar_one()
+    sample_input: Dict[str, str] = run_config.sample_input if run_config.sample_input else {}
 
     # Validate Variable Matching
     prompt_variables = []
@@ -352,6 +341,7 @@ async def run_cloud_function_model(
         data = {
             "status": "completed",
         }
+        yield data
 
         if len(changelogs) > 0:
             session.add(
@@ -378,7 +368,6 @@ async def run_cloud_function_model(
             )
             await session.commit()
 
-        yield data
     except Exception as error:
         logger.error(f"Error running service: {error}")
         data = {
@@ -629,6 +618,7 @@ async def run_cloud_chat_model(
         data = {
             "status": "completed",
         }
+        yield data
 
         if len(changelogs) > 0:
             session.add(
@@ -654,7 +644,6 @@ async def run_cloud_chat_model(
             )
             await session.commit()
 
-        yield data
 
     except Exception as exc:
         logger.error(f"Error running service: {exc}")
