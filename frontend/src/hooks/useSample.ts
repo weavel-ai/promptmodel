@@ -31,9 +31,9 @@ export const useSamples = () => {
     const newStream = await subscribeTable({
       tableName: "sample_input",
       project_uuid: params?.projectUuid as string,
-      onMessage: async (data: SampleInput) => {
+      onMessage: async (event: MessageEvent) => {
         syncToast.open();
-        console.log(data);
+        const data: SampleInput = JSON.parse(event.data);
         if (!!data) {
           const queryKeyObj = {
             projectUuid: params?.projectUuid,
@@ -41,21 +41,22 @@ export const useSamples = () => {
           if (data.function_model_uuid === params?.functionModelUuid) {
             queryKeyObj["functionModelUuid"] = params?.functionModelUuid;
           }
+          const previousData = queryClient.getQueryData<SampleInput[]>([
+            "sampleInputListData",
+            queryKeyObj,
+          ]);
+          const newData = [...(previousData ?? [])];
+          const index = newData.findIndex((d) => d.uuid === data.uuid);
+          if (index === -1) {
+            newData.unshift(data);
+          } else {
+            newData[index] = data;
+          }
           queryClient.setQueryData<SampleInput[]>(
             ["sampleInputListData", queryKeyObj],
-            (old) => {
-              const newData = [...(old ?? [])];
-              const index = newData.findIndex((d) => d.uuid === data.uuid);
-              if (index === -1) {
-                newData.push(data);
-              } else {
-                newData[index] = data;
-              }
-              return newData;
-            }
+            newData
           );
         }
-        // await refetchSampleInputListData();
         syncToast.close();
       },
     });

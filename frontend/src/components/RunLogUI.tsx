@@ -196,8 +196,9 @@ export function RunLogUI({
 
     handleRun(isNewOrCachedVersion, inputsObject);
     // If inputsObject if different from inputsCache, create new sample input
-    let newSample: boolean = false;
+    let newSample: boolean = true;
     if (!!inputsCache && inputsCache.length > 0) {
+      newSample = false;
       for (const inputKey in inputsObject) {
         if (
           inputsObject[inputKey] !=
