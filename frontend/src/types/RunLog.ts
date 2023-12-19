@@ -45,11 +45,11 @@ export interface RunLog {
   parsed_outputs: Record<string, any>;
   function_call: Record<string, any>;
   run_log_metadata: Record<string, any>;
-  score: number;
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;
   latency: number;
   cost: number;
   version_uuid: string;
+  project_uuid: string;
 }

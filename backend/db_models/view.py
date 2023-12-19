@@ -175,6 +175,5 @@ class DeploymentRunLogView(Base):
     cost: Optional[float] = Column(Float, nullable=True)
 
     run_log_metadata: Optional[Dict[str, Any]] = Column(JSONB)
-    score: Optional[int] = Column(BigInteger)
 
     run_from_deployment: bool = Column(Boolean)

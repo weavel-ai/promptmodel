@@ -48,7 +48,7 @@ class SampleInput(Base):
     
     function_model_uuid: UUIDType = Column(
         UUID(as_uuid=True),
-        ForeignKey("function_model.uuid", onupdate="SET NULL"),
+        ForeignKey("function_model.uuid", ondelete="SET NULL"),
         nullable=True,
     )
 

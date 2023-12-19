@@ -7,10 +7,12 @@ export class Routes {
 
 export class env {
   static SELF_HOSTED: boolean = process.env.NEXT_PUBLIC_SELF_HOSTED == "true";
-  static ENDPOINT_URL_INTERNAL: string = process.env.NEXT_PUBLIC_ENDPOINT_URL.includes("localhost") 
-                                        ? "http://backend:8000/api" 
-                                        : process.env.NEXT_PUBLIC_ENDPOINT_URL;
-                                        
+  static ENDPOINT_URL_INTERNAL: string =
+    process.env.NEXT_PUBLIC_ENDPOINT_URL.includes("localhost")
+      ? // ? "http://localhost:8000/api"
+        "http://backend:8000/api"
+      : process.env.NEXT_PUBLIC_ENDPOINT_URL;
+
   static ENDPOINT_URL: string = process.env.NEXT_PUBLIC_ENDPOINT_URL;
   static SUPABASE_URL: string = process.env.NEXT_PUBLIC_SUPABASE_URL;
   static SUPABASE_KEY: string = process.env.NEXT_PUBLIC_SUPABASE_KEY;

@@ -140,8 +140,6 @@ class RunLog(Base):
     function_call: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
     tool_calls: Optional[List[Dict[str, Any]]] = Column(ARRAY(JSONB), nullable=True)
 
-    score: Optional[int] = Column(BigInteger, nullable=True)
-
     prompt_tokens: Optional[int] = Column(BigInteger, nullable=True)
     completion_tokens: Optional[int] = Column(BigInteger, nullable=True)
     total_tokens: Optional[int] = Column(BigInteger, nullable=True)
