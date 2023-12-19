@@ -24,6 +24,7 @@ RUN pip install --no-cache-dir --upgrade -r requirements-prod.txt
 COPY . .
 
 FROM python:3.9-slim AS deployer
+ARG FRONTEND_PUBLIC_URL
 ENV NEXTAUTH_URL=$FRONTEND_PUBLIC_URL
 COPY --from=builder /usr/local/bin/dockerize /usr/local/bin/dockerize
 COPY --from=builder /usr/local/bin/alembic /usr/local/bin/alembic

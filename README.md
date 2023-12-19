@@ -15,7 +15,7 @@
         <a href="https://pypi.org/project/promptmodel" target="_blank">
             <img src="https://img.shields.io/pypi/v/promptmodel.svg?style=flat-square" alt="PyPI Version">
         </a>
-        <a href="https://discord.gg/2Y36M36tZf" target="_blank">
+        <a href="https://promptmodel.run/discord" target="_blank">
             <img src="https://dcbadge.vercel.app/api/server/2Y36M36tZf?theme=default-inverted&style=flat-square&" alt="Discord Invite">
         </a>
     </div>
@@ -80,11 +80,11 @@ Fully async, typed SDKs to instrument any LLM application. Currently available f
 
 ## Questions / Feedback
 
-The maintainers are very active in the Promptmodel [Discord](https://discord.gg/2Y36M36tZf) and are happy to answer questions or discuss feedback/ideas regarding the future of the project.
+The maintainers are very active in the Promptmodel [Discord](https://promptmodel.run/discord) and are happy to answer questions or discuss feedback/ideas regarding the future of the project.
 
 ## Contributing to Promptmodel
 
-Join the community [on Discord](https://discord.gg/2Y36M36tZf).
+Join the community [on Discord](https://promptmodel.run/discord).
 
 To contribute, send us a PR, raise a GitHub issue, or email at contributing@promptmodel.run
 

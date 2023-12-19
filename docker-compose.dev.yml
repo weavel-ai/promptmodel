@@ -7,8 +7,8 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-    volumes:
-      - ./volumes/postgres_data:/var/lib/postgresql/data
+    # volumes:
+    #   - ./volumes/postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     networks:
@@ -30,15 +30,15 @@ services:
       args:
         - POSTGRES_HOST=db
         - POSTGRES_DB=${POSTGRES_DB:-postgres}
-        - POSTGRES_USER=${POSTGRES_USER:-youruser}
-        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
+        - POSTGRES_USER=${POSTGRES_USER:-postgres}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
         - POSTGRES_PORT=${POSTGRES_PORT:-5432}
         - REDIS_HOST=redis
     environment:
       - POSTGRES_HOST=db
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
-      - POSTGRES_USER=${POSTGRES_USER:-youruser}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - REDIS_HOST=redis
     depends_on:
@@ -56,8 +56,8 @@ services:
       args:
         - POSTGRES_HOST=db
         - POSTGRES_DB=${POSTGRES_DB:-postgres}
-        - POSTGRES_USER=${POSTGRES_USER:-youruser}
-        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
+        - POSTGRES_USER=${POSTGRES_USER:-postgres}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
         - POSTGRES_PORT=${POSTGRES_PORT:-5432}
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
         - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
@@ -67,11 +67,12 @@ services:
     environment:
       - POSTGRES_HOST=db
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
-      - POSTGRES_USER=${POSTGRES_USER:-youruser}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
       - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-yourkey}
       - PORT=8000
     depends_on:
       db:
@@ -85,9 +86,11 @@ services:
       watch:
         - path: ./backend/requirements.txt
           action: rebuild
-        - path: ./backend
+        - path: ./backend/migrations/versions/*.py
           action: rebuild
-          # action: sync
+        - path: ./backend
+          # action: rebuild
+          action: sync
 
   frontend:
     build:
@@ -116,8 +119,8 @@ services:
     develop:
       watch:
         - path: ./frontend
-          action: rebuild
-          # action: sync
+          # action: rebuild
+          action: sync
         - path: ./frontend/package.json
           action: rebuild
 

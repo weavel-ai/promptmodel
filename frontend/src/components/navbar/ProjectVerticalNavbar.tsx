@@ -77,7 +77,7 @@ export const ProjectVerticalNavbar = () => {
         </VerticalNavbarItem>
         <VerticalNavbarItem
           label="Discord"
-          href="https://discord.gg/2Y36M36tZf"
+          href="https://promptmodel.run/discord"
           external
         >
           <DiscordLogo weight="fill" className="text-base-content" size={20} />
