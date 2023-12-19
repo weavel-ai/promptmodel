@@ -12,6 +12,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_user_id
 from db_models import *
 from ..models import (
     ChatMessageInstance,
@@ -29,6 +30,7 @@ async def fetch_session_chat_messages(
     page: int,
     rows_per_page: int,
     db_session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         chat_messages: List[ChatMessageInstance] = [
@@ -59,6 +61,7 @@ async def fetch_project_chat_messages(
     page: int,
     rows_per_page: int,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         chat_messages: List[ChatLogViewInstance] = [
@@ -87,6 +90,7 @@ async def fetch_project_chat_messages(
 async def fetch_chat_logs_count(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         try:

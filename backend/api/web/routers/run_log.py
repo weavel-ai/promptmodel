@@ -13,6 +13,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_user_id
 from db_models import *
 from ..models import (
     RunLogInstance,
@@ -30,6 +31,7 @@ router = APIRouter()
 async def fetch_version_run_logs(
     function_model_version_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         run_logs: List[RunLogInstance] = [
@@ -58,6 +60,7 @@ async def fetch_run_logs(
     page: int,
     rows_per_page: int,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         run_logs: List[DeploymentRunLogViewInstance] = [
@@ -86,6 +89,7 @@ async def fetch_run_logs(
 async def fetch_run_logs_count(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         try:

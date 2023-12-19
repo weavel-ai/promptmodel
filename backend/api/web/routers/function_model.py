@@ -13,6 +13,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_user_id
 from db_models import *
 from ..models import FunctionModelInstance, CreateFunctionModelBody
 
@@ -24,6 +25,7 @@ router = APIRouter()
 async def fetch_function_models(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         function_models: List[FunctionModelInstance] = [
@@ -50,6 +52,7 @@ async def fetch_function_models(
 async def create_function_model(
     body: CreateFunctionModelBody,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         # check same name
@@ -87,6 +90,7 @@ async def edit_function_model_name(
     uuid: str,
     name: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         updated_model = (
@@ -114,6 +118,7 @@ async def edit_function_model_name(
 async def delete_function_model(
     uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         deleted_model = (

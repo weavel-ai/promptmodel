@@ -11,6 +11,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_user_id
 from db_models import *
 from ..models import CliAccessInstance, UpdateCliAccessKeyBody
 
@@ -22,6 +23,7 @@ router = APIRouter()
 async def update_cli_access(
     cli_access: UpdateCliAccessKeyBody,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         # update table CliAccess by user_id

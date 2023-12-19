@@ -11,6 +11,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_user_id
 from db_models import *
 from ..models import ChatSessionInstance
 
@@ -21,6 +22,7 @@ router = APIRouter()
 async def fetch_chat_sessions(
     chat_model_version_uuid: str,
     db_session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         chat_sessions: List[ChatSessionInstance] = [

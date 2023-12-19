@@ -5,10 +5,6 @@ import { parseMultipleJson } from "@/utils";
 
 const AXIOS_HEADERS = {
   "Content-type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "*",
-  "Access-Control-Allow-Credentials": "true",
 };
 
 export const railwayWebClient = axios.create({

@@ -18,6 +18,7 @@ from utils.logger import logger
 from utils.prompt_utils import update_dict
 
 from base.database import get_session
+from utils.security import get_user_id
 from api.common.models import FunctionModelRunConfig, ChatModelRunConfig
 from db_models import *
 
@@ -29,9 +30,10 @@ async def run_function_model(
     project_uuid: str,
     run_config: FunctionModelRunConfig,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     """Run FunctionModel for cloud development environment."""
-
+    
     async def stream_run():
         async for chunk in run_cloud_function_model(
             session=session, project_uuid=project_uuid, run_config=run_config
@@ -383,6 +385,7 @@ async def run_chat_model(
     project_uuid: str,
     chat_config: ChatModelRunConfig,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     """Run ChatModel from web."""
 

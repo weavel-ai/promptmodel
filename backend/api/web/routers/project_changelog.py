@@ -12,6 +12,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_user_id
 from db_models import *
 from ..models import ProjectChangelogInstance
 
@@ -23,6 +24,7 @@ router = APIRouter()
 async def fetch_changelogs(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         changelogs: List[ProjectChangelogInstance] = [

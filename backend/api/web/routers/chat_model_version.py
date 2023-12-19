@@ -13,6 +13,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_user_id
 from db_models import *
 from ..models import (
     ChatModelVersionInstance,
@@ -28,6 +29,7 @@ router = APIRouter()
 async def fetch_chat_model_versions(
     chat_model_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         chat_model_versions: List[ChatModelVersionInstance] = [
@@ -54,6 +56,7 @@ async def fetch_chat_model_versions(
 async def fetch_chat_model_version(
     uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         try:
@@ -88,6 +91,7 @@ async def update_published_chat_model_version(
     uuid: str,
     body: UpdatePublishedChatModelVersionBody,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         if body.previous_published_version_uuid:
@@ -138,6 +142,7 @@ async def update_chat_model_version_tags(
     uuid: str,
     body: UpdateChatModelVersionTagsBody,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     tags: Optional[List[str]] = body.tags
     try:
@@ -169,6 +174,7 @@ async def update_chat_model_version_memo(
     uuid: str,
     memo: Optional[str] = None,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         updated_chat_model_version = (

@@ -12,6 +12,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_user_id
 from db_models import *
 from ..models import PromptInstance
 
@@ -23,6 +24,7 @@ router = APIRouter()
 async def fetch_prompts(
     function_model_version_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         prompts: List[PromptInstance] = [

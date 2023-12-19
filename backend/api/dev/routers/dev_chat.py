@@ -17,9 +17,7 @@ from starlette.status import (
     HTTP_406_NOT_ACCEPTABLE,
 )
 
-from utils.security import get_project
 from utils.logger import logger
-from utils.prompt_utils import update_dict
 
 from base.database import get_session
 from base.websocket_connection import websocket_manager, LocalTask
@@ -27,6 +25,7 @@ from modules.websocket.run_model_generators import (
     run_local_chat_model_generator,
 )
 from api.common.models import ChatModelRunConfig
+from utils.security import get_user_id
 from db_models import *
 
 router = APIRouter()
@@ -37,6 +36,7 @@ async def run_chat_model(
     project_uuid: str,
     run_config: ChatModelRunConfig,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     """
     <h2>For local connection, Send run_chat_model request to the local server  </h2>
@@ -75,7 +75,7 @@ async def run_chat_model(
         project = (
             (
                 await session.execute(
-                    select(Project.cli_access_key, Project.version, Project.uuid).where(
+                    select(Project.cli_access_key, Project.version, Project.uuid, Project.organization_id).where(
                         Project.uuid == project_uuid
                     )
                 )
@@ -83,6 +83,20 @@ async def run_chat_model(
             .mappings()
             .all()
         )
+        
+        # check jwt['user_id'] have access to project_uuid
+        users_orgs = (
+            await session.execute(
+                select(UsersOrganizations.organization_id).where(
+                    UsersOrganizations.user_id == jwt['user_id']
+                )
+            )
+        ).scalars().all()
+        
+        if project[0]["organization_id"] not in users_orgs:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+            )
 
         if len(project) == 0:
             raise HTTPException(
@@ -122,6 +136,7 @@ async def run_chat_model(
 async def list_chat_models(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     """Get list of chat models in local DB by websocket
     Input:

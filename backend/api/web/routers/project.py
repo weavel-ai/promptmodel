@@ -7,13 +7,14 @@ from sqlalchemy import select
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_401_UNAUTHORIZED,
     HTTP_404_NOT_FOUND,
     HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 from utils.logger import logger
-
+from utils.security import get_user_id
 from base.database import get_session
 from db_models import *
 from ..models import ProjectInstance, CreateProjectBody
@@ -26,6 +27,7 @@ router = APIRouter()
 async def create_project(
     body: CreateProjectBody,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         # check same name
@@ -68,6 +70,7 @@ async def create_project(
 async def fetch_projects(
     organization_id: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         projects: List[ProjectInstance] = [
@@ -92,6 +95,7 @@ async def fetch_projects(
 async def get_project(
     uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         try:

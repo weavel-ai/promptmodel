@@ -12,6 +12,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_user_id
 from db_models import *
 from ..models import FunctionSchemaInstance
 
@@ -23,6 +24,7 @@ router = APIRouter()
 async def fetch_function_schemas(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         function_schemas: List[FunctionSchemaInstance] = [
@@ -49,6 +51,7 @@ async def fetch_function_schemas(
 async def fetch_function_schema(
     uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(get_user_id),
 ):
     try:
         try:
