@@ -59,7 +59,11 @@ function SelfHostedSignInButton() {
   // Use useEffect to add an event listener to the document
   useEffect(() => {
     function handleOutsideClick(event) {
-      if (modalRef.current && !modalRef.current.contains(event.target)) {
+      if (
+        modalRef.current &&
+        !modalRef.current.contains(event.target) &&
+        !buttonRef.current.contains(event.target)
+      ) {
         if (isOpenRef.current) {
           setIsModalOpen(false);
           console.log("outside click");

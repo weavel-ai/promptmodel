@@ -19,7 +19,6 @@ class RunLogInstance(PMObject):
     function_call: Optional[Dict[str, Any]] = None
 
     run_log_metadata: Optional[Dict[str, Any]] = None
-    score: Optional[int] = None
 
     latency: Optional[float] = None
     cost: Optional[float] = None
@@ -28,6 +27,7 @@ class RunLogInstance(PMObject):
     total_tokens: Optional[int] = None
 
     version_uuid: str
+    project_uuid: str
 
 
 class DeploymentRunLogViewInstance(PMObject):
@@ -55,7 +55,6 @@ class DeploymentRunLogViewInstance(PMObject):
     cost: Optional[float] = None
 
     run_log_metadata: Optional[Dict[str, Any]] = None
-    score: Optional[int] = None
 
     run_from_deployment: bool = True
 

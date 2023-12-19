@@ -17,6 +17,7 @@ import {
   Command,
   GitBranch,
   Play,
+  Plus,
   RocketLaunch,
   Trash,
   XCircle,
@@ -104,6 +105,7 @@ const AnalyticsPage = () => {
     from: subDays(Date.now(), 7),
     to: new Date(),
   });
+  const [isCreateMetricOpen, setIsCreateMetricOpen] = useState(false);
 
   const { dailyRunLogMetrics } = useDailyRunLogMetrics(
     dayjs(dateRange?.from)?.toISOString(),
@@ -167,41 +169,68 @@ const AnalyticsPage = () => {
   });
 
   return (
-    <div className="pt-28 pl-24 flex flex-wrap gap-4 items-center justify-center">
-      <div className="absolute right-10 top-14">
-        <DatePickerWithRange
-          dateRange={dateRange}
-          setDateRange={setDateRange}
-        />
+    <div className="overflow-y-auto w-full h-full">
+      <div className="flex flex-col gap-y-2 justify-start items-center w-full py-28 pl-24 pr-6">
+        <div className="fixed right-6 top-14">
+          <DatePickerWithRange
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+          />
+        </div>
+        <div className="flex flex-row justify-start w-full">
+          <p className="text-2xl font-semibold my-2">LLM usage metrics</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4 gap-4 w-full">
+          <CustomAreaChart
+            data={dailyRunLogMetrics}
+            dataKey="total_cost"
+            xAxisDataKey="day"
+            title="Total Cost"
+            mainData={`$${totalCost}`}
+          />
+          <CustomAreaChart
+            data={dailyRunLogMetrics}
+            dataKey="avg_latency"
+            xAxisDataKey="day"
+            title="Average Latency"
+            mainData={`${avgLatency?.toFixed(2)}s`}
+          />
+          <CustomAreaChart
+            data={dailyRunLogMetrics}
+            dataKey="total_runs"
+            xAxisDataKey="day"
+            title="Total Runs"
+            mainData={totalRuns}
+          />
+          <CustomAreaChart
+            data={dailyRunLogMetrics}
+            dataKey="total_token_usage.total_tokens"
+            xAxisDataKey="day"
+            title="Token usage"
+            mainData={totalTokens}
+          />
+        </div>
+        <div className="flex flex-row justify-between mt-2 w-full">
+          <p className="text-2xl font-semibold my-2">Custom metrics</p>
+          <button
+            className={classNames(
+              "btn btn-outline btn-sm h-10 rounded-md flex flex-row gap-x-1 items-center text-base-content/90 hover:text-base-content",
+              "normal-case font-normal hover:bg-base-content/10 border-muted-content/80 cursor-not-allowed"
+            )}
+            onClick={() => setIsCreateMetricOpen(true)}
+          >
+            <Plus size={16} />
+            <p>Add metric</p>
+          </button>
+        </div>
+        <p className="text-muted-content my-6 text-start">
+          (Released soon) You can define custom metrics for your models. You can
+          log scores for custom metrics to run/chat logs via dashboard GUI or
+          our SDK.
+          <br /> Line charts will be automatically generated for your custom
+          metrics.
+        </p>
       </div>
-      <CustomAreaChart
-        data={dailyRunLogMetrics}
-        dataKey="total_cost"
-        xAxisDataKey="day"
-        title="Total Cost"
-        mainData={`$${totalCost}`}
-      />
-      <CustomAreaChart
-        data={dailyRunLogMetrics}
-        dataKey="avg_latency"
-        xAxisDataKey="day"
-        title="Average Latency"
-        mainData={`${avgLatency?.toFixed(2)}s`}
-      />
-      <CustomAreaChart
-        data={dailyRunLogMetrics}
-        dataKey="total_runs"
-        xAxisDataKey="day"
-        title="Total Runs"
-        mainData={totalRuns}
-      />
-      <CustomAreaChart
-        data={dailyRunLogMetrics}
-        dataKey="total_token_usage.total_tokens"
-        xAxisDataKey="day"
-        title="Token usage"
-        mainData={totalTokens}
-      />
     </div>
   );
 };
