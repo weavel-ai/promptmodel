@@ -9,6 +9,7 @@ from sqlalchemy import select, asc, desc, update
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from starlette.status import (
+    HTTP_403_FORBIDDEN,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 from promptmodel.llms.llm_dev import LLMDev
@@ -33,6 +34,20 @@ async def run_function_model(
     jwt: dict = Depends(JWT),
 ):
     """Run FunctionModel for cloud development environment."""
+    user_auth_check = (
+            await session.execute(
+                select(Project)
+                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
+                .where(Project.uuid == project_uuid)
+                .where(UsersOrganizations.user_id == jwt["user_id"])
+            )
+        ).scalar_one_or_none()
+        
+    if not user_auth_check:
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+        )
+            
     
     async def stream_run():
         async for chunk in run_cloud_function_model(
@@ -388,7 +403,20 @@ async def run_chat_model(
     jwt: dict = Depends(JWT),
 ):
     """Run ChatModel from web."""
-
+    user_auth_check = (
+            await session.execute(
+                select(Project)
+                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
+                .where(Project.uuid == project_uuid)
+                .where(UsersOrganizations.user_id == jwt["user_id"])
+            )
+        ).scalar_one_or_none()
+        
+    if not user_auth_check:
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+        )
+    
     async def stream_run():
         async for chunk in run_cloud_chat_model(
             session=session, project_uuid=project_uuid, chat_config=chat_config

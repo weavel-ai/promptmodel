@@ -5,6 +5,7 @@ from sqlalchemy import select, asc, update
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
@@ -32,6 +33,21 @@ async def fetch_chat_model_versions(
     jwt: dict = Depends(JWT),
 ):
     try:
+        check_user_auth = (
+            await session.execute(
+                select(ChatModel)
+                .join(Project, ChatModel.project_uuid == Project.uuid)
+                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
+                .where(ChatModel.uuid == chat_model_uuid)
+                .where(UsersOrganizations.user_id == jwt["user_id"])
+            )
+        ).scalar_one_or_none()
+        
+        if not check_user_auth:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+            )
+        
         chat_model_versions: List[ChatModelVersionInstance] = [
             ChatModelVersionInstance(**chat_model_version.model_dump())
             for chat_model_version in (
@@ -45,6 +61,9 @@ async def fetch_chat_model_versions(
             .all()
         ]
         return chat_model_versions
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -94,6 +113,20 @@ async def update_published_chat_model_version(
     jwt: dict = Depends(JWT),
 ):
     try:
+        user_auth_check = (
+            await session.execute(
+                select(Project)
+                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
+                .where(Project.uuid == body.project_uuid)
+                .where(UsersOrganizations.user_id == jwt["user_id"])
+            )
+        ).scalar_one_or_none()
+        
+        if not user_auth_check:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+            )
+        
         if body.previous_published_version_uuid:
             await session.execute(
                 update(ChatModelVersion)
@@ -130,6 +163,9 @@ async def update_published_chat_model_version(
         await session.commit()
 
         return ChatModelVersionInstance(**updated_chat_model_version)
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(

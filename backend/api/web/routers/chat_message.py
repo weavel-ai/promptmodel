@@ -5,6 +5,7 @@ from sqlalchemy import select, asc, desc
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
@@ -64,6 +65,20 @@ async def fetch_project_chat_messages(
     jwt: dict = Depends(JWT),
 ):
     try:
+        check_user_auth = (
+            await session.execute(
+                select(Project)
+                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
+                .where(Project.uuid == project_uuid)
+                .where(UsersOrganizations.user_id == jwt["user_id"])
+            )
+        ).scalar_one_or_none()
+        
+        if not check_user_auth:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+            )
+        
         chat_messages: List[ChatLogViewInstance] = [
             ChatLogViewInstance(**chat_message.model_dump())
             for chat_message in (
@@ -79,6 +94,9 @@ async def fetch_project_chat_messages(
             .all()
         ]
         return chat_messages
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(

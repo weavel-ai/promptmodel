@@ -73,6 +73,20 @@ async def fetch_projects(
     jwt: dict = Depends(JWT),
 ):
     try:
+        check_user_auth = (
+            await session.execute(
+                select(UsersOrganizations)
+                .where(UsersOrganizations.user_id == jwt["user_id"])
+                .where(UsersOrganizations.organization_id == organization_id)
+            )
+        ).scalar_one_or_none()
+        
+        if not check_user_auth:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail="User don't have access to this organization",
+            )
+
         projects: List[ProjectInstance] = [
             ProjectInstance(**project.model_dump())
             for project in (
@@ -84,6 +98,9 @@ async def fetch_projects(
             .all()
         ]
         return projects
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(
