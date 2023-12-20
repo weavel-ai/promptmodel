@@ -62,7 +62,7 @@ services:
         - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
         - POSTGRES_PORT=${POSTGRES_PORT:-5432}
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-        - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
+        - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-https://localhost:3000}
         - PORT=8000
     volumes:
       - ./backend:/app
@@ -75,7 +75,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-      - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
+      - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-https://localhost:3000}
       - PORT=8000
     depends_on:
       db:
@@ -97,18 +97,18 @@ services:
     build:
       context: ./frontend
       args:
-        - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
+        - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-https://localhost:3000}
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-        - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-http://localhost:8000}
+        - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-https://localhost:8000}
         - NEXT_PUBLIC_SELF_HOSTED=true
     volumes:
       - /app/node_modules
     ports:
       - "3000:3000"
     environment:
-      - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
+      - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-https://localhost:3000}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-      - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-http://localhost:8000}
+      - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-https://localhost:8000}
       - NEXT_PUBLIC_SELF_HOSTED=true
     depends_on:
       backend:

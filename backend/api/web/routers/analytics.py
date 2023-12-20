@@ -15,6 +15,7 @@ from utils.logger import logger
 from base.database import get_session
 from db_models import *
 from ..models import DailyRunLogMetricInstance, DailyChatLogMetricInstance
+from utils.security import JWT
 
 router = APIRouter()
 
@@ -25,6 +26,7 @@ async def fetch_daily_run_log_metrics(
     start_day: str,
     end_day: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
         metrics: List[DailyRunLogMetricInstance] = (
@@ -81,6 +83,7 @@ async def fetch_daily_chat_log_metrics(
     start_day: str,
     end_day: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
         metrics: List[DailyChatLogMetricInstance] = [

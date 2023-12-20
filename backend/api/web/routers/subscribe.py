@@ -7,7 +7,8 @@ from redis import asyncio as aioredis
 import asyncio
 import logging
 from dotenv import load_dotenv
-from fastapi import WebSocket, APIRouter
+from fastapi import WebSocket, APIRouter, Depends
+from utils.security import JWT  
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -54,14 +55,12 @@ async def subscribe(websocket: WebSocket, token: str, table_name: str, project_u
     if not redis.exists(token):
         await websocket.close(code=1008, reason="Invalid or expired token")
         return
-    
     await websocket.accept()
     await redis_listener(websocket=websocket, table_name=table_name, project_uuid=project_uuid, organization_id=organization_id)
 
 
 @router.post("/start")
-async def start_subscription():
-    # TODO: add authentication
+async def start_subscription(jwt: dict = Depends(JWT)):
     # Generate a unique token
     token = str(uuid4())
     # Store the token in Redis with an expiration time of 60 seconds

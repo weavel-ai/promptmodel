@@ -25,6 +25,7 @@ from base.websocket_connection import websocket_manager, LocalTask
 from modules.websocket.run_model_generators import run_local_function_model_generator
 from .dev_chat import router as chat_router
 from api.common.models import FunctionModelRunConfig
+from utils.security import JWT
 from db_models import *
 
 router = APIRouter()
@@ -36,6 +37,7 @@ async def run_function_model(
     project_uuid: str,
     run_config: FunctionModelRunConfig,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     """
     <h2>Send run_function_model request to the local server  </h2>
@@ -74,7 +76,7 @@ async def run_function_model(
         project = (
             (
                 await session.execute(
-                    select(Project.cli_access_key, Project.version, Project.uuid).where(
+                    select(Project.cli_access_key, Project.version, Project.uuid, Project.organization_id).where(
                         Project.uuid == project_uuid
                     )
                 )
@@ -82,6 +84,20 @@ async def run_function_model(
             .mappings()
             .all()
         )
+        
+        # check jwt['user_id'] have access to project_uuid
+        users_orgs = (
+            await session.execute(
+                select(UsersOrganizations.organization_id).where(
+                    UsersOrganizations.user_id == jwt['user_id']
+                )
+            )
+        ).scalars().all()
+        
+        if project[0]["organization_id"] not in users_orgs:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+            )
 
         if len(project) == 0:
             raise HTTPException(
@@ -118,6 +134,7 @@ async def run_function_model(
 async def list_function_models(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     """Get list of prompt models in local Code by websocket
     Input:
@@ -178,6 +195,7 @@ async def list_function_models(
 async def list_functions(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     """Get list of functions in local Code by websocket
     Input:

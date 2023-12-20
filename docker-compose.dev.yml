@@ -60,7 +60,7 @@ services:
         - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
         - POSTGRES_PORT=${POSTGRES_PORT:-5432}
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-        - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
+        - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-https://localhost:3000}
         - PORT=8000
     ports:
       - "8000:8000"
@@ -71,7 +71,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-      - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
+      - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-https://localhost:3000}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-yourkey}
       - PORT=8000
     depends_on:
@@ -92,40 +92,40 @@ services:
           # action: rebuild
           action: sync
 
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     args:
-  #       - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
-  #       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-  #       - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-http://localhost:8000}
-  #       - NEXT_PUBLIC_SELF_HOSTED=true
-  #   # command: npm run dev
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
-  #     - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-  #     - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-http://localhost:8000}
-  #     - NEXT_PUBLIC_SELF_HOSTED=true
-  #   depends_on:
-  #     backend:
-  #       condition: service_started
-  #     pg-to-redis-listener:
-  #       condition: service_started
-  #   networks:
-  #     - server
-  #   restart: always
-  #   develop:
-  #     watch:
-  #       - path: ./frontend
-  #         ignore:
-  #           - node_modules/
-  #         target: /app/
-  #         action: sync
-  #         # action: rebuild
-  #       - path: ./frontend/package.json
-  #         action: rebuild
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-https://localhost:3000}
+        - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
+        - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-https://localhost:8000}
+        - NEXT_PUBLIC_SELF_HOSTED=true
+    # command: npm run dev
+    ports:
+      - "3000:3000"
+    environment:
+      - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-https://localhost:3000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
+      - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-https://localhost:8000}
+      - NEXT_PUBLIC_SELF_HOSTED=true
+    depends_on:
+      backend:
+        condition: service_started
+      pg-to-redis-listener:
+        condition: service_started
+    networks:
+      - server
+    restart: always
+    develop:
+      watch:
+        - path: ./frontend
+          ignore:
+            - node_modules/
+          target: /app/
+          action: sync
+          # action: rebuild
+        - path: ./frontend/package.json
+          action: rebuild
 
 networks:
   server:

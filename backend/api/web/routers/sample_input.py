@@ -13,6 +13,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import JWT
 from db_models import *
 from ..models import SampleInputInstance, CreateSampleInputBody
 
@@ -24,6 +25,7 @@ router = APIRouter()
 async def fetch_project_sample_inputs(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
         sample_inputs: List[Dict] = [
@@ -75,6 +77,7 @@ async def fetch_function_model_sample_inputs(
 async def create_sample_input(
     body: CreateSampleInputBody,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
         if body.name:

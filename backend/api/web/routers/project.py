@@ -7,13 +7,14 @@ from sqlalchemy import select
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_401_UNAUTHORIZED,
     HTTP_404_NOT_FOUND,
     HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 from utils.logger import logger
-
+from utils.security import JWT
 from base.database import get_session
 from db_models import *
 from ..models import ProjectInstance, CreateProjectBody
@@ -26,6 +27,7 @@ router = APIRouter()
 async def create_project(
     body: CreateProjectBody,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
         # check same name
@@ -68,8 +70,23 @@ async def create_project(
 async def fetch_projects(
     organization_id: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
+        check_user_auth = (
+            await session.execute(
+                select(UsersOrganizations)
+                .where(UsersOrganizations.user_id == jwt["user_id"])
+                .where(UsersOrganizations.organization_id == organization_id)
+            )
+        ).scalar_one_or_none()
+        
+        if not check_user_auth:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail="User don't have access to this organization",
+            )
+
         projects: List[ProjectInstance] = [
             ProjectInstance(**project.model_dump())
             for project in (
@@ -81,6 +98,9 @@ async def fetch_projects(
             .all()
         ]
         return projects
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -92,6 +112,7 @@ async def fetch_projects(
 async def get_project(
     uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
         try:
