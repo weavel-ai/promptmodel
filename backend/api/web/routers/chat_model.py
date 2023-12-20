@@ -1,5 +1,5 @@
 """APIs for ChatModel"""
-from typing import List
+from typing import Annotated, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, update, delete
 
@@ -13,7 +13,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from utils.security import JWT
+from utils.security import JWT, get_jwt
 from db_models import *
 from ..models import ChatModelInstance, CreateChatModelBody
 
@@ -23,9 +23,9 @@ router = APIRouter()
 # ChatModel Endpoints
 @router.get("", response_model=List[ChatModelInstance])
 async def fetch_chat_models(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         chat_models: List[ChatModelInstance] = [
@@ -50,25 +50,29 @@ async def fetch_chat_models(
 
 @router.post("", response_model=ChatModelInstance)
 async def create_chat_model(
+    jwt: Annotated[str, Depends(get_jwt)],
     body: CreateChatModelBody,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         user_auth_check = (
             await session.execute(
                 select(Project)
-                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
+                .join(
+                    UsersOrganizations,
+                    Project.organization_id == UsersOrganizations.organization_id,
+                )
                 .where(Project.uuid == body.project_uuid)
                 .where(UsersOrganizations.user_id == jwt["user_id"])
             )
         ).scalar_one_or_none()
-        
+
         if not user_auth_check:
             raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+                status_code=HTTP_403_FORBIDDEN,
+                detail="User don't have access to this project",
             )
-            
+
         # check same name
         chat_model_in_db = (
             await session.execute(
@@ -99,10 +103,10 @@ async def create_chat_model(
 
 @router.patch("/{uuid}", response_model=ChatModelInstance)
 async def edit_chat_model_name(
+    jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
     name: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         updated_chat_model = (
@@ -128,9 +132,9 @@ async def edit_chat_model_name(
 
 @router.delete("/{uuid}", response_model=ChatModelInstance)
 async def delete_chat_model(
+    jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         # TODO
@@ -138,18 +142,21 @@ async def delete_chat_model(
             await session.execute(
                 select(ChatModel)
                 .join(Project, ChatModel.project_uuid == Project.uuid)
-                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
+                .join(
+                    UsersOrganizations,
+                    Project.organization_id == UsersOrganizations.organization_id,
+                )
                 .where(ChatModel.uuid == uuid)
                 .where(UsersOrganizations.user_id == jwt["user_id"])
             )
         ).scalar_one_or_none()
-        
+
         if not user_auth_check:
             raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+                status_code=HTTP_403_FORBIDDEN,
+                detail="User don't have access to this project",
             )
-        
-        
+
         deleted_chat_model = (
             (
                 await session.execute(

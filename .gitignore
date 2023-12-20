@@ -79,3 +79,4 @@ backend/.vscode/*
 volumes
 .env
 .pem
+.vscode

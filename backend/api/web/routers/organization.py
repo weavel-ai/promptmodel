@@ -1,6 +1,6 @@
 """APIs for Organization"""
 from datetime import datetime
-from typing import Dict
+from typing import Annotated, Dict
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
@@ -14,7 +14,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from utils.security import JWT
+from utils.security import JWT, get_jwt
 from db_models import *
 from ..models import OrganizationInstance, CreateOrganizationBody
 
@@ -24,10 +24,9 @@ router = APIRouter()
 # Organization Endpoints
 @router.post("", response_model=OrganizationInstance)
 async def create_organization(
+    jwt: Annotated[str, Depends(get_jwt)],
     body: CreateOrganizationBody,
-    # jwt: Annotated[dict, Depends(JWT)],
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         new_org = Organization(
@@ -57,11 +56,11 @@ async def create_organization(
 
 @router.patch("/{organization_id}", response_model=OrganizationInstance)
 async def update_organization(
+    jwt: Annotated[str, Depends(get_jwt)],
     organization_id: str,
     name: str,
     slug: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         updated_org = (
@@ -87,9 +86,9 @@ async def update_organization(
 
 @router.get("/{organization_id}", response_model=OrganizationInstance)
 async def get_organization(
+    jwt: Annotated[str, Depends(get_jwt)],
     organization_id: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         try:

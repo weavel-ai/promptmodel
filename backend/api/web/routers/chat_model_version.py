@@ -1,5 +1,5 @@
 """APIs for ChatModelVersion"""
-from typing import Dict, List, Optional
+from typing import Annotated, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc, update
 
@@ -14,7 +14,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from utils.security import JWT
+from utils.security import JWT, get_jwt
 from db_models import *
 from ..models import (
     ChatModelVersionInstance,
@@ -28,9 +28,9 @@ router = APIRouter()
 # ChatModelVersion Endpoints
 @router.get("", response_model=List[ChatModelVersionInstance])
 async def fetch_chat_model_versions(
+    jwt: Annotated[str, Depends(get_jwt)],
     chat_model_uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         check_user_auth = (
@@ -73,9 +73,9 @@ async def fetch_chat_model_versions(
 
 @router.get("/{uuid}", response_model=ChatModelVersionInstance)
 async def fetch_chat_model_version(
+    jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         try:
@@ -107,10 +107,10 @@ async def fetch_chat_model_version(
 
 @router.post("/{uuid}/publish/")
 async def update_published_chat_model_version(
+    jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
     body: UpdatePublishedChatModelVersionBody,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         user_auth_check = (
@@ -175,10 +175,10 @@ async def update_published_chat_model_version(
 
 @router.patch("/{uuid}/tags", response_model=ChatModelVersionInstance)
 async def update_chat_model_version_tags(
+    jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
     body: UpdateChatModelVersionTagsBody,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     tags: Optional[List[str]] = body.tags
     try:
@@ -207,10 +207,10 @@ async def update_chat_model_version_tags(
 
 @router.patch("/{uuid}/memo", response_model=ChatModelVersionInstance)
 async def update_chat_model_version_memo(
+    jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
     memo: Optional[str] = None,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         updated_chat_model_version = (

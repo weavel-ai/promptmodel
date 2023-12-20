@@ -1,6 +1,6 @@
 """APIs for Tags"""
 from datetime import datetime
-from typing import List
+from typing import Annotated, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc
 
@@ -13,7 +13,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from utils.security import JWT
+from utils.security import JWT, get_jwt
 from db_models import *
 from ..models import TagsInstance, CreateTagsBody
 
@@ -23,9 +23,9 @@ router = APIRouter()
 # Tags Endpoints
 @router.get("", response_model=List[TagsInstance])
 async def fetch_tags(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         tags: List[TagsInstance] = [
@@ -50,9 +50,9 @@ async def fetch_tags(
 
 @router.post("", response_model=TagsInstance)
 async def create_tag(
+    jwt: Annotated[str, Depends(get_jwt)],
     body: CreateTagsBody,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         # check if same name in project

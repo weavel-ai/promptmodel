@@ -1,7 +1,7 @@
 """APIs for Project Table"""
 import secrets
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -14,7 +14,7 @@ from starlette.status import (
 )
 
 from utils.logger import logger
-from utils.security import JWT
+from utils.security import JWT, get_api_key, get_jwt
 from base.database import get_session
 from db_models import *
 from ..models import ProjectInstance, CreateProjectBody
@@ -25,9 +25,9 @@ router = APIRouter()
 # Project Endpoints
 @router.post("", response_model=ProjectInstance)
 async def create_project(
+    jwt: Annotated[str, Depends(get_jwt)],
     body: CreateProjectBody,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         # check same name
@@ -68,9 +68,9 @@ async def create_project(
 
 @router.get("", response_model=List[ProjectInstance])
 async def fetch_projects(
+    jwt: Annotated[str, Depends(get_jwt)],
     organization_id: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         check_user_auth = (
@@ -80,7 +80,7 @@ async def fetch_projects(
                 .where(UsersOrganizations.organization_id == organization_id)
             )
         ).scalar_one_or_none()
-        
+
         if not check_user_auth:
             raise HTTPException(
                 status_code=HTTP_401_UNAUTHORIZED,
@@ -110,9 +110,9 @@ async def fetch_projects(
 
 @router.get("/{uuid}", response_model=ProjectInstance)
 async def get_project(
+    jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         try:

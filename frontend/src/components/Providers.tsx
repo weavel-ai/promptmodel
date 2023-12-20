@@ -59,11 +59,10 @@ function AuthProvider({ children }) {
 
   const configCallback = useCallback(
     async (config: any) => {
-      if (!isSignedIn) {
-        return null;
-      }
+      // if (!isSignedIn) {
+      //   return null;
+      // }
       const token = await getToken();
-      console.log(token);
       config.headers.Authorization = token ? `Bearer ${token}` : "";
       return config;
     },

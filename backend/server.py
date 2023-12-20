@@ -17,6 +17,7 @@ load_dotenv()
 
 app = FastAPI()
 
+
 @app.exception_handler(MissingTokenError)
 async def missing_token_error_handler(request, exc: MissingTokenError):
     print(exc)
@@ -25,8 +26,9 @@ async def missing_token_error_handler(request, exc: MissingTokenError):
         content={"detail": "Authentication token is missing or invalid."},
     )
 
-frontend_url = os.getenv("FRONTEND_PUBLIC_URL", "https://localhost:3000")
-origins = [frontend_url, "https://127.0.0.1:3000"]
+
+frontend_url = os.getenv("FRONTEND_PUBLIC_URL", "http://localhost:3000")
+origins = [frontend_url, "http://127.0.0.1:3000"]
 
 app.add_middleware(
     CORSMiddleware,

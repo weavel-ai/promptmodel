@@ -1,6 +1,6 @@
 """APIs for Prompt"""
 from datetime import datetime
-from typing import List
+from typing import Annotated, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc
 
@@ -13,7 +13,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from utils.security import JWT
+from utils.security import JWT, get_jwt
 from db_models import *
 from ..models import PromptInstance
 
@@ -23,26 +23,30 @@ router = APIRouter()
 
 @router.get("", response_model=List[PromptInstance])
 async def fetch_prompts(
+    jwt: Annotated[str, Depends(get_jwt)],
     function_model_version_uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         check_user_auth = (
             await session.execute(
                 select(FunctionModel)
                 .join(Project, FunctionModel.project_uuid == Project.uuid)
-                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
+                .join(
+                    UsersOrganizations,
+                    Project.organization_id == UsersOrganizations.organization_id,
+                )
                 .where(FunctionModel.version_uuid == function_model_version_uuid)
                 .where(UsersOrganizations.user_id == jwt["user_id"])
             )
         ).scalar_one_or_none()
-        
+
         if not check_user_auth:
             raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+                status_code=HTTP_403_FORBIDDEN,
+                detail="User don't have access to this project",
             )
-        
+
         prompts: List[PromptInstance] = [
             PromptInstance(**prompt.model_dump())
             for prompt in (

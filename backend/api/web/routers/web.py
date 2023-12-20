@@ -2,7 +2,7 @@
 import re
 import json
 from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, Dict, Optional, Union
+from typing import Annotated, Any, AsyncGenerator, Dict, Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc, desc, update
 
@@ -19,7 +19,7 @@ from utils.logger import logger
 from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from utils.security import JWT
+from utils.security import JWT, get_jwt
 from api.common.models import FunctionModelRunConfig, ChatModelRunConfig
 from db_models import *
 
@@ -28,27 +28,30 @@ router = APIRouter()
 
 @router.post("/run_function_model")
 async def run_function_model(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     run_config: FunctionModelRunConfig,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     """Run FunctionModel for cloud development environment."""
     user_auth_check = (
-            await session.execute(
-                select(Project)
-                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
-                .where(Project.uuid == project_uuid)
-                .where(UsersOrganizations.user_id == jwt["user_id"])
+        await session.execute(
+            select(Project)
+            .join(
+                UsersOrganizations,
+                Project.organization_id == UsersOrganizations.organization_id,
             )
-        ).scalar_one_or_none()
-        
+            .where(Project.uuid == project_uuid)
+            .where(UsersOrganizations.user_id == jwt["user_id"])
+        )
+    ).scalar_one_or_none()
+
     if not user_auth_check:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+            status_code=HTTP_403_FORBIDDEN,
+            detail="User don't have access to this project",
         )
-            
-    
+
     async def stream_run():
         async for chunk in run_cloud_function_model(
             session=session, project_uuid=project_uuid, run_config=run_config
@@ -70,7 +73,9 @@ async def run_cloud_function_model(
     session: AsyncSession, project_uuid: str, run_config: FunctionModelRunConfig
 ):
     """Run FunctionModel on the cloud, request from web."""
-    sample_input: Dict[str, str] = run_config.sample_input if run_config.sample_input else {}
+    sample_input: Dict[str, str] = (
+        run_config.sample_input if run_config.sample_input else {}
+    )
 
     # Validate Variable Matching
     prompt_variables = []
@@ -397,26 +402,30 @@ async def run_cloud_function_model(
 
 @router.post("/run_chat_model")
 async def run_chat_model(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     chat_config: ChatModelRunConfig,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     """Run ChatModel from web."""
     user_auth_check = (
-            await session.execute(
-                select(Project)
-                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
-                .where(Project.uuid == project_uuid)
-                .where(UsersOrganizations.user_id == jwt["user_id"])
+        await session.execute(
+            select(Project)
+            .join(
+                UsersOrganizations,
+                Project.organization_id == UsersOrganizations.organization_id,
             )
-        ).scalar_one_or_none()
-        
+            .where(Project.uuid == project_uuid)
+            .where(UsersOrganizations.user_id == jwt["user_id"])
+        )
+    ).scalar_one_or_none()
+
     if not user_auth_check:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+            status_code=HTTP_403_FORBIDDEN,
+            detail="User don't have access to this project",
         )
-    
+
     async def stream_run():
         async for chunk in run_cloud_chat_model(
             session=session, project_uuid=project_uuid, chat_config=chat_config
@@ -674,7 +683,6 @@ async def run_cloud_chat_model(
                 .values(version=project_version + 1)
             )
             await session.commit()
-
 
     except Exception as exc:
         logger.error(f"Error running service: {exc}")
