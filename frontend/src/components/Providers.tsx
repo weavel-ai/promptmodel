@@ -6,8 +6,10 @@ import "react-toastify/dist/ReactToastify.css";
 import { ToastContainer, toast } from "react-toastify";
 import { initAmplitude } from "@/services/amplitude";
 import { RealtimeProvider } from "./providers/RealtimeProvider";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { env } from "@/constants";
+import { internalServerClient, webServerClient } from "@/apis/base";
+import { useAuth } from "@/hooks/auth/useAuth";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,9 +39,11 @@ export function Providers({ children, session }) {
         theme="dark"
         className="z-[9999999999]"
       />
-      {/* <ThemeProvider> */}
-      <RealtimeProvider>{children}</RealtimeProvider>
-      {/* </ThemeProvider> */}
+      <AuthProvider>
+        {/* <ThemeProvider> */}
+        <RealtimeProvider>{children}</RealtimeProvider>
+        {/* </ThemeProvider> */}
+      </AuthProvider>
     </QueryClientProvider>
   );
 
@@ -48,4 +52,37 @@ export function Providers({ children, session }) {
   }
 
   return content;
+}
+
+function AuthProvider({ children }) {
+  const { getToken, isSignedIn, isLoaded } = useAuth();
+
+  const configCallback = useCallback(
+    async (config: any) => {
+      // if (!isSignedIn) {
+      //   return null;
+      // }
+      const token = await getToken();
+      config.headers.Authorization = token ? `Bearer ${token}` : "";
+      return config;
+    },
+    [getToken, isSignedIn]
+  );
+
+  useEffect(() => {
+    const requestInterceptor =
+      webServerClient.interceptors.request.use(configCallback);
+    const internalRequestInterceptor =
+      internalServerClient.interceptors.request.use(configCallback);
+
+    return () => {
+      // Eject the interceptor when the component unmounts to prevent memory leaks
+      webServerClient.interceptors.request.eject(requestInterceptor);
+      internalServerClient.interceptors.request.eject(
+        internalRequestInterceptor
+      );
+    };
+  }, [configCallback]);
+
+  return <>{children}</>;
 }

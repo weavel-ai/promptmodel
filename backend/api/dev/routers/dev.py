@@ -1,7 +1,7 @@
 """APIs for promptmodel local connection"""
 import json
 from pydantic import BaseModel
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Annotated, Any, Dict, List, Optional, Sequence, Tuple, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import Result, select, asc, desc, update
 
@@ -16,7 +16,7 @@ from starlette.status import (
     HTTP_406_NOT_ACCEPTABLE,
 )
 
-from utils.security import get_project
+from utils.security import get_jwt, get_project
 from utils.prompt_utils import update_dict
 from utils.logger import logger
 
@@ -33,6 +33,7 @@ router.include_router(chat_router)
 
 @router.post("/run_function_model")
 async def run_function_model(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     run_config: FunctionModelRunConfig,
     session: AsyncSession = Depends(get_session),
@@ -74,7 +75,7 @@ async def run_function_model(
         project = (
             (
                 await session.execute(
-                    select(Project.cli_access_key, Project.version, Project.uuid).where(
+                    select(Project.cli_access_key, Project.version, Project.uuid, Project.organization_id).where(
                         Project.uuid == project_uuid
                     )
                 )
@@ -82,6 +83,20 @@ async def run_function_model(
             .mappings()
             .all()
         )
+        
+        # check jwt['user_id'] have access to project_uuid
+        users_orgs = (
+            await session.execute(
+                select(UsersOrganizations.organization_id).where(
+                    UsersOrganizations.user_id == jwt['user_id']
+                )
+            )
+        ).scalars().all()
+        
+        if project[0]["organization_id"] not in users_orgs:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+            )
 
         if len(project) == 0:
             raise HTTPException(
@@ -116,6 +131,7 @@ async def run_function_model(
 
 @router.get("/list_function_models")
 async def list_function_models(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
@@ -176,6 +192,7 @@ async def list_function_models(
 
 @router.get("/list_functions")
 async def list_functions(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):

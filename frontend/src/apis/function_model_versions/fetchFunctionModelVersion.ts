@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import {
   FunctionModelVersion,
   ReadFunctionModelVersionRequest,
@@ -12,7 +12,7 @@ import {
 export async function fetchFunctionModelVersion(
   functionModelVersionData: ReadFunctionModelVersionRequest
 ): Promise<FunctionModelVersion> {
-  const response = await railwayWebClient.get(
+  const response = await webServerClient.get(
     `/function_model_versions/${functionModelVersionData.uuid}`
   );
   return response.data;

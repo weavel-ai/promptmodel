@@ -1,6 +1,6 @@
 """APIs for SampleInput"""
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Annotated, Any, Dict, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
@@ -13,6 +13,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_jwt
 from db_models import *
 from ..models import SampleInputInstance, CreateSampleInputBody
 
@@ -22,6 +23,7 @@ router = APIRouter()
 # SampleInput Endpoints
 @router.get("/project", response_model=List[SampleInputInstance])
 async def fetch_project_sample_inputs(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
@@ -45,8 +47,10 @@ async def fetch_project_sample_inputs(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
 
+
 @router.get("/function_model", response_model=List[SampleInputInstance])
 async def fetch_function_model_sample_inputs(
+    jwt: Annotated[str, Depends(get_jwt)],
     function_model_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
@@ -73,6 +77,7 @@ async def fetch_function_model_sample_inputs(
 
 @router.post("", response_model=SampleInputInstance)
 async def create_sample_input(
+    jwt: Annotated[str, Depends(get_jwt)],
     body: CreateSampleInputBody,
     session: AsyncSession = Depends(get_session),
 ):

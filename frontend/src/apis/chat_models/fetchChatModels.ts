@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { ReadChatModelsRequest } from "@/types/ChatModel";
 import { ChatModel } from "@/types/ChatModel";
 
@@ -10,7 +10,7 @@ import { ChatModel } from "@/types/ChatModel";
 export async function fetchChatModels(
   projectData: ReadChatModelsRequest
 ): Promise<Array<ChatModel>> {
-  const response = await railwayWebClient.get("/chat_models", {
+  const response = await webServerClient.get("/chat_models", {
     params: projectData,
   });
   return response.data;

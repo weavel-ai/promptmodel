@@ -2,27 +2,24 @@ import axios from "axios";
 import { env } from "@/constants";
 
 import { parseMultipleJson } from "@/utils";
+import { useAuth } from "@/hooks/auth/useAuth";
 
 const AXIOS_HEADERS = {
   "Content-type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "*",
-  "Access-Control-Allow-Credentials": "true",
 };
 
-export const railwayWebClient = axios.create({
+export const webServerClient = axios.create({
   baseURL: `${env.ENDPOINT_URL}/web`,
   headers: AXIOS_HEADERS,
 });
 
-export const railwayWebServerClient = axios.create({
-  baseURL: `${env.ENDPOINT_URL_INTERNAL}/web`,
+export const unauthorizedWebServerClient = axios.create({
+  baseURL: `${env.ENDPOINT_URL}/web`,
   headers: AXIOS_HEADERS,
 });
 
-export const railwayDevClient = axios.create({
-  baseURL: `${env.ENDPOINT_URL}/dev`,
+export const internalServerClient = axios.create({
+  baseURL: `${env.ENDPOINT_URL_INTERNAL}/web`,
   headers: AXIOS_HEADERS,
 });
 

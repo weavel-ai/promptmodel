@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import {
   ChatModelVersion,
   UpdatePublishedChatModelVersionRequest,
@@ -12,7 +12,7 @@ import {
 export async function updatePublishedChatModelVersion(
   chatModelVersionData: UpdatePublishedChatModelVersionRequest
 ): Promise<ChatModelVersion> {
-  const response = await railwayWebClient.post(
+  const response = await webServerClient.post(
     `/chat_model_versions/${chatModelVersionData.uuid}/publish`
   );
   return response.data;

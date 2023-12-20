@@ -1,11 +1,12 @@
 """APIs for RunLog"""
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
@@ -13,6 +14,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_jwt
 from db_models import *
 from ..models import (
     RunLogInstance,
@@ -28,6 +30,7 @@ router = APIRouter()
 
 @router.get("/version", response_model=List[RunLogInstance])
 async def fetch_version_run_logs(
+    jwt: Annotated[str, Depends(get_jwt)],
     function_model_version_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
@@ -54,12 +57,31 @@ async def fetch_version_run_logs(
 
 @router.get("/project", response_model=List[DeploymentRunLogViewInstance])
 async def fetch_run_logs(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     page: int,
     rows_per_page: int,
     session: AsyncSession = Depends(get_session),
 ):
     try:
+        check_user_auth = (
+            await session.execute(
+                select(Project)
+                .join(
+                    UsersOrganizations,
+                    Project.organization_id == UsersOrganizations.organization_id,
+                )
+                .where(Project.uuid == project_uuid)
+                .where(UsersOrganizations.user_id == jwt["user_id"])
+            )
+        ).scalar_one_or_none()
+
+        if not check_user_auth:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN,
+                detail="User don't have access to this project",
+            )
+
         run_logs: List[DeploymentRunLogViewInstance] = [
             DeploymentRunLogViewInstance(**run_log.model_dump())
             for run_log in (
@@ -75,6 +97,9 @@ async def fetch_run_logs(
             .all()
         ]
         return run_logs
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -84,6 +109,7 @@ async def fetch_run_logs(
 
 @router.get("/count", response_model=RunLogsCountInstance)
 async def fetch_run_logs_count(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):

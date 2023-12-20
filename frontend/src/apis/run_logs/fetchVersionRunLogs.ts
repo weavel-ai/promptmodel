@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { ReadVersionRunLogsRequest, RunLog } from "@/types/RunLog";
 
 /**
@@ -9,7 +9,7 @@ import { ReadVersionRunLogsRequest, RunLog } from "@/types/RunLog";
 export async function fetchVersionRunLogs(
   requestData: ReadVersionRunLogsRequest
 ): Promise<Array<RunLog>> {
-  const response = await railwayWebClient.get("/run_logs/version", {
+  const response = await webServerClient.get("/run_logs/version", {
     params: requestData,
   });
   return response.data;

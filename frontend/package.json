@@ -33,6 +33,7 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-config-turbo": "^1.11.1",
     "framer-motion": "^10.16.12",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.289.0",
     "monaco-editor": "^0.44.0",
     "next": "^14.0.3",

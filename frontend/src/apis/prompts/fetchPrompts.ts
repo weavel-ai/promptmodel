@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { Prompt, ReadPromptsRequest } from "@/types/Prompt";
 
 /**
@@ -9,7 +9,7 @@ import { Prompt, ReadPromptsRequest } from "@/types/Prompt";
 export async function fetchPrompts(
   requestData: ReadPromptsRequest
 ): Promise<Array<Prompt>> {
-  const response = await railwayWebClient.get("/prompts", {
+  const response = await webServerClient.get("/prompts", {
     params: requestData,
   });
   return response.data;

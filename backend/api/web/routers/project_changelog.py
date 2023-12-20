@@ -1,6 +1,6 @@
 """APIs for ProjectChangelog"""
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Annotated, Any, Dict, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
@@ -12,6 +12,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_jwt
 from db_models import *
 from ..models import ProjectChangelogInstance
 
@@ -21,6 +22,7 @@ router = APIRouter()
 # Changelog Endpoints
 @router.get("", response_model=List[ProjectChangelogInstance])
 async def fetch_changelogs(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):

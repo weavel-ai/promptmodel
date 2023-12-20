@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import {
   ChatModelVersion,
   ReadChatModelVersionRequest,
@@ -12,7 +12,7 @@ import {
 export async function fetchChatModelVersion(
   chatModelVersionData: ReadChatModelVersionRequest
 ): Promise<ChatModelVersion> {
-  const response = await railwayWebClient.get(
+  const response = await webServerClient.get(
     `/chat_model_versions/${chatModelVersionData.uuid}`
   );
   return response.data;

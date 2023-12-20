@@ -1,19 +1,20 @@
 """APIs for Project Table"""
 import secrets
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_401_UNAUTHORIZED,
     HTTP_404_NOT_FOUND,
     HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 from utils.logger import logger
-
+from utils.security import get_jwt
 from base.database import get_session
 from db_models import *
 from ..models import ProjectInstance, CreateProjectBody
@@ -24,6 +25,7 @@ router = APIRouter()
 # Project Endpoints
 @router.post("", response_model=ProjectInstance)
 async def create_project(
+    jwt: Annotated[str, Depends(get_jwt)],
     body: CreateProjectBody,
     session: AsyncSession = Depends(get_session),
 ):
@@ -66,10 +68,25 @@ async def create_project(
 
 @router.get("", response_model=List[ProjectInstance])
 async def fetch_projects(
+    jwt: Annotated[str, Depends(get_jwt)],
     organization_id: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
+        check_user_auth = (
+            await session.execute(
+                select(UsersOrganizations)
+                .where(UsersOrganizations.user_id == jwt["user_id"])
+                .where(UsersOrganizations.organization_id == organization_id)
+            )
+        ).scalar_one_or_none()
+
+        if not check_user_auth:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail="User don't have access to this organization",
+            )
+
         projects: List[ProjectInstance] = [
             ProjectInstance(**project.model_dump())
             for project in (
@@ -81,6 +98,9 @@ async def fetch_projects(
             .all()
         ]
         return projects
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -90,6 +110,7 @@ async def fetch_projects(
 
 @router.get("/{uuid}", response_model=ProjectInstance)
 async def get_project(
+    jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
     session: AsyncSession = Depends(get_session),
 ):

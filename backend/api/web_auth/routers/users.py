@@ -10,7 +10,6 @@ from sqlalchemy.exc import IntegrityError
 from api.web_auth.models import UserCreate, UserRead
 from db_models import User, Organization, UsersOrganizations
 from base.database import get_session
-from fastapi_nextauth_jwt import NextAuthJWT
 
 router = APIRouter(prefix="/users")
 

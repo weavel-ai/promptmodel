@@ -1,5 +1,5 @@
 """APIs for ChatSession"""
-from typing import Any, Dict, List
+from typing import Annotated, Any, Dict, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
@@ -11,6 +11,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_jwt
 from db_models import *
 from ..models import ChatSessionInstance
 
@@ -19,6 +20,7 @@ router = APIRouter()
 
 @router.get("", response_model=List[ChatSessionInstance])
 async def fetch_chat_sessions(
+    jwt: Annotated[str, Depends(get_jwt)],
     chat_model_version_uuid: str,
     db_session: AsyncSession = Depends(get_session),
 ):

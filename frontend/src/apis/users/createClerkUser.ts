@@ -1,5 +1,5 @@
 import { User, CreateClerkUserRequest } from "@/types/User";
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 
 /**
  * Creates a new Clerk registered user in the system.
@@ -9,6 +9,6 @@ import { railwayWebClient } from "@/apis/base";
 export async function createClerkUser(
   userData: CreateClerkUserRequest
 ): Promise<User> {
-  const response = await railwayWebClient.post("/users", userData);
+  const response = await webServerClient.post("/users", userData);
   return response.data;
 }

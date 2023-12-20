@@ -1,5 +1,5 @@
 """APIs for FunctionSchema"""
-from typing import Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
@@ -12,6 +12,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_jwt
 from db_models import *
 from ..models import FunctionSchemaInstance
 
@@ -21,6 +22,7 @@ router = APIRouter()
 # FunctionSchema Endpoints
 @router.get("", response_model=List[FunctionSchemaInstance])
 async def fetch_function_schemas(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
@@ -47,6 +49,7 @@ async def fetch_function_schemas(
 
 @router.get("/{uuid}", response_model=FunctionSchemaInstance)
 async def fetch_function_schema(
+    jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
     session: AsyncSession = Depends(get_session),
 ):

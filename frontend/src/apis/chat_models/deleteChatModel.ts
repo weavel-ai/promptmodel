@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { ChatModel, DeleteChatModelRequest } from "@/types/ChatModel";
 
 /**
@@ -9,7 +9,7 @@ import { ChatModel, DeleteChatModelRequest } from "@/types/ChatModel";
 export async function deleteChatModel(
   chatModelData: DeleteChatModelRequest
 ): Promise<ChatModel> {
-  const response = await railwayWebClient.delete(
+  const response = await webServerClient.delete(
     `/chat_models/${chatModelData.uuid}`
   );
   return response.data;

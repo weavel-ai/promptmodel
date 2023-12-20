@@ -1,7 +1,7 @@
 # analytics Endpoints
 
 """APIs for metrics"""
-from typing import List
+from typing import Annotated, List
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc
@@ -15,12 +15,14 @@ from utils.logger import logger
 from base.database import get_session
 from db_models import *
 from ..models import DailyRunLogMetricInstance, DailyChatLogMetricInstance
+from utils.security import get_jwt
 
 router = APIRouter()
 
 
 @router.get("/function_model", response_model=List[DailyRunLogMetricInstance])
 async def fetch_daily_run_log_metrics(
+    jwt: Annotated[str, Depends(get_jwt)],
     function_model_uuid: str,
     start_day: str,
     end_day: str,
@@ -77,6 +79,7 @@ async def fetch_daily_run_log_metrics(
 
 @router.get("/chat_model", response_model=List[DailyChatLogMetricInstance])
 async def fetch_daily_chat_log_metrics(
+    jwt: Annotated[str, Depends(get_jwt)],
     chat_model_uuid: str,
     start_day: str,
     end_day: str,

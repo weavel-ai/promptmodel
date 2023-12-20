@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { RunLog, ReadProjectRunLogsRequest } from "@/types/RunLog";
 
 /**
@@ -9,7 +9,7 @@ import { RunLog, ReadProjectRunLogsRequest } from "@/types/RunLog";
 export async function fetchProjectRunLogs(
   requestData: ReadProjectRunLogsRequest
 ): Promise<Array<RunLog>> {
-  const response = await railwayWebClient.get("/run_logs/project", {
+  const response = await webServerClient.get("/run_logs/project", {
     params: requestData,
   });
   return response.data;

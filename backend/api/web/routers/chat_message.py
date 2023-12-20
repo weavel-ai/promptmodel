@@ -1,10 +1,11 @@
 """APIs for ChatMessage"""
-from typing import Dict, List
+from typing import Annotated, Dict, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc, desc
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
@@ -12,6 +13,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import get_jwt
 from db_models import *
 from ..models import (
     ChatMessageInstance,
@@ -25,6 +27,7 @@ router = APIRouter()
 # ChatMessage Endpoints
 @router.get("/session", response_model=List[ChatMessageInstance])
 async def fetch_session_chat_messages(
+    jwt: Annotated[str, Depends(get_jwt)],
     chat_session_uuid: str,
     page: int,
     rows_per_page: int,
@@ -55,12 +58,31 @@ async def fetch_session_chat_messages(
 
 @router.get("/project", response_model=List[ChatLogViewInstance])
 async def fetch_project_chat_messages(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     page: int,
     rows_per_page: int,
     session: AsyncSession = Depends(get_session),
 ):
     try:
+        check_user_auth = (
+            await session.execute(
+                select(Project)
+                .join(
+                    UsersOrganizations,
+                    Project.organization_id == UsersOrganizations.organization_id,
+                )
+                .where(Project.uuid == project_uuid)
+                .where(UsersOrganizations.user_id == jwt["user_id"])
+            )
+        ).scalar_one_or_none()
+
+        if not check_user_auth:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN,
+                detail="User don't have access to this project",
+            )
+
         chat_messages: List[ChatLogViewInstance] = [
             ChatLogViewInstance(**chat_message.model_dump())
             for chat_message in (
@@ -76,6 +98,9 @@ async def fetch_project_chat_messages(
             .all()
         ]
         return chat_messages
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -85,6 +110,7 @@ async def fetch_project_chat_messages(
 
 @router.get("/count", response_model=ChatLogsCountInstance)
 async def fetch_chat_logs_count(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
