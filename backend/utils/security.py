@@ -18,8 +18,6 @@ from base.database import get_session_context
 from db_models import *
 
 import jwt
-from jose.exceptions import JWEError
-
 
 load_dotenv()
 
@@ -142,7 +140,7 @@ async def get_jwt(
                 )
             try:
                 token = jwt.decode(token, public_key, algorithms=["HS512"])
-            except JWEError as err:
+            except jwt.InvalidTokenError as err:
                 raise HTTPException(
                     status_code=status_code.HTTP_401_UNAUTHORIZED,
                     detail="Invalid token.",
@@ -173,7 +171,7 @@ async def get_jwt(
         try:
             token = jwt.decode(token, public_key, algorithms=["RS256"])
             print(token)
-        except JWEError as err:
+        except jwt.InvalidTokenError as err:
             print(err)
             raise HTTPException(
                 status_code=status_code.HTTP_401_UNAUTHORIZED, detail="Invalid token."
