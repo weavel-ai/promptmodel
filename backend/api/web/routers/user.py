@@ -12,6 +12,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import JWT
 from db_models import *
 from ..models import UserInstance, CreateUserBody
 
@@ -22,9 +23,10 @@ router = APIRouter()
 
 
 @router.post("", response_model=UserInstance)
-async def create_user(
+async def create_clerk_user(
     body: CreateUserBody,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
         new_user = User(**body.model_dump())
@@ -43,6 +45,7 @@ async def create_user(
 async def get_user(
     user_id: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
         try:

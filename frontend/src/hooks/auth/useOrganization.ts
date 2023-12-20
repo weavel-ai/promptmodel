@@ -22,7 +22,7 @@ function useNextOrganization(): NextOrgReturn {
   return {
     isLoaded: true,
     organization: {
-      id: "self",
+      id: "org_selfhosted",
       name: env.ORG_NAME,
       slug: env.ORG_SLUG,
     },

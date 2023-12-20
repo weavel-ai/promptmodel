@@ -1,17 +1,20 @@
+import os
+from dotenv import load_dotenv
 from typing import Annotated, List
 from sqlalchemy import ChunkedIteratorResult, select
-from utils.security import create_hashed_identifier, get_user_id, hash_password
+from utils.security import create_hashed_identifier, hash_password
 from fastapi import APIRouter, Depends, HTTPException, Response
 from starlette import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from api.web_auth.models import UserCreate, UserRead
-from db_models import User
+from db_models import User, Organization, UsersOrganizations
 from base.database import get_session
 from fastapi_nextauth_jwt import NextAuthJWT
 
 router = APIRouter(prefix="/users")
 
+load_dotenv()
 
 @router.post("", status_code=http_status.HTTP_201_CREATED, response_model=UserRead)
 async def create_user(
@@ -26,8 +29,42 @@ async def create_user(
             **user.model_dump(exclude={"password"})
         )
         session.add(new_user)
-        await session.commit()
+        
+        print(new_user)
+        
+        await session.flush()
         await session.refresh(new_user)
+            
+        org_list: List[Organization] = (
+            await session.execute(select(Organization))
+        ).all()
+
+        print(org_list)
+        
+        if len(org_list) == 0:
+            # create Organization
+            org_name = os.environ.get("ORG_NAME", "admin")
+            org_slug = os.environ.get("ORG_SLUG", "admin")
+            org_id = "org_selfhosted"
+            new_org = Organization(
+                name=org_name,
+                slug=org_slug,
+                organization_id=org_id,
+            )
+            session.add(new_org)
+            await session.flush()
+            await session.refresh(new_org)
+            
+            # Create UsersOrganizations
+            new_user_org = UsersOrganizations(
+                user_id=new_user.user_id,
+                organization_id=new_org.organization_id,
+            )
+            session.add(new_user_org) 
+            await session.flush()
+            await session.refresh(new_user_org)
+            
+        await session.commit()
 
         return UserRead(**new_user.model_dump())
     except IntegrityError as exception:

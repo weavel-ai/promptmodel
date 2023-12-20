@@ -16,7 +16,7 @@ const containerVariants = cva(
   {
     variants: {
       variant: {
-        rounded: "bg-secondary/20 backdrop-blur-sm rounded-full",
+        rounded: "bg-secondary/20 backdrop-blur-sm rounded-full shadow-lg",
         underline: "bg-transparent",
       },
     },

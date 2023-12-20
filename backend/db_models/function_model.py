@@ -140,8 +140,6 @@ class RunLog(Base):
     function_call: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
     tool_calls: Optional[List[Dict[str, Any]]] = Column(ARRAY(JSONB), nullable=True)
 
-    score: Optional[int] = Column(BigInteger, nullable=True)
-
     prompt_tokens: Optional[int] = Column(BigInteger, nullable=True)
     completion_tokens: Optional[int] = Column(BigInteger, nullable=True)
     total_tokens: Optional[int] = Column(BigInteger, nullable=True)
@@ -153,7 +151,7 @@ class RunLog(Base):
     )
     
     project_uuid: UUIDType = Column(
-        UUID(as_uuid=True), ForeignKey("project.uuid"), nullable=True
+        UUID(as_uuid=True), ForeignKey("project.uuid"), nullable=False
     )
 
     # function_model_version: "FunctionModelVersion" = Relationship(back_populates="run_logs")

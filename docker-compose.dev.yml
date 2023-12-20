@@ -7,8 +7,8 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-    volumes:
-      - ./volumes/postgres_data:/var/lib/postgresql/data
+    # volumes:
+    #   - ./volumes/postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     networks:
@@ -30,16 +30,15 @@ services:
       args:
         - POSTGRES_HOST=db
         - POSTGRES_DB=${POSTGRES_DB:-postgres}
-        - POSTGRES_USER=${POSTGRES_USER:-youruser}
-        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
+        - POSTGRES_USER=${POSTGRES_USER:-postgres}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
         - POSTGRES_PORT=${POSTGRES_PORT:-5432}
         - REDIS_HOST=redis
-    command: python3 listener.py
     environment:
       - POSTGRES_HOST=db
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
-      - POSTGRES_USER=${POSTGRES_USER:-youruser}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - REDIS_HOST=redis
     depends_on:
@@ -57,22 +56,24 @@ services:
       args:
         - POSTGRES_HOST=db
         - POSTGRES_DB=${POSTGRES_DB:-postgres}
-        - POSTGRES_USER=${POSTGRES_USER:-youruser}
-        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
+        - POSTGRES_USER=${POSTGRES_USER:-postgres}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
         - POSTGRES_PORT=${POSTGRES_PORT:-5432}
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-        - NEXTAUTH_URL=http://localhost:3000
-    command: uvicorn server:app --host 0.0.0.0 --reload
+        - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-https://localhost:3000}
+        - PORT=8000
     ports:
       - "8000:8000"
     environment:
       - POSTGRES_HOST=db
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
-      - POSTGRES_USER=${POSTGRES_USER:-youruser}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourpassword}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-      - NEXTAUTH_URL=http://localhost:3000
+      - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-https://localhost:3000}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-yourkey}
+      - PORT=8000
     depends_on:
       db:
         condition: service_started
@@ -85,27 +86,27 @@ services:
       watch:
         - path: ./backend/requirements.txt
           action: rebuild
-        - path: ./backend
+        - path: ./backend/migrations/versions/*.py
           action: rebuild
-          # action: sync
+        - path: ./backend
+          # action: rebuild
+          action: sync
 
   frontend:
     build:
       context: ./frontend
       args:
-        - NEXTAUTH_URL=http://localhost:3000
+        - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-https://localhost:3000}
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-        - NEXT_SERVER_ENDPOINT_URL=http://backend:8000/api
-        - NEXT_PUBLIC_ENDPOINT_URL=http://localhost:8000/api
+        - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-https://localhost:8000}
         - NEXT_PUBLIC_SELF_HOSTED=true
     # command: npm run dev
     ports:
       - "3000:3000"
     environment:
-      - NEXTAUTH_URL=http://localhost:3000
+      - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-https://localhost:3000}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-      - NEXT_SERVER_ENDPOINT_URL=http://backend:8000/api
-      - NEXT_PUBLIC_ENDPOINT_URL=http://localhost:8000/api
+      - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-https://localhost:8000}
       - NEXT_PUBLIC_SELF_HOSTED=true
     depends_on:
       backend:
@@ -114,12 +115,15 @@ services:
         condition: service_started
     networks:
       - server
-    # restart: always
+    restart: always
     develop:
       watch:
         - path: ./frontend
-          action: rebuild
-          # action: sync
+          ignore:
+            - node_modules/
+          target: /app/
+          action: sync
+          # action: rebuild
         - path: ./frontend/package.json
           action: rebuild
 

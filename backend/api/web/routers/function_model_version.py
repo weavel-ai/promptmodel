@@ -5,6 +5,7 @@ from sqlalchemy import select, asc, update
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
@@ -12,6 +13,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import JWT
 from db_models import *
 from ..models import (
     FunctionModelVersionInstance,
@@ -27,6 +29,7 @@ router = APIRouter()
 async def fetch_function_model_versions(
     function_model_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
         function_model_versions: List[FunctionModelVersionInstance] = [
@@ -55,6 +58,7 @@ async def fetch_function_model_versions(
 async def fetch_function_model_version(
     uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
         try:
@@ -91,8 +95,23 @@ async def update_published_function_model_version(
     uuid: str,
     body: UpdatePublishedFunctionModelVersionBody,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
+        user_auth_check = (
+            await session.execute(
+                select(Project)
+                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
+                .where(Project.uuid == body.project_uuid)
+                .where(UsersOrganizations.user_id == jwt["user_id"])
+            )
+        ).scalar_one_or_none()
+        
+        if not user_auth_check:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+            )
+        
         if body.previous_published_version_uuid:
             await session.execute(
                 update(FunctionModelVersion)
@@ -122,6 +141,9 @@ async def update_published_function_model_version(
 
         await session.commit()
         return FunctionModelVersionInstance(**updated_function_model_version)
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -134,6 +156,7 @@ async def update_function_model_version_tags(
     uuid: str,
     body: UpdateFunctionModelVersionTagsBody,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     tags: Optional[List[str]] = body.tags
     try:
@@ -165,6 +188,7 @@ async def update_function_model_version_memo(
     uuid: str,
     memo: Optional[str] = None,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
         updated_version = (

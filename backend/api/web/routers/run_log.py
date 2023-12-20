@@ -6,6 +6,7 @@ from sqlalchemy import select, desc
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import (
+    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
@@ -13,6 +14,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
+from utils.security import JWT
 from db_models import *
 from ..models import (
     RunLogInstance,
@@ -30,6 +32,7 @@ router = APIRouter()
 async def fetch_version_run_logs(
     function_model_version_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
         run_logs: List[RunLogInstance] = [
@@ -58,8 +61,23 @@ async def fetch_run_logs(
     page: int,
     rows_per_page: int,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
+        check_user_auth = (
+            await session.execute(
+                select(Project)
+                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
+                .where(Project.uuid == project_uuid)
+                .where(UsersOrganizations.user_id == jwt["user_id"])
+            )
+        ).scalar_one_or_none()
+        
+        if not check_user_auth:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+            )
+        
         run_logs: List[DeploymentRunLogViewInstance] = [
             DeploymentRunLogViewInstance(**run_log.model_dump())
             for run_log in (
@@ -75,6 +93,9 @@ async def fetch_run_logs(
             .all()
         ]
         return run_logs
+    except HTTPException as http_exc:
+        logger.error(http_exc)
+        raise http_exc
     except Exception as e:
         logger.error(e)
         raise HTTPException(
@@ -86,6 +107,7 @@ async def fetch_run_logs(
 async def fetch_run_logs_count(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
+    jwt: dict = Depends(JWT),
 ):
     try:
         try:
