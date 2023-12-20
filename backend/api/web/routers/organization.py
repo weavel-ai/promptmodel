@@ -14,7 +14,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from utils.security import get_user_id
+from utils.security import JWT
 from db_models import *
 from ..models import OrganizationInstance, CreateOrganizationBody
 
@@ -27,7 +27,7 @@ async def create_organization(
     body: CreateOrganizationBody,
     # jwt: Annotated[dict, Depends(JWT)],
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(get_user_id),
+    jwt: dict = Depends(JWT),
 ):
     try:
         new_org = Organization(
@@ -61,7 +61,7 @@ async def update_organization(
     name: str,
     slug: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(get_user_id),
+    jwt: dict = Depends(JWT),
 ):
     try:
         updated_org = (
@@ -89,7 +89,7 @@ async def update_organization(
 async def get_organization(
     organization_id: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(get_user_id),
+    jwt: dict = Depends(JWT),
 ):
     try:
         try:

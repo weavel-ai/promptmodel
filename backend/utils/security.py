@@ -17,7 +17,6 @@ from db_models import *
 from starlette.requests import Request
 import jwt
 from jose.exceptions import JWEError
-from fastapi_nextauth_jwt.cookies import extract_token
 from fastapi_nextauth_jwt.exceptions import InvalidTokenError, MissingTokenError
 
 
@@ -40,10 +39,42 @@ class ClerkJWT:
     def __init__(self):
         pem_base64 = os.environ.get("CLERK_PEM_KEY")
         self.public_key = base64.b64decode(pem_base64).decode("utf-8")
-        self.cookie_name = "__session"
 
     def __call__(self, request: Request):
-        token = extract_token(request.headers, self.cookie_name)
+        authorization: str = request.headers.get("Authorization")
+
+        if not authorization:
+            raise MissingTokenError("No token found in request Header.")
+        # strip Bearer
+        if authorization.lower().startswith("bearer "):
+            token = authorization[7:]
+
+        if not token:
+            raise MissingTokenError("No token found in request.")
+        try:
+            token = jwt.decode(token, self.public_key, algorithms=["RS256"])
+        except JWEError as err:
+            raise InvalidTokenError("Invalid token.") from err
+
+        if "sub" in token and "user_id" not in token:
+            token["user_id"] = token["sub"]
+
+        return token
+
+
+class NextAuthJWT:
+    def __init__(self):
+        self.public_key = os.environ.get("NEXTAUTH_SECRET")
+
+    def __call__(self, request: Request):
+        authorization: str = request.headers.get("Authorization")
+
+        if not authorization:
+            raise MissingTokenError("No token found in request Header.")
+        # strip Bearer
+        if authorization.lower().startswith("bearer "):
+            token = authorization[7:]
+
         if not token:
             raise MissingTokenError("No token found in request.")
         try:
@@ -62,7 +93,8 @@ class ClerkJWT:
         if token["azp"] not in origins:
             raise Exception("Invalid 'azp' claim")
 
-        token["user_id"] = token["sub"]
+        if "sub" in token and "user_id" not in token:
+            token["user_id"] = token["sub"]
 
         return token
 

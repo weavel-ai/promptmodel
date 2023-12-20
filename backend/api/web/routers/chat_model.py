@@ -12,7 +12,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from utils.security import get_user_id
+from utils.security import JWT
 from db_models import *
 from ..models import ChatModelInstance, CreateChatModelBody
 
@@ -24,7 +24,7 @@ router = APIRouter()
 async def fetch_chat_models(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(get_user_id),
+    jwt: dict = Depends(JWT),
 ):
     try:
         chat_models: List[ChatModelInstance] = [
@@ -51,7 +51,7 @@ async def fetch_chat_models(
 async def create_chat_model(
     body: CreateChatModelBody,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(get_user_id),
+    jwt: dict = Depends(JWT),
 ):
     try:
         # check same name
@@ -87,7 +87,7 @@ async def edit_chat_model_name(
     uuid: str,
     name: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(get_user_id),
+    jwt: dict = Depends(JWT),
 ):
     try:
         updated_chat_model = (
@@ -115,7 +115,7 @@ async def edit_chat_model_name(
 async def delete_chat_model(
     uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(get_user_id),
+    jwt: dict = Depends(JWT),
 ):
     try:
         deleted_chat_model = (

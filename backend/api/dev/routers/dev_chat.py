@@ -25,7 +25,7 @@ from modules.websocket.run_model_generators import (
     run_local_chat_model_generator,
 )
 from api.common.models import ChatModelRunConfig
-from utils.security import get_user_id
+from utils.security import JWT
 from db_models import *
 
 router = APIRouter()
@@ -36,7 +36,7 @@ async def run_chat_model(
     project_uuid: str,
     run_config: ChatModelRunConfig,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(get_user_id),
+    jwt: dict = Depends(JWT),
 ):
     """
     <h2>For local connection, Send run_chat_model request to the local server  </h2>
@@ -136,7 +136,7 @@ async def run_chat_model(
 async def list_chat_models(
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(get_user_id),
+    jwt: dict = Depends(JWT),
 ):
     """Get list of chat models in local DB by websocket
     Input:

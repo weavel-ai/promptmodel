@@ -12,7 +12,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from utils.security import get_user_id
+from utils.security import JWT
 from db_models import *
 from ..models import (
     FunctionModelVersionInstance,
@@ -28,7 +28,7 @@ router = APIRouter()
 async def fetch_function_model_versions(
     function_model_uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(get_user_id),
+    jwt: dict = Depends(JWT),
 ):
     try:
         function_model_versions: List[FunctionModelVersionInstance] = [
@@ -57,7 +57,7 @@ async def fetch_function_model_versions(
 async def fetch_function_model_version(
     uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(get_user_id),
+    jwt: dict = Depends(JWT),
 ):
     try:
         try:
@@ -94,7 +94,7 @@ async def update_published_function_model_version(
     uuid: str,
     body: UpdatePublishedFunctionModelVersionBody,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(get_user_id),
+    jwt: dict = Depends(JWT),
 ):
     try:
         if body.previous_published_version_uuid:
@@ -138,7 +138,7 @@ async def update_function_model_version_tags(
     uuid: str,
     body: UpdateFunctionModelVersionTagsBody,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(get_user_id),
+    jwt: dict = Depends(JWT),
 ):
     tags: Optional[List[str]] = body.tags
     try:
@@ -170,7 +170,7 @@ async def update_function_model_version_memo(
     uuid: str,
     memo: Optional[str] = None,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(get_user_id),
+    jwt: dict = Depends(JWT),
 ):
     try:
         updated_version = (

@@ -6,7 +6,7 @@ import asyncio
 import logging
 from dotenv import load_dotenv
 from fastapi import WebSocket, APIRouter, Depends
-from utils.security import get_user_id  
+from utils.security import JWT  
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -49,6 +49,6 @@ async def redis_listener(websocket: WebSocket, table_name: str, project_uuid: Op
 
 
 @router.websocket("/{table_name}")
-async def subscribe(websocket: WebSocket, table_name: str, project_uuid: Optional[str] = None, organization_id: Optional[str] = None, jwt: dict = Depends(get_user_id),):
+async def subscribe(websocket: WebSocket, table_name: str, project_uuid: Optional[str] = None, organization_id: Optional[str] = None, jwt: dict = Depends(JWT),):
     await websocket.accept()
     await redis_listener(websocket=websocket, table_name=table_name, project_uuid=project_uuid, organization_id=organization_id)
