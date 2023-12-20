@@ -81,7 +81,7 @@ class FetchChatModelVersionResponseInstance(PMObject):
     chat_messages: List[CliChatMessageInstance]
 
 
-class ChatLogRequestBody(PMObject):
+class ChatMessageRequestBody(PMObject):
     uuid: Optional[str] = None
     message: Dict[str, Any]
     metadata: Optional[Dict[str, Any]] = None
@@ -89,7 +89,8 @@ class ChatLogRequestBody(PMObject):
 
 
 class RunLogRequestBody(PMObject):
-    uuid: Optional[str] = None
+    uuid: str
+    api_response: ModelResponse
     inputs: Optional[Dict[str, Any]] = None
+    parsed_outputs: Optional[Dict[str, Any]] = None
     metadata: Optional[Dict] = None
-    api_response: Optional[ModelResponse] = None

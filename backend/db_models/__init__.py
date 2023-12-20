@@ -12,7 +12,8 @@ from .project import (
 )
 from .sample_input import SampleInput
 from .function_schema import FunctionSchema
-from .score import Score
+from .eval_metric import EvalMetric
+from .score import RunLogScore, ChatSessionScore
 from .eval_metric import EvalMetric
 from .type import ParsingType
 from .view import *

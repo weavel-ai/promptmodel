@@ -22,7 +22,7 @@ from base.database import Base
 
 class EvalMetric(Base):
     __tablename__ = "eval_metric"
-    
+
     id: int = Column(BigInteger, Identity(), unique=True)
     created_at: datetime = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
@@ -40,11 +40,13 @@ class EvalMetric(Base):
         ForeignKey("project.uuid"),
         nullable=False,
     )
+
     function_model_uuid: UUIDType = Column(
         UUID(as_uuid=True),
         ForeignKey("function_model.uuid"),
         nullable=True,
     )
+
     chat_model_uuid: UUIDType = Column(
         UUID(as_uuid=True),
         ForeignKey("chat_model.uuid"),

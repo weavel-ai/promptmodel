@@ -9,6 +9,6 @@ from .models import (
     FetchFunctionModelVersionResponseInstance,
     FetchChatModelVersionResponseInstance,
     CliChatMessageInstance,
-    ChatLogRequestBody,
+    ChatMessageRequestBody,
     RunLogRequestBody,
 )

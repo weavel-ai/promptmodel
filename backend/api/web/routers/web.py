@@ -162,7 +162,7 @@ async def run_cloud_function_model(
                 }
             )
             session.add(new_function_model_version_row)
-            await session.commit()
+            await session.flush()
             await session.refresh(new_function_model_version_row)
 
             changelogs.append(
@@ -192,9 +192,8 @@ async def run_cloud_function_model(
                         "content": prompt.content,
                     }
                 )
-                prompt_row = await session.merge(prompt_row)
                 session.add(prompt_row)
-                await session.commit()
+            await session.flush()
 
             data = {
                 "function_model_version_uuid": function_model_version_uuid,
@@ -224,7 +223,7 @@ async def run_cloud_function_model(
         else:
             messages = [prompt.model_dump() for prompt in prompts]
 
-        parsing_success = True
+        error_occurs = False
         error_log = None
 
         # NOTE : Function call is not supported yet in cloud development environment
@@ -281,68 +280,22 @@ async def run_cloud_function_model(
                 }
                 function_call = item.function_call.model_dump()
 
-            if item.error and parsing_success is True:
-                parsing_success = not item.error
+            if item.error and error_occurs is False:
+                error_occurs = item.error
                 error_log = item.error_log
 
             yield data
 
         if (
-            function_call is not None
+            function_call is None
             and run_config.output_keys is not None
             and run_config.parsing_type is not None
             and set(output["parsed_outputs"].keys()) != set(run_config.output_keys)
-            or (parsing_success is False)
+            or (error_occurs is True)
         ):
             error_log = error_log if error_log else "Key matching failed."
             data = {"status": "failed", "log": f"parsing failed, {error_log}"}
-
-            # Create run log
-            run_log_row = RunLog(
-                **{
-                    "project_uuid": project_uuid,
-                    "version_uuid": function_model_version_uuid,
-                    "inputs": sample_input,
-                    "raw_output": output["raw_output"],
-                    "parsed_outputs": output["parsed_outputs"],
-                    "run_log_metadata": {
-                        "error_log": error_log,
-                        "error": True,
-                    },
-                    "score": 0,
-                    "run_from_deployment": False,
-                }
-            )
-            session.add(run_log_row)
-            await session.commit()
-
             yield data
-
-            if len(changelogs) > 0:
-                session.add(
-                    ProjectChangelog(
-                        **{
-                            "logs": changelogs,
-                            "project_uuid": project_uuid,
-                        }
-                    )
-                )
-                await session.commit()
-
-            if need_project_version_update:
-                project_version = (
-                    await session.execute(
-                        select(Project.version).where(Project.uuid == project_uuid)
-                    )
-                ).scalar_one()
-
-                await session.execute(
-                    update(Project)
-                    .where(Project.uuid == project_uuid)
-                    .values(version=project_version + 1)
-                )
-                await session.commit()
-            return
 
         # Create run log
         session.add(
@@ -354,6 +307,12 @@ async def run_cloud_function_model(
                     "raw_output": output["raw_output"],
                     "parsed_outputs": output["parsed_outputs"],
                     "function_call": function_call,
+                    "run_log_metadata": {
+                        "error_log": error_log,
+                        "error": True,
+                    }
+                    if error_occurs
+                    else None,
                     "run_from_deployment": False,
                 }
             )
@@ -374,7 +333,7 @@ async def run_cloud_function_model(
                     }
                 )
             )
-            await session.commit()
+            await session.flush()
 
         if need_project_version_update:
             project_version = (
@@ -388,7 +347,9 @@ async def run_cloud_function_model(
                 .where(Project.uuid == project_uuid)
                 .values(version=project_version + 1)
             )
-            await session.commit()
+            await session.flush()
+
+        await session.commit()
 
     except Exception as error:
         logger.error(f"Error running service: {error}")
@@ -510,7 +471,7 @@ async def run_cloud_chat_model(
                 }
             )
             session.add(new_chat_model_version_row)
-            await session.commit()
+            await session.flush()
             await session.refresh(new_chat_model_version_row)
 
             changelogs.append(
@@ -547,7 +508,7 @@ async def run_cloud_chat_model(
                 }
             )
             session.add(new_session)
-            await session.commit()
+            await session.flush()
             await session.refresh(new_session)
 
             session_uuid: str = str(new_session.uuid)
@@ -594,6 +555,8 @@ async def run_cloud_chat_model(
         # TODO: Add function call support
         raw_output = ""
         function_call = None
+        error_log = None
+        error_occurs = False
         async for item in res:
             if item.raw_output is not None:
                 raw_output += item.raw_output
@@ -615,6 +578,7 @@ async def run_cloud_chat_model(
 
             if item.error:
                 error_log = item.error_log
+                error_occurs = item.error
 
             yield data
 
@@ -640,6 +604,9 @@ async def run_cloud_chat_model(
                     "role": "assistant",
                     "content": raw_output,
                     "function_call": function_call,
+                    "chat_message_metadata": {"error": True, "error_log": error_log}
+                    if error_occurs
+                    else None,
                 }
             )
         )
@@ -653,7 +620,7 @@ async def run_cloud_chat_model(
             )
         )
 
-        await session.commit()
+        await session.flush()
 
         data = {
             "status": "completed",
@@ -669,7 +636,7 @@ async def run_cloud_chat_model(
                     }
                 )
             )
-            await session.commit()
+            await session.flush()
         if need_project_version_update:
             project_version = (
                 await session.execute(
@@ -682,7 +649,9 @@ async def run_cloud_chat_model(
                 .where(Project.uuid == project_uuid)
                 .values(version=project_version + 1)
             )
-            await session.commit()
+            await session.flush()
+
+        await session.commit()
 
     except Exception as exc:
         logger.error(f"Error running service: {exc}")

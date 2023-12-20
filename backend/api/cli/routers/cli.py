@@ -4,6 +4,7 @@ from uuid import uuid4
 from typing import Any, Dict, List, Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import Result, select, asc, desc, update
+from sqlalchemy.dialects.postgresql import insert
 
 from fastapi import (
     APIRouter,
@@ -32,19 +33,7 @@ from crud import update_instances, pull_instances, save_instances
 from db_models import *
 from modules.types import InstanceType
 from litellm.utils import completion_cost, token_counter
-from ..models import (
-    DeployedFunctionModelVersionInstance,
-    DeployedChatModelVersionInstance,
-    DeployedPromptInstance,
-    DeployedFunctionModelInstance,
-    UsersOrganizationsInstance,
-    CliProjectInstance,
-    CheckUpdateResponseInstance,
-    FetchFunctionModelVersionResponseInstance,
-    FetchChatModelVersionResponseInstance,
-    CliChatMessageInstance,
-    ChatLogRequestBody,
-)
+from ..models import *
 
 router = APIRouter()
 
@@ -858,199 +847,108 @@ async def save_instances_in_code(
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.post("/log_general")
-async def log_general(
-    type: str,
-    identifier: Optional[str] = None,
-    content: Dict[str, Any] = {},
-    metadata: Dict[str, Any] = {},
+@router.post("/run_log_score")
+async def save_run_log_score(
+    run_log_uuid: str,
+    run_log_scores: Dict,
     project: dict = Depends(get_project),
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        if type == InstanceType.RunLog.value:
-            if not identifier:
-                identifier = str(uuid4())
-                run_log_to_insert = content
-                run_log_to_insert["run_log_metadata"] = metadata
-                run_log_to_insert["uuid"] = identifier
-                try:
-                    # check ["uuid", "version_uuid"] in content
-                    if "uuid" not in content or "version_uuid" not in content:
-                        raise Exception
-                    session.add(RunLog(**run_log_to_insert))
-                    await session.commit()
-                except Exception as exc:
-                    raise HTTPException(
-                        status_code=HTTP_406_NOT_ACCEPTABLE,
-                        detail="RunLog Content Column is not valid",
-                    )
-            else:
-                try:
-                    original_value = (
-                        (
-                            await session.execute(
-                                select(RunLog.uuid, RunLog.run_log_metadata).where(
-                                    RunLog.uuid == identifier
-                                )
-                            )
-                        )
-                        .one()
-                        ._mapping
-                    )
+        try:
+            run_log_to_update: RunLog = (
+                await session.execute(select(RunLog).where(RunLog.uuid == run_log_uuid))
+            ).scalar_one()
 
-                except:
-                    raise HTTPException(
-                        status_code=HTTP_404_NOT_FOUND,
-                        detail=f"RunLog Not found for uuid {identifier}",
-                    )
-                # update metadata in original_value
-                new_metadata = (
-                    original_value["run_log_metadata"]
-                    if original_value["run_log_metadata"] is not None
-                    else {}
+        except:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"RunLog Not found for uuid {run_log_uuid}",
+            )
+
+        # update run_log_score in original_value
+        score_name_list = list(run_log_scores.keys())
+        function_model_of_run_log: FunctionModel = (
+            await session.execute(
+                select(FunctionModel)
+                .join(
+                    FunctionModelVersion,
+                    FunctionModelVersion.function_model_uuid == FunctionModel.uuid,
                 )
-                for key, value in metadata.items():
-                    new_metadata[key] = value
+                .where(FunctionModelVersion.uuid == run_log_to_update.version_uuid)
+            )
+        ).scalar_one()
 
+        score_list_in_db: List[EvalMetric] = (
+            (
                 await session.execute(
-                    update(RunLog)
-                    .where(RunLog.uuid == identifier)
-                    .values(run_log_metadata=new_metadata)
+                    select(EvalMetric).where(
+                        EvalMetric.function_model_uuid == function_model_of_run_log.uuid
+                    )
                 )
-
-        elif type == InstanceType.ChatMessage.value:
-            if not identifier:
-                identifier = str(uuid4())
-                chat_message_to_insert = content
-                chat_message_to_insert["chat_message_metadata"] = metadata
-                chat_message_to_insert["uuid"] = identifier
-                try:
-                    if (
-                        "uuid" not in content
-                        or "role" not in content
-                        or "session_uuid" not in content
-                    ):
-                        raise Exception
-                    session.add(ChatMessage(**chat_message_to_insert))
-                    if chat_message_to_insert["role"] == "assistant":
-                        latest_chat_message = (
-                            await session.execute(
-                                select(ChatMessage)
-                                .where(
-                                    ChatMessage.session_uuid
-                                    == chat_message_to_insert["session_uuid"]
-                                )
-                                .order_by(desc(ChatMessage.created_at))
-                                .limit(1)
-                            )
-                        ).scalar_one()
-                    await session.flush()
-                    session.add(
-                        ChatLog(
-                            user_message_uuid=latest_chat_message.uuid,
-                            assistant_message_uuid=chat_message_to_insert["uuid"],
-                            session_uuid=chat_message_to_insert["session_uuid"],
-                            project_uuid=project["uuid"],
-                            prompt_tokens=chat_message_to_insert["prompt_tokens"]
-                            if "prompt_tokens" in metadata
-                            else None,
-                            completion_tokens=chat_message_to_insert[
-                                "completion_tokens"
-                            ]
-                            if "completion_tokens" in chat_message_to_insert
-                            else None,
-                            total_tokens=chat_message_to_insert["total_tokens"]
-                            if "total_tokens" in metadata
-                            else None,
-                            latency=chat_message_to_insert["response_ms"]
-                            if "response_ms" in metadata
-                            else None,
-                            cost=completion_cost(chat_message_to_insert["api_response"])
-                            if "api_response" in metadata
-                            else None,
-                        )
-                    )
-
-                    await session.commit()
-                except Exception as exc:
-                    raise HTTPException(
-                        status_code=HTTP_406_NOT_ACCEPTABLE,
-                        detail="ChatMessage Content Column is not valid",
-                    ) from exc
-            else:
-                try:
-                    original_value = (
-                        (
-                            await session.execute(
-                                select(
-                                    ChatMessage.uuid, ChatMessage.chat_message_metadata
-                                ).where(ChatMessage.uuid == identifier)
-                            )
-                        )
-                        .one()
-                        ._mapping
-                    )
-
-                except:
-                    raise HTTPException(
-                        status_code=HTTP_404_NOT_FOUND,
-                        detail=f"ChatMessage Not found for uuid {identifier}",
-                    )
-                # update metadata in original_value
-                new_metadata = (
-                    original_value["chat_message_metadata"]
-                    if original_value["chat_message_metadata"] is not None
-                    else {}
-                )
-                for key, value in metadata.items():
-                    new_metadata[key] = value
-
+            )
+            .scalars()
+            .all()
+        )
+        score_name_list_in_db = [x.name for x in score_list_in_db]
+        # find score_name_list not in db
+        score_name_list_to_add = list(set(score_name_list) - set(score_name_list_in_db))
+        eval_metric_to_add = [
+            EvalMetric(
+                name=x,
+                project_uuid=project["uuid"],
+                function_model_uuid=function_model_of_run_log.uuid,
+            )
+            for x in score_name_list_to_add
+        ]
+        session.add_all(eval_metric_to_add)
+        await session.flush()
+        eval_metric_to_use: List[EvalMetric] = (
+            (
                 await session.execute(
-                    update(ChatMessage)
-                    .where(ChatMessage.uuid == identifier)
-                    .values(chat_message_metadata=new_metadata)
-                )
-
-        elif type == InstanceType.ChatSession.value:
-            if not identifier:
-                raise HTTPException(
-                    status_code=HTTP_400_BAD_REQUEST, detail="Session uuid is required"
-                )
-            else:
-                try:
-                    original_value = (
-                        (
-                            await session.execute(
-                                select(
-                                    ChatSession.uuid, ChatSession.session_metadata
-                                ).where(ChatSession.uuid == identifier)
-                            )
-                        )
-                        .one()
-                        ._mapping
+                    select(EvalMetric)
+                    .where(
+                        EvalMetric.function_model_uuid == function_model_of_run_log.uuid
                     )
-
-                except:
-                    raise HTTPException(
-                        status_code=HTTP_404_NOT_FOUND,
-                        detail=f"Session Not found for uuid {identifier}",
-                    )
-                # update metadata in original_value
-                new_metadata = (
-                    original_value["session_metadata"]
-                    if original_value["session_metadata"] is not None
-                    else {}
+                    .where(EvalMetric.name.in_(score_name_list))
                 )
-                for key, value in metadata.items():
-                    new_metadata[key] = value
+            )
+            .scalars()
+            .all()
+        )
+
+        eval_metric_dict = {x.name: x.uuid for x in eval_metric_to_use}
+
+        scores_to_add: List[RunLogScore] = []
+        for key, value in run_log_scores.items():
+            scores_to_add.append(
+                RunLogScore(
+                    run_log_uuid=run_log_uuid,
+                    eval_metric_uuid=eval_metric_dict[key],
+                    value=value,
+                )
+            )
+        for score in scores_to_add:
+            (
                 await session.execute(
-                    update(ChatSession)
-                    .where(ChatSession.uuid == identifier)
-                    .values(session_metadata=new_metadata)
+                    insert(RunLogScore)
+                    .values(
+                        run_log_uuid=score.run_log_uuid,
+                        eval_metric_uuid=score.eval_metric_uuid,
+                        value=score.value,
+                    )
+                    .on_conflict_do_update(
+                        index_elements=[
+                            RunLogScore.run_log_uuid,
+                            RunLogScore.eval_metric_uuid,
+                        ],
+                        set_={"value": score.value},
+                    )
                 )
+            )
 
         await session.commit()
+
         return Response(status_code=HTTP_200_OK)
     except HTTPException as http_exc:
         raise http_exc
@@ -1061,41 +959,60 @@ async def log_general(
         ) from exc
 
 
-@router.post("/log_deployment_run")
-async def log_deployment_run(
-    log_uuid: str,
+@router.post("/chat_session_score")
+async def save_chat_session_score(
+    chat_session_uuid: str,
+    chat_session_scores: Dict,
+    project: dict = Depends(get_project),
+    session: AsyncSession = Depends(get_session),
+):
+    pass
+
+
+@router.post("/chat_message_score")
+async def save_chat_message_score(
+    chat_message_uuid: str,
+    chat_message_scores: Dict,
+    project: dict = Depends(get_project),
+    session: AsyncSession = Depends(get_session),
+):
+    pass
+
+
+@router.post("/run_log")
+async def save_run_log(
     version_uuid: str,
-    inputs: Optional[Dict[str, Any]] = None,
-    api_response: Optional[Dict[str, Any]] = None,
-    parsed_outputs: Optional[Dict[str, Any]] = None,
-    metadata: Optional[Dict[str, Any]] = None,
+    run_log_request_body: RunLogRequestBody,
     project: dict = Depends(get_project),
     session: AsyncSession = Depends(get_session),
 ):
     try:
+        print(run_log_request_body)
+        print(version_uuid)
+
+        api_response = run_log_request_body.api_response
+        latency = (
+            api_response["_response_ms"] if "_response_ms" in api_response else None
+        )
+        if not latency:
+            if "latency" in run_log_request_body.metadata:
+                latency = run_log_request_body.metadata["latency"]
+
         # save log
         run_log_row = RunLog(
-            uuid=log_uuid,
-            inputs=inputs,
-            raw_output=api_response["choices"][0]["message"]["content"]
-            if api_response
-            else None,
-            parsed_outputs=parsed_outputs,
-            input_register_name=None,
+            uuid=run_log_request_body.uuid,
+            inputs=run_log_request_body.inputs,
+            raw_output=api_response["choices"][0]["message"]["content"],
+            parsed_outputs=run_log_request_body.parsed_outputs,
             run_from_deployment=True,
             version_uuid=version_uuid,
-            prompt_tokens=api_response["usage"]["prompt_tokens"]
-            if api_response
-            else None,
-            completion_tokens=api_response["usage"]["completion_tokens"]
-            if api_response
-            else None,
-            total_tokens=api_response["usage"]["total_tokens"]
-            if api_response
-            else None,
-            latency=api_response["response_ms"] if api_response else None,
-            cost=completion_cost(api_response) if api_response else None,
-            run_log_metadata=metadata,
+            prompt_tokens=api_response["usage"]["prompt_tokens"],
+            completion_tokens=api_response["usage"]["completion_tokens"],
+            total_tokens=api_response["usage"]["total_tokens"],
+            latency=latency,
+            cost=completion_cost(api_response),
+            run_log_metadata=run_log_request_body.metadata,
+            project_uuid=project["uuid"],
         )
         session.add(run_log_row)
         await session.commit()
@@ -1106,26 +1023,45 @@ async def log_deployment_run(
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.post("/log_deployment_chat")
-async def log_deployment_chat(
-    session_uuid: str,
+@router.post("/chat_log")
+async def save_chat_log(
+    session_uuid: Optional[str],
     version_uuid: Optional[str],
-    chat_log_request_body: List[ChatLogRequestBody],
+    chat_message_requests_body: List[ChatMessageRequestBody],
     project: dict = Depends(get_project),
     db_session: AsyncSession = Depends(get_session),
 ):
     try:
+        if not session_uuid and not version_uuid:
+            raise HTTPException(
+                HTTP_400_BAD_REQUEST, detail="session_uuid or version_uuid required"
+            )
+
         # check session
-        session = (
-            (
-                await db_session.execute(
-                    select(ChatSession).where(ChatSession.uuid == session_uuid)
+        session: Optional[ChatSession] = (
+            await db_session.execute(
+                select(ChatSession).where(ChatSession.uuid == session_uuid)
+            )
+        ).scalar_one_or_none()
+        if not session:
+            # create session
+            if not version_uuid:
+                raise HTTPException(
+                    HTTP_400_BAD_REQUEST,
+                    detail="If you want to create session with new UUID, version_uuid required",
+                )
+            # create session
+            db_session.add(
+                ChatSession(
+                    uuid=session_uuid,
+                    version_uuid=version_uuid,
+                    run_from_deployment=True,
                 )
             )
-            .scalars()
-            .all()
-        )
-        version_uuid = session[0].version_uuid
+            await db_session.commit()
+            await db_session.refresh(session)
+
+        version_uuid = session.version_uuid
 
         if len(session) == 0:
             raise HTTPException(
@@ -1142,44 +1078,44 @@ async def log_deployment_chat(
 
         # make ChatMessage
         messages: List[ChatMessage] = []
-        for chat_log_request in chat_log_request_body:
+        for chat_message_request in chat_message_requests_body:
             token_usage = {}
             latency = 0
-            token_count = token_counter(model, chat_log_request.message["content"])
+            token_count = token_counter(model, chat_message_request.message["content"])
             cost = None
             token_usage = None
             latency = None
 
-            if chat_log_request.api_response:
-                cost = completion_cost(chat_log_request.api_response)
+            if chat_message_request.api_response:
+                cost = completion_cost(chat_message_request.api_response)
                 token_usage = (
-                    chat_log_request.api_response["usage"]
-                    if "usage" in chat_log_request.api_response
+                    chat_message_request.api_response["usage"]
+                    if "usage" in chat_message_request.api_response
                     else None
                 )
                 latency = (
-                    chat_log_request.api_response["_response_ms"]
-                    if "_response_ms" in chat_log_request.api_response
+                    chat_message_request.api_response["_response_ms"]
+                    if "_response_ms" in chat_message_request.api_response
                     else None
                 )
 
             messages.append(
                 ChatMessage(
                     **{
-                        "uuid": chat_log_request.uuid,
+                        "uuid": chat_message_request.uuid,
                         "session_uuid": session_uuid,
-                        "role": chat_log_request.message["role"],
-                        "content": chat_log_request.message["content"],
-                        "name": chat_log_request.message["name"]
-                        if "name" in chat_log_request.message
+                        "role": chat_message_request.message["role"],
+                        "content": chat_message_request.message["content"],
+                        "name": chat_message_request.message["name"]
+                        if "name" in chat_message_request.message
                         else None,
-                        "function_call": chat_log_request.message["function_call"]
-                        if "function_call" in chat_log_request.message
+                        "function_call": chat_message_request.message["function_call"]
+                        if "function_call" in chat_message_request.message
                         else None,
-                        "tool_calls": chat_log_request.message["tool_calls"]
-                        if "tool_calls" in chat_log_request.message
+                        "tool_calls": chat_message_request.message["tool_calls"]
+                        if "tool_calls" in chat_message_request.message
                         else None,
-                        "chat_message_metadata": chat_log_request.metadata,
+                        "chat_message_metadata": chat_message_request.metadata,
                         "token_count": token_count,
                     }
                 )
@@ -1188,7 +1124,7 @@ async def log_deployment_chat(
         db_session.add_all(messages)
 
         # get latest chat_message
-        if chat_log_request.message["role"] == "assistant":
+        if chat_message_requests_body[-1].message["role"] == "assistant":
             latest_chat_message = (
                 await db_session.execute(
                     select(ChatMessage)
@@ -1198,11 +1134,11 @@ async def log_deployment_chat(
                     .limit(1)
                 )
             ).scalar_one()
-            
+
             # save log
             chat_log = ChatLog(
                 user_message_uuid=latest_chat_message.uuid,
-                assistant_message_uuid=messages[-1].uuid,
+                assistant_message_uuid=chat_message_requests_body[-1].uuid,
                 session_uuid=session_uuid,
                 project_uuid=project["uuid"],
                 prompt_tokens=token_usage["prompt_tokens"],

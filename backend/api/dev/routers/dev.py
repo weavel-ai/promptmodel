@@ -102,6 +102,7 @@ async def run_function_model(
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND, detail="There is no project"
             )
+
         if project[0]["cli_access_key"] is None:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
