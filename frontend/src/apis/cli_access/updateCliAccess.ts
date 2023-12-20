@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { CliAccess, UpdateCliAccessRequest } from "@/types/CliAccess";
 
 /**
@@ -9,6 +9,6 @@ import { CliAccess, UpdateCliAccessRequest } from "@/types/CliAccess";
 export async function updateCliAccess(
   requestData: UpdateCliAccessRequest
 ): Promise<CliAccess> {
-  const response = await railwayWebClient.patch("/cli_access", requestData);
+  const response = await webServerClient.patch("/cli_access", requestData);
   return response.data;
 }

@@ -45,14 +45,14 @@ function useCustomClerkAuth() {
 function useNextAuth(): NextAuthReturn {
   const { data: session, status } = useSession();
 
-  function getToken() {
-    return Promise.resolve("");
+  async function getToken() {
+    return Promise.resolve(session.access_token);
   }
 
   return {
     isLoaded: status !== "loading",
     isSignedIn: status === "authenticated",
-    userId: session?.userId,
+    userId: session?.user_id,
     orgId: "self",
     orgRole: "admin",
     orgSlug: "admin",

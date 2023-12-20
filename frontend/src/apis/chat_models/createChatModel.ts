@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { CreateChatModelRequest } from "@/types/ChatModel";
 import { ChatModel } from "@/types/ChatModel";
 
@@ -10,6 +10,6 @@ import { ChatModel } from "@/types/ChatModel";
 export async function createChatModel(
   chatModelData: CreateChatModelRequest
 ): Promise<ChatModel> {
-  const response = await railwayWebClient.post("/chat_models", chatModelData);
+  const response = await webServerClient.post("/chat_models", chatModelData);
   return response.data;
 }

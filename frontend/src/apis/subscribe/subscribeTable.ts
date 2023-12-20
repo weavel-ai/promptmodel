@@ -1,16 +1,16 @@
 import { env } from "@/constants";
 import { SubscribeTableRequest } from "@/types/SubscribeTable";
+import { webServerClient } from "../base";
 
 /**
  * Subscribe to postgres table's changes.
  * @param {SubscribeTableRequest} requestData - Name of the table to subscribe to.
  */
-export function subscribeTable(
+export async function subscribeTable(
   requestData: SubscribeTableRequest
 ): Promise<WebSocket> {
   const { tableName, onMessage, ...params } = requestData;
 
-  const queryParams = new URLSearchParams(Object.entries(params)).toString();
   let endpoint: string;
   // Format websocket endpoint (https:// or http:// -> ws:// or wss://)
   if (env.ENDPOINT_URL.startsWith("https://")) {
@@ -20,6 +20,11 @@ export function subscribeTable(
   } else {
     throw new Error("Invalid endpoint URL");
   }
+  const tokenRes = await webServerClient.post("/subscribe/start");
+  const token = tokenRes.data;
+  const newParams = { ...params, ...token };
+  const queryParams = new URLSearchParams(Object.entries(newParams)).toString();
+
   const ws = new WebSocket(
     `${endpoint}/web/subscribe/${tableName}?${queryParams}`
   );

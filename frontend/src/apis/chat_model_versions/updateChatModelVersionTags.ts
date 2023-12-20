@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import {
   ChatModelVersion,
   UpdateChatModelVersionTagsRequest,
@@ -13,7 +13,7 @@ export async function updateChatModelVersionTags(
   requestData: UpdateChatModelVersionTagsRequest
 ): Promise<ChatModelVersion> {
   const { uuid, ...body } = requestData;
-  const response = await railwayWebClient.patch(
+  const response = await webServerClient.patch(
     `/chat_model_versions/${uuid}/tags`,
     body
   );

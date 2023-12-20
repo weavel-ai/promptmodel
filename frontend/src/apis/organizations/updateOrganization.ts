@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { Organization, UpdateOrganizationRequest } from "@/types/Organization";
 
 /**
@@ -10,7 +10,7 @@ export async function updateOrganization(
   organizationData: UpdateOrganizationRequest
 ): Promise<Organization> {
   const { organization_id, ...params } = organizationData;
-  const response = await railwayWebClient.patch(
+  const response = await webServerClient.patch(
     `/organizations/${organization_id}?`,
     {},
     {

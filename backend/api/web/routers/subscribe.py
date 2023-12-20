@@ -1,6 +1,8 @@
 import os
 import json
 from typing import Any, Dict, Optional
+from uuid import uuid4
+from fastapi.responses import JSONResponse
 from redis import asyncio as aioredis
 import asyncio
 import logging
@@ -20,11 +22,10 @@ try:
 except ValueError:
     redis_port = 6379
 redis_password = os.environ.get("REDIS_PASSWORD", None)
+redis = aioredis.Redis(host=redis_host, port=redis_port, db=0, password=redis_password)
 
 async def redis_listener(websocket: WebSocket, table_name: str, project_uuid: Optional[str] = None, organization_id: Optional[str] = None):
     print("Starting redis listener")
-    redis = aioredis.Redis(host=redis_host, port=redis_port, db=0, password=redis_password)
-    # redis = aioredis.Redis(host="redis", port=6379, db=0)
     pubsub = redis.pubsub()
     channel = f"{table_name}_channel"
     if project_uuid:
@@ -49,6 +50,20 @@ async def redis_listener(websocket: WebSocket, table_name: str, project_uuid: Op
 
 
 @router.websocket("/{table_name}")
-async def subscribe(websocket: WebSocket, table_name: str, project_uuid: Optional[str] = None, organization_id: Optional[str] = None, jwt: dict = Depends(JWT),):
+async def subscribe(websocket: WebSocket, token: str, table_name: str, project_uuid: Optional[str] = None, organization_id: Optional[str] = None):
+    # Check if token is valid
+    if not redis.exists(token):
+        await websocket.close(code=1008, reason="Invalid or expired token")
+        return
     await websocket.accept()
     await redis_listener(websocket=websocket, table_name=table_name, project_uuid=project_uuid, organization_id=organization_id)
+
+
+@router.post("/start")
+async def start_subscription(jwt: dict = Depends(JWT)):
+    # Generate a unique token
+    token = str(uuid4())
+    # Store the token in Redis with an expiration time of 60 seconds
+    await redis.setex(token, 60, 'valid')
+
+    return JSONResponse(content={"token": token})

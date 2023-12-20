@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import {
   FunctionModelVersion,
   UpdatePublishedFunctionModelVersionRequest,
@@ -13,7 +13,7 @@ export async function updatePublishedFunctionModelVersion(
   functionModelVersionData: UpdatePublishedFunctionModelVersionRequest
 ): Promise<FunctionModelVersion> {
   const { uuid, ...body } = functionModelVersionData;
-  const response = await railwayWebClient.post(
+  const response = await webServerClient.post(
     `/function_model_versions/${uuid}/publish`,
     body
   );

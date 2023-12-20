@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import {
   ReadFunctionModelSampleInputsRequest,
   SampleInput,
@@ -12,7 +12,7 @@ import {
 export async function fetchFunctionModelSampleInputs(
   requestData: ReadFunctionModelSampleInputsRequest
 ): Promise<Array<SampleInput>> {
-  const response = await railwayWebClient.get("/sample_inputs/function_model", {
+  const response = await webServerClient.get("/sample_inputs/function_model", {
     params: requestData,
   });
   return response.data;

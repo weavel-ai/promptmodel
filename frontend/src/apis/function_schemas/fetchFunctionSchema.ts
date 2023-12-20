@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import {
   FunctionSchema,
   ReadFunctionSchemaRequest,
@@ -12,7 +12,7 @@ import {
 export async function fetchFunctionSchema(
   requestData: ReadFunctionSchemaRequest
 ): Promise<FunctionSchema> {
-  const response = await railwayWebClient.get(
+  const response = await webServerClient.get(
     `/function_schemas/${requestData.uuid}`
   );
   return response.data;

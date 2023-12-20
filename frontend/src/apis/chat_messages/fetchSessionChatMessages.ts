@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import {
   ChatMessage,
   ReadSessionChatMessagesRequest,
@@ -12,7 +12,7 @@ import {
 export async function fetchSessionChatMessages(
   requestData: ReadSessionChatMessagesRequest
 ): Promise<Array<ChatMessage>> {
-  const response = await railwayWebClient.get("/chat_messages/session", {
+  const response = await webServerClient.get("/chat_messages/session", {
     params: requestData,
   });
   return response.data;

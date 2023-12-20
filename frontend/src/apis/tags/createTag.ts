@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { CreateTagRequest, Tag } from "@/types/Tag";
 
 /**
@@ -7,6 +7,6 @@ import { CreateTagRequest, Tag } from "@/types/Tag";
  * @returns A promise that resolves to the Tag interface.
  */
 export async function createTag(requestData: CreateTagRequest): Promise<Tag> {
-  const response = await railwayWebClient.post("/tags", requestData);
+  const response = await webServerClient.post("/tags", requestData);
   return response.data;
 }
