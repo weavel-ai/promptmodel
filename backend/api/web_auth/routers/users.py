@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from typing import Annotated, List
 from sqlalchemy import ChunkedIteratorResult, select
-from utils.security import create_hashed_identifier, get_user_id, hash_password
+from utils.security import create_hashed_identifier, hash_password
 from fastapi import APIRouter, Depends, HTTPException, Response
 from starlette import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession

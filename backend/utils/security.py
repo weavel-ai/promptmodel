@@ -7,21 +7,12 @@ from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import Result, select, asc, desc, update
 
-from fastapi_nextauth_jwt import NextAuthJWT
 from utils.logger import logger
 from base.database import get_session, get_session_context
 from db_models import *
 
 API_KEY_HEADER = "Authorization"
 api_key_header = APIKeyHeader(name=API_KEY_HEADER, auto_error=False)
-JWT = NextAuthJWT()
-
-
-async def get_user_id(
-    jwt: Annotated[Dict, Depends(JWT)],
-):
-    print(jwt)
-    return jwt["user_id"]
 
 
 async def get_project(

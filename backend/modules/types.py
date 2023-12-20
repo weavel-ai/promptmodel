@@ -23,7 +23,7 @@ class InstanceType(str, Enum):
 class PMObject(BaseModel):
     def __init__(self, **data: Any):
         for key, value in data.items():
-            if key in self.__annotations__ and self.__annotations__[key] == str:
+            if key in self.__annotations__ and (self.__annotations__[key] == str or self.__annotations__[key] == Optional[str]):
                 if (
                     isinstance(value, UUID)
                     or isinstance(value, PGUUID)
