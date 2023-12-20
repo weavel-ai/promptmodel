@@ -24,12 +24,12 @@ load_dotenv()
 
 API_KEY_HEADER = "Authorization"
 api_key_header = APIKeyHeader(name=API_KEY_HEADER, auto_error=False)
+
 self_hosted: bool = os.environ.get("NEXT_PUBLIC_SELF_HOSTED", "true")
 if self_hosted == "true":
     self_hosted = True
 else:
     self_hosted = False
-
 
 frontend_url = os.getenv("FRONTEND_PUBLIC_URL", "https://localhost:3000")
 origins = [frontend_url, "https://127.0.0.1:3000"]
@@ -39,32 +39,6 @@ class ClerkJWT:
     def __init__(self):
         pem_base64 = os.environ.get("CLERK_PEM_KEY")
         self.public_key = base64.b64decode(pem_base64).decode("utf-8")
-
-    def __call__(self, request: Request):
-        authorization: str = request.headers.get("Authorization")
-
-        if not authorization:
-            raise MissingTokenError("No token found in request Header.")
-        # strip Bearer
-        if authorization.lower().startswith("bearer "):
-            token = authorization[7:]
-
-        if not token:
-            raise MissingTokenError("No token found in request.")
-        try:
-            token = jwt.decode(token, self.public_key, algorithms=["RS256"])
-        except JWEError as err:
-            raise InvalidTokenError("Invalid token.") from err
-
-        if "sub" in token and "user_id" not in token:
-            token["user_id"] = token["sub"]
-
-        return token
-
-
-class NextAuthJWT:
-    def __init__(self):
-        self.public_key = os.environ.get("NEXTAUTH_SECRET")
 
     def __call__(self, request: Request):
         authorization: str = request.headers.get("Authorization")
@@ -99,19 +73,36 @@ class NextAuthJWT:
         return token
 
 
+class NextAuthJWT:
+    def __init__(self):
+        self.public_key = os.environ.get("NEXTAUTH_SECRET")
+
+    def __call__(self, request: Request):
+        authorization: str = request.headers.get("Authorization")
+
+        if not authorization:
+            raise MissingTokenError("No token found in request Header.")
+        # strip Bearer
+        if authorization.lower().startswith("bearer "):
+            token = authorization[7:]
+
+        if not token:
+            raise MissingTokenError("No token found in request.")
+        try:
+            token = jwt.decode(token, self.public_key, algorithms=["HS512"])
+        except JWEError as err:
+            raise InvalidTokenError("Invalid token.") from err
+
+        if "sub" in token and "user_id" not in token:
+            token["user_id"] = token["sub"]
+
+        return token
+
+
 if self_hosted:
-    JWT = (
-        NextAuthJWT()
-    )  # TODO: It will not work. NextAuthJWT use cookies and we need to use headers
+    JWT = NextAuthJWT()
 else:
     JWT = ClerkJWT()
-
-
-async def get_user_id(
-    jwt: Annotated[Dict, Depends(JWT)],
-):
-    print(jwt)
-    return jwt["user_id"]
 
 
 async def get_project(
