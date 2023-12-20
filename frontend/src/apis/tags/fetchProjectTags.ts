@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { ReadProjectTagsRequest, Tag } from "@/types/Tag";
 
 /**
@@ -9,7 +9,7 @@ import { ReadProjectTagsRequest, Tag } from "@/types/Tag";
 export async function fetchProjectTags(
   requestData: ReadProjectTagsRequest
 ): Promise<Array<Tag>> {
-  const response = await railwayWebClient.get("tags", {
+  const response = await webServerClient.get("tags", {
     params: requestData,
   });
   return response.data;

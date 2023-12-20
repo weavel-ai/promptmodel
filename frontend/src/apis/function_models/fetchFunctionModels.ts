@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { ReadFunctionModelsRequest } from "@/types/FunctionModel";
 import { FunctionModel } from "@/types/FunctionModel";
 
@@ -10,7 +10,7 @@ import { FunctionModel } from "@/types/FunctionModel";
 export async function fetchFunctionModels(
   projectData: ReadFunctionModelsRequest
 ): Promise<Array<FunctionModel>> {
-  const response = await railwayWebClient.get("/function_models", {
+  const response = await webServerClient.get("/function_models", {
     params: projectData,
   });
   return response.data;

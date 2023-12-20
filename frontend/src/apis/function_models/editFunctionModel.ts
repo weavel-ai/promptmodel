@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { FunctionModel } from "@/types/FunctionModel";
 import { EditFunctionModelRequest } from "@/types/FunctionModel";
 
@@ -11,7 +11,7 @@ export async function editFunctionModel(
   functionModelData: EditFunctionModelRequest
 ): Promise<FunctionModel> {
   const { uuid, ...params } = functionModelData;
-  const response = await railwayWebClient.patch(
+  const response = await webServerClient.patch(
     `/function_models/${uuid}`,
     {},
     {

@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { ChatModel, EditChatModelRequest } from "@/types/ChatModel";
 
 /**
@@ -10,7 +10,7 @@ export async function editChatModel(
   chatModelData: EditChatModelRequest
 ): Promise<ChatModel> {
   const { uuid, ...params } = chatModelData;
-  const response = await railwayWebClient.patch(
+  const response = await webServerClient.patch(
     `/chat_models/${uuid}`,
     {},
     {

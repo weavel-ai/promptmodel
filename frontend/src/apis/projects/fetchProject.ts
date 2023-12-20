@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { Project, ReadProjectRequest } from "@/types/Project";
 
 /**
@@ -9,6 +9,6 @@ import { Project, ReadProjectRequest } from "@/types/Project";
 export async function fetchProject(
   projectData: ReadProjectRequest
 ): Promise<Project> {
-  const response = await railwayWebClient.get(`/projects/${projectData?.uuid}`);
+  const response = await webServerClient.get(`/projects/${projectData?.uuid}`);
   return response.data;
 }

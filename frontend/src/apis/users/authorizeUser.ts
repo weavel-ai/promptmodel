@@ -1,5 +1,5 @@
 import { User, AuthorizeUserRequest } from "@/types/User";
-import { railwayWebServerClient } from "@/apis/base";
+import { internalServerClient } from "@/apis/base";
 
 /**
  * @memo This can only be called from the Next.js server.
@@ -10,6 +10,9 @@ import { railwayWebServerClient } from "@/apis/base";
 export async function authorizeUser(
   userData: AuthorizeUserRequest
 ): Promise<User> {
-  const response = await railwayWebServerClient.post("/v1/users/authorize", userData);
+  const response = await internalServerClient.post(
+    "/v1/users/authorize",
+    userData
+  );
   return response.data;
 }

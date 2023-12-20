@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { ReadDailyChatLogMetricsRequest, ChatLogMetric } from "@/types/Metric";
 
 /**
@@ -9,7 +9,7 @@ import { ReadDailyChatLogMetricsRequest, ChatLogMetric } from "@/types/Metric";
 export async function fetchDailyChatLogMetrics(
   requestData: ReadDailyChatLogMetricsRequest
 ): Promise<Array<ChatLogMetric>> {
-  const response = await railwayWebClient.get("/metrics/chat_model", {
+  const response = await webServerClient.get("/metrics/chat_model", {
     params: requestData,
   });
   return response.data;

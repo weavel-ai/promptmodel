@@ -1,8 +1,5 @@
 import { env } from "@/constants";
-import {
-  getServerSession,
-  type NextAuthOptions,
-} from "next-auth";
+import { getServerSession, type NextAuthOptions } from "next-auth";
 
 // Providers
 import { type Provider } from "next-auth/providers";
@@ -13,6 +10,7 @@ import { GetServerSidePropsContext } from "next";
 import { fetchUser } from "./users";
 import { authorizeUser } from "./users";
 import { User } from "@/types/User";
+import jwt from "jsonwebtoken";
 
 const providers: Provider[] = [
   CredentialsProvider({
@@ -75,20 +73,30 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({ token, user, account }) {
-      if (token?.user_id) {
-        return token;
+    async session({ session, token }) {
+      const user = session.user;
+      if (!session?.user_id) {
+        if (user?.user_id && user?.first_name && user?.last_name) {
+          session.user_id = user?.user_id;
+          user.name = user?.first_name + " " + user?.last_name;
+        }
+        const currentUser: User = await fetchUser(
+          { email: token?.email },
+          "server"
+        );
+        if (currentUser) {
+          session.user_id = currentUser.user_id;
+          user.name = currentUser.first_name + " " + currentUser.last_name;
+          user.first_name = currentUser.first_name;
+          user.last_name = currentUser.last_name;
+        }
       }
-      if (user?.user_id) {
-        token.user_id = user?.user_id;
-        token.name = user?.first_name + " " + user?.last_name;
-      }
-      const currentUser: User = await fetchUser({ email: token?.email }, "server");
-      if (currentUser) {
-        token.user_id = currentUser.user_id;
-        token.name = currentUser.first_name + " " + currentUser.last_name;
-      }
-      return token;
+      session.user = user;
+      // Add encoded jwt
+      session.access_token = jwt.sign(token, env.NEXTAUTH_SECRET, {
+        algorithm: "HS512",
+      });
+      return session;
     },
   },
   providers,

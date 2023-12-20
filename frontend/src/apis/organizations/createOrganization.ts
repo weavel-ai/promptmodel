@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { Organization, CreateOrganizationRequest } from "@/types/Organization";
 
 /**
@@ -9,7 +9,7 @@ import { Organization, CreateOrganizationRequest } from "@/types/Organization";
 export async function createOrganization(
   organizationData: CreateOrganizationRequest
 ): Promise<Organization> {
-  const response = await railwayWebClient.post(
+  const response = await webServerClient.post(
     "/organizations",
     organizationData
   );

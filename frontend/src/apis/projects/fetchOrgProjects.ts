@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { Project, ReadOrgProjectsRequest } from "@/types/Project";
 
 /**
@@ -9,7 +9,7 @@ import { Project, ReadOrgProjectsRequest } from "@/types/Project";
 export async function fetchOrgProjects(
   orgData: ReadOrgProjectsRequest
 ): Promise<Array<Project>> {
-  const response = await railwayWebClient.get("/projects", {
+  const response = await webServerClient.get("/projects", {
     params: orgData,
   });
   return response.data;

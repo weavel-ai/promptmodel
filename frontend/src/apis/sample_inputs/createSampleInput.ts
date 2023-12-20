@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { CreateSampleInputRequest, SampleInput } from "@/types/SampleInput";
 
 /**
@@ -9,6 +9,6 @@ import { CreateSampleInputRequest, SampleInput } from "@/types/SampleInput";
 export async function createSampleInput(
   requestData: CreateSampleInputRequest
 ): Promise<SampleInput> {
-  const response = await railwayWebClient.post("/sample_inputs", requestData);
+  const response = await webServerClient.post("/sample_inputs", requestData);
   return response.data;
 }

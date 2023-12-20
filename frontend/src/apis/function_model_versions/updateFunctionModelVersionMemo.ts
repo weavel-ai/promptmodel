@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import {
   FunctionModelVersion,
   UpdateFunctionModelVersionMemoRequest,
@@ -13,7 +13,7 @@ export async function updateFunctionModelVersionMemo(
   requestData: UpdateFunctionModelVersionMemoRequest
 ): Promise<FunctionModelVersion> {
   const { uuid, ...params } = requestData;
-  const response = await railwayWebClient.patch(
+  const response = await webServerClient.patch(
     `/function_model_versions/${uuid}/memo`,
     {},
     {

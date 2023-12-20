@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { CreateFunctionModelRequest } from "@/types/FunctionModel";
 import { FunctionModel } from "@/types/FunctionModel";
 
@@ -10,7 +10,7 @@ import { FunctionModel } from "@/types/FunctionModel";
 export async function createFunctionModel(
   functionModelData: CreateFunctionModelRequest
 ): Promise<FunctionModel> {
-  const response = await railwayWebClient.post(
+  const response = await webServerClient.post(
     "/function_models",
     functionModelData
   );

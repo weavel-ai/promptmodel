@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import {
   ReadProjectSampleInputsRequest,
   SampleInput,
@@ -12,7 +12,7 @@ import {
 export async function fetchProjectSampleInputs(
   requestData: ReadProjectSampleInputsRequest
 ): Promise<Array<SampleInput>> {
-  const response = await railwayWebClient.get("/sample_inputs/project", {
+  const response = await webServerClient.get("/sample_inputs/project", {
     params: requestData,
   });
   return response.data;

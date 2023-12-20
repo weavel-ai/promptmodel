@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { CreateProjectRequest, Project } from "@/types/Project";
 
 /**
@@ -9,6 +9,6 @@ import { CreateProjectRequest, Project } from "@/types/Project";
 export async function createProject(
   projectData: CreateProjectRequest
 ): Promise<Project> {
-  const response = await railwayWebClient.post("/projects", projectData);
+  const response = await webServerClient.post("/projects", projectData);
   return response.data;
 }

@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import {
   ReadProjectChatMessagesCountRequest,
   ReadProjectChatMessagesCountResponse,
@@ -12,7 +12,7 @@ import {
 export async function fetchProjectChatMessagesCount(
   requestData: ReadProjectChatMessagesCountRequest
 ): Promise<ReadProjectChatMessagesCountResponse> {
-  const response = await railwayWebClient.get("/chat_messages/count", {
+  const response = await webServerClient.get("/chat_messages/count", {
     params: requestData,
   });
   return response.data;

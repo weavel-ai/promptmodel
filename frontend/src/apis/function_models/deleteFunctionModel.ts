@@ -1,4 +1,4 @@
-import { railwayWebClient } from "@/apis/base";
+import { webServerClient } from "@/apis/base";
 import { FunctionModel } from "@/types/FunctionModel";
 import { DeleteFunctionModelRequest } from "@/types/FunctionModel";
 
@@ -10,7 +10,7 @@ import { DeleteFunctionModelRequest } from "@/types/FunctionModel";
 export async function deleteFunctionModel(
   functionModelData: DeleteFunctionModelRequest
 ): Promise<FunctionModel> {
-  const response = await railwayWebClient.delete(
+  const response = await webServerClient.delete(
     `/function_models/${functionModelData.uuid}`
   );
   return response.data;
