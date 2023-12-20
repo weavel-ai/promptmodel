@@ -15,7 +15,7 @@ class SampleInputInstance(PMObject):
     online: bool
 
     project_uuid: str
-    function_model_uuid: str
+    function_model_uuid: Optional[str] = None
 
 
 class CreateSampleInputBody(PMObject):
