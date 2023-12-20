@@ -1,4 +1,5 @@
 """APIs for CliAccess"""
+from typing import Annotated
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import update
@@ -11,7 +12,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from utils.security import JWT
+from utils.security import JWT, get_jwt
 from db_models import *
 from ..models import CliAccessInstance, UpdateCliAccessKeyBody
 
@@ -21,9 +22,9 @@ router = APIRouter()
 # CliAccess Endpoints
 @router.patch("", response_model=CliAccessInstance)
 async def update_cli_access(
+    jwt: Annotated[str, Depends(get_jwt)],
     cli_access: UpdateCliAccessKeyBody,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         # update table CliAccess by user_id

@@ -1,6 +1,6 @@
 """APIs for User Table"""
 from datetime import datetime
-from typing import Dict
+from typing import Annotated, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -12,7 +12,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from utils.security import JWT
+from utils.security import JWT, get_jwt
 from db_models import *
 from ..models import UserInstance, CreateUserBody
 
@@ -24,9 +24,9 @@ router = APIRouter()
 
 @router.post("", response_model=UserInstance)
 async def create_clerk_user(
+    jwt: Annotated[str, Depends(get_jwt)],
     body: CreateUserBody,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         new_user = User(**body.model_dump())
@@ -43,9 +43,9 @@ async def create_clerk_user(
 
 @router.get("/{user_id}", response_model=UserInstance)
 async def get_user(
+    jwt: Annotated[str, Depends(get_jwt)],
     user_id: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         try:

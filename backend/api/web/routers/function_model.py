@@ -1,6 +1,6 @@
 """APIs for FunctionModel"""
 from datetime import datetime
-from typing import List
+from typing import Annotated, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, update, delete
 
@@ -14,7 +14,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from utils.security import JWT
+from utils.security import JWT, get_jwt
 from db_models import *
 from ..models import FunctionModelInstance, CreateFunctionModelBody
 
@@ -24,9 +24,9 @@ router = APIRouter()
 # FunctionModel Endpoints
 @router.get("", response_model=List[FunctionModelInstance])
 async def fetch_function_models(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         function_models: List[FunctionModelInstance] = [
@@ -51,9 +51,9 @@ async def fetch_function_models(
 
 @router.post("", response_model=FunctionModelInstance)
 async def create_function_model(
+    jwt: Annotated[str, Depends(get_jwt)],
     body: CreateFunctionModelBody,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         user_auth_check = (
@@ -103,10 +103,10 @@ async def create_function_model(
 
 @router.patch("/{uuid}", response_model=FunctionModelInstance)
 async def edit_function_model_name(
+    jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
     name: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         updated_model = (
@@ -132,9 +132,9 @@ async def edit_function_model_name(
 
 @router.delete("/{uuid}", response_model=FunctionModelInstance)
 async def delete_function_model(
+    jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         # TODO

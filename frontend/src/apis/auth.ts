@@ -93,7 +93,7 @@ export const authOptions: NextAuthOptions = {
       }
       session.user = user;
       // Add encoded jwt
-      session.access_token = jwt.sign(token, env.NEXTAUTH_SECRET, {
+      session.access_token = jwt.sign(session, env.NEXTAUTH_SECRET, {
         algorithm: "HS512",
       });
       return session;

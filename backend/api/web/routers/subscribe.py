@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Any, Dict, Optional
+from typing import Annotated, Any, Dict, Optional
 from uuid import uuid4
 from fastapi.responses import JSONResponse
 from redis import asyncio as aioredis
@@ -8,7 +8,7 @@ import asyncio
 import logging
 from dotenv import load_dotenv
 from fastapi import WebSocket, APIRouter, Depends
-from utils.security import JWT  
+from utils.security import JWT, get_jwt
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -24,7 +24,13 @@ except ValueError:
 redis_password = os.environ.get("REDIS_PASSWORD", None)
 redis = aioredis.Redis(host=redis_host, port=redis_port, db=0, password=redis_password)
 
-async def redis_listener(websocket: WebSocket, table_name: str, project_uuid: Optional[str] = None, organization_id: Optional[str] = None):
+
+async def redis_listener(
+    websocket: WebSocket,
+    table_name: str,
+    project_uuid: Optional[str] = None,
+    organization_id: Optional[str] = None,
+):
     print("Starting redis listener")
     pubsub = redis.pubsub()
     channel = f"{table_name}_channel"
@@ -50,20 +56,33 @@ async def redis_listener(websocket: WebSocket, table_name: str, project_uuid: Op
 
 
 @router.websocket("/{table_name}")
-async def subscribe(websocket: WebSocket, token: str, table_name: str, project_uuid: Optional[str] = None, organization_id: Optional[str] = None):
+async def subscribe(
+    websocket: WebSocket,
+    token: str,
+    table_name: str,
+    project_uuid: Optional[str] = None,
+    organization_id: Optional[str] = None,
+):
     # Check if token is valid
     if not redis.exists(token):
         await websocket.close(code=1008, reason="Invalid or expired token")
         return
     await websocket.accept()
-    await redis_listener(websocket=websocket, table_name=table_name, project_uuid=project_uuid, organization_id=organization_id)
+    await redis_listener(
+        websocket=websocket,
+        table_name=table_name,
+        project_uuid=project_uuid,
+        organization_id=organization_id,
+    )
 
 
 @router.post("/start")
-async def start_subscription(jwt: dict = Depends(JWT)):
+async def start_subscription(
+    jwt: Annotated[str, Depends(get_jwt)],
+):
     # Generate a unique token
     token = str(uuid4())
     # Store the token in Redis with an expiration time of 60 seconds
-    await redis.setex(token, 60, 'valid')
+    await redis.setex(token, 60, "valid")
 
     return JSONResponse(content={"token": token})
