@@ -13,7 +13,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from utils.security import JWT, get_jwt
+from utils.security import get_jwt
 from db_models import *
 from ..models import (
     ChatMessageInstance,
@@ -68,17 +68,21 @@ async def fetch_project_chat_messages(
         check_user_auth = (
             await session.execute(
                 select(Project)
-                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
+                .join(
+                    UsersOrganizations,
+                    Project.organization_id == UsersOrganizations.organization_id,
+                )
                 .where(Project.uuid == project_uuid)
                 .where(UsersOrganizations.user_id == jwt["user_id"])
             )
         ).scalar_one_or_none()
-        
+
         if not check_user_auth:
             raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+                status_code=HTTP_403_FORBIDDEN,
+                detail="User don't have access to this project",
             )
-        
+
         chat_messages: List[ChatLogViewInstance] = [
             ChatLogViewInstance(**chat_message.model_dump())
             for chat_message in (

@@ -21,7 +21,6 @@ sqlalchemy>=2.0.0
 python-dotenv
 alembic
 asyncpg
-fastapi_nextauth_jwt
 passlib
 bcrypt==4.0.1
 psycopg2-binary

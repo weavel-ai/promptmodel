@@ -15,7 +15,7 @@ from utils.logger import logger
 from base.database import get_session
 from db_models import *
 from ..models import DailyRunLogMetricInstance, DailyChatLogMetricInstance
-from utils.security import JWT, get_jwt
+from utils.security import get_jwt
 
 router = APIRouter()
 

@@ -2,7 +2,7 @@
 import json
 from datetime import datetime, timezone
 from pydantic import BaseModel
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Annotated, Any, Dict, List, Optional, Sequence, Tuple, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import Result, select, asc, desc, update
 
@@ -16,6 +16,7 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_406_NOT_ACCEPTABLE,
 )
+from utils.security import get_jwt
 
 from utils.logger import logger
 
@@ -25,7 +26,6 @@ from modules.websocket.run_model_generators import (
     run_local_chat_model_generator,
 )
 from api.common.models import ChatModelRunConfig
-from utils.security import JWT
 from db_models import *
 
 router = APIRouter()
@@ -33,10 +33,10 @@ router = APIRouter()
 
 @router.post("/run_chat_model")
 async def run_chat_model(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     run_config: ChatModelRunConfig,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     """
     <h2>For local connection, Send run_chat_model request to the local server  </h2>
@@ -75,27 +75,35 @@ async def run_chat_model(
         project = (
             (
                 await session.execute(
-                    select(Project.cli_access_key, Project.version, Project.uuid, Project.organization_id).where(
-                        Project.uuid == project_uuid
-                    )
+                    select(
+                        Project.cli_access_key,
+                        Project.version,
+                        Project.uuid,
+                        Project.organization_id,
+                    ).where(Project.uuid == project_uuid)
                 )
             )
             .mappings()
             .all()
         )
-        
+
         # check jwt['user_id'] have access to project_uuid
         users_orgs = (
-            await session.execute(
-                select(UsersOrganizations.organization_id).where(
-                    UsersOrganizations.user_id == jwt['user_id']
+            (
+                await session.execute(
+                    select(UsersOrganizations.organization_id).where(
+                        UsersOrganizations.user_id == jwt["user_id"]
+                    )
                 )
             )
-        ).scalars().all()
-        
+            .scalars()
+            .all()
+        )
+
         if project[0]["organization_id"] not in users_orgs:
             raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+                status_code=HTTP_403_FORBIDDEN,
+                detail="User don't have access to this project",
             )
 
         if len(project) == 0:
@@ -134,9 +142,9 @@ async def run_chat_model(
 
 @router.get("/list_chat_models")
 async def list_chat_models(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     """Get list of chat models in local DB by websocket
     Input:

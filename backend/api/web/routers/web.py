@@ -19,7 +19,7 @@ from utils.logger import logger
 from utils.prompt_utils import update_dict
 
 from base.database import get_session
-from utils.security import JWT, get_jwt
+from utils.security import get_jwt
 from api.common.models import FunctionModelRunConfig, ChatModelRunConfig
 from db_models import *
 

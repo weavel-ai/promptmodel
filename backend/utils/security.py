@@ -17,10 +17,8 @@ from utils.logger import logger
 from base.database import get_session_context
 from db_models import *
 
-from starlette.requests import Request
 import jwt
 from jose.exceptions import JWEError
-from fastapi_nextauth_jwt.exceptions import InvalidTokenError, MissingTokenError
 
 
 load_dotenv()
@@ -129,17 +127,26 @@ async def get_jwt(
         if self_hosted:
             public_key = os.environ.get("NEXTAUTH_SECRET")
             if not raw_jwt:
-                raise MissingTokenError(401, "No token found in request Header.")
+                raise HTTPException(
+                    status_code=status_code.HTTP_401_UNAUTHORIZED,
+                    detail="No token found in request header.",
+                )
             # strip Bearer
             if raw_jwt.lower().startswith("bearer "):
                 token = raw_jwt[7:]
 
             if not token:
-                raise MissingTokenError(401, "No token found in request.")
+                raise HTTPException(
+                    status_code=status_code.HTTP_401_UNAUTHORIZED,
+                    detail="No token found in request.",
+                )
             try:
                 token = jwt.decode(token, public_key, algorithms=["HS512"])
             except JWEError as err:
-                raise InvalidTokenError(401, "Invalid token.") from err
+                raise HTTPException(
+                    status_code=status_code.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token.",
+                ) from err
 
             if "sub" in token and "user_id" not in token:
                 token["user_id"] = token["sub"]
@@ -150,19 +157,27 @@ async def get_jwt(
             public_key = decode_jwk(res.json()["keys"][0])
 
         if not raw_jwt:
-            raise MissingTokenError(401, "No token found in request Header.")
+            raise HTTPException(
+                status_code=status_code.HTTP_401_UNAUTHORIZED,
+                detail="No token found in request Header.",
+            )
         # strip Bearer
         if raw_jwt.lower().startswith("bearer "):
             token = raw_jwt[7:]
 
         if not token:
-            raise MissingTokenError(401, "No token found in request.")
+            raise HTTPException(
+                status_code=status_code.HTTP_401_UNAUTHORIZED,
+                detail="No token found in request.",
+            )
         try:
             token = jwt.decode(token, public_key, algorithms=["RS256"])
             print(token)
         except JWEError as err:
             print(err)
-            raise InvalidTokenError(401, "Invalid token.") from err
+            raise HTTPException(
+                status_code=status_code.HTTP_401_UNAUTHORIZED, detail="Invalid token."
+            ) from err
 
         # check if token is expired
         current_time = time.time()

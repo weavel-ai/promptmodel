@@ -8,7 +8,7 @@ import asyncio
 import logging
 from dotenv import load_dotenv
 from fastapi import WebSocket, APIRouter, Depends
-from utils.security import JWT, get_jwt
+from utils.security import get_jwt
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

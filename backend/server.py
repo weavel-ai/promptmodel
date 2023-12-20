@@ -3,28 +3,15 @@ import os
 import pytz
 
 from fastapi import FastAPI
-from fastapi.responses import Response, JSONResponse
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi_nextauth_jwt import NextAuthJWT
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
-from fastapi_nextauth_jwt.exceptions import MissingTokenError
 
 from api import cli, web, dev, web_auth
 
 load_dotenv()
 
 app = FastAPI()
-
-
-@app.exception_handler(MissingTokenError)
-async def missing_token_error_handler(request, exc: MissingTokenError):
-    print(exc)
-    return JSONResponse(
-        status_code=401,
-        content={"detail": "Authentication token is missing or invalid."},
-    )
 
 
 frontend_url = os.getenv("FRONTEND_PUBLIC_URL", "http://localhost:3000")

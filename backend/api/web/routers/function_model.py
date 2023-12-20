@@ -14,7 +14,7 @@ from starlette.status import (
 from utils.logger import logger
 
 from base.database import get_session
-from utils.security import JWT, get_jwt
+from utils.security import get_jwt
 from db_models import *
 from ..models import FunctionModelInstance, CreateFunctionModelBody
 
@@ -59,18 +59,21 @@ async def create_function_model(
         user_auth_check = (
             await session.execute(
                 select(Project)
-                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
+                .join(
+                    UsersOrganizations,
+                    Project.organization_id == UsersOrganizations.organization_id,
+                )
                 .where(Project.uuid == body.project_uuid)
                 .where(UsersOrganizations.user_id == jwt["user_id"])
             )
         ).scalar_one_or_none()
-        
+
         if not user_auth_check:
             raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+                status_code=HTTP_403_FORBIDDEN,
+                detail="User don't have access to this project",
             )
-        
-        
+
         # check same name
         function_model_in_db = (
             await session.execute(
@@ -142,17 +145,21 @@ async def delete_function_model(
             await session.execute(
                 select(FunctionModel)
                 .join(Project, FunctionModel.project_uuid == Project.uuid)
-                .join(UsersOrganizations, Project.organization_id == UsersOrganizations.organization_id)
+                .join(
+                    UsersOrganizations,
+                    Project.organization_id == UsersOrganizations.organization_id,
+                )
                 .where(FunctionModel.uuid == uuid)
                 .where(UsersOrganizations.user_id == jwt["user_id"])
             )
         ).scalar_one_or_none()
-        
+
         if not user_auth_check:
             raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+                status_code=HTTP_403_FORBIDDEN,
+                detail="User don't have access to this project",
             )
-            
+
         deleted_model = (
             (
                 await session.execute(

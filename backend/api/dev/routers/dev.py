@@ -1,7 +1,7 @@
 """APIs for promptmodel local connection"""
 import json
 from pydantic import BaseModel
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Annotated, Any, Dict, List, Optional, Sequence, Tuple, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import Result, select, asc, desc, update
 
@@ -16,7 +16,7 @@ from starlette.status import (
     HTTP_406_NOT_ACCEPTABLE,
 )
 
-from utils.security import get_project
+from utils.security import get_jwt, get_project
 from utils.prompt_utils import update_dict
 from utils.logger import logger
 
@@ -25,7 +25,6 @@ from base.websocket_connection import websocket_manager, LocalTask
 from modules.websocket.run_model_generators import run_local_function_model_generator
 from .dev_chat import router as chat_router
 from api.common.models import FunctionModelRunConfig
-from utils.security import JWT
 from db_models import *
 
 router = APIRouter()
@@ -34,10 +33,10 @@ router.include_router(chat_router)
 
 @router.post("/run_function_model")
 async def run_function_model(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     run_config: FunctionModelRunConfig,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     """
     <h2>Send run_function_model request to the local server  </h2>
@@ -132,9 +131,9 @@ async def run_function_model(
 
 @router.get("/list_function_models")
 async def list_function_models(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     """Get list of prompt models in local Code by websocket
     Input:
@@ -193,9 +192,9 @@ async def list_function_models(
 
 @router.get("/list_functions")
 async def list_functions(
+    jwt: Annotated[str, Depends(get_jwt)],
     project_uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     """Get list of functions in local Code by websocket
     Input:
