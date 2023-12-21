@@ -96,7 +96,7 @@ export function RunLogUI({
   }, [prompts]);
 
   useEffect(() => {
-    if (inputKeys.length == 0 || inputs.length == 0 || !inputs) return;
+    if (inputKeys.length == 0 || !inputs) return;
     if (arePrimitiveListsEqual(inputKeys, Object.keys(inputs))) return;
     const newInputs = inputKeys.map((key) => {
       if (inputs.some((input) => input?.key == key)) {
@@ -109,7 +109,8 @@ export function RunLogUI({
       };
     });
     setInputs(newInputs);
-  }, [inputKeys]);
+    // Do not add inputs as a dependency, otherwise it will cause infinite loop
+  }, [inputKeys]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isRunDisabled = useMemo(() => {
     if (isNewOrCachedVersion) {
