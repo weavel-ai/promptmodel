@@ -1,6 +1,6 @@
 """APIs for Prompt"""
 from datetime import datetime
-from typing import List
+from typing import Annotated, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc
 
@@ -9,11 +9,11 @@ from starlette.status import (
     HTTP_403_FORBIDDEN,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
+from backend.utils.security import get_jwt
 
 from utils.logger import logger
 
 from base.database import get_session
-from utils.security import JWT
 from db_models import *
 from ..models import PromptInstance
 
@@ -23,9 +23,9 @@ router = APIRouter()
 
 @router.get("", response_model=List[PromptInstance])
 async def fetch_prompts(
+    jwt: Annotated[str, Depends(get_jwt)],
     function_model_version_uuid: str,
     session: AsyncSession = Depends(get_session),
-    jwt: dict = Depends(JWT),
 ):
     try:
         check_user_auth = True
