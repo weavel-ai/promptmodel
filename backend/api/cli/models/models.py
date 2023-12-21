@@ -82,7 +82,7 @@ class FetchChatModelVersionResponseInstance(PMObject):
 
 
 class ChatMessageRequestBody(PMObject):
-    uuid: Optional[str] = None
+    uuid: str
     message: Dict[str, Any]
     metadata: Optional[Dict[str, Any]] = None
     api_response: Optional[ModelResponse] = None

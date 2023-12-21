@@ -1025,9 +1025,9 @@ async def save_run_log(
 
 @router.post("/chat_log")
 async def save_chat_log(
-    session_uuid: Optional[str],
-    version_uuid: Optional[str],
+    session_uuid: str,
     chat_message_requests_body: List[ChatMessageRequestBody],
+    version_uuid: Optional[str] = None,
     project: dict = Depends(get_project),
     db_session: AsyncSession = Depends(get_session),
 ):
@@ -1043,8 +1043,10 @@ async def save_chat_log(
                 select(ChatSession).where(ChatSession.uuid == session_uuid)
             )
         ).scalar_one_or_none()
+
         if not session:
             # create session
+            print("CREATE_NEW_SESSION")
             if not version_uuid:
                 raise HTTPException(
                     HTTP_400_BAD_REQUEST,
@@ -1062,12 +1064,6 @@ async def save_chat_log(
             await db_session.refresh(session)
 
         version_uuid = session.version_uuid
-
-        if len(session) == 0:
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND, detail="Session not found"
-            )
-
         model: str = (
             await db_session.execute(
                 select(ChatModelVersion.model).where(
