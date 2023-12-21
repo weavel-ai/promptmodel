@@ -6,7 +6,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { ToastContainer, toast } from "react-toastify";
 import { initAmplitude } from "@/services/amplitude";
 import { RealtimeProvider } from "./providers/RealtimeProvider";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { env } from "@/constants";
 import { internalServerClient, webServerClient } from "@/apis/base";
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -57,16 +57,25 @@ export function Providers({ children, session }) {
 function AuthProvider({ children }) {
   const { getToken, isSignedIn, isLoaded } = useAuth();
 
+  const getAndSetToken = useCallback(async () => {
+    getToken().then((token: string) => {
+      localStorage.setItem("token", token);
+    });
+  }, [getToken]);
+
+  useEffect(() => {
+    getAndSetToken();
+    // Refresh local token every 60 seconds
+    setInterval(getAndSetToken, 1000 * 60);
+  }, [getAndSetToken]);
+
   const configCallback = useCallback(
     async (config: any) => {
-      // if (!isSignedIn) {
-      //   return null;
-      // }
       const token = await getToken();
       config.headers.Authorization = token ? `Bearer ${token}` : "";
       return config;
     },
-    [getToken, isSignedIn]
+    [getToken]
   );
 
   useEffect(() => {
@@ -83,6 +92,22 @@ function AuthProvider({ children }) {
       );
     };
   }, [configCallback]);
+
+  if (!isLoaded) {
+    return (
+      <div className="w-full h-full">
+        <div className="loading loading-lg loading-ring" />
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return (
+      <div className="w-full h-full">
+        <div className="loading loading-lg loading-ring" />
+      </div>
+    );
+  }
 
   return <>{children}</>;
 }

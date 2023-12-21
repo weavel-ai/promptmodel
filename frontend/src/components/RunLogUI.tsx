@@ -69,13 +69,7 @@ export function RunLogUI({
   } = useFunctionModelVersionStore();
   const [runLogList, setRunLogList] = useState<RunLog[]>([]);
   const [selectedTab, setSelectedTab] = useState(Tab.Test);
-  const [inputs, setInputs] = useState<Array<KeyValueInput>>([
-    {
-      id: Math.random().toString(),
-      key: "",
-      value: "",
-    },
-  ]);
+  const [inputs, setInputs] = useState<Array<KeyValueInput>>([]);
   const [inputsCache, setInputsCache] = useState<Array<KeyValueInput>>([]);
   const prompts = useMemo(
     () => (isNewOrCachedVersion ? modifiedPrompts : originalPromptListData),
@@ -130,7 +124,7 @@ export function RunLogUI({
       }
     }
     if (inputKeys.length == 0) {
-      return true;
+      return false;
     }
     return inputs.some((input) => input.value.trim().length == 0);
   }, [
@@ -195,6 +189,7 @@ export function RunLogUI({
     );
 
     handleRun(isNewOrCachedVersion, inputsObject);
+    if (Object.keys(inputsObject).length == 0) return;
     // If inputsObject if different from inputsCache, create new sample input
     let newSample: boolean = true;
     if (!!inputsCache && inputsCache.length > 0) {
