@@ -54,7 +54,6 @@ async def save_instances(
         for obj in function_schemas:
             await session.refresh(obj)
 
-        print(function_models)
         return {
             "function_model_rows": [r.model_dump() for r in function_models],
             "chat_model_rows": [r.model_dump() for r in chat_models],

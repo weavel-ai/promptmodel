@@ -77,7 +77,7 @@ async def create_tag(
 
         return TagsInstance(**new_tag.model_dump())
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)

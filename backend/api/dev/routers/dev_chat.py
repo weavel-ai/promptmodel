@@ -193,7 +193,7 @@ async def list_chat_models(
         return JSONResponse(response, status_code=HTTP_200_OK)
 
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as exc:
         logger.error(exc)

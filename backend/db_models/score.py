@@ -19,10 +19,10 @@ from uuid import uuid4, UUID as UUIDType
 from base.database import Base
 
 
-class Score(Base):
-    __tablename__ = "score"
-    
-    id: int = Column(BigInteger, Identity(), unique=True, primary_key=True)
+class RunLogScore(Base):
+    __tablename__ = "run_log_score"
+
+    id: int = Column(BigInteger, Identity(), unique=True)
     created_at: datetime = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
@@ -30,17 +30,36 @@ class Score(Base):
     run_log_uuid: UUIDType = Column(
         UUID(as_uuid=True),
         ForeignKey("run_log.uuid"),
-        nullable=True,
-    )
-    chat_session_uuid: UUIDType = Column(
-        UUID(as_uuid=True),
-        ForeignKey("chat_session.uuid"),
-        nullable=True,
+        nullable=False,
+        primary_key=True,
     )
     eval_metric_uuid: UUIDType = Column(
         UUID(as_uuid=True),
         ForeignKey("eval_metric.uuid"),
         nullable=False,
+        primary_key=True,
     )
-    
+
+    value: int = Column(Integer, nullable=False)
+
+
+class ChatSessionScore(Base):
+    __tablename__ = "chat_session_score"
+
+    id: int = Column(BigInteger, Identity(), unique=True, primary_key=True)
+    created_at: datetime = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+    chat_session_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey("chat_session.uuid"),
+        nullable=False,
+    )
+
+    eval_metric_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey("eval_metric.uuid"),
+        nullable=False,
+    )
+
     value: int = Column(Integer, nullable=False)

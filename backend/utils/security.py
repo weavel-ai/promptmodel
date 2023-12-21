@@ -31,7 +31,7 @@ else:
     self_hosted = False
 
 frontend_url = os.getenv("FRONTEND_PUBLIC_URL", "http://localhost:3000")
-origins = [frontend_url, "http://127.0.0.1:3000"]
+origins = [frontend_url]
 
 
 def base64url_to_base64(value):
@@ -170,7 +170,6 @@ async def get_jwt(
             )
         try:
             token = jwt.decode(token, public_key, algorithms=["RS256"])
-            print(token)
         except jwt.InvalidTokenError as err:
             print(err)
             raise HTTPException(

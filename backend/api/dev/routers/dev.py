@@ -75,33 +75,42 @@ async def run_function_model(
         project = (
             (
                 await session.execute(
-                    select(Project.cli_access_key, Project.version, Project.uuid, Project.organization_id).where(
-                        Project.uuid == project_uuid
-                    )
+                    select(
+                        Project.cli_access_key,
+                        Project.version,
+                        Project.uuid,
+                        Project.organization_id,
+                    ).where(Project.uuid == project_uuid)
                 )
             )
             .mappings()
             .all()
         )
-        
+
         # check jwt['user_id'] have access to project_uuid
         users_orgs = (
-            await session.execute(
-                select(UsersOrganizations.organization_id).where(
-                    UsersOrganizations.user_id == jwt['user_id']
+            (
+                await session.execute(
+                    select(UsersOrganizations.organization_id).where(
+                        UsersOrganizations.user_id == jwt["user_id"]
+                    )
                 )
             )
-        ).scalars().all()
-        
+            .scalars()
+            .all()
+        )
+
         if project[0]["organization_id"] not in users_orgs:
             raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN, detail="User don't have access to this project"
+                status_code=HTTP_403_FORBIDDEN,
+                detail="User don't have access to this project",
             )
 
         if len(project) == 0:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND, detail="There is no project"
             )
+
         if project[0]["cli_access_key"] is None:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
@@ -120,7 +129,7 @@ async def run_function_model(
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as exc:
         logger.error(exc)
@@ -181,7 +190,7 @@ async def list_function_models(
         return JSONResponse(response, status_code=HTTP_200_OK)
 
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as exc:
         logger.error(exc)
@@ -242,7 +251,7 @@ async def list_functions(
         return JSONResponse(response, status_code=HTTP_200_OK)
 
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as exc:
         logger.error(exc)
