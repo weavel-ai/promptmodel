@@ -90,7 +90,7 @@ class DailyChatLogMetric(Base):
     day: date = Column(Date, primary_key=True)
     total_cost: Optional[float] = Column(Float)
     avg_latency: Optional[float] = Column(Float)
-    total_token_usage: Dict[str, Any] = Column(JSONB)
+    total_token_usage: Optional[int] = Column(BigInteger)
     total_chat_sessions: int = Column(BigInteger)
 
 

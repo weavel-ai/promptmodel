@@ -22,5 +22,5 @@ class DailyChatLogMetricInstance(PMObject):
     day: str
     total_cost: Optional[float]
     avg_latency: Optional[float]
-    total_token_usage: Dict[str, Any]
+    total_token_usage: Optional[int]
     total_chat_sessions: int

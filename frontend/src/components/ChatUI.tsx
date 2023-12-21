@@ -121,7 +121,7 @@ export function ChatUI({
       model: isNewVersion ? selectedModel : originalVersionData.model,
       fromVersion: isNewVersion ? originalVersionData?.version : null,
       sessionUuid: selectedSessionUuid,
-      versionUuid: isNewVersion ? null : originalVersionData?.uuid,
+      versionUuid: isNewVersion ? null : versionUuid,
       functions: isNewVersion
         ? selectedFunctions
         : originalVersionData?.functions,

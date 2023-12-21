@@ -3,7 +3,6 @@ import { useParams } from "next/navigation";
 import { useProject } from "./useProject";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRealtimeStore } from "@/stores/realtimeStore";
-import { toast } from "react-toastify";
 import { fetchChatModels } from "@/apis/chat_models";
 import { subscribeTable } from "@/apis/subscribe";
 

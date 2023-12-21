@@ -7,7 +7,6 @@ interface Metric {
   day: string;
   total_cost: number;
   avg_latency: number;
-  total_token_usage: Record<string, any>;
 }
 
 /**
@@ -35,6 +34,7 @@ export interface RunLogMetric extends Metric {
   function_model_uuid?: string;
   function_model_name?: string;
   total_runs: number;
+  total_token_usage: Record<string, any>;
 }
 
 /**
@@ -45,4 +45,5 @@ export interface ChatLogMetric extends Metric {
   chat_model_uuid?: string;
   chat_model_name?: string;
   total_chat_sessions: number;
+  total_token_usage: number;
 }
