@@ -57,7 +57,7 @@ async def create_project(
         await session.refresh(new_project)
         return ProjectInstance(**new_project.model_dump())
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)
@@ -99,7 +99,7 @@ async def fetch_projects(
         ]
         return projects
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)
@@ -129,7 +129,7 @@ async def get_project(
             )
         return ProjectInstance(**project)
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)

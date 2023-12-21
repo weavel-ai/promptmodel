@@ -66,7 +66,7 @@ async def fetch_chat_model_versions(
         ]
         return chat_model_versions
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)
@@ -100,7 +100,7 @@ async def fetch_chat_model_version(
             )
         return ChatModelVersionInstance(**chat_model_version)
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)
@@ -172,7 +172,7 @@ async def update_published_chat_model_version(
 
         return ChatModelVersionInstance(**updated_chat_model_version)
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)

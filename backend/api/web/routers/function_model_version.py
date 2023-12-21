@@ -81,7 +81,7 @@ async def fetch_function_model_version(
             )
         return FunctionModelVersionInstance(**function_model_version)
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)
@@ -146,7 +146,7 @@ async def update_published_function_model_version(
         await session.commit()
         return FunctionModelVersionInstance(**updated_function_model_version)
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)

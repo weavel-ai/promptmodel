@@ -92,7 +92,7 @@ async def create_chat_model(
         await session.refresh(new_chat_model)
         return ChatModelInstance(**new_chat_model.model_dump())
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)
@@ -170,7 +170,7 @@ async def delete_chat_model(
         await session.commit()
         return ChatModelInstance(**deleted_chat_model)
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)

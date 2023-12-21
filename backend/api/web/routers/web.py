@@ -298,6 +298,7 @@ async def run_cloud_function_model(
             yield data
 
         # Create run log
+
         session.add(
             RunLog(
                 **{
@@ -585,32 +586,35 @@ async def run_cloud_chat_model(
         # Create chat log
         user_message_uuid = str(uuid4())
         assistant_message_uuid = str(uuid4())
-        session.add(
-            ChatMessage(
-                **{
-                    "uuid": user_message_uuid,
-                    "created_at": start_timestampz_iso,
-                    "session_uuid": session_uuid,
-                    "role": "user",
-                    "content": chat_config.user_input,
-                }
-            )
+        user_chat_message = ChatMessage(
+            **{
+                "uuid": user_message_uuid,
+                "created_at": start_timestampz_iso,
+                "session_uuid": session_uuid,
+                "role": "user",
+                "content": chat_config.user_input,
+            }
         )
-        session.add(
-            ChatMessage(
-                **{
-                    "uuid": assistant_message_uuid,
-                    "session_uuid": session_uuid,
-                    "role": "assistant",
-                    "content": raw_output,
-                    "function_call": function_call,
-                    "chat_message_metadata": {"error": True, "error_log": error_log}
-                    if error_occurs
-                    else None,
-                }
-            )
-        )
+        session.add(user_chat_message)
         await session.flush()
+
+        assistant_created_at = datetime.now(timezone.utc)
+        assistant_chat_message = ChatMessage(
+            **{
+                "uuid": assistant_message_uuid,
+                "created_at": assistant_created_at,
+                "session_uuid": session_uuid,
+                "role": "assistant",
+                "content": raw_output,
+                "function_call": function_call,
+                "chat_message_metadata": {"error": True, "error_log": error_log}
+                if error_occurs
+                else None,
+            }
+        )
+        session.add(assistant_chat_message)
+        await session.flush()
+
         session.add(
             ChatLog(
                 user_message_uuid=user_message_uuid,

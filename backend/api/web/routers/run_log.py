@@ -98,7 +98,7 @@ async def fetch_run_logs(
         ]
         return run_logs
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)
@@ -131,7 +131,7 @@ async def fetch_run_logs_count(
 
         return RunLogsCountInstance(project_uuid=project_uuid, count=run_logs_count)
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)

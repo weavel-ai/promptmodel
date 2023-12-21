@@ -95,7 +95,7 @@ async def create_function_model(
         await session.refresh(new_function_model)
         return FunctionModelInstance(**new_function_model.model_dump())
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)
@@ -174,7 +174,7 @@ async def delete_function_model(
         await session.commit()
         return FunctionModelInstance(**deleted_model)
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)

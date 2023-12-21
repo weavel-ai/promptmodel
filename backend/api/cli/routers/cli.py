@@ -38,7 +38,7 @@ from ..models import *
 router = APIRouter()
 
 
-@router.get("/check_cli_access", response_model=bool)
+@router.get("/cli_access/check", response_model=bool)
 async def check_cli_access(
     api_key: str = Depends(get_api_key), session: AsyncSession = Depends(get_session)
 ):
@@ -51,7 +51,7 @@ async def check_cli_access(
     return True  # Response(status_code=HTTP_200_OK)
 
 
-@router.get("/list_orgs", response_model=List[UsersOrganizationsInstance])
+@router.get("/organizations", response_model=List[UsersOrganizationsInstance])
 async def list_orgs(
     user_id: str = Depends(get_cli_user_id),
     session: AsyncSession = Depends(get_session),
@@ -78,7 +78,7 @@ async def list_orgs(
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
-@router.get("/list_projects", response_model=List[CliProjectInstance])
+@router.get("/projects", response_model=List[CliProjectInstance])
 async def list_projects(
     organization_id: str,
     user_id: str = Depends(get_cli_user_id),
@@ -92,24 +92,6 @@ async def list_projects(
             ).where(Project.organization_id == organization_id)
         )
         return [dict(x) for x in res.mappings().all()]
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-
-@router.get("/get_project_version", response_model=int)
-async def get_project_version(
-    project_uuid: str,
-    user_id: str = Depends(get_cli_user_id),
-    session: AsyncSession = Depends(get_session),
-):
-    """Get project version"""
-    try:
-        res: Result = await session.execute(
-            select(Project.version).where(Project.uuid == project_uuid)
-        )
-
-        return res.one()._mapping
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
@@ -150,7 +132,6 @@ async def check_update(
                 "version": project_version,
                 "project_status": None,
             }
-            print(res)
             return JSONResponse(res, status_code=HTTP_200_OK)
         else:
             need_update = True
@@ -227,7 +208,7 @@ async def check_update(
 
 
 @router.get(
-    "/fetch_function_model_version",
+    "/function_model_versions",
     response_model=FetchFunctionModelVersionResponseInstance,
 )
 async def fetch_function_model_version(
@@ -402,7 +383,7 @@ async def fetch_function_model_version(
 
 
 @router.get(
-    "/fetch_chat_model_version_with_chat_log",
+    "/chat_model_versions_with_logs",
     response_model=FetchChatModelVersionResponseInstance,
 )
 async def fetch_chat_model_version_with_chat_log(
@@ -601,7 +582,7 @@ async def open_websocket(
         websocket_manager.disconnect(token)
 
 
-@router.post("/connect_cli_project")
+@router.post("/project/cli_connect")
 async def connect_cli_project(
     project_uuid: str,
     api_key: str = Depends(get_api_key),
@@ -987,8 +968,6 @@ async def save_run_log(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        print(run_log_request_body)
-        print(version_uuid)
 
         api_response = run_log_request_body.api_response
         latency = (

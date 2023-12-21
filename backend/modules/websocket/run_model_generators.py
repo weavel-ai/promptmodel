@@ -180,7 +180,7 @@ async def run_local_function_model_generator(
             "version": version,
             "status": "running",
         }
-        yield data
+        yield json.dumps(data)
 
     websocket_message = {
         "messages_for_run": messages_for_run,
@@ -358,13 +358,11 @@ async def run_local_chat_model_generator(
                     "subject": "chat_model_version",
                     "identifier": [str(new_chat_model_version_row.uuid)],
                     "action": "ADD",
-                    "project_uuid": project["uuid"],
                 },
                 {
                     "subject": "chat_model_version",
                     "identifier": [str(new_chat_model_version_row.uuid)],
                     "action": "PUBLISH",
-                    "project_uuid": project["uuid"],
                 },
             ]
         else:

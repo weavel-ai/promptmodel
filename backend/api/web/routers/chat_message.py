@@ -99,7 +99,7 @@ async def fetch_project_chat_messages(
         ]
         return chat_messages
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)
@@ -132,7 +132,7 @@ async def fetch_chat_logs_count(
 
         return ChatLogsCountInstance(project_uuid=project_uuid, count=chat_logs_count)
     except HTTPException as http_exc:
-        logger.error(http_exc)
+        logger.error(http_exc.detail)
         raise http_exc
     except Exception as e:
         logger.error(e)
