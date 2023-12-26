@@ -42,10 +42,14 @@ class SampleInput(Base):
 
     project_uuid: UUIDType = Column(
         UUID(as_uuid=True),
-        ForeignKey("project.uuid", onupdate="CASCADE"),
+        ForeignKey(
+            "project.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
         nullable=False,
     )
-    
+
     function_model_uuid: UUIDType = Column(
         UUID(as_uuid=True),
         ForeignKey("function_model.uuid", ondelete="SET NULL"),

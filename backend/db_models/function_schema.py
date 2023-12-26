@@ -44,7 +44,13 @@ class FunctionSchema(Base):
     mock_response: Optional[str] = Column(Text, nullable=True)
 
     project_uuid: UUIDType = Column(
-        UUID(as_uuid=True), ForeignKey("project.uuid"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey(
+            "project.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
     )
 
     # project: "Project" = Relationship(back_populates="function_schemas")

@@ -28,17 +28,17 @@ app.add_middleware(
 
 # @app.middleware("http")
 # async def log_requests(request, call_next):
-#     # 요청 본문을 읽기
+#     # extract request body
 #     body = await request.body()
 #     print(f"Request: {request.method} {request.url} Body: {body.decode()}")
 
-#     # 원래의 요청 복원
+#     # recover request body
 #     async def override_receive():
 #         return {"type": "http.request", "body": body}
 
 #     request._receive = override_receive
 
-#     # 요청 처리 및 응답 로깅
+#     # process request and log response
 #     response = await call_next(request)
 #     print(f"Response: {response.status_code}")
 #     return response
@@ -51,15 +51,6 @@ app.include_router(web.router, prefix="/api/web")
 app.include_router(dev.router, prefix="/api/dev", tags=["dev"])
 
 load_dotenv()
-
-
-# scheduler = BackgroundScheduler()
-# tz = pytz.timezone("Asia/Seoul")  # 예를 들어, 한국 시간대를 지정
-# trigger = CronTrigger(hour=7, minute=45, timezone=tz)  # 매일 아침 7시에 실행
-
-# # scheduler.add_job(execute_coroutine_mailing_type_1, trigger=trigger)
-# scheduler.add_job(send_newsletter_job, trigger=trigger)
-# scheduler.start()
 
 
 @app.get("/health")
