@@ -10,16 +10,17 @@ load_dotenv()
 
 # Connect to PostgreSQL
 pg_conn = psycopg2.connect(
-    dbname=os.environ.get("POSTGRES_DB"), 
-    user=os.environ.get("POSTGRES_USER"), 
-    password=os.environ.get("POSTGRES_PASSWORD"), 
+    dbname=os.environ.get("POSTGRES_DB"),
+    user=os.environ.get("POSTGRES_USER"),
+    password=os.environ.get("POSTGRES_PASSWORD"),
     host=os.environ.get("POSTGRES_HOST"),  # use the service name as the hostname
-    port=os.environ.get("POSTGRES_PORT") or 5432  # Default to 5432 if no port specified
+    port=os.environ.get("POSTGRES_PORT")
+    or 5432,  # Default to 5432 if no port specified
 )
 
 pg_conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
 
-redis_host = os.environ.get("REDIS_HOST") or 'localhost'
+redis_host = os.environ.get("REDIS_HOST") or "localhost"
 redis_port = os.environ.get("REDIS_PORT", 6379)
 try:
     redis_port = int(redis_port)
@@ -27,14 +28,25 @@ except ValueError:
     redis_port = 6379
 redis_password = os.environ.get("REDIS_PASSWORD") or None
 # Connect to Redis
-redis_conn = redis.Redis(host=redis_host, port=redis_port, db=0, password=redis_password)
+redis_conn = redis.Redis(
+    host=redis_host, port=redis_port, db=0, password=redis_password
+)
 # redis_conn = redis.Redis(host='redis', port=6379, db=0)
 
-# Listen to the channel
-pg_curs = pg_conn.cursor()
-channels = ['project_channel', 'function_model_channel', 'chat_model_channel', 'sample_input_channel', 'function_schema_channel', 'run_log_channel', 'chat_log_channel'] # Add other channels
-for channel in channels:
-    pg_curs.execute(f"LISTEN {channel}")
+# Create separate cursors for each channel
+channels = [
+    "project_channel",
+    "function_model_channel",
+    "chat_model_channel",
+    "sample_input_channel",
+    "function_schema_channel",
+    "run_log_channel",
+    "chat_log_channel",
+]  # Add other channels
+cursors = {channel: pg_conn.cursor() for channel in channels}
+# Listen to each channel with its corresponding cursor
+for channel, cursor in cursors.items():
+    cursor.execute(f"LISTEN {channel}")
     print(f"Listening to {channel}")
 
 while True:
@@ -42,8 +54,7 @@ while True:
         print("Timeout: No notifications in the last 60 seconds")
     else:
         pg_conn.poll()
-        while pg_conn.notifies:
-            notify = pg_conn.notifies.pop(0)
+        for notify in pg_conn.notifies:
             print("Got NOTIFY:", notify.channel)
             if notify.payload:
                 data = json.loads(notify.payload)
@@ -54,3 +65,5 @@ while True:
                     channel += f"_o_{data['organization_id']}"
                 print(f"Publishing to {channel}")
                 redis_conn.publish(channel, notify.payload)
+                # Remove the notification from the queue
+            pg_conn.notifies.remove(notify)
