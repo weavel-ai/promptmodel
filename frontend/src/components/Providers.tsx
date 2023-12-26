@@ -95,17 +95,8 @@ function AuthProvider({ children }) {
 
   if (!isLoaded) {
     return (
-      <div className="w-full h-full">
+      <div className="w-full h-full flex justify-center items-center">
         <div className="loading loading-lg loading-ring" />
-      </div>
-    );
-  }
-
-  if (!isSignedIn) {
-    return (
-      <div className="w-full h-full flex flex-col gap-y-2 justify-center items-center">
-        <div className="loading loading-lg loading-ring" />
-        <p>Signing in...</p>
       </div>
     );
   }
