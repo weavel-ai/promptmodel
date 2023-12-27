@@ -8,6 +8,7 @@ from sqlalchemy import (
     Identity,
     ARRAY,
     Text,
+    Float,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
@@ -43,9 +44,8 @@ class RunLogScore(Base):
         nullable=False,
         primary_key=True,
     )
-    # set value as ARRAY
-    value: str = Column(ARRAY(Text), nullable=False)
-    var_type: str = Column(Text, nullable=False)
+
+    value: str = Column(Float, nullable=False)
 
 
 class ChatSessionScore(Base):
@@ -77,6 +77,4 @@ class ChatSessionScore(Base):
         primary_key=True,
     )
 
-    # set value as ARRAY
-    value: str = Column(ARRAY(Text), nullable=False)
-    var_type: str = Column(Text, nullable=False)
+    value: str = Column(Float, nullable=False)

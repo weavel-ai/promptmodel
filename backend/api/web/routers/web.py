@@ -228,23 +228,26 @@ async def run_cloud_function_model(
 
         # NOTE : Function call is not supported yet in cloud development environment
 
-        # add function schemas
-        function_schemas = (
-            (
-                await session.execute(
-                    select(
-                        FunctionSchema.name,
-                        FunctionSchema.description,
-                        FunctionSchema.parameters,
-                        FunctionSchema.mock_response,
+        if run_config.functions is None:
+            function_schemas = None
+        else:
+            # add function schemas
+            function_schemas = (
+                (
+                    await session.execute(
+                        select(
+                            FunctionSchema.name,
+                            FunctionSchema.description,
+                            FunctionSchema.parameters,
+                            FunctionSchema.mock_response,
+                        )
+                        .where(FunctionSchema.project_uuid == project_uuid)
+                        .where(FunctionSchema.name.in_(run_config.functions))
                     )
-                    .where(FunctionSchema.project_uuid == project_uuid)
-                    .where(FunctionSchema.name.in_(run_config.functions))
                 )
+                .mappings()
+                .all()
             )
-            .mappings()
-            .all()
-        )
 
         res: AsyncGenerator[LLMStreamResponse, None] = function_model_dev.dev_run(
             messages=messages,

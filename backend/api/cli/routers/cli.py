@@ -927,32 +927,11 @@ async def save_run_log_score(
 
         scores_to_add: List[RunLogScore] = []
         for key, value in run_log_scores.items():
-            # check type & set var_type
-            var_type = "str"
-            # check it is float
-            try:
-                value = float(value)
-                var_type = "float"
-            except ValueError:
-                pass
-
-            # check it is int
-            try:
-                value = int(value)
-                var_type = "int"
-            except ValueError:
-                pass
-
-            # else str
-            if not isinstance(value, str):
-                value = str(value)
-
             scores_to_add.append(
                 RunLogScore(
                     run_log_uuid=run_log_uuid,
                     eval_metric_uuid=eval_metric_dict[key],
-                    value=[value],
-                    var_type=var_type,
+                    value=value,
                 )
             )
 
@@ -964,14 +943,13 @@ async def save_run_log_score(
                         run_log_uuid=score.run_log_uuid,
                         eval_metric_uuid=score.eval_metric_uuid,
                         value=score.value,
-                        value_type=score.var_type,
                     )
                     .on_conflict_do_update(  # if conflict, append
                         index_elements=[
                             RunLogScore.run_log_uuid,
                             RunLogScore.eval_metric_uuid,
                         ],
-                        set_={"value": RunLogScore.value + score.value},
+                        set_={"value": score.value},
                     )
                 )
             )
