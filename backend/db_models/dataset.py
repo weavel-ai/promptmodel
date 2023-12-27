@@ -39,6 +39,7 @@ class SampleInput(Base):
     content: Dict[str, Any] = Column(JSONB)
     input_keys: List[str] = Column(ARRAY(String))
     online: bool = Column(Boolean, nullable=False, default=False)
+    ground_truth: Optional[str] = Column(Text, nullable=True)
 
     project_uuid: UUIDType = Column(
         UUID(as_uuid=True),
@@ -57,3 +58,56 @@ class SampleInput(Base):
     )
 
     # project: "Project" = Relationship(back_populates="sample_inputs")
+
+
+class Dataset(Base):
+    __tablename__ = "dataset"
+
+    id: int = Column(BigInteger, Identity(), unique=True)
+    uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        server_default=text("gen_random_uuid()"),
+        primary_key=True,
+    )
+    name: str = Column(Text, nullable=False)
+
+    project_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "project.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+    )
+
+    eval_metric_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "eval_metric.uuid",
+            onupdate="CASCADE",
+            ondelete="SET NULL",
+        ),
+    )
+
+
+class DatasetSampleInput(Base):
+    __tablename__ = "dataset_sample_input"
+
+    dataset_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "dataset.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        primary_key=True,
+    )
+    sample_input_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "sample_input.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        primary_key=True,
+    )

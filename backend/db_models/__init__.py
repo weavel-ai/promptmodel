@@ -2,6 +2,7 @@ from .chat_model import ChatModel, ChatModelVersion, ChatSession, ChatMessage, C
 from .function_model import FunctionModel, FunctionModelVersion, Prompt, RunLog
 from .project import (
     Organization,
+    OrganizationLLMAPIKey,
     Project,
     User,
     UsersOrganizations,
@@ -10,7 +11,7 @@ from .project import (
     CliAccess,
     pwd_context,
 )
-from .sample_input import SampleInput
+from .dataset import SampleInput, Dataset, DatasetSampleInput
 from .function_schema import FunctionSchema
 from .eval_metric import EvalMetric
 from .score import RunLogScore, ChatSessionScore
