@@ -67,7 +67,7 @@ async def get_project(
         )
 
     logger.debug(f"api key: {api_key}")
-    logger.debug(f"project: {project}")
+    logger.debug(f"project: {project.name}")
 
     if not project:
         raise HTTPException(

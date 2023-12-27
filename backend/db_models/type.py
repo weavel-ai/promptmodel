@@ -2,16 +2,7 @@ from typing import Optional, List, Dict, Any, Union, Tuple
 from datetime import datetime
 from sqlalchemy import (
     Column,
-    ForeignKey,
-    Integer,
-    String,
-    TIMESTAMP,
-    Boolean,
     Text,
-    JSON,
-    Float,
-    BigInteger,
-    Identity,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID

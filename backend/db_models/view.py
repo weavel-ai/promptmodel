@@ -4,18 +4,13 @@ from typing import Optional, List, Dict, Any, Union, Tuple
 from datetime import datetime, date
 from sqlalchemy import (
     Column,
-    ForeignKey,
-    Integer,
-    String,
     TIMESTAMP,
     Boolean,
     Text,
-    JSON,
     Float,
     BigInteger,
     ARRAY,
     Date,
-    Identity,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from uuid import uuid4, UUID as UUIDType

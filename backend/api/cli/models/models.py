@@ -7,6 +7,7 @@ from litellm.utils import ModelResponse
 class DeployedFunctionModelVersionInstance(PMObject):
     uuid: str
     from_version: Optional[int]
+    version: int
     function_model_uuid: str
     model: str
     is_published: bool
@@ -18,6 +19,7 @@ class DeployedFunctionModelVersionInstance(PMObject):
 
 class DeployedChatModelVersionInstance(PMObject):
     uuid: str
+    version: int
     from_version: Optional[int]
     chat_model_uuid: str
     model: str
@@ -65,7 +67,7 @@ class CheckUpdateResponseInstance(PMObject):
 
 
 class FetchFunctionModelVersionResponseInstance(PMObject):
-    function_model_versions: List[DeployedFunctionModelVersionInstance]
+    function_model_version: DeployedFunctionModelVersionInstance
     prompts: List[DeployedPromptInstance]
 
 

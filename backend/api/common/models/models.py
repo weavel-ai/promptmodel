@@ -18,7 +18,7 @@ class FunctionModelRunConfig(PMObject):
     sample_input: Optional[Dict[str, str]] = None
     parsing_type: Optional[str] = None
     output_keys: Optional[List[str]] = None
-    functions: Optional[List[str]] = []
+    functions: Optional[List[str]] = None
 
 
 class ChatModelRunConfig(PMObject):
@@ -29,4 +29,4 @@ class ChatModelRunConfig(PMObject):
     from_version: Optional[int] = None
     session_uuid: Optional[str] = None
     version_uuid: Optional[str] = None
-    functions: Optional[List[str]] = []
+    functions: Optional[List[str]] = None

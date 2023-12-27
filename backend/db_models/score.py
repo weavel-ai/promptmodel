@@ -3,15 +3,12 @@ from sqlalchemy import (
     Column,
     ForeignKey,
     Integer,
-    String,
     TIMESTAMP,
-    Boolean,
-    Text,
-    JSON,
-    Float,
     BigInteger,
-    ARRAY,
     Identity,
+    ARRAY,
+    Text,
+    Float,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
@@ -29,37 +26,55 @@ class RunLogScore(Base):
 
     run_log_uuid: UUIDType = Column(
         UUID(as_uuid=True),
-        ForeignKey("run_log.uuid"),
+        ForeignKey(
+            "run_log.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
         nullable=False,
         primary_key=True,
     )
     eval_metric_uuid: UUIDType = Column(
         UUID(as_uuid=True),
-        ForeignKey("eval_metric.uuid"),
+        ForeignKey(
+            "eval_metric.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
         nullable=False,
         primary_key=True,
     )
 
-    value: int = Column(Integer, nullable=False)
+    value: str = Column(Float, nullable=False)
 
 
 class ChatSessionScore(Base):
     __tablename__ = "chat_session_score"
 
-    id: int = Column(BigInteger, Identity(), unique=True, primary_key=True)
+    id: int = Column(BigInteger, Identity(), unique=True)
     created_at: datetime = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
     chat_session_uuid: UUIDType = Column(
         UUID(as_uuid=True),
-        ForeignKey("chat_session.uuid"),
+        ForeignKey(
+            "chat_session.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
         nullable=False,
+        primary_key=True,
     )
 
     eval_metric_uuid: UUIDType = Column(
         UUID(as_uuid=True),
-        ForeignKey("eval_metric.uuid"),
+        ForeignKey(
+            "eval_metric.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
         nullable=False,
+        primary_key=True,
     )
 
-    value: int = Column(Integer, nullable=False)
+    value: str = Column(Float, nullable=False)

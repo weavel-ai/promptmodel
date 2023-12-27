@@ -78,7 +78,15 @@ class CliAccess(Base):
         server_default=text("CURRENT_TIMESTAMP + INTERVAL '7 days'"),
     )
 
-    user_id: str = Column(Text, ForeignKey("user.user_id"), primary_key=True)
+    user_id: str = Column(
+        Text,
+        ForeignKey(
+            "user.user_id",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        primary_key=True,
+    )
 
     api_key: str = Column(Text, unique=True)
 
@@ -120,17 +128,6 @@ class Project(Base):
         nullable=True,
     )
 
-    # organization: "Organization" = Relationship(back_populates="projects")
-    # tags: List["Tag"] = Relationship(back_populates="project")
-    # llms: List["LLM"] = Relationship(back_populates="project")
-    # project_changelogs: List["ProjectChangelog"] = Relationship(
-    #     back_populates="project"
-    # )
-    # function_models: List["FunctionModel"] = Relationship(back_populates="project")
-    # chat_models: List["ChatModel"] = Relationship(back_populates="project")
-    # function_schemas: List["FunctionSchema"] = Relationship(back_populates="project")
-    # sample_inputs: List["SampleInput"] = Relationship(back_populates="project")
-
 
 class ProjectChangelog(Base):
     __tablename__ = "project_changelog"
@@ -145,7 +142,13 @@ class ProjectChangelog(Base):
     )
 
     project_uuid: UUIDType = Column(
-        UUID(as_uuid=True), ForeignKey("project.uuid"), nullable=True
+        UUID(as_uuid=True),
+        ForeignKey(
+            "project.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
     )
 
     # project: "Project" = Relationship(back_populates="project_changelogs")
@@ -159,10 +162,24 @@ class UsersOrganizations(Base):
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
 
-    user_id: str = Column(Text, ForeignKey("user.user_id"), primary_key=True)
+    user_id: str = Column(
+        Text,
+        ForeignKey(
+            "user.user_id",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        primary_key=True,
+    )
 
     organization_id: str = Column(
-        Text, ForeignKey("organization.organization_id"), primary_key=True
+        Text,
+        ForeignKey(
+            "organization.organization_id",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        primary_key=True,
     )
 
     # user: "User" = Relationship()

@@ -42,7 +42,13 @@ class FunctionModel(Base):
     online: bool = Column(Boolean, nullable=False, default=False)
 
     project_uuid: UUIDType = Column(
-        UUID(as_uuid=True), ForeignKey("project.uuid"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey(
+            "project.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
     )
 
     # project: "Project" = Relationship(back_populates="function_models")
@@ -86,7 +92,13 @@ class FunctionModelVersion(Base):
     memo: Optional[str] = Column(Text, nullable=True)
 
     function_model_uuid: UUIDType = Column(
-        UUID(as_uuid=True), ForeignKey("function_model.uuid"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey(
+            "function_model.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
     )
 
     # function_model: "FunctionModel" = Relationship(back_populates="function_model_versions")
@@ -107,7 +119,13 @@ class Prompt(Base):
     content: str = Column(Text)
 
     version_uuid: UUIDType = Column(
-        UUID(as_uuid=True), ForeignKey("function_model_version.uuid"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey(
+            "function_model_version.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
     )
 
     # function_model_version: "FunctionModelVersion" = Relationship(back_populates="prompts")
@@ -147,11 +165,23 @@ class RunLog(Base):
     cost: Optional[float] = Column(Float, nullable=True)
 
     version_uuid: UUIDType = Column(
-        UUID(as_uuid=True), ForeignKey("function_model_version.uuid"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey(
+            "function_model_version.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
     )
-    
+
     project_uuid: UUIDType = Column(
-        UUID(as_uuid=True), ForeignKey("project.uuid"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey(
+            "project.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
     )
 
     # function_model_version: "FunctionModelVersion" = Relationship(back_populates="run_logs")

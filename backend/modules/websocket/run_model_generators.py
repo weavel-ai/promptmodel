@@ -89,22 +89,25 @@ async def run_local_function_model_generator(
         messages_for_run = [p.model_dump() for p in prompts]
 
     # 2. fetch function schemas
-    function_schemas = (
-        (
-            await session.execute(
-                select(
-                    FunctionSchema.name,
-                    FunctionSchema.description,
-                    FunctionSchema.parameters,
-                    FunctionSchema.mock_response,
+    if run_config.functions is None:
+        function_schemas = None
+    else:
+        function_schemas = (
+            (
+                await session.execute(
+                    select(
+                        FunctionSchema.name,
+                        FunctionSchema.description,
+                        FunctionSchema.parameters,
+                        FunctionSchema.mock_response,
+                    )
+                    .where(FunctionSchema.project_uuid == project["uuid"])
+                    .where(FunctionSchema.name.in_(run_config.functions))
                 )
-                .where(FunctionSchema.project_uuid == project["uuid"])
-                .where(FunctionSchema.name.in_(run_config.functions))
             )
-        )
-        .mappings()
-        .all()
-    )  # function_schemas includes mock_response
+            .mappings()
+            .all()
+        )  # function_schemas includes mock_response
 
     # 3. flush function_model_version
     function_model_version_uuid: Optional[str] = run_config.version_uuid

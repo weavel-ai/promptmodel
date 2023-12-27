@@ -209,7 +209,7 @@ async def check_update(
 
 @router.get(
     "/function_model_versions",
-    response_model=FetchFunctionModelVersionResponseInstance,
+    response_model=List[FetchFunctionModelVersionResponseInstance],
 )
 async def fetch_function_model_version(
     function_model_name: str,
@@ -244,7 +244,7 @@ async def fetch_function_model_version(
             )
         except:
             raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND, detail="Prompt Model not found"
+                status_code=HTTP_404_NOT_FOUND, detail="FunctionModel not found"
             )
         try:
             if version == "deploy":
@@ -283,14 +283,22 @@ async def fetch_function_model_version(
                     .mappings()
                     .all()
                 )
-                prompts = [
-                    DeployedPromptInstance(**dict(x)).model_dump() for x in prompts
-                ]
-
-                res = {
-                    "function_model_versions": deployed_function_model_versions,
-                    "prompts": prompts,
-                }
+                # make list of {function_model_version, prompts} group by version_uuid
+                config_list: List = []
+                for version_uuid in versions_uuid_list:
+                    config = {
+                        "function_model_version": [
+                            x
+                            for x in deployed_function_model_versions
+                            if str(x["uuid"]) == version_uuid
+                        ][0],
+                        "prompts": [
+                            DeployedPromptInstance(**dict(x)).model_dump()
+                            for x in prompts
+                            if str(x["version_uuid"]) == version_uuid
+                        ],
+                    }
+                    config_list.append(config)
             else:
                 try:
                     version = int(version)
@@ -298,52 +306,38 @@ async def fetch_function_model_version(
                     version = version
 
                 if isinstance(version, int):
-                    function_model_versions = (
-                        (
-                            await session.execute(
-                                select(FunctionModelVersion)
-                                .where(
-                                    FunctionModelVersion.function_model_uuid
-                                    == function_model["uuid"]
-                                )
-                                .where(FunctionModelVersion.version == version)
+                    function_model_version: FunctionModelVersion = (
+                        await session.execute(
+                            select(FunctionModelVersion)
+                            .where(
+                                FunctionModelVersion.function_model_uuid
+                                == function_model["uuid"]
                             )
+                            .where(FunctionModelVersion.version == version)
                         )
-                        .scalars()
-                        .all()
-                    )
+                    ).scalar_one_or_none()
 
-                    function_model_versions = [
-                        DeployedFunctionModelVersionInstance(
-                            **x.model_dump()
-                        ).model_dump()
-                        for x in function_model_versions
-                    ]
+                    function_model_version = DeployedFunctionModelVersionInstance(
+                        **function_model_version.model_dump()
+                    ).model_dump()
 
                 elif version == "latest":
-                    function_model_versions = (
-                        (
-                            await session.execute(
-                                select(FunctionModelVersion)
-                                .where(
-                                    FunctionModelVersion.function_model_uuid
-                                    == function_model["uuid"]
-                                )
-                                .order_by(desc(FunctionModelVersion.version))
-                                .limit(1)
+                    function_model_version = (
+                        await session.execute(
+                            select(FunctionModelVersion)
+                            .where(
+                                FunctionModelVersion.function_model_uuid
+                                == function_model["uuid"]
                             )
+                            .order_by(desc(FunctionModelVersion.version))
+                            .limit(1)
                         )
-                        .scalars()
-                        .all()
-                    )
-                    function_model_versions = [
-                        DeployedFunctionModelVersionInstance(
-                            **x.model_dump()
-                        ).model_dump()
-                        for x in function_model_versions
-                    ]
+                    ).scalar_one()
 
-                versions_uuid_list = [str(x["uuid"]) for x in function_model_versions]
+                    function_model_version = DeployedFunctionModelVersionInstance(
+                        **function_model_version.model_dump()
+                    ).model_dump()
+
                 # get prompts
                 prompts = (
                     (
@@ -353,7 +347,9 @@ async def fetch_function_model_version(
                                 Prompt.role,
                                 Prompt.step,
                                 Prompt.content,
-                            ).where(Prompt.version_uuid.in_(versions_uuid_list))
+                            ).where(
+                                Prompt.version_uuid == function_model_version["uuid"]
+                            )
                         )
                     )
                     .mappings()
@@ -363,10 +359,17 @@ async def fetch_function_model_version(
                     DeployedPromptInstance(**dict(x)).model_dump() for x in prompts
                 ]
 
-                res = {
-                    "function_model_versions": function_model_versions,
-                    "prompts": prompts,
-                }
+                config_list = [
+                    {
+                        "function_model_version": function_model_version,
+                        "prompts": prompts,
+                    }
+                ]
+
+            res = [
+                FetchFunctionModelVersionResponseInstance(**x).model_dump()
+                for x in config_list
+            ]
 
             return JSONResponse(res, status_code=HTTP_200_OK)
         except Exception as exc:
@@ -433,20 +436,17 @@ async def fetch_chat_model_version_with_chat_log(
                     status_code=HTTP_404_NOT_FOUND, detail="Session not found"
                 )
             session_chat_model_version = (
-                (
-                    await db_session.execute(
-                        select(ChatModelVersion).where(
-                            ChatModelVersion.uuid == session["version_uuid"]
-                        )
+                await db_session.execute(
+                    select(ChatModelVersion).where(
+                        ChatModelVersion.uuid == session["version_uuid"]
                     )
                 )
-                .scalars()
-                .all()
-            )
+            ).scalar_one_or_none()
 
             session_chat_model_version = [
-                DeployedChatModelVersionInstance(**x.model_dump()).model_dump()
-                for x in session_chat_model_version
+                DeployedChatModelVersionInstance(
+                    **session_chat_model_version.model_dump()
+                ).model_dump()
             ]
 
             # find chat logs
@@ -510,6 +510,7 @@ async def fetch_chat_model_version_with_chat_log(
 
             res = {"chat_model_versions": chat_model_version, "chat_logs": []}
         else:
+            # version == "deploy" or "latest"
             try:
                 chat_model = (
                     (
@@ -527,29 +528,53 @@ async def fetch_chat_model_version_with_chat_log(
                     status_code=HTTP_404_NOT_FOUND, detail="Chat Model not found"
                 )
 
-            # get published, ab_test chat_model_versions
-            deployed_chat_model_versions = (
-                (
-                    await db_session.execute(
-                        select(DeployedChatModelVersion).where(
-                            DeployedChatModelVersion.chat_model_uuid
-                            == chat_model["uuid"]
+            if version == "deploy":
+                # get published, ab_test chat_model_versions
+                deployed_chat_model_versions = (
+                    (
+                        await db_session.execute(
+                            select(DeployedChatModelVersion).where(
+                                DeployedChatModelVersion.chat_model_uuid
+                                == chat_model["uuid"]
+                            )
                         )
                     )
-                )
-                .scalars()
-                .all()
-            )
+                    .scalars()
+                    .all()
+                )  # it should be A/B testing
 
-            deployed_chat_model_versions = [
-                DeployedChatModelVersionInstance(**x.model_dump()).model_dump()
-                for x in deployed_chat_model_versions
-            ]
+                deployed_chat_model_versions = [
+                    DeployedChatModelVersionInstance(**x.model_dump()).model_dump()
+                    for x in deployed_chat_model_versions
+                ]
 
-            res = {
-                "chat_model_versions": deployed_chat_model_versions,
-                "chat_logs": [],
-            }
+                res = {
+                    "chat_model_versions": deployed_chat_model_versions,
+                    "chat_logs": [],  # if in A/B tesing version selection, chat_logs cannot be existed.
+                }
+
+            else:
+                # get latest chat_model_version
+
+                latest_chat_model_versions = (
+                    await db_session.execute(
+                        select(ChatModelVersion)
+                        .where(ChatModelVersion.chat_model_uuid == chat_model["uuid"])
+                        .order_by(desc(ChatModelVersion.version))
+                        .limit(1)
+                    )
+                ).scalar_one()
+
+                latest_chat_model_versions = [
+                    DeployedChatModelVersionInstance(
+                        **latest_chat_model_versions.model_dump()
+                    ).model_dump()
+                ]
+
+                res = {
+                    "chat_model_versions": latest_chat_model_versions,
+                    "chat_logs": [],
+                }
 
         return JSONResponse(res, status_code=HTTP_200_OK)
     except HTTPException as http_exc:
@@ -909,6 +934,7 @@ async def save_run_log_score(
                     value=value,
                 )
             )
+
         for score in scores_to_add:
             (
                 await session.execute(
@@ -918,7 +944,7 @@ async def save_run_log_score(
                         eval_metric_uuid=score.eval_metric_uuid,
                         value=score.value,
                     )
-                    .on_conflict_do_update(
+                    .on_conflict_do_update(  # if conflict, append
                         index_elements=[
                             RunLogScore.run_log_uuid,
                             RunLogScore.eval_metric_uuid,
@@ -968,7 +994,6 @@ async def save_run_log(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-
         api_response = run_log_request_body.api_response
         latency = (
             api_response["_response_ms"] if "_response_ms" in api_response else None
