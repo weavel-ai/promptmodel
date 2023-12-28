@@ -3,11 +3,13 @@ from datetime import datetime
 from typing import Annotated, Dict
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, delete
 
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import Response, JSONResponse
 from starlette.status import (
     HTTP_404_NOT_FOUND,
+    HTTP_409_CONFLICT,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
@@ -103,13 +105,135 @@ async def get_organization(
                 .scalar_one()
                 .model_dump()
             )
+
         except Exception as e:
-            logger.error(e)
             raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail="Organization Not Found",
+                status_code=HTTP_409_CONFLICT,
+                detail="API KEY already exists",
             )
         return OrganizationInstance(**org)
+    except HTTPException as http_exc:
+        logger.error(http_exc.detail)
+        raise http_exc
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+        )
+
+
+@router.get("/api_key", response_class=List[str])
+async def get_organization_llm_api_key(
+    jwt: Annotated[str, Depends(get_jwt)],
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        org_id = jwt["organization_id"]
+
+        # get list of llm_name
+        llm_names: List[str] = (
+            (
+                await session.execute(
+                    select(OrganizationLLMAPIKey.llm_name).where(
+                        OrganizationLLMAPIKey.organization_id == org_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        llm_names = [llm_name for llm_name in llm_names]
+
+        return JSONResponse(content=llm_names, status_code=200)
+
+    except HTTPException as http_exc:
+        logger.error(http_exc.detail)
+        raise http_exc
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+        )
+
+
+@router.post("/api_key")
+async def save_organization_llm_api_key(
+    jwt: Annotated[str, Depends(get_jwt)],
+    body: Dict[str, str],
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        org_id = jwt["organization_id"]
+        llm_name = body["llm_name"]
+        api_key = body["api_key"]
+
+        # check if api key already exists
+        api_key = (
+            await session.execute(
+                select(OrganizationLLMAPIKey)
+                .where(OrganizationLLMAPIKey.organization_id == org_id)
+                .where(OrganizationLLMAPIKey.llm_name == llm_name)
+            )
+        ).scalar_one_or_none()
+
+        if api_key is not None:
+            raise HTTPException(
+                status_code=HTTP_409_CONFLICT,
+                detail="API Key already exists",
+            )
+
+        new_organization_llm_api_key = OrganizationLLMAPIKey(
+            organization_id=org_id, llm_name=llm_name, llm_key=api_key
+        )
+
+        session.add(new_organization_llm_api_key)
+        await session.commit()
+
+        return Response(status_code=200)
+
+    except HTTPException as http_exc:
+        logger.error(http_exc.detail)
+        raise http_exc
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+        )
+
+
+@router.delete("/api_key/{llm_name}")
+async def delete_organization_llm_api_key(
+    jwt: Annotated[str, Depends(get_jwt)],
+    llm_name: str,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        org_id = jwt["organization_id"]
+
+        # check if api key already exists
+        api_key = (
+            await session.execute(
+                select(OrganizationLLMAPIKey)
+                .where(OrganizationLLMAPIKey.organization_id == org_id)
+                .where(OrganizationLLMAPIKey.llm_name == llm_name)
+            )
+        ).scalar_one_or_none()
+
+        if api_key is None:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="API Key not exist",
+            )
+
+        await session.execute(
+            delete(OrganizationLLMAPIKey)
+            .where(OrganizationLLMAPIKey.organization_id == org_id)
+            .where(OrganizationLLMAPIKey.llm_name == llm_name)
+        )
+
+        return Response(status_code=200)
+
     except HTTPException as http_exc:
         logger.error(http_exc.detail)
         raise http_exc

@@ -25,6 +25,10 @@ from .function_model_version import (
 from .function_model import FunctionModelInstance, CreateFunctionModelBody
 from .prompt import PromptInstance
 from .run_log import RunLogInstance, DeploymentRunLogViewInstance, RunLogsCountInstance
-from .sample_input import SampleInputInstance, CreateSampleInputBody
+from .sample_input import (
+    SampleInputInstance,
+    CreateSampleInputBody,
+    CreateDatasetBody,
+)
 from .tags import TagsInstance, CreateTagsBody
 from .user import UserInstance, CreateUserBody

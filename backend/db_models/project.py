@@ -47,7 +47,7 @@ class Organization(Base):
 class OrganizationLLMAPIKey(Base):
     __tablename__ = "organization_llm_api_key"
 
-    id: int = Column(BigInteger, Identity(), primary_key=True)
+    id: int = Column(BigInteger, Identity(), unique=True)
     created_at: datetime = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
@@ -61,7 +61,7 @@ class OrganizationLLMAPIKey(Base):
         ),
         primary_key=True,
     )
-
+    llm_name: str = Column(Text, primary_key=True)
     llm_key: str = Column(Text)
 
 
