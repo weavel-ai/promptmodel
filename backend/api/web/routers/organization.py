@@ -1,6 +1,9 @@
 """APIs for Organization"""
+import os
+
 from datetime import datetime
 from typing import Annotated, Dict
+import httpx
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
@@ -91,6 +94,42 @@ async def get_organization(
     session: AsyncSession = Depends(get_session),
 ):
     try:
+        user_id = jwt["user_id"]
+        self_host = os.getenv("NEXT_PUBLIC_SELF_HOSTED") == "true"
+
+        if not self_host:
+            user_org = (
+                await session.execute(
+                    select(UsersOrganizations)
+                    .where(UsersOrganizations.user_id == user_id)
+                    .where(UsersOrganizations.organization_id == organization_id)
+                )
+            ).scalar_one_or_none()
+
+            if not user_org:
+                async with httpx.AsyncClient() as client:
+                    res = await client.get(
+                        url=f"https://api.clerk.com/v1/users/{user_id}/organization_memberships?limit=100&offset=0",
+                        headers={
+                            "Authorization": f"Bearer {os.getenv('CLERK_SECRET_KEY')}"
+                        },
+                    )
+                    if res.status_code != 200:
+                        raise HTTPException(
+                            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Clerk Internal Server Error",
+                        )
+                    res = res.json()
+                organization_id_list = [r["organization"]["id"] for r in res["data"]]
+
+                if organization_id in organization_id_list:
+                    session.add(
+                        UsersOrganizations(
+                            user_id=user_id, organization_id=organization_id
+                        )
+                    )
+                    await session.commit()
+
         try:
             org: Dict = (
                 (
