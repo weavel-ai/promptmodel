@@ -70,6 +70,7 @@ class Dataset(Base):
         primary_key=True,
     )
     name: str = Column(Text, nullable=False)
+    description: Optional[str] = Column(Text, nullable=True)
 
     project_uuid: UUIDType = Column(
         UUID(as_uuid=True),
@@ -79,7 +80,6 @@ class Dataset(Base):
             ondelete="CASCADE",
         ),
     )
-
     eval_metric_uuid: UUIDType = Column(
         UUID(as_uuid=True),
         ForeignKey(
@@ -87,6 +87,15 @@ class Dataset(Base):
             onupdate="CASCADE",
             ondelete="SET NULL",
         ),
+    )
+    function_model_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "function_model.uuid",
+            onupdate="CASCADE",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
     )
 
 
