@@ -39,7 +39,7 @@ class SampleInput(Base):
     content: Dict[str, Any] = Column(JSONB)
     input_keys: List[str] = Column(ARRAY(String))
     online: bool = Column(Boolean, nullable=False, default=False)
-    # ground_truth: Optional[str] = Column(Text, nullable=True)
+    ground_truth: Optional[str] = Column(Text, nullable=True)
 
     project_uuid: UUIDType = Column(
         UUID(as_uuid=True),
@@ -97,6 +97,37 @@ class Dataset(Base):
         ),
         nullable=True,
     )
+
+
+class BatchRun(Base):
+    __tablename__ = "batch_run"
+
+    id: int = Column(BigInteger, Identity(), unique=True)
+    uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        server_default=text("gen_random_uuid()"),
+        primary_key=True,
+    )
+    dataset_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "dataset.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+    )
+
+    function_model_version_uuid: UUIDType = Column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "function_model_version.uuid",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+    )
+
+    score: float = Column(Float, nullable=True)
+    status: str = Column(Text, nullable=False, default="running")
 
 
 class DatasetSampleInput(Base):

@@ -148,14 +148,14 @@ class RunLog(Base):
 
     run_from_deployment: bool = Column(Boolean, default=True)
 
-    # sample_input_uuid: Optional[UUIDType] = Column(
-    #     ForeignKey(
-    #         "sample_input.uuid",
-    #         onupdate="CASCADE",
-    #         ondelete="SET NULL",
-    #     ),
-    #     nullable=True,
-    # )
+    sample_input_uuid: Optional[UUIDType] = Column(
+        ForeignKey(
+            "sample_input.uuid",
+            onupdate="CASCADE",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+    )
 
     inputs: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
     raw_output: Optional[str] = Column(Text, nullable=True)
@@ -190,6 +190,15 @@ class RunLog(Base):
             ondelete="CASCADE",
         ),
         nullable=False,
+    )
+
+    batch_run_uuid: Optional[UUIDType] = Column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "batch_run.uuid",
+            onupdate="CASCADE",
+            ondelete="SET NULL",
+        ),
     )
 
     # function_model_version: "FunctionModelVersion" = Relationship(back_populates="run_logs")

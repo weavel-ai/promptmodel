@@ -57,6 +57,10 @@ async def create_organization(
         return OrganizationInstance(**new_org.model_dump())
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -87,6 +91,10 @@ async def update_organization(
         return OrganizationInstance(**updated_org)
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -159,6 +167,144 @@ async def get_organization(
         raise http_exc
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+        )
+
+
+@router.get("/api_key", response_class=List[str])
+async def get_organization_provider_list(
+    jwt: Annotated[str, Depends(get_jwt)],
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        org_id = jwt["organization_id"]
+
+        # get list of llm_name
+        provider_names: List[str] = (
+            (
+                await session.execute(
+                    select(OrganizationProviderAPIKey.provider).where(
+                        OrganizationProviderAPIKey.organization_id == org_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        provider_names = [llm_name for llm_name in provider_names]
+
+        return JSONResponse(content=provider_names, status_code=200)
+
+    except HTTPException as http_exc:
+        logger.error(http_exc.detail)
+        raise http_exc
+    except Exception as e:
+        logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+        )
+
+
+@router.post("/api_key")
+async def save_organization_llm_api_key(
+    jwt: Annotated[str, Depends(get_jwt)],
+    body: Dict[str, str],
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        org_id = jwt["organization_id"]
+        provider = body["provider"]
+        api_key = body["api_key"]
+
+        # check if api key already exists
+        api_key = (
+            await session.execute(
+                select(OrganizationProviderAPIKey)
+                .where(OrganizationProviderAPIKey.organization_id == org_id)
+                .where(OrganizationProviderAPIKey.provider == provider)
+            )
+        ).scalar_one_or_none()
+
+        if api_key is not None:
+            raise HTTPException(
+                status_code=HTTP_409_CONFLICT,
+                detail="API Key already exists",
+            )
+
+        new_organization_llm_api_key = OrganizationProviderAPIKey(
+            organization_id=org_id, provider=provider, api_key=api_key
+        )
+
+        session.add(new_organization_llm_api_key)
+        await session.commit()
+
+        return Response(status_code=200)
+
+    except HTTPException as http_exc:
+        logger.error(http_exc.detail)
+        raise http_exc
+    except Exception as e:
+        logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+        )
+
+
+@router.delete("/api_key/{provider}")
+async def delete_organization_llm_api_key(
+    jwt: Annotated[str, Depends(get_jwt)],
+    provider: str,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        org_id = jwt["organization_id"]
+
+        # check if api key already exists
+        api_key = (
+            await session.execute(
+                select(OrganizationProviderAPIKey)
+                .where(OrganizationProviderAPIKey.organization_id == org_id)
+                .where(OrganizationProviderAPIKey.provider == provider)
+            )
+        ).scalar_one_or_none()
+
+        if api_key is None:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="API Key not exist",
+            )
+
+        await session.execute(
+            delete(OrganizationProviderAPIKey)
+            .where(OrganizationProviderAPIKey.organization_id == org_id)
+            .where(OrganizationProviderAPIKey.provider == provider)
+        )
+
+        return Response(status_code=200)
+
+    except HTTPException as http_exc:
+        logger.error(http_exc.detail)
+        raise http_exc
+    except Exception as e:
+        logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )

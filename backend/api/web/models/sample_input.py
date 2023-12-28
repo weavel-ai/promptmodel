@@ -24,6 +24,7 @@ class CreateSampleInputBody(PMObject):
     content: Dict[str, Any]
     function_model_uuid: Optional[str] = None
     input_keys: List[str]
+    gt_output: Optional[str] = None
 
 
 class CreateDatasetBody(PMObject):
@@ -31,4 +32,3 @@ class CreateDatasetBody(PMObject):
     function_model_uuid: Optional[str] = None
     name: str
     description: Optional[str] = None
-    eval_metric_name: Optional[str] = None
