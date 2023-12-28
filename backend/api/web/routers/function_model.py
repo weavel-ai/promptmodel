@@ -16,7 +16,7 @@ from utils.logger import logger
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import FunctionModelInstance, CreateFunctionModelBody
+from ..models import FunctionModelInstance, CreateFunctionModelBody, DatasetInstance
 
 router = APIRouter()
 
@@ -188,6 +188,39 @@ async def delete_function_model(
     except HTTPException as http_exc:
         logger.error(http_exc.detail)
         raise http_exc
+    except Exception as e:
+        logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+        )
+
+
+@router.get("/{uuid}/datasets")
+async def fetch_datasets(
+    jwt: Annotated[str, Depends(get_jwt)],
+    uuid: str,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        datasets: List[DatasetInstance] = [
+            DatasetInstance(**d.model_dump())
+            for d in (
+                await session.execute(
+                    select(Dataset)
+                    .join(
+                        FunctionModel, Dataset.function_model_uuid == FunctionModel.uuid
+                    )
+                    .where(FunctionModel.uuid == uuid)
+                )
+            )
+            .scalars()
+            .all()
+        ]
+        return datasets
     except Exception as e:
         logger.error(e)
         try:

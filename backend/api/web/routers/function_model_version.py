@@ -1,5 +1,6 @@
 """APIs for FunctionModelVersion"""
 from typing import Annotated, Dict, List, Optional
+from threading import Thread
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc, update
 
@@ -19,6 +20,8 @@ from ..models import (
     FunctionModelVersionInstance,
     UpdatePublishedFunctionModelVersionBody,
     UpdateFunctionModelVersionTagsBody,
+    BatchRunConfigBody,
+    DatasetBatchRunInstance,
 )
 
 router = APIRouter()
@@ -231,6 +234,112 @@ async def update_function_model_version_memo(
             logger.error(e.detail)
         except:
             pass
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+        )
+
+
+@router.post("/{uuid}/batch_run")
+async def batch_run(
+    jwt: Annotated[str, Depends(get_jwt)],
+    uuid: str,
+    body: BatchRunConfigBody,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        # create batch_run
+        new_batch_run = BatchRun(
+            dataset_uuid=body.dataset_uuid,
+            function_model_version_uuid=uuid,
+        )
+        session.add(new_batch_run)
+        await session.commit()
+        await session.refresh(new_batch_run)
+
+        # TODO: run background task as thread
+
+    except Exception as e:
+        logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+        )
+
+
+@router.get("/{uuid}/batch_run")
+async def fetch_batch_runs(
+    jwt: Annotated[str, Depends(get_jwt)],
+    uuid: str,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        function_model_uuid = (
+            await session.execute(
+                select(FunctionModelVersion.function_model_uuid).where(
+                    FunctionModelVersion.uuid == uuid
+                )
+            )
+        ).scalar_one()
+
+        # fetch dataset for FunctionModel
+        dataset_list: List[Dataset] = (
+            (
+                await session.execute(
+                    select(Dataset).where(
+                        Dataset.function_model_uuid == function_model_uuid
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        # fetch BatchRun
+        batch_runs: List[BatchRun] = (
+            (
+                await session.execute(
+                    select(BatchRun).where(BatchRun.function_model_version_uuid == uuid)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        # TODO: make response
+        res: List[DatasetBatchRunInstance] = []
+        for dataset in dataset_list:
+            batch_run_for_dataset = [
+                batch_run
+                for batch_run in batch_runs
+                if batch_run.dataset_uuid == dataset.uuid
+            ]
+            if len(batch_run_for_dataset) == 0:
+                batch_run_for_dataset = None
+            else:
+                batch_run_for_dataset = batch_run_for_dataset[0]
+
+            res.append(
+                DatasetBatchRunInstance(
+                    dataset_uuid=dataset.uuid,
+                    dataset_name=dataset.name,
+                    batch_run_uuid=batch_run_for_dataset.uuid
+                    if batch_run_for_dataset
+                    else None,
+                    batch_run_score=batch_run_for_dataset.score
+                    if batch_run_for_dataset
+                    else None,
+                    batch_run_status=batch_run_for_dataset.status
+                    if batch_run_for_dataset
+                    else None,
+                )
+            )
+
+        return res
+    except Exception as e:
+        logger.error(e)
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
