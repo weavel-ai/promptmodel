@@ -36,6 +36,10 @@ async def create_clerk_user(
         return UserInstance(**new_user.model_dump())
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -66,6 +70,10 @@ async def get_user(
         raise http_exc
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )

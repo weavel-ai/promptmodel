@@ -43,6 +43,10 @@ async def fetch_chat_models(
         return chat_models
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -96,6 +100,10 @@ async def create_chat_model(
         raise http_exc
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -125,6 +133,10 @@ async def edit_chat_model_name(
         return ChatModelInstance(**updated_chat_model)
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -174,6 +186,10 @@ async def delete_chat_model(
         raise http_exc
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )

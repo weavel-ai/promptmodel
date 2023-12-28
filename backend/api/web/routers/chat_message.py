@@ -51,6 +51,10 @@ async def fetch_session_chat_messages(
         return chat_messages
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -103,6 +107,10 @@ async def fetch_project_chat_messages(
         raise http_exc
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -136,6 +144,10 @@ async def fetch_chat_logs_count(
         raise http_exc
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )

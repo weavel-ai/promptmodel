@@ -44,6 +44,10 @@ async def fetch_function_models(
         return function_models
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -99,6 +103,10 @@ async def create_function_model(
         raise http_exc
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -128,6 +136,10 @@ async def edit_function_model_name(
         return FunctionModelInstance(**updated_model)
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -178,6 +190,10 @@ async def delete_function_model(
         raise http_exc
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )

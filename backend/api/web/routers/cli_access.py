@@ -44,6 +44,10 @@ async def update_cli_access(
         return CliAccessInstance(**updated_cli_access)
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )

@@ -70,6 +70,10 @@ async def fetch_chat_model_versions(
         raise http_exc
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -104,6 +108,10 @@ async def fetch_chat_model_version(
         raise http_exc
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -176,6 +184,10 @@ async def update_published_chat_model_version(
         raise http_exc
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -208,6 +220,10 @@ async def update_chat_model_version_tags(
         return ChatModelVersionInstance(**updated_chat_model_version)
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
@@ -237,6 +253,10 @@ async def update_chat_model_version_memo(
         return ChatModelVersionInstance(**updated_chat_model_version)
     except Exception as e:
         logger.error(e)
+        try:
+            logger.error(e.detail)
+        except:
+            pass
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
