@@ -9,11 +9,11 @@ class DailyRunLogMetricInstance(PMObject):
     function_model_uuid: str
     function_model_name: str
     day: str
-    total_cost: Optional[float]
-    avg_latency: Optional[float]
-    total_token_usage: Optional[int]
-    total_prompt_tokens: Optional[int]
-    total_completion_tokens: Optional[int]
+    total_cost: Optional[float] = None
+    avg_latency: Optional[float] = None
+    total_token_usage: Optional[int] = None
+    total_prompt_tokens: Optional[int] = None
+    total_completion_tokens: Optional[int] = None
     total_runs: int
 
 
@@ -22,7 +22,7 @@ class DailyChatLogMetricInstance(PMObject):
     chat_model_uuid: str
     chat_model_name: str
     day: str
-    total_cost: Optional[float]
-    avg_latency: Optional[float]
-    total_token_usage: Optional[int]
+    total_cost: Optional[float] = None
+    avg_latency: Optional[float] = None
+    total_token_usage: Optional[int] = None
     total_chat_sessions: int

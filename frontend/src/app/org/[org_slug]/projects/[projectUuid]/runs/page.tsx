@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import classNames from "classnames";
 import { ArrowLeft, ArrowRight, CloudArrowDown } from "@phosphor-icons/react";
 import ReactJson from "react-json-view";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { CSVLink } from "react-csv";
 import { SelectTab } from "@/components/SelectTab";
@@ -15,6 +15,8 @@ import { useChatLogCount } from "@/hooks/useChatMessagesCount";
 import { fetchProjectChatMessages } from "@/apis/chat_messages";
 import { fetchProjectRunLogs } from "@/apis/run_logs";
 import { subscribeTable } from "@/apis/subscribe";
+import { RunLog } from "@/types/RunLog";
+import { ChatLogView } from "@/types/ChatLogView";
 
 const ROWS_PER_PAGE = 50;
 
@@ -39,6 +41,7 @@ const CHAT_CSV_HEADERS = [
 ];
 
 export default function Page() {
+  const queryClient = useQueryClient();
   const { projectData, projectUuid } = useProject();
   const [page, setPage] = useState(1);
   const [isRealtime, setIsRealtime] = useState(false);
@@ -86,9 +89,28 @@ export default function Page() {
     const runLogsStream: WebSocket = await subscribeTable({
       tableName: "run_log",
       project_uuid: projectUuid,
-      onMessage(message: any) {
-        refetchRunLogCountData();
-        refetchRunLogListData();
+      onMessage(event: MessageEvent) {
+        const data: RunLog = JSON.parse(event.data);
+        if (!!data) {
+          // Update run log list
+          const previousData = queryClient.getQueryData<RunLog[]>([
+            "runLogList",
+            {
+              projectUuid: projectUuid,
+              page: page,
+            },
+          ]);
+          const newData = [data, ...previousData].slice(0, ROWS_PER_PAGE);
+          queryClient.setQueryData<RunLog[]>(
+            ["runLogList", { projectUuid: projectUuid, page: page }],
+            newData
+          );
+          // Update run log count
+          queryClient.setQueryData(
+            ["runLogsCount", { projectUuid: projectUuid }],
+            (count: number) => count + 1
+          );
+        }
       },
     });
     console.log("runLogsStream", runLogsStream);
@@ -113,9 +135,28 @@ export default function Page() {
     const chatLogsStream: WebSocket = await subscribeTable({
       tableName: "chat_log",
       project_uuid: projectUuid,
-      onMessage(message: any) {
-        refetchChatLogCountData();
-        refetchChatLogListData();
+      onMessage(event: MessageEvent) {
+        // Update chat log list
+        const data: ChatLogView = JSON.parse(event.data);
+        if (!!data) {
+          const previousData = queryClient.getQueryData<ChatLogView[]>([
+            "chatLogList",
+            {
+              projectUuid: projectUuid,
+              page: page,
+            },
+          ]);
+          const newData = [data, ...previousData].slice(0, ROWS_PER_PAGE);
+          queryClient.setQueryData<ChatLogView[]>(
+            ["chatLogList", { projectUuid: projectUuid, page: page }],
+            newData
+          );
+          // Update chat log count
+          queryClient.setQueryData(
+            ["chatLogsCount", { projectUuid: projectUuid }],
+            (count: number) => count + 1
+          );
+        }
       },
     });
 
