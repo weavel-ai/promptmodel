@@ -11,7 +11,7 @@ class DailyRunLogMetricInstance(PMObject):
     day: str
     total_cost: Optional[float]
     avg_latency: Optional[float]
-    total_token_usage: Dict[str, Any]
+    total_token_usage: Optional[Dict[str, Any]]
     total_runs: int
 
 
