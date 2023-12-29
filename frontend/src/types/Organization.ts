@@ -13,7 +13,7 @@ export interface CreateOrganizationRequest {
 
 /**
  * Interface for organization update request.
- * Includes all necessary fields for updating a organization account.
+ * Includes all necessary fields for updating an organization account.
  */
 export interface UpdateOrganizationRequest {
   organization_id: string;
@@ -22,10 +22,35 @@ export interface UpdateOrganizationRequest {
 }
 
 /**
- * Interface for the request to read a organization's information.
+ * Interface for the request to read an organization's information.
  */
 export interface ReadOrganizationRequest {
   organization_id: string;
+}
+
+/**
+ * Interface for the request to read an organization's configred LLM provider names.
+ */
+export interface ReadOrganizationConfiguredLLMProviders {
+  organization_id: string;
+}
+
+/**
+ * Interface for the request to upsert an organization's LLM provider configuration.
+ */
+export interface UpsertOrganizationLLMProviderConfig {
+  organization_id: string;
+  provider_name: string;
+  env_vars?: Record<string, string>;
+  params?: Record<string, string>;
+}
+
+/**
+ * Interface for the request to delete an organization's LLM provider configuration.
+ */
+export interface DeleteOrganizationLLMProviderConfig {
+  organization_id: string;
+  provider_name: string;
 }
 
 /**

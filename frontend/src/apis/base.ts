@@ -40,7 +40,6 @@ export const fetchStream = async ({
       .map((key) => `${key}=${params[key]}`)
       .join("&")}`;
   }
-
   // Set params
   const response = await fetch(formattedUrl, {
     method: "POST",
@@ -51,14 +50,16 @@ export const fetchStream = async ({
     body: JSON.stringify(body),
   });
   const reader = response.body?.getReader();
-  console.log(response);
-
   if (reader) {
     const decoder = new TextDecoder("utf-8");
 
     while (true) {
       const { value, done } = await reader.read();
       const buffer = decoder.decode(value);
+      if (!response.ok) {
+        console.log(buffer);
+        throw JSON.parse(buffer);
+      }
       try {
         const jsonObjects: object[] = parseMultipleJson(buffer);
         for (const jsonObject of jsonObjects) {

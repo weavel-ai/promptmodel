@@ -8,12 +8,11 @@ from sqlalchemy import select, asc, desc, update
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
-from starlette.status import (
-    HTTP_403_FORBIDDEN,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as http_status
+import litellm
 from promptmodel.llms.llm_dev import LLMDev
 from promptmodel.types.response import LLMStreamResponse
+from api.web.models import LLMProviderArgs
 
 from utils.logger import logger
 from utils.prompt_utils import update_dict
@@ -48,13 +47,43 @@ async def run_function_model(
 
     if not user_auth_check:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 
+    provider_args = LLMProviderArgs()
+    llm_provider = litellm.get_llm_provider(run_config.model)[1]
+    provider_config = (
+        await session.execute(
+            select(OrganizationLLMProviderConfig)
+            .where(
+                OrganizationLLMProviderConfig.organization_id
+                == user_auth_check.organization_id
+            )
+            .where(OrganizationLLMProviderConfig.provider_name == llm_provider)
+        )
+    ).scalar_one_or_none()
+
+    if not provider_config:
+        raise HTTPException(
+            status_code=http_status.HTTP_428_PRECONDITION_REQUIRED,
+            detail=f"Organization doesn't have API keys set for {llm_provider}. Please set API keys in project settings.",
+        )
+
+    for key, val in provider_config.env_vars.items():
+        if "api_key" in key.lower():
+            provider_args.api_key = val
+        elif "api_base" in key.lower():
+            provider_args.api_base = val
+        elif "api_version" in key.lower():
+            provider_args.api_version = val
+
     async def stream_run():
         async for chunk in run_cloud_function_model(
-            session=session, project_uuid=project_uuid, run_config=run_config
+            session=session,
+            project_uuid=project_uuid,
+            run_config=run_config,
+            provider_args=provider_args,
         ):
             yield json.dumps(chunk)
 
@@ -65,12 +94,15 @@ async def run_function_model(
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
         ) from exc
 
 
 async def run_cloud_function_model(
-    session: AsyncSession, project_uuid: str, run_config: FunctionModelRunConfig
+    session: AsyncSession,
+    project_uuid: str,
+    run_config: FunctionModelRunConfig,
+    provider_args: LLMProviderArgs,
 ):
     """Run FunctionModel on the cloud, request from web."""
     sample_input: Dict[str, str] = (
@@ -254,6 +286,7 @@ async def run_cloud_function_model(
             parsing_type=parsing_type,
             functions=function_schemas,
             model=model,
+            **provider_args.model_dump(),
         )
         async for item in res:
             if item.raw_output is not None:
@@ -387,13 +420,43 @@ async def run_chat_model(
 
     if not user_auth_check:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 
+    provider_args = LLMProviderArgs()
+    llm_provider = litellm.get_llm_provider(chat_config.model)[1]
+    provider_config = (
+        await session.execute(
+            select(OrganizationLLMProviderConfig)
+            .where(
+                OrganizationLLMProviderConfig.organization_id
+                == user_auth_check.organization_id
+            )
+            .where(OrganizationLLMProviderConfig.provider_name == llm_provider)
+        )
+    ).scalar_one_or_none()
+
+    if not provider_config:
+        raise HTTPException(
+            status_code=http_status.HTTP_428_PRECONDITION_REQUIRED,
+            detail=f"Organization doesn't have API keys set for {llm_provider}. Please set API keys in project settings.",
+        )
+
+    for key, val in provider_config.env_vars.items():
+        if "api_key" in key.lower():
+            provider_args.api_key = val
+        elif "api_base" in key.lower():
+            provider_args.api_base = val
+        elif "api_version" in key.lower():
+            provider_args.api_version = val
+
     async def stream_run():
         async for chunk in run_cloud_chat_model(
-            session=session, project_uuid=project_uuid, chat_config=chat_config
+            session=session,
+            project_uuid=project_uuid,
+            chat_config=chat_config,
+            provider_args=provider_args,
         ):
             yield json.dumps(chunk)
 
@@ -404,7 +467,7 @@ async def run_chat_model(
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
         ) from exc
 
 
@@ -412,6 +475,7 @@ async def run_cloud_chat_model(
     session: AsyncSession,
     project_uuid: str,
     chat_config: ChatModelRunConfig,
+    provider_args: LLMProviderArgs,
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """Run ChatModel from cloud deployment environment.
 
@@ -549,11 +613,13 @@ async def run_cloud_chat_model(
 
         # Append user input to messages
         messages.append({"role": "user", "content": chat_config.user_input})
+
         # Stream chat
         res: AsyncGenerator[LLMStreamResponse, None] = chat_model_dev.dev_chat(
             messages=messages,
             model=chat_config.model,
             # functions=function_schemas,
+            **provider_args.model_dump(),
         )
 
         # TODO: Add function call support

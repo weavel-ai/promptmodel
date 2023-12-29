@@ -15,13 +15,16 @@ from starlette.status import (
     HTTP_409_CONFLICT,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-
 from utils.logger import logger
 
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import OrganizationInstance, CreateOrganizationBody
+from ..models import (
+    OrganizationInstance,
+    CreateOrganizationBody,
+    UpsertLLMProviderConfigBody,
+)
 
 router = APIRouter()
 
@@ -161,20 +164,19 @@ async def get_organization(
         )
 
 
-@router.get("/api_key", response_class=List[str])
-async def get_organization_llm_api_key(
+@router.get("/{organization_id}/llm_providers", response_class=List[str])
+async def get_org_configured_llm_providers(
     jwt: Annotated[str, Depends(get_jwt)],
+    organization_id: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        org_id = jwt["organization_id"]
-
         # get list of llm_name
-        llm_names: List[str] = (
+        configured_providers: List[str] = (
             (
                 await session.execute(
-                    select(OrganizationLLMAPIKey.llm_name).where(
-                        OrganizationLLMAPIKey.organization_id == org_id
+                    select(OrganizationLLMProviderConfig.provider_name).where(
+                        OrganizationLLMProviderConfig.organization_id == organization_id
                     )
                 )
             )
@@ -182,9 +184,7 @@ async def get_organization_llm_api_key(
             .all()
         )
 
-        llm_names = [llm_name for llm_name in llm_names]
-
-        return JSONResponse(content=llm_names, status_code=200)
+        return JSONResponse(content=configured_providers, status_code=200)
 
     except HTTPException as http_exc:
         logger.error(http_exc.detail)
@@ -196,37 +196,40 @@ async def get_organization_llm_api_key(
         )
 
 
-@router.post("/api_key")
-async def save_organization_llm_api_key(
+@router.post("/{organization_id}/llm_providers")
+async def save_organization_llm_provider_config(
     jwt: Annotated[str, Depends(get_jwt)],
-    body: Dict[str, str],
+    organization_id: str,
+    body: UpsertLLMProviderConfigBody,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        org_id = jwt["organization_id"]
-        llm_name = body["llm_name"]
-        api_key = body["api_key"]
-
-        # check if api key already exists
-        api_key = (
+        # Upsert OrganizationLLMProviderConfig
+        # Check if provider_name already exists
+        provider_config = (
             await session.execute(
-                select(OrganizationLLMAPIKey)
-                .where(OrganizationLLMAPIKey.organization_id == org_id)
-                .where(OrganizationLLMAPIKey.llm_name == llm_name)
+                select(OrganizationLLMProviderConfig)
+                .where(OrganizationLLMProviderConfig.organization_id == organization_id)
+                .where(
+                    OrganizationLLMProviderConfig.provider_name == body.provider_name
+                )
             )
         ).scalar_one_or_none()
-
-        if api_key is not None:
-            raise HTTPException(
-                status_code=HTTP_409_CONFLICT,
-                detail="API Key already exists",
+        if provider_config is None:
+            # create new config
+            new_provider_config = OrganizationLLMProviderConfig(
+                organization_id=organization_id,
+                provider_name=body.provider_name,
+                env_vars=body.env_vars,
+                params=body.params,
             )
+            session.add(new_provider_config)
+        else:
+            # update existing config
+            provider_config.env_vars = body.env_vars
+            provider_config.params = body.params
+            session.add(provider_config)
 
-        new_organization_llm_api_key = OrganizationLLMAPIKey(
-            organization_id=org_id, llm_name=llm_name, llm_key=api_key
-        )
-
-        session.add(new_organization_llm_api_key)
         await session.commit()
 
         return Response(status_code=200)
@@ -241,35 +244,31 @@ async def save_organization_llm_api_key(
         )
 
 
-@router.delete("/api_key/{llm_name}")
+@router.delete("/{organization_id}/llm_providers")
 async def delete_organization_llm_api_key(
     jwt: Annotated[str, Depends(get_jwt)],
-    llm_name: str,
+    organization_id: str,
+    provider_name: str,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        org_id = jwt["organization_id"]
-
-        # check if api key already exists
-        api_key = (
+        # check if configuration exists
+        config = (
             await session.execute(
-                select(OrganizationLLMAPIKey)
-                .where(OrganizationLLMAPIKey.organization_id == org_id)
-                .where(OrganizationLLMAPIKey.llm_name == llm_name)
+                select(OrganizationLLMProviderConfig)
+                .where(OrganizationLLMProviderConfig.organization_id == organization_id)
+                .where(OrganizationLLMProviderConfig.provider_name == provider_name)
             )
         ).scalar_one_or_none()
 
-        if api_key is None:
+        if config is None:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
-                detail="API Key not exist",
+                detail=f"Configuration for provider {provider_name} not exist",
             )
 
-        await session.execute(
-            delete(OrganizationLLMAPIKey)
-            .where(OrganizationLLMAPIKey.organization_id == org_id)
-            .where(OrganizationLLMAPIKey.llm_name == llm_name)
-        )
+        await session.delete(config)
+        await session.commit()
 
         return Response(status_code=200)
 

@@ -44,8 +44,8 @@ class Organization(Base):
     # projects: List["Project"] = Relationship(back_populates="organization")
 
 
-class OrganizationLLMAPIKey(Base):
-    __tablename__ = "organization_llm_api_key"
+class OrganizationLLMProviderConfig(Base):
+    __tablename__ = "organization_llm_provider_config"
 
     id: int = Column(BigInteger, Identity(), unique=True)
     created_at: datetime = Column(
@@ -61,8 +61,11 @@ class OrganizationLLMAPIKey(Base):
         ),
         primary_key=True,
     )
-    llm_name: str = Column(Text, primary_key=True)
-    llm_key: str = Column(Text)
+    provider_name: str = Column(Text, primary_key=True)
+    env_vars: Dict[str, str] = Column(
+        JSONB, nullable=False, server_default=text("'{}'")
+    )
+    params: Dict[str, str] = Column(JSONB, nullable=False, server_default=text("'{}'"))
 
 
 class User(Base):

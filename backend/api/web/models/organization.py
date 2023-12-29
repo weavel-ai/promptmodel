@@ -1,4 +1,7 @@
 """APIs for Organization"""
+from typing import Dict, Optional
+
+from pydantic import BaseModel
 from modules.types import PMObject
 
 
@@ -15,3 +18,15 @@ class OrganizationInstance(PMObject):
     created_at: str
     name: str
     slug: str
+
+
+class UpsertLLMProviderConfigBody(PMObject):
+    provider_name: str
+    env_vars: Optional[Dict[str, str]] = None
+    params: Optional[Dict[str, str]] = None
+
+
+class LLMProviderArgs(BaseModel):
+    api_key: Optional[str] = None
+    api_base: Optional[str] = None
+    api_version: Optional[str] = None

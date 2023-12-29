@@ -107,10 +107,10 @@ const SUPPORTED_MODELS: Model[] = [
     name: "command-nightly",
     provider: "Cohere",
   },
-  {
-    name: "HCX-002",
-    provider: "clova-studio",
-  },
+  // {
+  //   name: "HCX-002",
+  //   provider: "clova-studio",
+  // },
 ];
 
 const PROVIDER_LOGO_PATHS: Record<string, string> = {
