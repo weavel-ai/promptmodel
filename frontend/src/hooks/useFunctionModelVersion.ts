@@ -9,7 +9,7 @@ import {
   streamLocalFunctionModelRun,
   streamFunctionModelRun,
 } from "@/apis/stream";
-import { arePrimitiveListsEqual, cloneDeep } from "@/utils";
+import { arePrimitiveListsEqual, cloneDeep, parseMultipleJson } from "@/utils";
 import {
   fetchFunctionModelVersion,
   fetchFunctionModelVersions,
@@ -231,10 +231,7 @@ export const useFunctionModelVersion = () => {
         ? selectedFunctions
         : originalFunctionModelVersionData?.functions,
       onNewData: async (data) => {
-        console.log(data);
         if (data?.status) {
-          console.log(data.status);
-          console.log(toastId);
           switch (data?.status) {
             case "completed":
               toast.update(toastId, {
@@ -322,10 +319,22 @@ export const useFunctionModelVersion = () => {
         }
       },
     };
-    if (projectData?.online) {
-      await streamLocalFunctionModelRun(args);
-    } else {
-      await streamFunctionModelRun(args);
+    try {
+      if (projectData?.online) {
+        await streamLocalFunctionModelRun(args);
+      } else {
+        await streamFunctionModelRun(args);
+      }
+    } catch (e) {
+      console.log(e);
+      toast.update(toastId, {
+        render: e?.detail,
+        type: "error",
+        autoClose: 5000,
+        closeButton: true,
+        closeOnClick: true,
+        isLoading: false,
+      });
     }
 
     if (isNewOrCachedVersion) {

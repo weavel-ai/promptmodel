@@ -46,7 +46,7 @@ function useNextAuth(): NextAuthReturn {
   const { data: session, status } = useSession();
 
   async function getToken() {
-    return Promise.resolve(session.access_token);
+    return Promise.resolve(session?.access_token);
   }
 
   return {

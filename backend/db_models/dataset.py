@@ -39,7 +39,7 @@ class SampleInput(Base):
     content: Dict[str, Any] = Column(JSONB)
     input_keys: List[str] = Column(ARRAY(String))
     online: bool = Column(Boolean, nullable=False, default=False)
-    ground_truth: Optional[str] = Column(Text, nullable=True)
+    # ground_truth: Optional[str] = Column(Text, nullable=True)
 
     project_uuid: UUIDType = Column(
         UUID(as_uuid=True),

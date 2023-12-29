@@ -4,9 +4,11 @@ export default function Page() {
       <div className="w-full h-full flex flex-col gap-y-8 pt-20 pb-8">
         {/* Header */}
         <div className="flex flex-row justify-between items-center">
-          <p className="text-3xl font-bold text-base-content">Settings</p>
+          <p className="text-3xl font-bold text-base-content">
+            Organization Settings
+          </p>
         </div>
-        <p className="text-base-content">Nothing here yet...</p>
+        <p className="font-semibold text-muted-content">Nothing here yet...</p>
       </div>
     </div>
   );

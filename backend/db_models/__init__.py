@@ -2,7 +2,7 @@ from .chat_model import ChatModel, ChatModelVersion, ChatSession, ChatMessage, C
 from .function_model import FunctionModel, FunctionModelVersion, Prompt, RunLog
 from .project import (
     Organization,
-    OrganizationLLMAPIKey,
+    OrganizationLLMProviderConfig,
     Project,
     User,
     UsersOrganizations,
