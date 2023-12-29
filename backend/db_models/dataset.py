@@ -128,6 +128,10 @@ class BatchRun(Base):
 
     score: float = Column(Float, nullable=True)
     status: str = Column(Text, nullable=False, default="running")
+    created_at: datetime = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+    finished_at: Optional[datetime] = Column(TIMESTAMP(timezone=True), nullable=True)
 
 
 class DatasetSampleInput(Base):

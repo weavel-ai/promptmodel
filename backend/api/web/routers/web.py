@@ -21,8 +21,11 @@ from base.database import get_session
 from utils.security import get_jwt
 from api.common.models import FunctionModelRunConfig, ChatModelRunConfig
 from db_models import *
+from .web_batch import router as batch_router
 
 router = APIRouter()
+
+router.include_router(batch_router)
 
 
 @router.post("/run_function_model")
@@ -93,6 +96,10 @@ async def run_function_model(
         )
     except Exception as exc:
         logger.error(exc)
+        try:
+            logger.error(exc.detail)
+        except Exception:
+            pass
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
         ) from exc
@@ -466,6 +473,10 @@ async def run_chat_model(
         )
     except Exception as exc:
         logger.error(exc)
+        try:
+            logger.error(exc.detail)
+        except Exception:
+            pass
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
         ) from exc

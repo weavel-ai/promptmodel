@@ -53,8 +53,18 @@ async def create_project(
             api_key=api_key,
         )
         session.add(new_project)
-        await session.commit()
+        await session.flush()
         await session.refresh(new_project)
+
+        accuracy = EvalMetric(
+            project_uuid=new_project.uuid,
+            name="gt_exact_match",
+            description="default metric, exact match with ground truth",
+            extent=[0, 1],
+        )
+        session.add(accuracy)
+        await session.commit()
+
         return ProjectInstance(**new_project.model_dump())
     except HTTPException as http_exc:
         logger.error(http_exc.detail)
