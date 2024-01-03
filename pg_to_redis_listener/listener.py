@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import json
 import select
@@ -64,8 +65,10 @@ listen_to_pg_channels(pg_conn, channels)
 
 while True:
     try:
-        if select.select([pg_conn], [], [], 10) == ([], [], []):
-            print("Timeout: No notifications in the last 10 seconds")
+        if select.select([pg_conn], [], [], 60) == ([], [], []):
+            print(
+                f"Timeout ({datetime.now()}): No notifications in the last 60 seconds"
+            )
         else:
             pg_conn.poll()
             # while pg_conn.notifies:
