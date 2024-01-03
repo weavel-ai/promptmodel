@@ -7,6 +7,7 @@ from fastapi.responses import Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
+from utils.logger import logger
 from api import cli, web, dev, web_auth
 
 load_dotenv()
@@ -19,7 +20,7 @@ origins = [frontend_url]
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc: HTTPException):
-    print(exc, exc.detail)
+    logger.error(exc, exc.detail)
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
@@ -28,9 +29,9 @@ async def http_exception_handler(request, exc: HTTPException):
 @app.exception_handler(Exception)
 async def general_exception_handler(request, exc: Exception):
     try:
-        print(exc.detail)
+        logger.error(exc.detail)
     except AttributeError:
-        print(exc)
+        logger.error(exc)
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal Server Error"},

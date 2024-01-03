@@ -28,21 +28,12 @@ async def create_clerk_user(
     body: CreateUserBody,
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        new_user = User(**body.model_dump())
-        session.add(new_user)
-        await session.commit()
-        await session.refresh(new_user)
-        return UserInstance(**new_user.model_dump())
-    except Exception as e:
-        logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
-        )
+    new_user = User(**body.model_dump())
+    session.add(new_user)
+    await session.commit()
+    await session.refresh(new_user)
+    return UserInstance(**new_user.model_dump())
+
 
 
 @router.get("/{user_id}", response_model=UserInstance)
@@ -52,28 +43,16 @@ async def get_user(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        try:
-            user: Dict = (
-                (await session.execute(select(User).where(User.user_id == user_id)))
-                .scalar_one()
-                .model_dump()
-            )
-        except Exception as e:
-            logger.error(e)
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail="User with given id not found",
-            )
-        return UserInstance(**user)
-    except HTTPException as http_exc:
-        logger.error(http_exc.detail)
-        raise http_exc
+        user: Dict = (
+            (await session.execute(select(User).where(User.user_id == user_id)))
+            .scalar_one()
+            .model_dump()
+        )
     except Exception as e:
         logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
         raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+            status_code=HTTP_404_NOT_FOUND,
+            detail="User with given id not found",
         )
+    return UserInstance(**user)
+

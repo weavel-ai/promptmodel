@@ -24,26 +24,17 @@ async def fetch_chat_sessions(
     chat_model_version_uuid: str,
     db_session: AsyncSession = Depends(get_session),
 ):
-    try:
-        chat_sessions: List[ChatSessionInstance] = [
-            ChatSessionInstance(**chat_session.model_dump())
-            for chat_session in (
-                await db_session.execute(
-                    select(ChatSession)
-                    .where(ChatSession.version_uuid == chat_model_version_uuid)
-                    .order_by(desc(ChatSession.created_at))
-                )
+    chat_sessions: List[ChatSessionInstance] = [
+        ChatSessionInstance(**chat_session.model_dump())
+        for chat_session in (
+            await db_session.execute(
+                select(ChatSession)
+                .where(ChatSession.version_uuid == chat_model_version_uuid)
+                .order_by(desc(ChatSession.created_at))
             )
-            .scalars()
-            .all()
-        ]
-        return chat_sessions
-    except Exception as e:
-        logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
+        .scalars()
+        .all()
+    ]
+    return chat_sessions
+

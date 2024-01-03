@@ -29,7 +29,6 @@ async def create_project(
     body: CreateProjectBody,
     session: AsyncSession = Depends(get_session),
 ):
-    try:
         # check same name
         project_in_db = (
             await session.execute(
@@ -66,18 +65,7 @@ async def create_project(
         await session.commit()
 
         return ProjectInstance(**new_project.model_dump())
-    except HTTPException as http_exc:
-        logger.error(http_exc.detail)
-        raise http_exc
-    except Exception as e:
-        logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
-        )
+    
 
 
 @router.get("", response_model=List[ProjectInstance])
@@ -86,44 +74,32 @@ async def fetch_projects(
     organization_id: str,
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        check_user_auth = (
-            await session.execute(
-                select(UsersOrganizations)
-                .where(UsersOrganizations.user_id == jwt["user_id"])
-                .where(UsersOrganizations.organization_id == organization_id)
-            )
-        ).scalar_one_or_none()
-
-        if not check_user_auth:
-            raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED,
-                detail="User don't have access to this organization",
-            )
-
-        projects: List[ProjectInstance] = [
-            ProjectInstance(**project.model_dump())
-            for project in (
-                await session.execute(
-                    select(Project).where(Project.organization_id == organization_id)
-                )
-            )
-            .scalars()
-            .all()
-        ]
-        return projects
-    except HTTPException as http_exc:
-        logger.error(http_exc.detail)
-        raise http_exc
-    except Exception as e:
-        logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+    check_user_auth = (
+        await session.execute(
+            select(UsersOrganizations)
+            .where(UsersOrganizations.user_id == jwt["user_id"])
+            .where(UsersOrganizations.organization_id == organization_id)
         )
+    ).scalar_one_or_none()
+
+    if not check_user_auth:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="User don't have access to this organization",
+        )
+
+    projects: List[ProjectInstance] = [
+        ProjectInstance(**project.model_dump())
+        for project in (
+            await session.execute(
+                select(Project).where(Project.organization_id == organization_id)
+            )
+        )
+        .scalars()
+        .all()
+    ]
+    return projects
+
 
 
 @router.get("/{uuid}", response_model=ProjectInstance)
@@ -132,7 +108,6 @@ async def get_project(
     uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
-    try:
         try:
             project: Dict = (
                 (await session.execute(select(Project).where(Project.uuid == uuid)))
@@ -146,15 +121,4 @@ async def get_project(
                 detail="Project with given uuid not found",
             )
         return ProjectInstance(**project)
-    except HTTPException as http_exc:
-        logger.error(http_exc.detail)
-        raise http_exc
-    except Exception as e:
-        logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
-        )
+    

@@ -33,31 +33,22 @@ async def fetch_session_chat_messages(
     rows_per_page: int,
     db_session: AsyncSession = Depends(get_session),
 ):
-    try:
-        chat_messages: List[ChatMessageInstance] = [
-            ChatMessageInstance(**chat_message.model_dump())
-            for chat_message in (
-                await db_session.execute(
-                    select(ChatMessage)
-                    .where(ChatMessage.session_uuid == chat_session_uuid)
-                    .order_by(asc(ChatMessage.created_at))
-                    .offset(max(0, (page - 1)) * rows_per_page)
-                    .limit(rows_per_page)
-                )
+    chat_messages: List[ChatMessageInstance] = [
+        ChatMessageInstance(**chat_message.model_dump())
+        for chat_message in (
+            await db_session.execute(
+                select(ChatMessage)
+                .where(ChatMessage.session_uuid == chat_session_uuid)
+                .order_by(asc(ChatMessage.created_at))
+                .offset(max(0, (page - 1)) * rows_per_page)
+                .limit(rows_per_page)
             )
-            .scalars()
-            .all()
-        ]
-        return chat_messages
-    except Exception as e:
-        logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
+        .scalars()
+        .all()
+    ]
+    return chat_messages
+
 
 
 @router.get("/project", response_model=List[ChatLogViewInstance])
@@ -68,52 +59,40 @@ async def fetch_project_chat_messages(
     rows_per_page: int,
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        check_user_auth = (
-            await session.execute(
-                select(Project)
-                .join(
-                    UsersOrganizations,
-                    Project.organization_id == UsersOrganizations.organization_id,
-                )
-                .where(Project.uuid == project_uuid)
-                .where(UsersOrganizations.user_id == jwt["user_id"])
+    check_user_auth = (
+        await session.execute(
+            select(Project)
+            .join(
+                UsersOrganizations,
+                Project.organization_id == UsersOrganizations.organization_id,
             )
-        ).scalar_one_or_none()
-
-        if not check_user_auth:
-            raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN,
-                detail="User don't have access to this project",
-            )
-
-        chat_messages: List[ChatLogViewInstance] = [
-            ChatLogViewInstance(**chat_message.model_dump())
-            for chat_message in (
-                await session.execute(
-                    select(ChatLogView)
-                    .where(ChatLogView.project_uuid == project_uuid)
-                    .order_by(desc(ChatLogView.created_at))
-                    .offset((page - 1) * rows_per_page)
-                    .limit(rows_per_page)
-                )
-            )
-            .scalars()
-            .all()
-        ]
-        return chat_messages
-    except HTTPException as http_exc:
-        logger.error(http_exc.detail)
-        raise http_exc
-    except Exception as e:
-        logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+            .where(Project.uuid == project_uuid)
+            .where(UsersOrganizations.user_id == jwt["user_id"])
         )
+    ).scalar_one_or_none()
+
+    if not check_user_auth:
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN,
+            detail="User don't have access to this project",
+        )
+
+    chat_messages: List[ChatLogViewInstance] = [
+        ChatLogViewInstance(**chat_message.model_dump())
+        for chat_message in (
+            await session.execute(
+                select(ChatLogView)
+                .where(ChatLogView.project_uuid == project_uuid)
+                .order_by(desc(ChatLogView.created_at))
+                .offset((page - 1) * rows_per_page)
+                .limit(rows_per_page)
+            )
+        )
+        .scalars()
+        .all()
+    ]
+    return chat_messages
+
 
 
 @router.get("/count", response_model=ChatLogsCountInstance)
@@ -123,31 +102,19 @@ async def fetch_chat_logs_count(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        try:
-            chat_logs_count: int = (
-                await session.execute(
-                    select(ChatLogsCount.chat_logs_count).where(
-                        ChatLogsCount.project_uuid == project_uuid
-                    )
+        chat_logs_count: int = (
+            await session.execute(
+                select(ChatLogsCount.chat_logs_count).where(
+                    ChatLogsCount.project_uuid == project_uuid
                 )
-            ).scalar_one()
-        except Exception as e:
-            logger.error(e)
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail="ChatLogsCount with given project_uuid not found",
             )
-
-        return ChatLogsCountInstance(project_uuid=project_uuid, count=chat_logs_count)
-    except HTTPException as http_exc:
-        logger.error(http_exc.detail)
-        raise http_exc
+        ).scalar_one()
     except Exception as e:
         logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
         raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+            status_code=HTTP_404_NOT_FOUND,
+            detail="ChatLogsCount with given project_uuid not found",
         )
+
+    return ChatLogsCountInstance(project_uuid=project_uuid, count=chat_logs_count)
+

@@ -34,31 +34,22 @@ async def fetch_function_model_versions(
     function_model_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        function_model_versions: List[FunctionModelVersionInstance] = [
-            FunctionModelVersionInstance(**function_model_version.model_dump())
-            for function_model_version in (
-                await session.execute(
-                    select(FunctionModelVersion)
-                    .where(
-                        FunctionModelVersion.function_model_uuid == function_model_uuid
-                    )
-                    .order_by(asc(FunctionModelVersion.version))
+    function_model_versions: List[FunctionModelVersionInstance] = [
+        FunctionModelVersionInstance(**function_model_version.model_dump())
+        for function_model_version in (
+            await session.execute(
+                select(FunctionModelVersion)
+                .where(
+                    FunctionModelVersion.function_model_uuid == function_model_uuid
                 )
+                .order_by(asc(FunctionModelVersion.version))
             )
-            .scalars()
-            .all()
-        ]
-        return function_model_versions
-    except Exception as e:
-        logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
         )
+        .scalars()
+        .all()
+    ]
+    return function_model_versions
+    
 
 
 @router.get("/{uuid}", response_model=FunctionModelVersionInstance)
@@ -68,37 +59,25 @@ async def fetch_function_model_version(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        try:
-            function_model_version: Dict = (
-                (
-                    await session.execute(
-                        select(FunctionModelVersion).where(
-                            FunctionModelVersion.uuid == uuid
-                        )
+        function_model_version: Dict = (
+            (
+                await session.execute(
+                    select(FunctionModelVersion).where(
+                        FunctionModelVersion.uuid == uuid
                     )
                 )
-                .scalar_one()
-                .model_dump()
             )
-        except Exception as e:
-            logger.error(e)
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail="FunctionModelVersion with given id not found",
-            )
-        return FunctionModelVersionInstance(**function_model_version)
-    except HTTPException as http_exc:
-        logger.error(http_exc.detail)
-        raise http_exc
+            .scalar_one()
+            .model_dump()
+        )
     except Exception as e:
         logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
         raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+            status_code=HTTP_404_NOT_FOUND,
+            detail="FunctionModelVersion with given id not found",
         )
+    return FunctionModelVersionInstance(**function_model_version)
+
 
 
 @router.post("/{uuid}/publish", response_model=FunctionModelVersionInstance)
@@ -108,66 +87,54 @@ async def update_published_function_model_version(
     body: UpdatePublishedFunctionModelVersionBody,
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        user_auth_check = (
-            await session.execute(
-                select(Project)
-                .join(
-                    UsersOrganizations,
-                    Project.organization_id == UsersOrganizations.organization_id,
-                )
-                .where(Project.uuid == body.project_uuid)
-                .where(UsersOrganizations.user_id == jwt["user_id"])
+    user_auth_check = (
+        await session.execute(
+            select(Project)
+            .join(
+                UsersOrganizations,
+                Project.organization_id == UsersOrganizations.organization_id,
             )
-        ).scalar_one_or_none()
+            .where(Project.uuid == body.project_uuid)
+            .where(UsersOrganizations.user_id == jwt["user_id"])
+        )
+    ).scalar_one_or_none()
 
-        if not user_auth_check:
-            raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN,
-                detail="User don't have access to this project",
+    if not user_auth_check:
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN,
+            detail="User don't have access to this project",
+        )
+
+    if body.previous_published_version_uuid:
+        await session.execute(
+            update(FunctionModelVersion)
+            .where(
+                FunctionModelVersion.uuid == body.previous_published_version_uuid
             )
+            .values(is_published=False)
+        )
 
-        if body.previous_published_version_uuid:
+    updated_function_model_version = (
+        (
             await session.execute(
                 update(FunctionModelVersion)
-                .where(
-                    FunctionModelVersion.uuid == body.previous_published_version_uuid
-                )
-                .values(is_published=False)
+                .where(FunctionModelVersion.uuid == uuid)
+                .values(is_published=True)
+                .returning(FunctionModelVersion)
             )
+        )
+        .scalar_one()
+        .model_dump()
+    )
+    await session.execute(
+        update(Project)
+        .where(Project.uuid == body.project_uuid)
+        .values(version=body.project_version + 1)
+    )
 
-        updated_function_model_version = (
-            (
-                await session.execute(
-                    update(FunctionModelVersion)
-                    .where(FunctionModelVersion.uuid == uuid)
-                    .values(is_published=True)
-                    .returning(FunctionModelVersion)
-                )
-            )
-            .scalar_one()
-            .model_dump()
-        )
-        await session.execute(
-            update(Project)
-            .where(Project.uuid == body.project_uuid)
-            .values(version=body.project_version + 1)
-        )
+    await session.commit()
+    return FunctionModelVersionInstance(**updated_function_model_version)
 
-        await session.commit()
-        return FunctionModelVersionInstance(**updated_function_model_version)
-    except HTTPException as http_exc:
-        logger.error(http_exc.detail)
-        raise http_exc
-    except Exception as e:
-        logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
-        )
 
 
 @router.patch("/{uuid}/tags", response_model=FunctionModelVersionInstance)
@@ -178,32 +145,24 @@ async def update_function_model_version_tags(
     session: AsyncSession = Depends(get_session),
 ):
     tags: Optional[List[str]] = body.tags
-    try:
-        if tags == []:
-            tags = None
-        updated_version = (
-            (
-                await session.execute(
-                    update(FunctionModelVersion)
-                    .where(FunctionModelVersion.uuid == uuid)
-                    .values(tags=tags)
-                    .returning(FunctionModelVersion)
-                )
+    
+    if tags == []:
+        tags = None
+    updated_version = (
+        (
+            await session.execute(
+                update(FunctionModelVersion)
+                .where(FunctionModelVersion.uuid == uuid)
+                .values(tags=tags)
+                .returning(FunctionModelVersion)
             )
-            .scalar_one()
-            .model_dump()
         )
-        await session.commit()
-        return FunctionModelVersionInstance(**updated_version)
-    except Exception as e:
-        logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
-        )
+        .scalar_one()
+        .model_dump()
+    )
+    await session.commit()
+    return FunctionModelVersionInstance(**updated_version)
+
 
 
 @router.patch("/{uuid}/memo", response_model=FunctionModelVersionInstance)
@@ -213,30 +172,21 @@ async def update_function_model_version_memo(
     memo: Optional[str] = None,
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        updated_version = (
-            (
-                await session.execute(
-                    update(FunctionModelVersion)
-                    .where(FunctionModelVersion.uuid == uuid)
-                    .values(memo=memo)
-                    .returning(FunctionModelVersion)
-                )
+    updated_version = (
+        (
+            await session.execute(
+                update(FunctionModelVersion)
+                .where(FunctionModelVersion.uuid == uuid)
+                .values(memo=memo)
+                .returning(FunctionModelVersion)
             )
-            .scalar_one()
-            .model_dump()
         )
-        await session.commit()
-        return FunctionModelVersionInstance(**updated_version)
-    except Exception as e:
-        logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
-        )
+        .scalar_one()
+        .model_dump()
+    )
+    await session.commit()
+    return FunctionModelVersionInstance(**updated_version)
+
 
 
 @router.post("/{uuid}/batch_run")
@@ -246,27 +196,18 @@ async def batch_run(
     body: BatchRunConfigBody,
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        # create batch_run
-        new_batch_run = BatchRun(
-            dataset_uuid=body.dataset_uuid,
-            function_model_version_uuid=uuid,
-        )
-        session.add(new_batch_run)
-        await session.commit()
-        await session.refresh(new_batch_run)
+    # create batch_run
+    new_batch_run = BatchRun(
+        dataset_uuid=body.dataset_uuid,
+        function_model_version_uuid=uuid,
+    )
+    session.add(new_batch_run)
+    await session.commit()
+    await session.refresh(new_batch_run)
 
-        # TODO: run background task as thread
+    # TODO: run background task as thread
 
-    except Exception as e:
-        logger.error(e)
-        try:
-            logger.error(e.detail)
-        except:
-            pass
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
-        )
+    
 
 
 @router.get("/{uuid}/batch_run")
@@ -275,71 +216,65 @@ async def fetch_batch_runs(
     uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        function_model_uuid = (
+    function_model_uuid = (
+        await session.execute(
+            select(FunctionModelVersion.function_model_uuid).where(
+                FunctionModelVersion.uuid == uuid
+            )
+        )
+    ).scalar_one()
+
+    # fetch dataset for FunctionModel
+    dataset_list: List[Dataset] = (
+        (
             await session.execute(
-                select(FunctionModelVersion.function_model_uuid).where(
-                    FunctionModelVersion.uuid == uuid
+                select(Dataset).where(
+                    Dataset.function_model_uuid == function_model_uuid
                 )
             )
-        ).scalar_one()
+        )
+        .scalars()
+        .all()
+    )
 
-        # fetch dataset for FunctionModel
-        dataset_list: List[Dataset] = (
-            (
-                await session.execute(
-                    select(Dataset).where(
-                        Dataset.function_model_uuid == function_model_uuid
-                    )
-                )
+    # fetch BatchRun
+    batch_runs: List[BatchRun] = (
+        (
+            await session.execute(
+                select(BatchRun).where(BatchRun.function_model_version_uuid == uuid)
             )
-            .scalars()
-            .all()
+        )
+        .scalars()
+        .all()
+    )
+
+    # TODO: make response
+    res: List[DatasetBatchRunInstance] = []
+    for dataset in dataset_list:
+        batch_run_for_dataset = [
+            batch_run
+            for batch_run in batch_runs
+            if batch_run.dataset_uuid == dataset.uuid
+        ]
+        if len(batch_run_for_dataset) == 0:
+            batch_run_for_dataset = None
+        else:
+            batch_run_for_dataset = batch_run_for_dataset[0]
+
+        res.append(
+            DatasetBatchRunInstance(
+                dataset_uuid=dataset.uuid,
+                dataset_name=dataset.name,
+                batch_run_uuid=batch_run_for_dataset.uuid
+                if batch_run_for_dataset
+                else None,
+                batch_run_score=batch_run_for_dataset.score
+                if batch_run_for_dataset
+                else None,
+                batch_run_status=batch_run_for_dataset.status
+                if batch_run_for_dataset
+                else None,
+            )
         )
 
-        # fetch BatchRun
-        batch_runs: List[BatchRun] = (
-            (
-                await session.execute(
-                    select(BatchRun).where(BatchRun.function_model_version_uuid == uuid)
-                )
-            )
-            .scalars()
-            .all()
-        )
-
-        # TODO: make response
-        res: List[DatasetBatchRunInstance] = []
-        for dataset in dataset_list:
-            batch_run_for_dataset = [
-                batch_run
-                for batch_run in batch_runs
-                if batch_run.dataset_uuid == dataset.uuid
-            ]
-            if len(batch_run_for_dataset) == 0:
-                batch_run_for_dataset = None
-            else:
-                batch_run_for_dataset = batch_run_for_dataset[0]
-
-            res.append(
-                DatasetBatchRunInstance(
-                    dataset_uuid=dataset.uuid,
-                    dataset_name=dataset.name,
-                    batch_run_uuid=batch_run_for_dataset.uuid
-                    if batch_run_for_dataset
-                    else None,
-                    batch_run_score=batch_run_for_dataset.score
-                    if batch_run_for_dataset
-                    else None,
-                    batch_run_status=batch_run_for_dataset.status
-                    if batch_run_for_dataset
-                    else None,
-                )
-            )
-
-        return res
-    except Exception as e:
-        logger.error(e)
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
-        )
+    return res

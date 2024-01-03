@@ -198,156 +198,143 @@ async def batch_run_function_model(
     session: AsyncSession = Depends(get_session),
 ):
     """Batch Run FunctionModel for cloud development environment."""
-    try:
-        user_auth_check = (
-            await session.execute(
-                select(Project)
-                .join(
-                    UsersOrganizations,
-                    Project.organization_id == UsersOrganizations.organization_id,
-                )
-                .where(Project.uuid == batch_run_config.project_uuid)
-                .where(UsersOrganizations.user_id == jwt["user_id"])
+    user_auth_check = (
+        await session.execute(
+            select(Project)
+            .join(
+                UsersOrganizations,
+                Project.organization_id == UsersOrganizations.organization_id,
             )
-        ).scalar_one_or_none()
-
-        if not user_auth_check:
-            raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED,
-                detail="User don't have access to this project",
-            )
-
-        batch_run_exist_check = (
-            await session.execute(
-                select(BatchRun)
-                .where(BatchRun.dataset_uuid == batch_run_config.dataset_uuid)
-                .where(
-                    BatchRun.function_model_version_uuid
-                    == batch_run_config.function_model_version_uuid
-                )
-            )
-        ).scalar_one_or_none()
-
-        if batch_run_exist_check:
-            raise HTTPException(
-                status_code=HTTP_409_CONFLICT,
-                detail="Batch run already exist",
-            )
-
-        # make router config
-        function_model_version_to_run: FunctionModelVersion = (
-            await session.execute(
-                select(FunctionModelVersion).where(
-                    FunctionModelVersion.uuid
-                    == batch_run_config.function_model_version_uuid
-                )
-            )
-        ).scalar_one()
-
-        model, llm_provider, dynamic_api_key, api_base = get_llm_provider(
-            model=function_model_version_to_run.model
-        )  # get llm_provider
-
-        if llm_provider in [
-            "huggingface",
-            "custom_openai",
-            "oobabooga",
-            "openrouter",
-            "vertex_ai",
-        ]:  # not supported yet
-            raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN,
-                detail="This LLM Provider is not supported yet",
-            )
-
-        organization_provider_config: OrganizationProviderAPIKey = (
-            await session.execute(
-                select(OrganizationProviderAPIKey)
-                .where(
-                    OrganizationProviderAPIKey.organization_id == jwt["organization_id"]
-                )
-                .where(OrganizationProviderAPIKey.provider == llm_provider)
-            )
-        ).scalar_one_or_none()
-
-        if not organization_provider_config:
-            raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN,
-                detail="Organization don't have access to this LLM Provider",
-            )
-
-        provider_env_var = dict(organization_provider_config.env_var)
-        # get value for key that includes "API_KEY"
-        api_key_key = list(filter(lambda x: "API_KEY" in x, provider_env_var.keys()))[0]
-        api_base_key = list(filter(lambda x: "API_BASE" in x, provider_env_var.keys()))
-        if len(api_base_key) > 0:
-            api_base_key = api_base_key[0]
-        else:
-            api_base_key = None
-        api_version_key = list(
-            filter(lambda x: "API_VERSION" in x, provider_env_var.keys())
+            .where(Project.uuid == batch_run_config.project_uuid)
+            .where(UsersOrganizations.user_id == jwt["user_id"])
         )
-        if len(api_version_key) > 0:
-            api_version_key = api_version_key[0]
-        else:
-            api_version_key = None
+    ).scalar_one_or_none()
 
-        llm_api_key = provider_env_var[api_key_key]
-        llm_api_base = provider_env_var[api_base_key] if api_base_key else None
-        llm_api_version = provider_env_var[api_version_key] if api_version_key else None
-
-        provider_params = dict(organization_provider_config.params)
-
-        if "api_base" in provider_params:
-            llm_api_base = provider_params["api_base"]
-            del provider_params["api_base"]
-        if "api_version" in provider_params:
-            llm_api_version = provider_params["api_version"]
-            del provider_params["api_version"]
-
-        litellm_router_config = {
-            "model_list": [
-                {
-                    "model_name": function_model_version_to_run.model,
-                    "litellm_params": {
-                        "model": function_model_version_to_run.model,
-                        "api_key": llm_api_key,
-                        "api_base": llm_api_base,
-                        "api_version": llm_api_version,
-                    },
-                }
-            ]
-        }
-
-        litellm_router_config["model_list"][0]["litellm_params"].update(provider_params)
-
-        # create BatchRun
-        batch_run = BatchRun(
-            dataset_uuid=batch_run_config.dataset_uuid,
-            function_model_version_uuid=batch_run_config.function_model_version_uuid,
-            status="running",
-        )
-        session.add(batch_run)
-        await session.commit()
-
-        # create backgroundTask
-        background_tasks.add_task(
-            function_model_batch_run_background_task,
-            batch_run_config,
-            litellm_router_config,
-        )
-
-        return Response(status_code=200)
-
-    except HTTPException as exc:
-        logger.error(exc.detail)
-        raise exc
-    except Exception as exc:
-        logger.error(exc)
-        try:
-            logger.error(exc.detail)
-        except Exception:
-            pass
+    if not user_auth_check:
         raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
-        ) from exc
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="User don't have access to this project",
+        )
+
+    batch_run_exist_check = (
+        await session.execute(
+            select(BatchRun)
+            .where(BatchRun.dataset_uuid == batch_run_config.dataset_uuid)
+            .where(
+                BatchRun.function_model_version_uuid
+                == batch_run_config.function_model_version_uuid
+            )
+        )
+    ).scalar_one_or_none()
+
+    if batch_run_exist_check:
+        raise HTTPException(
+            status_code=HTTP_409_CONFLICT,
+            detail="Batch run already exist",
+        )
+
+    # make router config
+    function_model_version_to_run: FunctionModelVersion = (
+        await session.execute(
+            select(FunctionModelVersion).where(
+                FunctionModelVersion.uuid
+                == batch_run_config.function_model_version_uuid
+            )
+        )
+    ).scalar_one()
+
+    model, llm_provider, dynamic_api_key, api_base = get_llm_provider(
+        model=function_model_version_to_run.model
+    )  # get llm_provider
+
+    if llm_provider in [
+        "huggingface",
+        "custom_openai",
+        "oobabooga",
+        "openrouter",
+        "vertex_ai",
+    ]:  # not supported yet
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN,
+            detail="This LLM Provider is not supported yet",
+        )
+
+    organization_provider_config: OrganizationProviderAPIKey = (
+        await session.execute(
+            select(OrganizationProviderAPIKey)
+            .where(
+                OrganizationProviderAPIKey.organization_id == jwt["organization_id"]
+            )
+            .where(OrganizationProviderAPIKey.provider == llm_provider)
+        )
+    ).scalar_one_or_none()
+
+    if not organization_provider_config:
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN,
+            detail="Organization don't have access to this LLM Provider",
+        )
+
+    provider_env_var = dict(organization_provider_config.env_var)
+    # get value for key that includes "API_KEY"
+    api_key_key = list(filter(lambda x: "API_KEY" in x, provider_env_var.keys()))[0]
+    api_base_key = list(filter(lambda x: "API_BASE" in x, provider_env_var.keys()))
+    if len(api_base_key) > 0:
+        api_base_key = api_base_key[0]
+    else:
+        api_base_key = None
+    api_version_key = list(
+        filter(lambda x: "API_VERSION" in x, provider_env_var.keys())
+    )
+    if len(api_version_key) > 0:
+        api_version_key = api_version_key[0]
+    else:
+        api_version_key = None
+
+    llm_api_key = provider_env_var[api_key_key]
+    llm_api_base = provider_env_var[api_base_key] if api_base_key else None
+    llm_api_version = provider_env_var[api_version_key] if api_version_key else None
+
+    provider_params = dict(organization_provider_config.params)
+
+    if "api_base" in provider_params:
+        llm_api_base = provider_params["api_base"]
+        del provider_params["api_base"]
+    if "api_version" in provider_params:
+        llm_api_version = provider_params["api_version"]
+        del provider_params["api_version"]
+
+    litellm_router_config = {
+        "model_list": [
+            {
+                "model_name": function_model_version_to_run.model,
+                "litellm_params": {
+                    "model": function_model_version_to_run.model,
+                    "api_key": llm_api_key,
+                    "api_base": llm_api_base,
+                    "api_version": llm_api_version,
+                },
+            }
+        ]
+    }
+
+    litellm_router_config["model_list"][0]["litellm_params"].update(provider_params)
+
+    # create BatchRun
+    batch_run = BatchRun(
+        dataset_uuid=batch_run_config.dataset_uuid,
+        function_model_version_uuid=batch_run_config.function_model_version_uuid,
+        status="running",
+    )
+    session.add(batch_run)
+    await session.commit()
+
+    # create backgroundTask
+    background_tasks.add_task(
+        function_model_batch_run_background_task,
+        batch_run_config,
+        litellm_router_config,
+    )
+
+    return Response(status_code=200)
+

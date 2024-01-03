@@ -90,19 +90,10 @@ async def run_function_model(
         ):
             yield json.dumps(chunk)
 
-    try:
-        return StreamingResponse(
-            stream_run(),
-        )
-    except Exception as exc:
-        logger.error(exc)
-        try:
-            logger.error(exc.detail)
-        except Exception:
-            pass
-        raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
-        ) from exc
+    return StreamingResponse(
+        stream_run(),
+    )
+
 
 
 async def run_cloud_function_model(
@@ -467,19 +458,10 @@ async def run_chat_model(
         ):
             yield json.dumps(chunk)
 
-    try:
-        return StreamingResponse(
-            stream_run(),
-        )
-    except Exception as exc:
-        logger.error(exc)
-        try:
-            logger.error(exc.detail)
-        except Exception:
-            pass
-        raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc
-        ) from exc
+
+    return StreamingResponse(
+        stream_run(),
+    )
 
 
 async def run_cloud_chat_model(
