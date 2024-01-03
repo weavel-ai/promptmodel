@@ -164,7 +164,7 @@ async def get_organization(
         )
 
 
-@router.get("/{organization_id}/llm_providers", response_class=List[str])
+@router.get("/{organization_id}/llm_providers")
 async def get_org_configured_llm_providers(
     jwt: Annotated[str, Depends(get_jwt)],
     organization_id: str,
@@ -206,7 +206,7 @@ async def save_organization_llm_provider_config(
     try:
         # Upsert OrganizationLLMProviderConfig
         # Check if provider_name already exists
-        provider_config = (
+        provider_config: Optional[OrganizationLLMProviderConfig] = (
             await session.execute(
                 select(OrganizationLLMProviderConfig)
                 .where(OrganizationLLMProviderConfig.organization_id == organization_id)

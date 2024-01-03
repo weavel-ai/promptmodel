@@ -91,8 +91,6 @@ class FunctionModelVersion(Base):
     tags: Optional[List[str]] = Column(ARRAY(Text), nullable=True)
     memo: Optional[str] = Column(Text, nullable=True)
 
-    batch_testing: bool = Column(Boolean, nullable=False, default=False)
-
     function_model_uuid: UUIDType = Column(
         UUID(as_uuid=True),
         ForeignKey(
@@ -150,14 +148,14 @@ class RunLog(Base):
 
     run_from_deployment: bool = Column(Boolean, default=True)
 
-    sample_input_uuid: Optional[UUIDType] = Column(
-        ForeignKey(
-            "sample_input.uuid",
-            onupdate="CASCADE",
-            ondelete="SET NULL",
-        ),
-        nullable=True,
-    )
+    # sample_input_uuid: Optional[UUIDType] = Column(
+    #     ForeignKey(
+    #         "sample_input.uuid",
+    #         onupdate="CASCADE",
+    #         ondelete="SET NULL",
+    #     ),
+    #     nullable=True,
+    # )
 
     inputs: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
     raw_output: Optional[str] = Column(Text, nullable=True)
