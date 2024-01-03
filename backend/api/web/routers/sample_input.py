@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Annotated, Any, Dict, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, delete
+from sqlalchemy import select, desc, delete, insert
 
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
 from fastapi.responses import JSONResponse, Response
@@ -19,7 +19,7 @@ from utils.logger import logger
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import SampleInputInstance, CreateSampleInputBody, CreateDatasetBody
+from ..models import SampleInputInstance, CreateSampleInputBody, CreateDatasetBody, DatasetInstance
 
 router = APIRouter()
 
@@ -106,17 +106,28 @@ async def create_dataset(
     session: AsyncSession = Depends(get_session),
 ):
     # create dataset
+    # TODO: currently, all datasets are connected to the gt_exact_match eval_metric.
+    #      This should be changed to a more generic way.
+    
+    gt_exact_match: EvalMetric = (
+        await session.execute(
+            select(EvalMetric)
+            .where(EvalMetric.name == "gt_exact_match")
+            .where(EvalMetric.project_uuid == body.project_uuid)
+        )
+    ).scalar_one()
+    
     new_dataset = Dataset(
         name=body.name,
         description=body.description,
         project_uuid=body.project_uuid,
         function_model_uuid=body.function_model_uuid,
+        eval_metric_uuid=gt_exact_match.uuid,
     )
     session.add(new_dataset)
     await session.commit()
-
-    return JSONResponse(content=new_dataset.model_dump(), status_code=200)
-
+    
+    return DatasetInstance(**new_dataset.model_dump())
 
 
 
@@ -140,12 +151,15 @@ async def save_sample_inputs_in_dataset(
         )
 
     # check if user have access to dataset
-    org_id = jwt["organization_id"]
+    user_id = jwt["user_id"]
+    
     project_check = (
         await session.execute(
             select(Project)
+            .join(Organization, Organization.organization_id == Project.organization_id)
+            .join(UsersOrganizations, UsersOrganizations.organization_id == Organization.organization_id)
             .where(Project.uuid == dataset.project_uuid)
-            .where(Project.organization_id == org_id)
+            .where(UsersOrganizations.user_id == user_id)
         )
     ).scalar_one_or_none()
 
@@ -156,12 +170,26 @@ async def save_sample_inputs_in_dataset(
         )
 
     # create sample inputs
-    sample_input_list = [
-        SampleInput(**sample_input.model_dump()) for sample_input in body
+    sample_input_list: List[Dict] = [
+        SampleInput(**sample_input.model_dump()).model_dump(exclude_none=True) for sample_input in body
     ]
-    session.add_all(sample_input_list)
-    await session.commit()
+                
+    sample_input_uuid_list: List[SampleInput] = (
+        await session.execute(
+            insert(SampleInput).values(sample_input_list).returning(SampleInput.uuid)
+        )
+    ).scalars().all()
 
+    dataset_sample_input = []
+    for sample_input_uuid in sample_input_uuid_list:
+        dataset_sample_input.append(
+            DatasetSampleInput(
+                dataset_uuid=dataset.uuid, sample_input_uuid=sample_input_uuid
+            )
+        )
+    session.add_all(dataset_sample_input)
+    await session.commit()
+    
     return Response(status_code=200)
 
 
@@ -186,12 +214,15 @@ async def delete_sample_input(
         )
 
     # check if user have access to project
-    org_id = jwt["organization_id"]
+    user_id = jwt["user_id"]
+    
     project_check = (
         await session.execute(
             select(Project)
+            .join(Organization, Organization.organization_id == Project.organization_id)
+            .join(UsersOrganizations, UsersOrganizations.organization_id == Organization.organization_id)
             .where(Project.uuid == sample_input.project_uuid)
-            .where(Project.organization_id == org_id)
+            .where(UsersOrganizations.user_id == user_id)
         )
     ).scalar_one_or_none()
 
@@ -206,6 +237,8 @@ async def delete_sample_input(
             delete(SampleInput).where(SampleInput.uuid == sample_input_uuid)
         )
     )
+    
+    await session.commit()
 
     return Response(status_code=200)
 

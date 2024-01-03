@@ -36,3 +36,4 @@ class FunctionModelBatchRunConfig(PMObject):
     project_uuid: str
     function_model_version_uuid: str
     dataset_uuid: str
+    batch_run_uuid: Optional[str] = None

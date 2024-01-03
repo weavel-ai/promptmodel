@@ -40,6 +40,7 @@ from .sample_input import (
     SampleInputInstance,
     CreateSampleInputBody,
     CreateDatasetBody,
+    DatasetInstance
 )
 from .tags import TagsInstance, CreateTagsBody
 from .user import UserInstance, CreateUserBody

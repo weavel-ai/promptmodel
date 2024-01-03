@@ -16,5 +16,5 @@ from .function_schema import FunctionSchema
 from .eval_metric import EvalMetric
 from .score import RunLogScore, ChatSessionScore
 from .eval_metric import EvalMetric
-from .type import ParsingType
+from .types import ParsingType
 from .view import *
