@@ -190,6 +190,8 @@ async def get_jwt(
             token["user_id"] = token["sub"]
 
         return token
+    except HTTPException as exception:
+        raise exception
     except Exception as exception:
         raise HTTPException(
             status_code=status_code.HTTP_500_INTERNAL_SERVER_ERROR,

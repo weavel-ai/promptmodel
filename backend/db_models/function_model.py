@@ -34,7 +34,6 @@ class FunctionModel(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
-        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 
@@ -68,7 +67,6 @@ class FunctionModelVersion(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
-        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 
@@ -142,7 +140,6 @@ class RunLog(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
-        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 

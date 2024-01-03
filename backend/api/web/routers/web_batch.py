@@ -134,7 +134,10 @@ async def function_model_batch_run_background_task(
         score = 0
         for result in results:
             success = 0
-            sample_input_row, res : Tuple[SampleInput, ModelResponse] = result
+            sample_input_row, res = result
+            sample_input_row: SampleInput = sample_input_row
+            res: ModelResponse = res
+            
             gt = sample_input_row.ground_truth
             prediction = res.choices[0].message.content
             if not type(prediction) == str:
