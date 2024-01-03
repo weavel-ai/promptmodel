@@ -148,7 +148,15 @@ class RunLog(Base):
 
     run_from_deployment: bool = Column(Boolean, default=True)
 
-    input_register_name: Optional[str] = Column(Text, nullable=True)
+    # sample_input_uuid: Optional[UUIDType] = Column(
+    #     ForeignKey(
+    #         "sample_input.uuid",
+    #         onupdate="CASCADE",
+    #         ondelete="SET NULL",
+    #     ),
+    #     nullable=True,
+    # )
+
     inputs: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)
     raw_output: Optional[str] = Column(Text, nullable=True)
     parsed_outputs: Optional[Dict[str, Any]] = Column(JSONB, nullable=True)

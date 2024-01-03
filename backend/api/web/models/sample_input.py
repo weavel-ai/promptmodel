@@ -24,3 +24,11 @@ class CreateSampleInputBody(PMObject):
     content: Dict[str, Any]
     function_model_uuid: Optional[str] = None
     input_keys: List[str]
+
+
+class CreateDatasetBody(PMObject):
+    project_uuid: str
+    function_model_uuid: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+    eval_metric_name: Optional[str] = None

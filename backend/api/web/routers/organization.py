@@ -6,20 +6,25 @@ from typing import Annotated, Dict
 import httpx
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, delete
 
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import Response, JSONResponse
 from starlette.status import (
     HTTP_404_NOT_FOUND,
+    HTTP_409_CONFLICT,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-
 from utils.logger import logger
 
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import OrganizationInstance, CreateOrganizationBody
+from ..models import (
+    OrganizationInstance,
+    CreateOrganizationBody,
+    UpsertLLMProviderConfigBody,
+)
 
 router = APIRouter()
 
@@ -142,13 +147,131 @@ async def get_organization(
                 .scalar_one()
                 .model_dump()
             )
+
         except Exception as e:
-            logger.error(e)
             raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail="Organization Not Found",
+                status_code=HTTP_409_CONFLICT,
+                detail="API KEY already exists",
             )
         return OrganizationInstance(**org)
+    except HTTPException as http_exc:
+        logger.error(http_exc.detail)
+        raise http_exc
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+        )
+
+
+@router.get("/{organization_id}/llm_providers")
+async def get_org_configured_llm_providers(
+    jwt: Annotated[str, Depends(get_jwt)],
+    organization_id: str,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        # get list of llm_name
+        configured_providers: List[str] = (
+            (
+                await session.execute(
+                    select(OrganizationLLMProviderConfig.provider_name).where(
+                        OrganizationLLMProviderConfig.organization_id == organization_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        return JSONResponse(content=configured_providers, status_code=200)
+
+    except HTTPException as http_exc:
+        logger.error(http_exc.detail)
+        raise http_exc
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+        )
+
+
+@router.post("/{organization_id}/llm_providers")
+async def save_organization_llm_provider_config(
+    jwt: Annotated[str, Depends(get_jwt)],
+    organization_id: str,
+    body: UpsertLLMProviderConfigBody,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        # Upsert OrganizationLLMProviderConfig
+        # Check if provider_name already exists
+        provider_config: Optional[OrganizationLLMProviderConfig] = (
+            await session.execute(
+                select(OrganizationLLMProviderConfig)
+                .where(OrganizationLLMProviderConfig.organization_id == organization_id)
+                .where(
+                    OrganizationLLMProviderConfig.provider_name == body.provider_name
+                )
+            )
+        ).scalar_one_or_none()
+        if provider_config is None:
+            # create new config
+            new_provider_config = OrganizationLLMProviderConfig(
+                organization_id=organization_id,
+                provider_name=body.provider_name,
+                env_vars=body.env_vars,
+                params=body.params,
+            )
+            session.add(new_provider_config)
+        else:
+            # update existing config
+            provider_config.env_vars = body.env_vars
+            provider_config.params = body.params
+            session.add(provider_config)
+
+        await session.commit()
+
+        return Response(status_code=200)
+
+    except HTTPException as http_exc:
+        logger.error(http_exc.detail)
+        raise http_exc
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error"
+        )
+
+
+@router.delete("/{organization_id}/llm_providers")
+async def delete_organization_llm_api_key(
+    jwt: Annotated[str, Depends(get_jwt)],
+    organization_id: str,
+    provider_name: str,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        # check if configuration exists
+        config = (
+            await session.execute(
+                select(OrganizationLLMProviderConfig)
+                .where(OrganizationLLMProviderConfig.organization_id == organization_id)
+                .where(OrganizationLLMProviderConfig.provider_name == provider_name)
+            )
+        ).scalar_one_or_none()
+
+        if config is None:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"Configuration for provider {provider_name} not exist",
+            )
+
+        await session.delete(config)
+        await session.commit()
+
+        return Response(status_code=200)
+
     except HTTPException as http_exc:
         logger.error(http_exc.detail)
         raise http_exc

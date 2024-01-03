@@ -10,6 +10,7 @@ import { createOrganization, fetchOrganization } from "@/apis/organizations";
 import { AxiosError } from "axios";
 
 export default function Page() {
+  console.log("babo");
   const router = useRouter();
   const { organization } = useOrganization();
   const { userId } = useAuth();

@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from .chat_model import ChatModel
     from .function_model import FunctionModel
     from .function_schema import FunctionSchema
-    from .sample_input import SampleInput
+    from .dataset import SampleInput
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -42,6 +42,30 @@ class Organization(Base):
     slug: str = Column(Text, nullable=False)
 
     # projects: List["Project"] = Relationship(back_populates="organization")
+
+
+class OrganizationLLMProviderConfig(Base):
+    __tablename__ = "organization_llm_provider_config"
+
+    id: int = Column(BigInteger, Identity(), unique=True)
+    created_at: datetime = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    organization_id: str = Column(
+        Text,
+        ForeignKey(
+            "organization.organization_id",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        primary_key=True,
+    )
+    provider_name: str = Column(Text, primary_key=True)
+    env_vars: Dict[str, str] = Column(
+        JSONB, nullable=False, server_default=text("'{}'")
+    )
+    params: Dict[str, str] = Column(JSONB, nullable=False, server_default=text("'{}'"))
 
 
 class User(Base):

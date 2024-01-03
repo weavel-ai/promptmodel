@@ -64,7 +64,7 @@ export default async function RootLayout({
         <body
           className={classNames(
             inter.className,
-            "w-full h-full flex flex-col justify-start items-center"
+            "w-full h-full flex flex-col justify-start items-center p-0 overflow-x-hidden"
           )}
         >
           <Providers session={session}>

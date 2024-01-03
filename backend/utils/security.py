@@ -132,7 +132,6 @@ async def get_jwt(
             # strip Bearer
             if raw_jwt.lower().startswith("bearer "):
                 token = raw_jwt[7:]
-
             if not token:
                 raise HTTPException(
                     status_code=status_code.HTTP_401_UNAUTHORIZED,
