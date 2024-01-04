@@ -839,31 +839,59 @@ async def save_run_log_score(
             .where(FunctionModelVersion.uuid == run_log_to_update.version_uuid)
         )
     ).scalar_one()
-
-    score_list_in_db: List[EvalMetric] = (
-        (
-            await session.execute(
-                select(EvalMetric).where(
-                    EvalMetric.function_model_uuid == function_model_of_run_log.uuid
+    try:
+        score_list_in_db: List[EvalMetric] = (
+            (
+                await session.execute(
+                    select(EvalMetric).where(
+                        EvalMetric.function_model_uuid == function_model_of_run_log.uuid
+                    )
                 )
             )
+            .scalars()
+            .all()
         )
-        .scalars()
-        .all()
-    )
-    score_name_list_in_db = [x.name for x in score_list_in_db]
-    # find score_name_list not in db
-    score_name_list_to_add = list(set(score_name_list) - set(score_name_list_in_db))
-    eval_metric_to_add = [
-        EvalMetric(
-            name=x,
-            project_uuid=project["uuid"],
-            function_model_uuid=function_model_of_run_log.uuid,
+        score_name_list_in_db = [x.name for x in score_list_in_db]
+        # find score_name_list not in db
+        score_name_list_to_add = list(set(score_name_list) - set(score_name_list_in_db))
+        eval_metric_to_add = [
+            EvalMetric(
+                name=x,
+                project_uuid=project["uuid"],
+                function_model_uuid=function_model_of_run_log.uuid,
+            )
+            for x in score_name_list_to_add
+        ]
+        if len(eval_metric_to_add) > 0:
+            session.add_all(eval_metric_to_add)
+            await session.commit()
+    except:
+        score_list_in_db: List[EvalMetric] = (
+            (
+                await session.execute(
+                    select(EvalMetric).where(
+                        EvalMetric.function_model_uuid == function_model_of_run_log.uuid
+                    )
+                )
+            )
+            .scalars()
+            .all()
         )
-        for x in score_name_list_to_add
-    ]
-    session.add_all(eval_metric_to_add)
-    await session.commit()
+        score_name_list_in_db = [x.name for x in score_list_in_db]
+        # find score_name_list not in db
+        score_name_list_to_add = list(set(score_name_list) - set(score_name_list_in_db))
+        eval_metric_to_add = [
+            EvalMetric(
+                name=x,
+                project_uuid=project["uuid"],
+                function_model_uuid=function_model_of_run_log.uuid,
+            )
+            for x in score_name_list_to_add
+        ]
+        if len(eval_metric_to_add) > 0:
+            session.add_all(eval_metric_to_add)
+            await session.commit()
+            
     eval_metric_to_use: List[EvalMetric] = (
         (
             await session.execute(

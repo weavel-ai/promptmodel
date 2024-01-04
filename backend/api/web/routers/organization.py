@@ -10,17 +10,13 @@ from sqlalchemy import select, update, delete
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import Response, JSONResponse
-from starlette.status import (
-    HTTP_404_NOT_FOUND,
-    HTTP_409_CONFLICT,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as status_code
 from utils.logger import logger
 
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import (
+from ..models.organization import (
     OrganizationInstance,
     CreateOrganizationBody,
     UpsertLLMProviderConfigBody,
@@ -111,7 +107,7 @@ async def get_organization(
                 )
                 if res.status_code != 200:
                     raise HTTPException(
-                        status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                        status_code=status_code.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail="Clerk Internal Server Error",
                     )
                 res = res.json()
@@ -140,7 +136,7 @@ async def get_organization(
 
     except Exception as e:
         raise HTTPException(
-            status_code=HTTP_409_CONFLICT,
+            status_code=status_code.HTTP_409_CONFLICT,
             detail="API KEY already exists",
         )
     return OrganizationInstance(**org)
@@ -225,7 +221,7 @@ async def delete_organization_llm_api_key(
 
     if config is None:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND,
+            status_code=status_code.HTTP_404_NOT_FOUND,
             detail=f"Configuration for provider {provider_name} not exist",
         )
 

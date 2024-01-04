@@ -19,7 +19,10 @@ class CreateFunctionModelBody(PMObject):
     project_uuid: str
 
 
-class DatasetInstance(PMObject):
-    name: str
-    uuid: str
-    description: Optional[str] = None
+class DatasetForFunctionModelInstance(PMObject):
+    dataset_name: str
+    dataset_uuid: str
+    dataset_description: Optional[str] = None
+    eval_metric_name: str
+    eval_metric_uuid: str
+    eval_metric_description: Optional[str] = None

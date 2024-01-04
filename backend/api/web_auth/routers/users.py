@@ -4,7 +4,7 @@ from typing import Annotated, List
 from sqlalchemy import ChunkedIteratorResult, select
 from utils.security import create_hashed_identifier, hash_password
 from fastapi import APIRouter, Depends, HTTPException, Response
-from starlette import status as http_status
+from starlette import status as status_code
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from api.web_auth.models import UserCreate, UserRead
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/users")
 
 load_dotenv()
 
-@router.post("", status_code=http_status.HTTP_201_CREATED, response_model=UserRead)
+@router.post("", status_code=status_code.HTTP_201_CREATED, response_model=UserRead)
 async def create_user(
     user: UserCreate, session: AsyncSession = Depends(get_session)
 ) -> UserRead:
@@ -68,16 +68,16 @@ async def create_user(
         return UserRead(**new_user.model_dump())
     except IntegrityError as exception:
         raise HTTPException(
-            status_code=http_status.HTTP_409_CONFLICT,
+            status_code=status_code.HTTP_409_CONFLICT,
             detail="User with this email already exists",
         ) from exception
     except Exception as exception:
         raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status_code.HTTP_500_INTERNAL_SERVER_ERROR,
         ) from exception
 
 
-@router.post("/authorize", status_code=http_status.HTTP_200_OK, response_model=UserRead)
+@router.post("/authorize", status_code=status_code.HTTP_200_OK, response_model=UserRead)
 async def authorize_user(
     user: UserCreate, session: AsyncSession = Depends(get_session)
 ) -> UserRead:
@@ -89,31 +89,31 @@ async def authorize_user(
         # Verify user
         if not user_res:
             return Response(
-                status_code=http_status.HTTP_401_UNAUTHORIZED,
+                status_code=status_code.HTTP_401_UNAUTHORIZED,
                 content="User with this email does not exist",
             )
         current_user: User = user_res[0][0]
         if not current_user.hashed_password:
             return Response(
-                status_code=http_status.HTTP_401_UNAUTHORIZED,
+                status_code=status_code.HTTP_401_UNAUTHORIZED,
                 content="User with this email was signed up with a social provider",
             )
         if not current_user.verify_password(user.password):
             return Response(
-                status_code=http_status.HTTP_401_UNAUTHORIZED,
+                status_code=status_code.HTTP_401_UNAUTHORIZED,
                 content="Password is incorrect",
             )
         return UserRead(**current_user.model_dump())
     except Exception as exception:
         print(exception)
         raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status_code.HTTP_500_INTERNAL_SERVER_ERROR,
         ) from exception
 
 
 @router.get(
     "/me",
-    status_code=http_status.HTTP_200_OK,
+    status_code=status_code.HTTP_200_OK,
     response_model=UserRead,
 )
 async def read_user_me(
@@ -126,7 +126,7 @@ async def read_user_me(
     ).all()
     if not user_res:
         return Response(
-            status_code=http_status.HTTP_404_NOT_FOUND,
+            status_code=status_code.HTTP_404_NOT_FOUND,
             content="User with this email does not exist",
         )
     current_user: User = user_res[0][0]

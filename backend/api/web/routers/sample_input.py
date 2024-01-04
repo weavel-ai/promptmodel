@@ -3,23 +3,21 @@
 from datetime import datetime
 from typing import Annotated, Any, Dict, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, delete, insert
+from sqlalchemy import select, desc, delete
+from sqlalchemy.dialects.postgresql import insert
 
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
 from fastapi.responses import JSONResponse, Response
-from starlette.status import (
-    HTTP_404_NOT_FOUND,
-    HTTP_401_UNAUTHORIZED,
-    HTTP_422_UNPROCESSABLE_ENTITY,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as status_code
 
 from utils.logger import logger
 
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import SampleInputInstance, CreateSampleInputBody, CreateDatasetBody, DatasetInstance
+from ..models.sample_input import (
+    SampleInputInstance, CreateSampleInputBody, CreateDatasetBody, DatasetInstance, CreateSampleInputForDatasetBody, DatasetWithEvalMetricFunctionModelInstance
+)
 
 router = APIRouter()
 
@@ -87,7 +85,7 @@ async def create_sample_input(
 
         if sample_input_in_db:
             raise HTTPException(
-                status_code=HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status_code.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Same name in project",
             )
     new_sample_input = SampleInput(**body.model_dump())
@@ -97,9 +95,28 @@ async def create_sample_input(
 
     return SampleInputInstance(**new_sample_input.model_dump())
 
+@router.get("/dataset/{dataset_uuid}", response_model=List[SampleInputInstance])
+async def fetch_sample_inputs_in_dataset(
+    jwt: Annotated[str, Depends(get_jwt)],
+    dataset_uuid: str,
+    session: AsyncSession = Depends(get_session),
+):
+    sample_inputs: List[Dict] = [
+        SampleInputInstance(**sample_input.model_dump())
+        for sample_input in (
+            await session.execute(
+                select(SampleInput)
+                .join(DatasetSampleInput, DatasetSampleInput.sample_input_uuid == SampleInput.uuid)
+                .where(DatasetSampleInput.dataset_uuid == dataset_uuid)
+                .order_by(desc(SampleInput.created_at))
+            )
+        )
+        .scalars()
+        .all()
+    ]
+    return sample_inputs
 
-
-@router.post("/dataset")
+@router.post("/dataset", response_model=DatasetInstance)
 async def create_dataset(
     jwt: Annotated[str, Depends(get_jwt)],
     body: CreateDatasetBody,
@@ -135,7 +152,7 @@ async def create_dataset(
 async def save_sample_inputs_in_dataset(
     jwt: Annotated[str, Depends(get_jwt)],
     dataset_uuid: str,
-    body: List[CreateSampleInputBody],
+    body: List[CreateSampleInputForDatasetBody],
     session: AsyncSession = Depends(get_session),
 ):
     # find dataset
@@ -146,7 +163,7 @@ async def save_sample_inputs_in_dataset(
     # check if dataset exists
     if dataset is None:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND,
+            status_code=status_code.HTTP_404_NOT_FOUND,
             detail="Dataset not found",
         )
 
@@ -165,13 +182,13 @@ async def save_sample_inputs_in_dataset(
 
     if project_check is None:
         raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
+            status_code=status_code.HTTP_401_UNAUTHORIZED,
             detail="User Cannot Access Dataset",
         )
 
     # create sample inputs
     sample_input_list: List[Dict] = [
-        SampleInput(**sample_input.model_dump()).model_dump(exclude_none=True) for sample_input in body
+        SampleInput(**sample_input.model_dump(), function_model_uuid=dataset.function_model_uuid, project_uuid=dataset.project_uuid).model_dump(exclude_none=True) for sample_input in body
     ]
                 
     sample_input_uuid_list: List[SampleInput] = (
@@ -192,7 +209,75 @@ async def save_sample_inputs_in_dataset(
     
     return Response(status_code=200)
 
+@router.post("/dataset/{dataset_uuid}/add")
+async def connect_sample_input_to_dataset(
+    jwt: Annotated[str, Depends(get_jwt)],
+    dataset_uuid: str,
+    sample_input_uuid_list: List[str],
+    session: AsyncSession = Depends(get_session),
+):
+    # find dataset
+    dataset: Dataset = (
+        await session.execute(select(Dataset).where(Dataset.uuid == dataset_uuid))
+    ).scalar_one_or_none()
 
+    # check if dataset exists
+    if dataset is None:
+        raise HTTPException(
+            status_code=status_code.HTTP_404_NOT_FOUND,
+            detail="Dataset not found",
+        )
+
+    # check if user have access to dataset
+    user_id = jwt["user_id"]
+    
+    project_check = (
+        await session.execute(
+            select(Project)
+            .join(Organization, Organization.organization_id == Project.organization_id)
+            .join(UsersOrganizations, UsersOrganizations.organization_id == Organization.organization_id)
+            .where(Project.uuid == dataset.project_uuid)
+            .where(UsersOrganizations.user_id == user_id)
+        )
+    ).scalar_one_or_none()
+
+    if project_check is None:
+        raise HTTPException(
+            status_code=status_code.HTTP_401_UNAUTHORIZED,
+            detail="User Cannot Access Dataset",
+        )
+        
+    # check if sample input exists
+    
+    sample_inputs: List[SampleInput] = (
+        await session.execute(
+            select(SampleInput).where(SampleInput.uuid.in_(sample_input_uuid_list))
+        )
+    ).scalars().all()
+    
+    if len(sample_inputs) != len(sample_input_uuid_list):
+        raise HTTPException(
+            status_code=status_code.HTTP_404_NOT_FOUND,
+            detail="SampleInput not found",
+        )
+    
+    # create Connection, on_conflict_do_nothing
+    (
+        await session.execute(
+            insert(
+                DatasetSampleInput
+            ).values(
+                [
+                    DatasetSampleInput(dataset_uuid=dataset.uuid, sample_input_uuid=sample_input.uuid).model_dump(exclude_none=True)
+                    for sample_input in sample_inputs
+                ]
+            )
+            .on_conflict_do_nothing()
+        )
+    )
+    await session.commit()
+    
+    return Response(status_code=200)
 
 
 @router.delete("/{sample_input_uuid}")
@@ -209,7 +294,7 @@ async def delete_sample_input(
 
     if sample_input is None:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND,
+            status_code=status_code.HTTP_404_NOT_FOUND,
             detail="SampleInput not found",
         )
 
@@ -228,7 +313,7 @@ async def delete_sample_input(
 
     if project_check is None:
         raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
+            status_code=status_code.HTTP_401_UNAUTHORIZED,
             detail="User Cannot Access SampleInput",
         )
 

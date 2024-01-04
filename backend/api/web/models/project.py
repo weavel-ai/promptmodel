@@ -24,3 +24,14 @@ class ProjectInstance(PMObject):
 
     description: Optional[str] = None
     cli_access_token: Optional[str] = None
+
+class ProjectDatasetInstance(PMObject):
+    dataset_uuid: str
+    dataset_name: str
+    dataset_description: Optional[str] = None
+    eval_metric_uuid: str
+    eval_metric_name: str
+    eval_metric_description: Optional[str] = None
+    function_model_uuid: Optional[str] = None
+    function_model_name: Optional[str] = None
+    

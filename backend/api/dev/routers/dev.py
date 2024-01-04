@@ -7,14 +7,7 @@ from sqlalchemy import Result, select, asc, desc, update
 
 from fastapi import APIRouter, Response, HTTPException, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
-from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
-)
+from starlette import status as status_code
 
 from utils.security import get_jwt, get_project
 from utils.prompt_utils import update_dict
@@ -102,18 +95,18 @@ async def run_function_model(
 
     if project[0]["organization_id"] not in users_orgs:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 
     if len(project) == 0:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND, detail="There is no project"
+            status_code=status_code.HTTP_404_NOT_FOUND, detail="There is no project"
         )
 
     if project[0]["cli_access_key"] is None:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
+            status_code=status_code.HTTP_404_NOT_FOUND, detail="There is no connection"
         )
 
     cli_access_key = project[0]["cli_access_key"]
@@ -163,11 +156,11 @@ async def list_function_models(
     )
     if len(project) == 0:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND, detail="There is no project"
+            status_code=status_code.HTTP_404_NOT_FOUND, detail="There is no project"
         )
     if project[0]["cli_access_key"] is None:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
+            status_code=status_code.HTTP_404_NOT_FOUND, detail="There is no connection"
         )
 
     cli_access_key = project[0]["cli_access_key"]
@@ -175,8 +168,8 @@ async def list_function_models(
         cli_access_key, LocalTask.LIST_CODE_PROMPT_MODELS
     )
     if not response:
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
-    return JSONResponse(response, status_code=HTTP_200_OK)
+        raise HTTPException(status_code=status_code.HTTP_500_INTERNAL_SERVER_ERROR)
+    return JSONResponse(response, status_code=status_code.HTTP_200_OK)
 
 
 @router.get("/list_functions")
@@ -214,11 +207,11 @@ async def list_functions(
     )
     if len(project) == 0:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND, detail="There is no project"
+            status_code=status_code.HTTP_404_NOT_FOUND, detail="There is no project"
         )
     if project[0]["cli_access_key"] is None:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
+            status_code=status_code.HTTP_404_NOT_FOUND, detail="There is no connection"
         )
 
     cli_access_key = project[0]["cli_access_key"]
@@ -226,5 +219,5 @@ async def list_functions(
         cli_access_key, LocalTask.LIST_CODE_FUNCTIONS
     )
     if not response:
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
-    return JSONResponse(response, status_code=HTTP_200_OK)
+        raise HTTPException(status_code=status_code.HTTP_500_INTERNAL_SERVER_ERROR)
+    return JSONResponse(response, status_code=status_code.HTTP_200_OK)

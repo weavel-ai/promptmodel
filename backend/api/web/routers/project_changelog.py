@@ -5,16 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
 from fastapi import APIRouter, HTTPException, Depends
-from starlette.status import (
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as status_code
 
 from utils.logger import logger
 
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import ProjectChangelogInstance
+from ..models.project_changelog import ProjectChangelogInstance
 
 router = APIRouter()
 

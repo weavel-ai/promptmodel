@@ -5,18 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc, update
 
 from fastapi import APIRouter, HTTPException, Depends
-from starlette.status import (
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as status_code
 
 from utils.logger import logger
 
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import (
+from ..models.function_model_version import (
     FunctionModelVersionInstance,
     UpdatePublishedFunctionModelVersionBody,
     UpdateFunctionModelVersionTagsBody,
@@ -73,7 +69,7 @@ async def fetch_function_model_version(
     except Exception as e:
         logger.error(e)
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND,
+            status_code=status_code.HTTP_404_NOT_FOUND,
             detail="FunctionModelVersion with given id not found",
         )
     return FunctionModelVersionInstance(**function_model_version)
@@ -101,7 +97,7 @@ async def update_published_function_model_version(
 
     if not user_auth_check:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 
@@ -188,29 +184,7 @@ async def update_function_model_version_memo(
     return FunctionModelVersionInstance(**updated_version)
 
 
-
-@router.post("/{uuid}/batch_run")
-async def batch_run(
-    jwt: Annotated[str, Depends(get_jwt)],
-    uuid: str,
-    body: BatchRunConfigBody,
-    session: AsyncSession = Depends(get_session),
-):
-    # create batch_run
-    new_batch_run = BatchRun(
-        dataset_uuid=body.dataset_uuid,
-        function_model_version_uuid=uuid,
-    )
-    session.add(new_batch_run)
-    await session.commit()
-    await session.refresh(new_batch_run)
-
-    # TODO: run background task as thread
-
-    
-
-
-@router.get("/{uuid}/batch_run")
+@router.get("/{uuid}/batch_run", response_model=List[DatasetBatchRunInstance])
 async def fetch_batch_runs(
     jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
@@ -225,15 +199,24 @@ async def fetch_batch_runs(
     ).scalar_one()
 
     # fetch dataset for FunctionModel
-    dataset_list: List[Dataset] = (
+    dataset_with_eval_metric_list: List[Dict] = (
         (
             await session.execute(
-                select(Dataset).where(
+                select(
+                    Dataset.uuid.label('dataset_uuid'), 
+                    Dataset.name.label('dataset_name'), 
+                    Dataset.description.label('dataset_description'), 
+                    EvalMetric.name.label('eval_metric_name'), 
+                    EvalMetric.uuid.label('eval_metric_uuid'), 
+                    EvalMetric.description.label('eval_metric_description')
+                )
+                .join(EvalMetric, Dataset.eval_metric_uuid == EvalMetric.uuid)
+                .where(
                     Dataset.function_model_uuid == function_model_uuid
                 )
             )
         )
-        .scalars()
+        .mappings()
         .all()
     )
 
@@ -250,11 +233,11 @@ async def fetch_batch_runs(
 
     # TODO: make response
     res: List[DatasetBatchRunInstance] = []
-    for dataset in dataset_list:
+    for dataset in dataset_with_eval_metric_list:
         batch_run_for_dataset = [
             batch_run
             for batch_run in batch_runs
-            if batch_run.dataset_uuid == dataset.uuid
+            if batch_run.dataset_uuid == dataset["dataset.uuid"]
         ]
         if len(batch_run_for_dataset) == 0:
             batch_run_for_dataset = None
@@ -263,8 +246,12 @@ async def fetch_batch_runs(
 
         res.append(
             DatasetBatchRunInstance(
-                dataset_uuid=dataset.uuid,
-                dataset_name=dataset.name,
+                dataset_uuid=dataset["dataset_uuid"],
+                dataset_name=dataset["dataset_name"],
+                dataset_description=dataset["dataset_description"],
+                eval_metric_uuid=dataset["eval_metric_uuid"],
+                eval_metric_name=dataset["eval_metric_name"],
+                eval_metric_description=dataset["eval_metric_description"],
                 batch_run_uuid=batch_run_for_dataset.uuid
                 if batch_run_for_dataset
                 else None,
@@ -272,6 +259,9 @@ async def fetch_batch_runs(
                 if batch_run_for_dataset
                 else None,
                 batch_run_status=batch_run_for_dataset.status
+                if batch_run_for_dataset
+                else None,
+                batch_run_created_at=batch_run_for_dataset.created_at
                 if batch_run_for_dataset
                 else None,
             )

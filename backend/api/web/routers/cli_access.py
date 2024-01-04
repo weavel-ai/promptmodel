@@ -6,15 +6,13 @@ from sqlalchemy import update
 from sqlalchemy.dialects.postgresql import insert
 
 from fastapi import APIRouter, HTTPException, Depends
-from starlette.status import (
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as status_code
 from utils.logger import logger
 
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import CliAccessInstance, UpdateCliAccessKeyBody
+from ..models.cli_access import CliAccessInstance, UpdateCliAccessKeyBody
 
 router = APIRouter()
 

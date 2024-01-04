@@ -4,17 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
 from fastapi import APIRouter, HTTPException, Depends
-from starlette.status import (
-    HTTP_404_NOT_FOUND,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as status_code
 
 from utils.logger import logger
 
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import FunctionSchemaInstance
+from ..models.function_schema import FunctionSchemaInstance
 
 router = APIRouter()
 
@@ -61,7 +58,7 @@ async def fetch_function_schema(
     except Exception as e:
         logger.error(e)
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND,
+            status_code=status_code.HTTP_404_NOT_FOUND,
             detail="FunctionSchema with given id not found",
         )
     return FunctionSchemaInstance(**function_schema)

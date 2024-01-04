@@ -5,18 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
 from fastapi import APIRouter, HTTPException, Depends
-from starlette.status import (
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as status_code
 
 from utils.logger import logger
 
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import (
+from ..models.run_log import (
     RunLogInstance,
     DeploymentRunLogViewInstance,
     RunLogsCountInstance,
@@ -72,7 +68,7 @@ async def fetch_run_logs(
 
     if not check_user_auth:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 
@@ -92,6 +88,25 @@ async def fetch_run_logs(
     ]
     return run_logs
 
+@router.get("/batch_run", response_model=List[RunLogInstance])
+async def fetch_run_log_in_batch_run(
+    jwt: Annotated[str, Depends(get_jwt)],
+    batch_run_uuid: str,
+    session: AsyncSession = Depends(get_session),
+):
+    run_logs: List[RunLogInstance] = [
+        RunLogInstance(**run_log.model_dump())
+        for run_log in (
+            await session.execute(
+                select(RunLog)
+                .where(RunLog.batch_run_uuid == batch_run_uuid)
+                .order_by(desc(RunLog.created_at))
+            )
+        )
+        .scalars()
+        .all()
+    ]
+    return run_logs
 
 
 @router.get("/count", response_model=RunLogsCountInstance)
@@ -111,7 +126,7 @@ async def fetch_run_logs_count(
     except Exception as e:
         logger.error(e)
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND,
+            status_code=status_code.HTTP_404_NOT_FOUND,
             detail="RunLogsCount with given id not found",
         )
 

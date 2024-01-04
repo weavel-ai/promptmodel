@@ -4,19 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc, update
 
 from fastapi import APIRouter, HTTPException, Depends
-from starlette.status import (
-    HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
-
+from starlette import status as status_code
 
 from utils.logger import logger
 
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import (
+from ..models.chat_model_version import (
     ChatModelVersionInstance,
     UpdatePublishedChatModelVersionBody,
     UpdateChatModelVersionTagsBody,
@@ -47,7 +42,7 @@ async def fetch_chat_model_versions(
 
     if not check_user_auth:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 
@@ -86,7 +81,7 @@ async def fetch_chat_model_version(
     except Exception as e:
         logger.error(e)
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND,
+            status_code=status_code.HTTP_404_NOT_FOUND,
             detail="ChatModelVersion with given id not found",
         )
     return ChatModelVersionInstance(**chat_model_version)
@@ -114,7 +109,7 @@ async def update_published_chat_model_version(
 
     if not user_auth_check:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 

@@ -8,14 +8,7 @@ from sqlalchemy import Result, select, asc, desc, update
 
 from fastapi import APIRouter, Response, HTTPException, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
-from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
-)
+from starlette import status as status_code
 from utils.security import get_jwt
 
 from utils.logger import logger
@@ -101,17 +94,17 @@ async def run_chat_model(
 
     if project[0]["organization_id"] not in users_orgs:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 
     if len(project) == 0:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND, detail="There is no project"
+            status_code=status_code.HTTP_404_NOT_FOUND, detail="There is no project"
         )
     if project[0]["cli_access_key"] is None:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
+            status_code=status_code.HTTP_404_NOT_FOUND, detail="There is no connection"
         )
 
     cli_access_key = project[0]["cli_access_key"]
@@ -166,11 +159,11 @@ async def list_chat_models(
 
     if len(project) == 0:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND, detail="There is no project"
+            status_code=status_code.HTTP_404_NOT_FOUND, detail="There is no project"
         )
     if project[0]["cli_access_key"] is None:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
+            status_code=status_code.HTTP_404_NOT_FOUND, detail="There is no connection"
         )
 
     cli_access_key = project[0]["cli_access_key"]
@@ -178,6 +171,6 @@ async def list_chat_models(
         cli_access_key, LocalTask.LIST_CODE_CHAT_MODELS
     )
     if not response:
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
-    return JSONResponse(response, status_code=HTTP_200_OK)
+        raise HTTPException(status_code=status_code.HTTP_500_INTERNAL_SERVER_ERROR)
+    return JSONResponse(response, status_code=status_code.HTTP_200_OK)
 
