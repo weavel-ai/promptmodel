@@ -13,6 +13,7 @@ from sqlalchemy import (
     BigInteger,
     ARRAY,
     Identity,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func, text
@@ -31,7 +32,6 @@ class EvalMetric(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
-        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 
@@ -69,3 +69,12 @@ class EvalMetric(Base):
     description: str = Column(Text, nullable=True)
 
     extent: List[int] = Column(ARRAY(Integer), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "project_uuid",
+            "function_model_uuid",
+            "name",
+            name="_project_function_model_name_uc",
+        ),
+    )

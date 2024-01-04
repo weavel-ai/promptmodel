@@ -25,15 +25,22 @@ from .function_model_version import (
     FunctionModelVersionInstance,
     UpdatePublishedFunctionModelVersionBody,
     UpdateFunctionModelVersionTagsBody,
+    BatchRunConfigBody,
+    DatasetBatchRunInstance,
 )
 
-from .function_model import FunctionModelInstance, CreateFunctionModelBody
+from .function_model import (
+    FunctionModelInstance,
+    CreateFunctionModelBody,
+    DatasetInstance,
+)
 from .prompt import PromptInstance
 from .run_log import RunLogInstance, DeploymentRunLogViewInstance, RunLogsCountInstance
 from .sample_input import (
     SampleInputInstance,
     CreateSampleInputBody,
     CreateDatasetBody,
+    DatasetInstance
 )
 from .tags import TagsInstance, CreateTagsBody
 from .user import UserInstance, CreateUserBody

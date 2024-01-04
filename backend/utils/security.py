@@ -58,22 +58,23 @@ async def get_project(
     api_key: str = Security(api_key_header),
 ):
     """Authenticate and return project based on API key."""
+    if not api_key:
+        raise HTTPException(
+            status_code=status_code.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
     api_key = api_key.replace("Bearer ", "")  # Strip "Bearer " from the header value
     async with get_session_context() as session:
         project = (
-            (await session.execute(select(Project).where(Project.api_key == api_key)))
-            .scalars()
-            .one()
-        )
-
-    logger.debug(f"api key: {api_key}")
-    logger.debug(f"project: {project.name}")
-
+            await session.execute(select(Project).where(Project.api_key == api_key))
+        ).scalar_one_or_none()
     if not project:
         raise HTTPException(
             status_code=status_code.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
         )
+    logger.debug(f"api key: {api_key}")
+    logger.debug(f"project: {project.name}")
 
     return project.model_dump()
 
@@ -190,11 +191,8 @@ async def get_jwt(
             token["user_id"] = token["sub"]
 
         return token
-    except Exception as exception:
-        raise HTTPException(
-            status_code=status_code.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=exception,
-        )
+    except HTTPException as exception:
+        raise exception
 
 
 def create_hashed_identifier(prefix: str, value: str):

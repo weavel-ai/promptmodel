@@ -30,3 +30,10 @@ class ChatModelRunConfig(PMObject):
     session_uuid: Optional[str] = None
     version_uuid: Optional[str] = None
     functions: Optional[List[str]] = None
+
+
+class FunctionModelBatchRunConfig(PMObject):
+    project_uuid: str
+    function_model_version_uuid: str
+    dataset_uuid: str
+    batch_run_uuid: Optional[str] = None

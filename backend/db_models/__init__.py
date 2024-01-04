@@ -11,10 +11,10 @@ from .project import (
     CliAccess,
     pwd_context,
 )
-from .dataset import SampleInput, Dataset, DatasetSampleInput
+from .dataset import SampleInput, Dataset, DatasetSampleInput, BatchRun
 from .function_schema import FunctionSchema
 from .eval_metric import EvalMetric
 from .score import RunLogScore, ChatSessionScore
 from .eval_metric import EvalMetric
-from .type import ParsingType
+from .types import ParsingType
 from .view import *
