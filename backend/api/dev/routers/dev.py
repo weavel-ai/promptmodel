@@ -70,72 +70,61 @@ async def run_function_model(
     </ul>
     """
     # If the API key in header is valid, this function will execute.
-    try:
-        # Find local server websocket
-        project = (
-            (
-                await session.execute(
-                    select(
-                        Project.cli_access_key,
-                        Project.version,
-                        Project.uuid,
-                        Project.organization_id,
-                    ).where(Project.uuid == project_uuid)
-                )
+    
+    # Find local server websocket
+    project = (
+        (
+            await session.execute(
+                select(
+                    Project.cli_access_key,
+                    Project.version,
+                    Project.uuid,
+                    Project.organization_id,
+                ).where(Project.uuid == project_uuid)
             )
-            .mappings()
-            .all()
         )
+        .mappings()
+        .all()
+    )
 
-        # check jwt['user_id'] have access to project_uuid
-        users_orgs = (
-            (
-                await session.execute(
-                    select(UsersOrganizations.organization_id).where(
-                        UsersOrganizations.user_id == jwt["user_id"]
-                    )
+    # check jwt['user_id'] have access to project_uuid
+    users_orgs = (
+        (
+            await session.execute(
+                select(UsersOrganizations.organization_id).where(
+                    UsersOrganizations.user_id == jwt["user_id"]
                 )
             )
-            .scalars()
-            .all()
         )
+        .scalars()
+        .all()
+    )
 
-        if project[0]["organization_id"] not in users_orgs:
-            raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN,
-                detail="User don't have access to this project",
-            )
-
-        if len(project) == 0:
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND, detail="There is no project"
-            )
-
-        if project[0]["cli_access_key"] is None:
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
-            )
-
-        cli_access_key = project[0]["cli_access_key"]
-
-        try:
-            return StreamingResponse(
-                run_local_function_model_generator(
-                    session, project[0], cli_access_key, run_config
-                )
-            )
-        except Exception as exc:
-            logger.error(exc)
-            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
-
-    except HTTPException as http_exc:
-        logger.error(http_exc.detail)
-        raise http_exc
-    except Exception as exc:
-        logger.error(exc)
+    if project[0]["organization_id"] not in users_orgs:
         raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-        ) from exc
+            status_code=HTTP_403_FORBIDDEN,
+            detail="User don't have access to this project",
+        )
+
+    if len(project) == 0:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND, detail="There is no project"
+        )
+
+    if project[0]["cli_access_key"] is None:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
+        )
+
+    cli_access_key = project[0]["cli_access_key"]
+
+
+    return StreamingResponse(
+        run_local_function_model_generator(
+            session, project[0], cli_access_key, run_config
+        )
+    )
+
 
 
 @router.get("/list_function_models")
@@ -159,44 +148,35 @@ async def list_function_models(
 
     """
     # If the API key in header is valid, this function will execute.
-    try:
-        # Find local server websocket
-        project = (
-            (
-                await session.execute(
-                    select(Project.cli_access_key, Project.version, Project.uuid).where(
-                        Project.uuid == project_uuid
-                    )
+
+    # Find local server websocket
+    project = (
+        (
+            await session.execute(
+                select(Project.cli_access_key, Project.version, Project.uuid).where(
+                    Project.uuid == project_uuid
                 )
             )
-            .mappings()
-            .all()
         )
-        if len(project) == 0:
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND, detail="There is no project"
-            )
-        if project[0]["cli_access_key"] is None:
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
-            )
-
-        cli_access_key = project[0]["cli_access_key"]
-        response = await websocket_manager.request(
-            cli_access_key, LocalTask.LIST_CODE_PROMPT_MODELS
-        )
-        if not response:
-            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
-        return JSONResponse(response, status_code=HTTP_200_OK)
-
-    except HTTPException as http_exc:
-        logger.error(http_exc.detail)
-        raise http_exc
-    except Exception as exc:
-        logger.error(exc)
+        .mappings()
+        .all()
+    )
+    if len(project) == 0:
         raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-        ) from exc
+            status_code=HTTP_404_NOT_FOUND, detail="There is no project"
+        )
+    if project[0]["cli_access_key"] is None:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
+        )
+
+    cli_access_key = project[0]["cli_access_key"]
+    response = await websocket_manager.request(
+        cli_access_key, LocalTask.LIST_CODE_PROMPT_MODELS
+    )
+    if not response:
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
+    return JSONResponse(response, status_code=HTTP_200_OK)
 
 
 @router.get("/list_functions")
@@ -220,41 +200,31 @@ async def list_functions(
 
     """
     # If the API key in header is valid, this function will execute.
-    try:
-        # Find local server websocket
-        project = (
-            (
-                await session.execute(
-                    select(Project.cli_access_key, Project.version, Project.uuid).where(
-                        Project.uuid == project_uuid
-                    )
+    # Find local server websocket
+    project = (
+        (
+            await session.execute(
+                select(Project.cli_access_key, Project.version, Project.uuid).where(
+                    Project.uuid == project_uuid
                 )
             )
-            .mappings()
-            .all()
         )
-        if len(project) == 0:
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND, detail="There is no project"
-            )
-        if project[0]["cli_access_key"] is None:
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
-            )
-
-        cli_access_key = project[0]["cli_access_key"]
-        response = await websocket_manager.request(
-            cli_access_key, LocalTask.LIST_CODE_FUNCTIONS
-        )
-        if not response:
-            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
-        return JSONResponse(response, status_code=HTTP_200_OK)
-
-    except HTTPException as http_exc:
-        logger.error(http_exc.detail)
-        raise http_exc
-    except Exception as exc:
-        logger.error(exc)
+        .mappings()
+        .all()
+    )
+    if len(project) == 0:
         raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-        ) from exc
+            status_code=HTTP_404_NOT_FOUND, detail="There is no project"
+        )
+    if project[0]["cli_access_key"] is None:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND, detail="There is no connection"
+        )
+
+    cli_access_key = project[0]["cli_access_key"]
+    response = await websocket_manager.request(
+        cli_access_key, LocalTask.LIST_CODE_FUNCTIONS
+    )
+    if not response:
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR)
+    return JSONResponse(response, status_code=HTTP_200_OK)

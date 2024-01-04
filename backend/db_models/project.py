@@ -129,7 +129,6 @@ class Project(Base):
         UUID(as_uuid=True),
         server_default=text("gen_random_uuid()"),
         primary_key=True,
-        unique=True,
     )
 
     name: str = Column(Text, nullable=False)

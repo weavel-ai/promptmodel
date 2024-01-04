@@ -31,7 +31,6 @@ class ChatModel(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
-        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 
@@ -66,7 +65,6 @@ class ChatModelVersion(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
-        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 
@@ -109,7 +107,6 @@ class ChatSession(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
-        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 
@@ -144,7 +141,6 @@ class ChatMessage(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
-        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 
@@ -182,7 +178,6 @@ class ChatLog(Base):
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         primary_key=True,
-        unique=True,
         server_default=text("gen_random_uuid()"),
     )
 

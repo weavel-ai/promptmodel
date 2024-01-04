@@ -190,11 +190,8 @@ async def get_jwt(
             token["user_id"] = token["sub"]
 
         return token
-    except Exception as exception:
-        raise HTTPException(
-            status_code=status_code.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=exception,
-        )
+    except HTTPException as exception:
+        raise exception
 
 
 def create_hashed_identifier(prefix: str, value: str):

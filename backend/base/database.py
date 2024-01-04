@@ -48,8 +48,15 @@ class Base(declarative_base()):
 
     __abstract__ = True
 
-    def model_dump(self):
-        return {field.name: getattr(self, field.name) for field in self.__table__.c}
+    def model_dump(self, exclude_none=False):
+        if exclude_none:
+            return {
+                field.name: getattr(self, field.name)
+                for field in self.__table__.c
+                if getattr(self, field.name) is not None
+            }
+        else:
+            return {field.name: getattr(self, field.name) for field in self.__table__.c}
 
 
 # Base = declarative_base()

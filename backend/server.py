@@ -2,11 +2,12 @@
 import os
 import pytz
 
-from fastapi import FastAPI
-from fastapi.responses import Response
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
+from utils.logger import logger
 from api import cli, web, dev, web_auth
 
 load_dotenv()
@@ -16,6 +17,25 @@ app = FastAPI()
 
 frontend_url = os.getenv("FRONTEND_PUBLIC_URL", "http://localhost:3000")
 origins = [frontend_url]
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc: HTTPException):
+    logger.error(exc, exc.detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request, exc: Exception):
+    try:
+        logger.error(exc.detail)
+    except AttributeError:
+        logger.error(exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error"},
+    )
 
 app.add_middleware(
     CORSMiddleware,

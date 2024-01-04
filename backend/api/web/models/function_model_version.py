@@ -34,3 +34,16 @@ class UpdatePublishedFunctionModelVersionBody(PMObject):
 
 class UpdateFunctionModelVersionTagsBody(PMObject):
     tags: Optional[List[str]] = None
+
+
+class BatchRunConfigBody(PMObject):
+    dataset_uuid: str
+    function_model_version_uuid: str
+
+
+class DatasetBatchRunInstance(PMObject):
+    dataset_uuid: str
+    dataset_name: str
+    batch_run_uuid: Optional[str] = None
+    batch_run_score: Optional[float] = None
+    batch_run_status: Optional[str] = None
