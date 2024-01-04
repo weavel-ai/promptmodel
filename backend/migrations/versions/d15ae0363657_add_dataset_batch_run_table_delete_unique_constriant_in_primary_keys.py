@@ -57,17 +57,54 @@ def upgrade() -> None:
     )
     op.drop_constraint('chat_log_uuid_key', 'chat_log', type_='unique')
     op.drop_constraint('chat_message_uuid_key', 'chat_message', type_='unique')
-    op.drop_constraint('chat_model_uuid_key', 'chat_model', type_='unique')
-    op.drop_constraint('chat_model_version_uuid_key', 'chat_model_version', type_='unique')
+    
+    op.drop_constraint('chat_model_version_chat_model_uuid_fkey', 'chat_model_version', type_='foreignkey')
+    op.drop_constraint('eval_metric_chat_model_uuid_fkey', 'eval_metric', type_='foreignkey')
+    op.drop_constraint('chat_model_uuid_key', 'chat_model', type_='unique') # TO DO THIS
+    op.create_foreign_key(None, 'chat_model_version', 'chat_model', ['chat_model_uuid'], ['uuid'], onupdate='CASCADE', ondelete='CASCADE')
+    op.create_foreign_key(None, 'eval_metric', 'chat_model', ['chat_model_uuid'], ['uuid'], onupdate='CASCADE', ondelete='SET NULL')
+    
+    op.drop_constraint('chat_session_version_uuid_fkey', 'chat_session', type_='foreignkey')
+    op.drop_constraint('chat_model_version_uuid_key', 'chat_model_version', type_='unique') # TO DO THIS
+    op.create_foreign_key(None, 'chat_session', 'chat_model_version', ['version_uuid'], ['uuid'], onupdate='CASCADE', ondelete='CASCADE')
+    
     op.drop_constraint('chat_session_uuid_key', 'chat_session', type_='unique')
     op.create_foreign_key(None, 'cli_access', 'user', ['user_id'], ['user_id'], onupdate='CASCADE', ondelete='CASCADE')
     op.drop_constraint('eval_metric_uuid_key', 'eval_metric', type_='unique')
     op.drop_constraint('function_model_uuid_key', 'function_model', type_='unique')
     op.drop_constraint('function_model_version_uuid_key', 'function_model_version', type_='unique')
-    op.drop_constraint('project_uuid_key', 'project', type_='unique')
+    
+    op.drop_constraint('tag_project_uuid_fkey', 'tag', type_='foreignkey')
+    op.drop_constraint('chat_log_project_uuid_fkey', 'chat_log', type_='foreignkey')
+    op.drop_constraint('chat_model_project_uuid_fkey', 'chat_model', type_='foreignkey')
+    op.drop_constraint('eval_metric_project_uuid_fkey', 'eval_metric', type_='foreignkey')
+    op.drop_constraint('function_model_project_uuid_fkey', 'function_model', type_='foreignkey')
+    op.drop_constraint('function_schema_project_uuid_fkey', 'function_schema', type_='foreignkey')
+    op.drop_constraint('project_changelog_project_uuid_fkey', 'project_changelog', type_='foreignkey')
+    op.drop_constraint('run_log_project_uuid_fkey', 'run_log', type_='foreignkey')
+    op.drop_constraint('sample_input_project_uuid_fkey', 'sample_input', type_='foreignkey')
+    op.drop_constraint('dataset_project_uuid_fkey', 'dataset', type_='foreignkey')
+    op.drop_constraint('llm_project_uuid_fkey', 'llm', type_='foreignkey')
+    op.drop_constraint('project_uuid_key', 'project', type_='unique') # TO DO THIS
+    op.create_foreign_key(None, 'tag', 'project', ['project_uuid'], ['uuid'], onupdate='CASCADE', ondelete='CASCADE')
+    op.create_foreign_key(None, 'chat_log', 'project', ['project_uuid'], ['uuid'], onupdate='CASCADE', ondelete='CASCADE')
+    op.create_foreign_key(None, 'chat_model', 'project', ['project_uuid'], ['uuid'], onupdate='CASCADE', ondelete='CASCADE')
+    op.create_foreign_key(None, 'eval_metric', 'project', ['project_uuid'], ['uuid'], onupdate='CASCADE', ondelete='CASCADE')
+    op.create_foreign_key(None, 'function_model', 'project', ['project_uuid'], ['uuid'], onupdate='CASCADE', ondelete='CASCADE')
+    op.create_foreign_key(None, 'function_schema', 'project', ['project_uuid'], ['uuid'], onupdate='CASCADE', ondelete='CASCADE')
+    op.create_foreign_key(None, 'project_changelog', 'project', ['project_uuid'], ['uuid'], onupdate='CASCADE', ondelete='CASCADE')
+    op.create_foreign_key(None, 'run_log', 'project', ['project_uuid'], ['uuid'], onupdate='CASCADE', ondelete='CASCADE')
+    op.create_foreign_key(None, 'sample_input', 'project', ['project_uuid'], ['uuid'], onupdate='CASCADE', ondelete='CASCADE')
+    op.create_foreign_key(None, 'dataset', 'project', ['project_uuid'], ['uuid'], onupdate='CASCADE', ondelete='CASCADE')
+    op.create_foreign_key(None, 'llm', 'project', ['project_uuid'], ['uuid'], onupdate='CASCADE', ondelete='CASCADE')
+    
     op.add_column('run_log', sa.Column('sample_input_uuid', sa.UUID(), nullable=True))
     op.add_column('run_log', sa.Column('batch_run_uuid', sa.UUID(), nullable=True))
-    op.drop_constraint('run_log_uuid_key', 'run_log', type_='unique')
+    
+    op.drop_constraint('run_log_score_run_log_uuid_fkey', 'run_log_score', type_='foreignkey')
+    op.drop_constraint('run_log_uuid_key', 'run_log', type_='unique') # TO DO THIS
+    op.create_foreign_key(None, 'run_log_score', 'run_log', ['run_log_uuid'], ['uuid'], onupdate='CASCADE', ondelete='CASCADE')
+    
     op.create_foreign_key(None, 'run_log', 'batch_run', ['batch_run_uuid'], ['uuid'], onupdate='CASCADE', ondelete='SET NULL')
     op.create_foreign_key(None, 'run_log', 'sample_input', ['sample_input_uuid'], ['uuid'], onupdate='CASCADE', ondelete='SET NULL')
     op.drop_column('run_log', 'input_register_name')
@@ -79,8 +116,8 @@ def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_column('sample_input', 'ground_truth')
     op.add_column('run_log', sa.Column('input_register_name', sa.TEXT(), autoincrement=False, nullable=True))
-    op.drop_constraint(None, 'run_log', type_='foreignkey')
-    op.drop_constraint(None, 'run_log', type_='foreignkey')
+    op.drop_constraint('run_log_sample_input_uuid_fkey', 'run_log', type_='foreignkey')
+    op.drop_constraint('run_log_batch_run_uuid_fkey', 'run_log', type_='foreignkey')
     op.create_unique_constraint('run_log_uuid_key', 'run_log', ['uuid'])
     op.drop_column('run_log', 'batch_run_uuid')
     op.drop_column('run_log', 'sample_input_uuid')
@@ -88,7 +125,7 @@ def downgrade() -> None:
     op.create_unique_constraint('function_model_version_uuid_key', 'function_model_version', ['uuid'])
     op.create_unique_constraint('function_model_uuid_key', 'function_model', ['uuid'])
     op.create_unique_constraint('eval_metric_uuid_key', 'eval_metric', ['uuid'])
-    op.drop_constraint(None, 'cli_access', type_='foreignkey')
+    op.drop_constraint('cli_access_user_id_fkey', 'cli_access', type_='foreignkey')
     op.create_unique_constraint('chat_session_uuid_key', 'chat_session', ['uuid'])
     op.create_unique_constraint('chat_model_version_uuid_key', 'chat_model_version', ['uuid'])
     op.create_unique_constraint('chat_model_uuid_key', 'chat_model', ['uuid'])
