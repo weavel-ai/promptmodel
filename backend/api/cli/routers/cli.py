@@ -14,14 +14,7 @@ from fastapi import (
     Depends,
 )
 from fastapi.responses import JSONResponse
-from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-    HTTP_404_NOT_FOUND,
-    HTTP_406_NOT_ACCEPTABLE,
-)
+from starlette import status as status_code
 
 from utils.security import get_api_key, get_project, get_cli_user_id
 from api.dependency import get_websocket_token
@@ -47,8 +40,8 @@ async def check_cli_access(
     result = await session.execute(statement)
     user_id = result.scalar_one_or_none()
     if not user_id:
-        return False  # Response(status_code=HTTP_403_FORBIDDEN)
-    return True  # Response(status_code=HTTP_200_OK)
+        return False  # Response(status_code=status_code.HTTP_403_FORBIDDEN)
+    return True  # Response(status_code=status_code.HTTP_200_OK)
 
 
 @router.get("/organizations", response_model=List[UsersOrganizationsInstance])
@@ -74,7 +67,6 @@ async def list_orgs(
     return res
 
 
-
 @router.get("/projects", response_model=List[CliProjectInstance])
 async def list_projects(
     organization_id: str,
@@ -83,12 +75,11 @@ async def list_projects(
 ):
     """List projects in organization"""
     res: Result = await session.execute(
-        select(
-            Project.uuid, Project.name, Project.description, Project.version
-        ).where(Project.organization_id == organization_id)
+        select(Project.uuid, Project.name, Project.description, Project.version).where(
+            Project.organization_id == organization_id
+        )
     )
     return [dict(x) for x in res.mappings().all()]
-
 
 
 @router.get("/check_update")
@@ -110,7 +101,7 @@ async def check_update(
         - version : int
         - project_status : dict
     """
-        # get project version
+    # get project version
     project_version: int = (
         await session.execute(
             select(Project.version).where(Project.uuid == project["uuid"])
@@ -125,7 +116,7 @@ async def check_update(
             "version": project_version,
             "project_status": None,
         }
-        return JSONResponse(res, status_code=HTTP_200_OK)
+        return JSONResponse(res, status_code=status_code.HTTP_200_OK)
     else:
         need_update = True
 
@@ -144,8 +135,7 @@ async def check_update(
         .all()
     )
     function_models = [
-        DeployedFunctionModelInstance(**dict(x)).model_dump()
-        for x in function_models
+        DeployedFunctionModelInstance(**dict(x)).model_dump() for x in function_models
     ]
 
     # get published, ab_test function_model_versions
@@ -194,8 +184,7 @@ async def check_update(
         },
     }
 
-    return JSONResponse(res, status_code=HTTP_200_OK)
-
+    return JSONResponse(res, status_code=status_code.HTTP_200_OK)
 
 
 @router.get(
@@ -221,22 +210,19 @@ async def fetch_function_model_version(
     """
     # find_function_model
     try:
-        function_model = (
-            (
-                await session.execute(
-                    select(FunctionModel.uuid, FunctionModel.name)
-                    .where(FunctionModel.project_uuid == project["uuid"])
-                    .where(FunctionModel.name == function_model_name)
-                )
+        # find_function_model
+        function_model_uuid = (
+            await session.execute(
+                select(FunctionModel.uuid)
+                .where(FunctionModel.project_uuid == project["uuid"])
+                .where(FunctionModel.name == function_model_name)
             )
-            .mappings()
-            .one()
-        )
-    except:
-        raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND, detail="FunctionModel not found"
-        )
-    try:
+        ).scalar_one_or_none()
+        if not function_model_uuid:
+            raise HTTPException(
+                status_code=status_code.HTTP_400_BAD_REQUEST,
+                detail=f"FunctionModel with name {function_model_name} not found",
+            )
         if version == "deploy":
             # get published, ab_test function_model_versions
             deployed_function_model_versions = (
@@ -244,13 +230,18 @@ async def fetch_function_model_version(
                     await session.execute(
                         select(DeployedFunctionModelVersion).where(
                             DeployedFunctionModelVersion.function_model_uuid
-                            == function_model["uuid"]
+                            == function_model_uuid
                         )
                     )
                 )
                 .scalars()
                 .all()
             )
+            if len(deployed_function_model_versions) == 0:
+                raise HTTPException(
+                    status_code=status_code.HTTP_400_BAD_REQUEST,
+                    detail=f"No deployed version found for FunctionModel with name {function_model_name}",
+                )
             deployed_function_model_versions = [
                 DeployedFunctionModelVersionInstance(**x.model_dump()).model_dump()
                 for x in deployed_function_model_versions
@@ -301,11 +292,17 @@ async def fetch_function_model_version(
                         select(FunctionModelVersion)
                         .where(
                             FunctionModelVersion.function_model_uuid
-                            == function_model["uuid"]
+                            == function_model_uuid
                         )
                         .where(FunctionModelVersion.version == version)
                     )
                 ).scalar_one_or_none()
+
+                if not function_model_version:
+                    raise HTTPException(
+                        status_code=status_code.HTTP_400_BAD_REQUEST,
+                        detail=f"Version {version} for FunctionModel {function_model_name} not found",
+                    )
 
                 function_model_version = DeployedFunctionModelVersionInstance(
                     **function_model_version.model_dump()
@@ -317,12 +314,18 @@ async def fetch_function_model_version(
                         select(FunctionModelVersion)
                         .where(
                             FunctionModelVersion.function_model_uuid
-                            == function_model["uuid"]
+                            == function_model_uuid
                         )
                         .order_by(desc(FunctionModelVersion.version))
                         .limit(1)
                     )
-                ).scalar_one()
+                ).scalar_one_or_none()
+
+                if not function_model_version:
+                    raise HTTPException(
+                        status_code=status_code.HTTP_400_BAD_REQUEST,
+                        detail=f"Latest version for FunctionModel {function_model_name} not found",
+                    )
 
                 function_model_version = DeployedFunctionModelVersionInstance(
                     **function_model_version.model_dump()
@@ -337,17 +340,13 @@ async def fetch_function_model_version(
                             Prompt.role,
                             Prompt.step,
                             Prompt.content,
-                        ).where(
-                            Prompt.version_uuid == function_model_version["uuid"]
-                        )
+                        ).where(Prompt.version_uuid == function_model_version["uuid"])
                     )
                 )
                 .mappings()
                 .all()
             )
-            prompts = [
-                DeployedPromptInstance(**dict(x)).model_dump() for x in prompts
-            ]
+            prompts = [DeployedPromptInstance(**dict(x)).model_dump() for x in prompts]
 
             config_list = [
                 {
@@ -361,12 +360,11 @@ async def fetch_function_model_version(
             for x in config_list
         ]
 
-        return JSONResponse(res, status_code=HTTP_200_OK)
+        return JSONResponse(res, status_code=status_code.HTTP_200_OK)
     except Exception as exc:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND, detail="FunctionModel Version Not Found"
+            status_code=status_code.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
         ) from exc
-    
 
 
 @router.get(
@@ -416,7 +414,7 @@ async def fetch_chat_model_version_with_chat_log(
             )
         except:
             raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND, detail="Session not found"
+                status_code=status_code.HTTP_404_NOT_FOUND, detail="Session not found"
             )
         session_chat_model_version = (
             await db_session.execute(
@@ -472,7 +470,8 @@ async def fetch_chat_model_version_with_chat_log(
             )
         except:
             raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND, detail="Chat Model not found"
+                status_code=status_code.HTTP_404_NOT_FOUND,
+                detail="Chat Model not found",
             )
         chat_model_version = (
             (
@@ -508,7 +507,8 @@ async def fetch_chat_model_version_with_chat_log(
             )
         except:
             raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND, detail="Chat Model not found"
+                status_code=status_code.HTTP_404_NOT_FOUND,
+                detail="Chat Model not found",
             )
 
         if version == "deploy":
@@ -559,8 +559,7 @@ async def fetch_chat_model_version_with_chat_log(
                 "chat_logs": [],
             }
 
-    return JSONResponse(res, status_code=HTTP_200_OK)
-    
+    return JSONResponse(res, status_code=status_code.HTTP_200_OK)
 
 
 # promptmodel library local websocket connection endpoint
@@ -605,7 +604,7 @@ async def connect_cli_project(
 
     if project[0]["online"] is True:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN, detail="Already connected"
+            status_code=status_code.HTTP_403_FORBIDDEN, detail="Already connected"
         )
     else:
         # update project
@@ -616,8 +615,7 @@ async def connect_cli_project(
         )
         await session.commit()
         # return true, connected
-        return Response(status_code=HTTP_200_OK)
-    
+        return Response(status_code=status_code.HTTP_200_OK)
 
 
 @router.post("/save_instances_in_code")
@@ -631,9 +629,7 @@ async def save_instances_in_code(
     session: AsyncSession = Depends(get_session),
 ):
     changelogs = []
-    instances_in_db = await pull_instances(
-        session=session, project_uuid=project_uuid
-    )
+    instances_in_db = await pull_instances(session=session, project_uuid=project_uuid)
 
     function_models_in_db = (
         instances_in_db["function_model_data"]
@@ -641,9 +637,7 @@ async def save_instances_in_code(
         else []
     )
     chat_models_in_db = (
-        instances_in_db["chat_model_data"]
-        if instances_in_db["chat_model_data"]
-        else []
+        instances_in_db["chat_model_data"] if instances_in_db["chat_model_data"] else []
     )
     samples_in_db = (
         instances_in_db["sample_input_data"]
@@ -672,9 +666,7 @@ async def save_instances_in_code(
 
     old_names = [x["name"] for x in chat_models_in_db]
     new_names = list(set(chat_models) - set(old_names))
-    chat_models_to_add = [
-        {"name": x, "project_uuid": project_uuid} for x in new_names
-    ]
+    chat_models_to_add = [{"name": x, "project_uuid": project_uuid} for x in new_names]
 
     old_names = [x["name"] for x in samples_in_db]
     names_in_code = [x["name"] for x in samples]
@@ -737,9 +729,7 @@ async def save_instances_in_code(
         new_instances["chat_model_rows"] if new_instances["chat_model_rows"] else []
     )
     new_samples = (
-        new_instances["sample_input_rows"]
-        if new_instances["sample_input_rows"]
-        else []
+        new_instances["sample_input_rows"] if new_instances["sample_input_rows"] else []
     )
     new_schemas = (
         new_instances["function_schema_rows"]
@@ -816,8 +806,7 @@ async def save_instances_in_code(
         session.add_all(changelogs_rows)
         await session.commit()
 
-    return Response(status_code=HTTP_200_OK)
-
+    return Response(status_code=status_code.HTTP_200_OK)
 
 
 @router.post("/run_log_score")
@@ -834,7 +823,7 @@ async def save_run_log_score(
 
     except:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND,
+            status_code=status_code.HTTP_404_NOT_FOUND,
             detail=f"RunLog Not found for uuid {run_log_uuid}",
         )
 
@@ -874,14 +863,12 @@ async def save_run_log_score(
         for x in score_name_list_to_add
     ]
     session.add_all(eval_metric_to_add)
-    await session.flush()
+    await session.commit()
     eval_metric_to_use: List[EvalMetric] = (
         (
             await session.execute(
                 select(EvalMetric)
-                .where(
-                    EvalMetric.function_model_uuid == function_model_of_run_log.uuid
-                )
+                .where(EvalMetric.function_model_uuid == function_model_of_run_log.uuid)
                 .where(EvalMetric.name.in_(score_name_list))
             )
         )
@@ -922,8 +909,7 @@ async def save_run_log_score(
 
     await session.commit()
 
-    return Response(status_code=HTTP_200_OK)
-    
+    return Response(status_code=status_code.HTTP_200_OK)
 
 
 @router.post("/chat_session_score")
@@ -954,9 +940,7 @@ async def save_run_log(
     session: AsyncSession = Depends(get_session),
 ):
     api_response = run_log_request_body.api_response
-    latency = (
-        api_response["_response_ms"] if "_response_ms" in api_response else None
-    )
+    latency = api_response["_response_ms"] if "_response_ms" in api_response else None
     if not latency:
         if "latency" in run_log_request_body.metadata:
             latency = run_log_request_body.metadata["latency"]
@@ -980,8 +964,7 @@ async def save_run_log(
     session.add(run_log_row)
     await session.commit()
 
-    return Response(status_code=HTTP_200_OK)
-
+    return Response(status_code=status_code.HTTP_200_OK)
 
 
 @router.post("/chat_log")
@@ -1026,9 +1009,7 @@ async def save_chat_log(
     version_uuid = session.version_uuid
     model: str = (
         await db_session.execute(
-            select(ChatModelVersion.model).where(
-                ChatModelVersion.uuid == version_uuid
-            )
+            select(ChatModelVersion.model).where(ChatModelVersion.uuid == version_uuid)
         )
     ).scalar_one()
 
@@ -1107,24 +1088,21 @@ async def save_chat_log(
         db_session.add(chat_log)
 
     await db_session.commit()
-    return Response(status_code=HTTP_200_OK)
-
+    return Response(status_code=status_code.HTTP_200_OK)
 
 
 @router.post("/make_session")
 async def make_session(
-session_uuid: str,
-version_uuid: str,
-project: dict = Depends(get_project),
-db_session: AsyncSession = Depends(get_session),
+    session_uuid: str,
+    version_uuid: str,
+    project: dict = Depends(get_project),
+    db_session: AsyncSession = Depends(get_session),
 ):
     # check version
     version = (
         (
             await db_session.execute(
-                select(ChatModelVersion).where(
-                    ChatModelVersion.uuid == version_uuid
-                )
+                select(ChatModelVersion).where(ChatModelVersion.uuid == version_uuid)
             )
         )
         .scalars()
@@ -1133,7 +1111,8 @@ db_session: AsyncSession = Depends(get_session),
 
     if len(version) == 0:
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND, detail="Chat Model Version not found"
+            status_code=status_code.HTTP_404_NOT_FOUND,
+            detail="Chat Model Version not found",
         )
     # make Session
     session_row = ChatSession(
@@ -1141,5 +1120,3 @@ db_session: AsyncSession = Depends(get_session),
     )
     db_session.add(session_row)
     await db_session.commit()
-
-
