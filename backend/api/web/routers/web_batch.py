@@ -11,12 +11,7 @@ from sqlalchemy import select, asc, desc, update
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import Response
 from fastapi.responses import StreamingResponse
-from starlette.status import (
-    HTTP_401_UNAUTHORIZED,
-    HTTP_403_FORBIDDEN,
-    HTTP_409_CONFLICT,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as status_code
 from litellm import get_llm_provider, Router, ModelResponse, completion_cost
 
 from promptmodel.llms.llm_dev import LLMDev
@@ -29,13 +24,14 @@ from base.database import get_session, get_session_context
 from utils.security import get_jwt
 from api.common.models import FunctionModelBatchRunConfig
 from api.web.models import LLMProviderArgs
+from api.web.models.function_model_version import FunctionModelVersionBatchRunInstance
 from db_models import *
 
 router = APIRouter()
 
 
 async def function_model_batch_run_background_task(
-    batch_run_config: FunctionModelBatchRunConfig, router_config: Dict[str, Any]
+    batch_run_config: FunctionModelBatchRunConfig, batch_run_uuid: str, router_config: Dict[str, Any]
 ):
     try:
         async with get_session_context() as session:
@@ -163,7 +159,7 @@ async def function_model_batch_run_background_task(
                     latency=getattr(res, "_response_ms", None),
                     cost=completion_cost(res),
                     project_uuid=batch_run_config.project_uuid,
-                    batch_run_uuid=batch_run_config.batch_run_uuid,
+                    batch_run_uuid=batch_run_uuid,
                     sample_input_uuid=sample_input_row.uuid,
                 )
                 session.add(run_log)
@@ -237,7 +233,7 @@ async def batch_run_function_model(
 
     if not user_auth_check:
         raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
+            status_code=status_code.HTTP_401_UNAUTHORIZED,
             detail="User don't have access to this project",
         )
 
@@ -254,7 +250,7 @@ async def batch_run_function_model(
 
     if batch_run_exist_check:
         raise HTTPException(
-            status_code=HTTP_409_CONFLICT,
+            status_code=status_code.HTTP_409_CONFLICT,
             detail="Batch run already exist",
         )
 
@@ -280,7 +276,7 @@ async def batch_run_function_model(
         "vertex_ai",
     ]:  # not supported yet
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail="This LLM Provider is not supported yet",
         )
     
@@ -303,7 +299,7 @@ async def batch_run_function_model(
 
     if not organization_provider_config:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail=f"Organization doesn't have API keys set for {llm_provider}. Please set API keys in project settings.",
         )
         
@@ -371,12 +367,12 @@ async def batch_run_function_model(
     session.add(batch_run)
     await session.commit()
     await session.refresh(batch_run)
-    batch_run_config.batch_run_uuid = batch_run.uuid
 
     # create backgroundTask
     background_tasks.add_task(
         function_model_batch_run_background_task,
         batch_run_config,
+        str(batch_run.uuid) if type(batch_run.uuid) != str else batch_run.uuid,
         litellm_router_config,
     )
 

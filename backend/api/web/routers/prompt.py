@@ -5,17 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc
 
 from fastapi import APIRouter, HTTPException, Depends
-from starlette.status import (
-    HTTP_403_FORBIDDEN,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as status_code
 from utils.security import get_jwt
 
 from utils.logger import logger
 
 from base.database import get_session
 from db_models import *
-from ..models import PromptInstance
+from ..models.prompt import PromptInstance
 
 router = APIRouter()
 # Prompt Endpoint
@@ -40,7 +37,7 @@ async def fetch_prompts(
 
     if not check_user_auth:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 

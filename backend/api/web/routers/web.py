@@ -50,7 +50,7 @@ async def run_function_model(
 
     if not user_auth_check:
         raise HTTPException(
-            status_code=http_status.HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_status.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 
@@ -69,7 +69,7 @@ async def run_function_model(
 
     if not provider_config:
         raise HTTPException(
-            status_code=http_status.HTTP_428_PRECONDITION_REQUIRED,
+            status_code=status_code.HTTP_status.HTTP_428_PRECONDITION_REQUIRED,
             detail=f"Organization doesn't have API keys set for {llm_provider}. Please set API keys in project settings.",
         )
 
@@ -418,7 +418,7 @@ async def run_chat_model(
 
     if not user_auth_check:
         raise HTTPException(
-            status_code=http_status.HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_status.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 
@@ -437,7 +437,7 @@ async def run_chat_model(
 
     if not provider_config:
         raise HTTPException(
-            status_code=http_status.HTTP_428_PRECONDITION_REQUIRED,
+            status_code=status_code.HTTP_status.HTTP_428_PRECONDITION_REQUIRED,
             detail=f"Organization doesn't have API keys set for {llm_provider}. Please set API keys in project settings.",
         )
 

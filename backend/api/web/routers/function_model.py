@@ -5,18 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, update, delete
 
 from fastapi import APIRouter, HTTPException, Depends
-from starlette.status import (
-    HTTP_403_FORBIDDEN,
-    HTTP_422_UNPROCESSABLE_ENTITY,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as status_code
 
 from utils.logger import logger
 
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import FunctionModelInstance, CreateFunctionModelBody, DatasetInstance
+from ..models.function_model import FunctionModelInstance, CreateFunctionModelBody, DatasetForFunctionModelInstance
 
 router = APIRouter()
 
@@ -64,7 +60,7 @@ async def create_function_model(
 
     if not user_auth_check:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 
@@ -78,7 +74,7 @@ async def create_function_model(
     ).scalar_one_or_none()
     if function_model_in_db:
         raise HTTPException(
-            status_code=HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status_code.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Same name in project",
         )
     new_function_model = FunctionModel(
@@ -137,7 +133,7 @@ async def delete_function_model(
 
     if not user_auth_check:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 
@@ -157,25 +153,32 @@ async def delete_function_model(
     
 
 
-@router.get("/{uuid}/datasets")
+@router.get("/{uuid}/datasets", response_model=List[DatasetForFunctionModelInstance])
 async def fetch_datasets(
     jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
-    datasets: List[DatasetInstance] = [
-        DatasetInstance(**d.model_dump())
+    datasets: List[DatasetForFunctionModelInstance] = [
+        DatasetForFunctionModelInstance(**d)
         for d in (
             await session.execute(
-                select(Dataset)
+                select(
+                    Dataset.uuid.label('dataset_uuid'), 
+                    Dataset.name.label('dataset_name'), 
+                    Dataset.description.label('dataset_description'), 
+                    EvalMetric.name.label('eval_metric_name'), 
+                    EvalMetric.uuid.label('eval_metric_uuid'), 
+                    EvalMetric.description.label('eval_metric_description')
+                )
+                .join(EvalMetric, Dataset.eval_metric_uuid == EvalMetric.uuid)
                 .join(
                     FunctionModel, Dataset.function_model_uuid == FunctionModel.uuid
                 )
                 .where(FunctionModel.uuid == uuid)
             )
-        )
-        .scalars()
-        .all()
+        ).mappings().all()
     ]
+
     return datasets
 

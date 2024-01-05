@@ -5,16 +5,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from fastapi import APIRouter, HTTPException, Depends
-from starlette.status import (
-    HTTP_404_NOT_FOUND,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as status_code
 from utils.logger import logger
 
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import UserInstance, CreateUserBody
+from ..models.user import UserInstance, CreateUserBody
 
 router = APIRouter()
 
@@ -51,7 +48,7 @@ async def get_user(
     except Exception as e:
         logger.error(e)
         raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND,
+            status_code=status_code.HTTP_404_NOT_FOUND,
             detail="User with given id not found",
         )
     return UserInstance(**user)

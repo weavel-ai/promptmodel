@@ -4,18 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, update, delete
 
 from fastapi import APIRouter, HTTPException, Depends
-from starlette.status import (
-    HTTP_403_FORBIDDEN,
-    HTTP_422_UNPROCESSABLE_ENTITY,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as status_code
 
 from utils.logger import logger
 
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import ChatModelInstance, CreateChatModelBody
+from ..models.chat_model import ChatModelInstance, CreateChatModelBody
 
 router = APIRouter()
 
@@ -63,7 +59,7 @@ async def create_chat_model(
 
     if not user_auth_check:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 
@@ -77,7 +73,7 @@ async def create_chat_model(
     ).scalar_one_or_none()
     if chat_model_in_db:
         raise HTTPException(
-            status_code=HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status_code.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Same name in project",
         )
     new_chat_model = ChatModel(name=body.name, project_uuid=body.project_uuid)
@@ -134,7 +130,7 @@ async def delete_chat_model(
 
     if not user_auth_check:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 

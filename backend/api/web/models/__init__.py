@@ -20,19 +20,20 @@ from .organization import (
     LLMProviderArgs,
 )
 from .project_changelog import ProjectChangelogInstance
-from .project import ProjectInstance, CreateProjectBody
+from .project import ProjectInstance, CreateProjectBody, ProjectDatasetInstance
 from .function_model_version import (
     FunctionModelVersionInstance,
     UpdatePublishedFunctionModelVersionBody,
     UpdateFunctionModelVersionTagsBody,
     BatchRunConfigBody,
-    DatasetBatchRunInstance,
+    DatasetBatchRunInstance,\
+    FunctionModelVersionBatchRunInstance
 )
 
 from .function_model import (
     FunctionModelInstance,
     CreateFunctionModelBody,
-    DatasetInstance,
+    DatasetForFunctionModelInstance,
 )
 from .prompt import PromptInstance
 from .run_log import RunLogInstance, DeploymentRunLogViewInstance, RunLogsCountInstance
@@ -40,7 +41,9 @@ from .sample_input import (
     SampleInputInstance,
     CreateSampleInputBody,
     CreateDatasetBody,
-    DatasetInstance
+    DatasetInstance,
+    CreateSampleInputForDatasetBody,
+    DatasetWithEvalMetricFunctionModelInstance
 )
 from .tags import TagsInstance, CreateTagsBody
 from .user import UserInstance, CreateUserBody

@@ -69,6 +69,10 @@ class Dataset(Base):
         server_default=text("gen_random_uuid()"),
         primary_key=True,
     )
+    created_at: datetime = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+        
     name: str = Column(Text, nullable=False)
     description: Optional[str] = Column(Text, nullable=True)
 

@@ -195,7 +195,7 @@ async def get_jwt(
         raise exception
 
 
-def create_hashed_identifier(prefix: str, value: str):
+def create_hashed_identifier(prefix: str, value: str):  
     """Create a hashed identifier from a prefix and value."""
     # Hash the value
     hash_object = hashlib.sha256(value.encode())

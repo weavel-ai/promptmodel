@@ -6,18 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from fastapi import APIRouter, HTTPException, Depends
-from starlette.status import (
-    HTTP_401_UNAUTHORIZED,
-    HTTP_404_NOT_FOUND,
-    HTTP_422_UNPROCESSABLE_ENTITY,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as status_code
 
 from utils.logger import logger
 from utils.security import get_jwt
 from base.database import get_session
 from db_models import *
-from ..models import ProjectInstance, CreateProjectBody
+from ..models.project import ProjectInstance, CreateProjectBody, ProjectDatasetInstance
 
 router = APIRouter()
 
@@ -40,7 +35,7 @@ async def create_project(
 
         if project_in_db:
             raise HTTPException(
-                status_code=HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status_code.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Project with given name already exists",
             )
 
@@ -84,7 +79,7 @@ async def fetch_projects(
 
     if not check_user_auth:
         raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
+            status_code=status_code.HTTP_401_UNAUTHORIZED,
             detail="User don't have access to this organization",
         )
 
@@ -117,8 +112,47 @@ async def get_project(
         except Exception as e:
             logger.error(e)
             raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
+                status_code=status_code.HTTP_404_NOT_FOUND,
                 detail="Project with given uuid not found",
             )
         return ProjectInstance(**project)
     
+@router.get("/{uuid}/datasets", response_model=List[ProjectDatasetInstance])
+async def get_project_dataset(
+    jwt: Annotated[str, Depends(get_jwt)],
+    uuid: str,
+    session: AsyncSession = Depends(get_session),
+):
+    project: Project = (
+        await session.execute(select(Project).where(Project.uuid == uuid))
+    ).scalar_one_or_none()
+    
+    if not project:
+        raise HTTPException(
+            status_code=status_code.HTTP_404_NOT_FOUND,
+            detail="Project with given uuid not found",
+        )
+    
+    datasets: List[ProjectDatasetInstance] = [
+        ProjectDatasetInstance(**d) 
+        for d in (
+            await session.execute(
+                select(
+                    Dataset.uuid.label('dataset_uuid'), 
+                    Dataset.name.label('dataset_name'), 
+                    Dataset.description.label('dataset_description'), 
+                    EvalMetric.name.label('eval_metric_name'), 
+                    EvalMetric.uuid.label('eval_metric_uuid'), 
+                    EvalMetric.description.label('eval_metric_description'), 
+                    FunctionModel.name.label('function_model_name'), 
+                    FunctionModel.uuid.label('function_model_uuid')
+                )
+                .join(EvalMetric, Dataset.eval_metric_uuid == EvalMetric.uuid)
+                .join(FunctionModel, Dataset.function_model_uuid == FunctionModel.uuid)
+                .where(Dataset.project_uuid == uuid)
+            )
+        ).mappings().all()
+    ]
+    print(datasets)
+    
+    return datasets

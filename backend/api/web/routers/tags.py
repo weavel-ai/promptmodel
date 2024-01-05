@@ -5,17 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, asc
 
 from fastapi import APIRouter, HTTPException, Depends
-from starlette.status import (
-    HTTP_422_UNPROCESSABLE_ENTITY,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette import status as status_code
 
 from utils.logger import logger
 
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models import TagsInstance, CreateTagsBody
+from ..models.tags import TagsInstance, CreateTagsBody
 
 router = APIRouter()
 
@@ -60,7 +57,7 @@ async def create_tag(
 
     if tag_in_db:
         raise HTTPException(
-            status_code=HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status_code.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Same name in project",
         )
 

@@ -44,6 +44,16 @@ class BatchRunConfigBody(PMObject):
 class DatasetBatchRunInstance(PMObject):
     dataset_uuid: str
     dataset_name: str
+    dataset_description: Optional[str] = None
+    eval_metric_uuid: str = None
+    eval_metric_name: str = None
+    eval_metric_description: Optional[str] = None
     batch_run_uuid: Optional[str] = None
     batch_run_score: Optional[float] = None
     batch_run_status: Optional[str] = None
+    batch_run_created_at: Optional[str] = None
+
+class FunctionModelVersionBatchRunInstance(PMObject):
+    batch_run_uuid: str
+    batch_run_status: str
+    batch_run_score: Optional[float] = None
