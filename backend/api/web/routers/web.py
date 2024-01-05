@@ -8,7 +8,7 @@ from sqlalchemy import select, asc, desc, update
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
-from starlette import status as http_status
+from starlette import status as status_code
 import litellm
 from promptmodel.llms.llm_dev import LLMDev
 from promptmodel.types.response import LLMStreamResponse
@@ -50,7 +50,7 @@ async def run_function_model(
 
     if not user_auth_check:
         raise HTTPException(
-            status_code=status_code.HTTP_status.HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 
@@ -69,7 +69,7 @@ async def run_function_model(
 
     if not provider_config:
         raise HTTPException(
-            status_code=status_code.HTTP_status.HTTP_428_PRECONDITION_REQUIRED,
+            status_code=status_code.HTTP_428_PRECONDITION_REQUIRED,
             detail=f"Organization doesn't have API keys set for {llm_provider}. Please set API keys in project settings.",
         )
 
@@ -418,7 +418,7 @@ async def run_chat_model(
 
     if not user_auth_check:
         raise HTTPException(
-            status_code=status_code.HTTP_status.HTTP_403_FORBIDDEN,
+            status_code=status_code.HTTP_403_FORBIDDEN,
             detail="User don't have access to this project",
         )
 
@@ -437,7 +437,7 @@ async def run_chat_model(
 
     if not provider_config:
         raise HTTPException(
-            status_code=status_code.HTTP_status.HTTP_428_PRECONDITION_REQUIRED,
+            status_code=status_code.HTTP_428_PRECONDITION_REQUIRED,
             detail=f"Organization doesn't have API keys set for {llm_provider}. Please set API keys in project settings.",
         )
 
