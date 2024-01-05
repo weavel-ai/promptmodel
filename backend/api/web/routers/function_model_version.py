@@ -2,7 +2,7 @@
 from typing import Annotated, Dict, List, Optional
 from threading import Thread
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, asc, update
+from sqlalchemy import select, asc, desc, update, delete
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette import status as status_code
@@ -14,9 +14,9 @@ from utils.security import get_jwt
 from db_models import *
 from ..models.function_model_version import (
     FunctionModelVersionInstance,
+    CreateFunctionModelVersionBody,
     UpdatePublishedFunctionModelVersionBody,
     UpdateFunctionModelVersionTagsBody,
-    BatchRunConfigBody,
     DatasetBatchRunInstance,
 )
 
@@ -46,7 +46,61 @@ async def fetch_function_model_versions(
     ]
     return function_model_versions
     
-
+@router.post("")
+async def create_function_model_version(
+    jwt: Annotated[str, Depends(get_jwt)],
+    body: CreateFunctionModelVersionBody,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        # last version
+        last_version: int = (
+            await session.execute(
+                select(FunctionModelVersion.version)
+                .where(FunctionModelVersion.function_model_uuid == body.function_model_uuid)
+                .order_by(desc(FunctionModelVersion.version))
+                .limit(1) 
+            )
+        ).scalar_one_or_none()
+        if not last_version:
+            last_version = 0
+            
+        function_model_version = FunctionModelVersion(
+            version=last_version + 1,
+            model=body.model,
+            is_published=False if body.from_version else True,
+            from_version=body.from_version,
+            parsing_type=body.parsing_type,
+            output_keys=body.output_keys,
+            functions=body.functions,
+            tags=body.tags,
+            memo=body.memo,
+            function_model_uuid=body.function_model_uuid,
+        )
+        session.add(function_model_version)
+        await session.flush()
+        await session.refresh(function_model_version)
+        
+        # create prompts
+        prompts = [
+            Prompt(
+                role=prompt.role,
+                step=prompt.step,
+                content=prompt.content,
+                version_uuid=function_model_version.uuid,
+            )
+            for prompt in body.prompts
+        ]
+        session.add_all(prompts)
+        await session.commit()
+        
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(
+            status_code=status_code.HTTP_400_BAD_REQUEST,
+            detail="Failed to create FunctionModelVersion",
+        )
+    return function_model_version.uuid
 
 @router.get("/{uuid}", response_model=FunctionModelVersionInstance)
 async def fetch_function_model_version(
@@ -74,7 +128,65 @@ async def fetch_function_model_version(
         )
     return FunctionModelVersionInstance(**function_model_version)
 
-
+@router.delete("/{uuid}")
+async def delete_function_model_version(
+    jwt: Annotated[str, Depends(get_jwt)],
+    uuid: str,
+    session: AsyncSession = Depends(get_session),
+):
+    # check if user has access to the function_model
+    function_model_version_to_delete: FunctionModelVersion = (
+        await session.execute(
+            select(FunctionModelVersion
+            ).where(FunctionModelVersion.uuid == uuid)
+        )
+    ).scalar_one_or_none()
+    
+    if not function_model_version_to_delete:
+        raise HTTPException(
+            status_code=status_code.HTTP_404_NOT_FOUND,
+            detail="FunctionModelVersion with given id not found",
+        )
+        
+    function_model_version_int = function_model_version_to_delete.version
+    parent_node_version = function_model_version_to_delete.from_version
+    
+    # update child nodes
+    (
+        await session.execute(
+            update(FunctionModelVersion)
+            .values(from_version=parent_node_version)
+            .where(FunctionModelVersion.function_model_uuid == function_model_version_to_delete.function_model_uuid)
+            .where(FunctionModelVersion.from_version == function_model_version_int)
+        )
+    )
+    await session.flush()
+    
+    # delete function_model_version
+    (
+        await session.execute(
+            delete(FunctionModelVersion).where(FunctionModelVersion.uuid == uuid)
+        )
+    )
+    await session.commit()
+    
+    # return List of FunctionModelVersions
+    
+    function_model_versions: List[FunctionModelVersionInstance] = [
+        FunctionModelVersionInstance(**function_model_version.model_dump())
+        for function_model_version in (
+            await session.execute(
+                select(FunctionModelVersion)
+                .where(
+                    FunctionModelVersion.function_model_uuid == function_model_version_to_delete.function_model_uuid
+                )
+                .order_by(asc(FunctionModelVersion.version))
+            )
+        )
+        .scalars()
+        .all()
+    ]
+    return function_model_versions
 
 @router.post("/{uuid}/publish", response_model=FunctionModelVersionInstance)
 async def update_published_function_model_version(

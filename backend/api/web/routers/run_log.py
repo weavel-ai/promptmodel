@@ -14,6 +14,7 @@ from utils.security import get_jwt
 from db_models import *
 from ..models.run_log import (
     RunLogInstance,
+    SaveRunLogBody,
     DeploymentRunLogViewInstance,
     RunLogsCountInstance,
 )
@@ -44,6 +45,54 @@ async def fetch_version_run_logs(
     ]
     return run_logs
 
+@router.post("/version/{function_model_version_uuid}", response_model=List[RunLogInstance])
+async def save_run_logs(
+    jwt: Annotated[str, Depends(get_jwt)],
+    function_model_version_uuid: str,
+    body_list: List[SaveRunLogBody],
+    session: AsyncSession = Depends(get_session),
+):
+    version_to_add: FunctionModelVersion = (
+        await session.execute(
+            select(FunctionModelVersion)
+            .where(FunctionModelVersion.uuid == function_model_version_uuid)
+        )
+    ).scalar_one()
+    
+    project_uuid: str = (
+        await session.execute(
+            select(FunctionModel.project_uuid).where(
+                FunctionModel.uuid == version_to_add.function_model_uuid
+            )
+        )
+    ).scalar_one()
+    
+    run_logs = [
+        RunLog(
+            **{
+                **body.model_dump(),
+                "version_uuid": function_model_version_uuid,
+                "project_uuid": project_uuid,
+            }
+        )
+        for body in body_list
+    ]
+    session.add_all(run_logs)
+    await session.commit()
+    
+    run_logs: List[RunLogInstance] = [
+        RunLogInstance(**run_log.model_dump())
+        for run_log in (
+            await session.execute(
+                select(RunLog)
+                .where(RunLog.version_uuid == function_model_version_uuid)
+                .order_by(desc(RunLog.created_at))
+            )
+        )
+        .scalars()
+        .all()
+    ]
+    return run_logs
 
 
 @router.get("/project", response_model=List[DeploymentRunLogViewInstance])

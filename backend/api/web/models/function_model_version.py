@@ -2,6 +2,7 @@
 from typing import List, Optional
 
 from modules.types import PMObject
+from api.common.models import PromptConfig
 
 
 class FunctionModelVersionInstance(PMObject):
@@ -25,6 +26,19 @@ class FunctionModelVersionInstance(PMObject):
 
     function_model_uuid: str
 
+class CreateFunctionModelVersionBody(PMObject):
+    
+    function_model_uuid: str
+    prompts: List[PromptConfig]
+    model: Optional[str] = "gpt-3.5-turbo"
+    from_version: Optional[int] = None
+    parsing_type: Optional[str] = None
+    output_keys: Optional[List[str]] = None
+    functions: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+    memo: Optional[str] = None
+
+
 
 class UpdatePublishedFunctionModelVersionBody(PMObject):
     project_uuid: str
@@ -35,10 +49,6 @@ class UpdatePublishedFunctionModelVersionBody(PMObject):
 class UpdateFunctionModelVersionTagsBody(PMObject):
     tags: Optional[List[str]] = None
 
-
-class BatchRunConfigBody(PMObject):
-    dataset_uuid: str
-    function_model_version_uuid: str
 
 
 class DatasetBatchRunInstance(PMObject):
