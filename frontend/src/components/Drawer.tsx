@@ -5,6 +5,7 @@ interface DrawerProps {
   open: boolean;
   direction: "left" | "right" | "top" | "bottom";
   children: React.ReactNode;
+  fullHeight?: boolean;
   onClose?: () => void;
   classNames?: string;
   duration?: number;
@@ -19,6 +20,7 @@ export const Drawer = ({
   classNames,
   duration,
   style,
+  fullHeight = false,
 }: DrawerProps) => {
   return (
     <EZDrawer
@@ -32,8 +34,8 @@ export const Drawer = ({
       style={{
         background: "transparent",
         boxShadow: "none",
-        marginTop: "3rem",
-        height: "calc(100% - 3rem)",
+        marginTop: !fullHeight && "3rem",
+        height: fullHeight ? "100vh" : "calc(100% - 3rem)",
         ...style,
       }}
       duration={duration}

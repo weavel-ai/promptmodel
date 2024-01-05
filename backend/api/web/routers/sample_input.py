@@ -16,7 +16,12 @@ from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
 from ..models.sample_input import (
-    SampleInputInstance, CreateSampleInputBody, CreateDatasetBody, DatasetInstance, CreateSampleInputForDatasetBody, DatasetWithEvalMetricFunctionModelInstance
+    SampleInputInstance,
+    CreateSampleInputBody,
+    CreateDatasetBody,
+    DatasetInstance,
+    CreateSampleInputForDatasetBody,
+    DatasetWithEvalMetricFunctionModelInstance,
 )
 
 router = APIRouter()
@@ -44,7 +49,6 @@ async def fetch_project_sample_inputs(
     return sample_inputs
 
 
-
 @router.get("/function_model", response_model=List[SampleInputInstance])
 async def fetch_function_model_sample_inputs(
     jwt: Annotated[str, Depends(get_jwt)],
@@ -64,7 +68,6 @@ async def fetch_function_model_sample_inputs(
         .all()
     ]
     return sample_inputs
-    
 
 
 @router.post("", response_model=SampleInputInstance)
@@ -97,6 +100,7 @@ async def create_sample_input(
 
     return SampleInputInstance(**new_sample_input.model_dump())
 
+
 @router.get("/dataset/{dataset_uuid}", response_model=List[SampleInputInstance])
 async def fetch_sample_inputs_in_dataset(
     jwt: Annotated[str, Depends(get_jwt)],
@@ -108,7 +112,10 @@ async def fetch_sample_inputs_in_dataset(
         for sample_input in (
             await session.execute(
                 select(SampleInput)
-                .join(DatasetSampleInput, DatasetSampleInput.sample_input_uuid == SampleInput.uuid)
+                .join(
+                    DatasetSampleInput,
+                    DatasetSampleInput.sample_input_uuid == SampleInput.uuid,
+                )
                 .where(DatasetSampleInput.dataset_uuid == dataset_uuid)
                 .order_by(desc(SampleInput.created_at))
             )
@@ -117,6 +124,7 @@ async def fetch_sample_inputs_in_dataset(
         .all()
     ]
     return sample_inputs
+
 
 @router.post("/dataset", response_model=DatasetInstance)
 async def create_dataset(
@@ -127,7 +135,7 @@ async def create_dataset(
     # create dataset
     # TODO: currently, all datasets are connected to the gt_exact_match eval_metric.
     #      This should be changed to a more generic way.
-    
+
     gt_exact_match: EvalMetric = (
         await session.execute(
             select(EvalMetric)
@@ -135,7 +143,7 @@ async def create_dataset(
             .where(EvalMetric.project_uuid == body.project_uuid)
         )
     ).scalar_one()
-    
+
     new_dataset = Dataset(
         name=body.name,
         description=body.description,
@@ -145,9 +153,8 @@ async def create_dataset(
     )
     session.add(new_dataset)
     await session.commit()
-    
-    return DatasetInstance(**new_dataset.model_dump())
 
+    return DatasetInstance(**new_dataset.model_dump())
 
 
 @router.post("/dataset/{dataset_uuid}")
@@ -171,12 +178,15 @@ async def save_sample_inputs_in_dataset(
 
     # check if user have access to dataset
     user_id = jwt["user_id"]
-    
+
     project_check = (
         await session.execute(
             select(Project)
             .join(Organization, Organization.organization_id == Project.organization_id)
-            .join(UsersOrganizations, UsersOrganizations.organization_id == Organization.organization_id)
+            .join(
+                UsersOrganizations,
+                UsersOrganizations.organization_id == Organization.organization_id,
+            )
             .where(Project.uuid == dataset.project_uuid)
             .where(UsersOrganizations.user_id == user_id)
         )
@@ -190,14 +200,25 @@ async def save_sample_inputs_in_dataset(
 
     # create sample inputs
     sample_input_list: List[Dict] = [
-        SampleInput(**sample_input.model_dump(), function_model_uuid=dataset.function_model_uuid, project_uuid=dataset.project_uuid).model_dump(exclude_none=True) for sample_input in body
+        SampleInput(
+            **sample_input.model_dump(),
+            function_model_uuid=dataset.function_model_uuid,
+            project_uuid=dataset.project_uuid
+        ).model_dump(exclude_none=True)
+        for sample_input in body
     ]
-                
+
     sample_input_uuid_list: List[SampleInput] = (
-        await session.execute(
-            insert(SampleInput).values(sample_input_list).returning(SampleInput.uuid)
+        (
+            await session.execute(
+                insert(SampleInput)
+                .values(sample_input_list)
+                .returning(SampleInput.uuid)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     dataset_sample_input = []
     for sample_input_uuid in sample_input_uuid_list:
@@ -208,8 +229,9 @@ async def save_sample_inputs_in_dataset(
         )
     session.add_all(dataset_sample_input)
     await session.commit()
-    
+
     return Response(status_code=200)
+
 
 @router.post("/dataset/{dataset_uuid}/add")
 async def connect_sample_input_to_dataset(
@@ -232,12 +254,15 @@ async def connect_sample_input_to_dataset(
 
     # check if user have access to dataset
     user_id = jwt["user_id"]
-    
+
     project_check = (
         await session.execute(
             select(Project)
             .join(Organization, Organization.organization_id == Project.organization_id)
-            .join(UsersOrganizations, UsersOrganizations.organization_id == Organization.organization_id)
+            .join(
+                UsersOrganizations,
+                UsersOrganizations.organization_id == Organization.organization_id,
+            )
             .where(Project.uuid == dataset.project_uuid)
             .where(UsersOrganizations.user_id == user_id)
         )
@@ -248,29 +273,34 @@ async def connect_sample_input_to_dataset(
             status_code=status_code.HTTP_401_UNAUTHORIZED,
             detail="User Cannot Access Dataset",
         )
-        
+
     # check if sample input exists
-    
+
     sample_inputs: List[SampleInput] = (
-        await session.execute(
-            select(SampleInput).where(SampleInput.uuid.in_(sample_input_uuid_list))
+        (
+            await session.execute(
+                select(SampleInput).where(SampleInput.uuid.in_(sample_input_uuid_list))
+            )
         )
-    ).scalars().all()
-    
+        .scalars()
+        .all()
+    )
+
     if len(sample_inputs) != len(sample_input_uuid_list):
         raise HTTPException(
             status_code=status_code.HTTP_404_NOT_FOUND,
             detail="SampleInput not found",
         )
-    
+
     # create Connection, on_conflict_do_nothing
     (
         await session.execute(
-            insert(
-                DatasetSampleInput
-            ).values(
+            insert(DatasetSampleInput)
+            .values(
                 [
-                    DatasetSampleInput(dataset_uuid=dataset.uuid, sample_input_uuid=sample_input.uuid).model_dump(exclude_none=True)
+                    DatasetSampleInput(
+                        dataset_uuid=dataset.uuid, sample_input_uuid=sample_input.uuid
+                    ).model_dump(exclude_none=True)
                     for sample_input in sample_inputs
                 ]
             )
@@ -278,7 +308,7 @@ async def connect_sample_input_to_dataset(
         )
     )
     await session.commit()
-    
+
     return Response(status_code=200)
 
 
@@ -302,12 +332,15 @@ async def delete_sample_input(
 
     # check if user have access to project
     user_id = jwt["user_id"]
-    
+
     project_check = (
         await session.execute(
             select(Project)
             .join(Organization, Organization.organization_id == Project.organization_id)
-            .join(UsersOrganizations, UsersOrganizations.organization_id == Organization.organization_id)
+            .join(
+                UsersOrganizations,
+                UsersOrganizations.organization_id == Organization.organization_id,
+            )
             .where(Project.uuid == sample_input.project_uuid)
             .where(UsersOrganizations.user_id == user_id)
         )
@@ -324,9 +357,7 @@ async def delete_sample_input(
             delete(SampleInput).where(SampleInput.uuid == sample_input_uuid)
         )
     )
-    
+
     await session.commit()
 
     return Response(status_code=200)
-
-    

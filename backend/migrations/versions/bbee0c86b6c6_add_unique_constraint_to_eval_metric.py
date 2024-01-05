@@ -1,7 +1,7 @@
 """Add unique constraint to eval_metric
 
 Revision ID: bbee0c86b6c6
-Revises: d15ae0363657
+Revises: dad040e1122f
 Create Date: 2024-01-03 21:32:51.114492
 
 """

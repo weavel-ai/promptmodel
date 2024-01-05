@@ -64,6 +64,9 @@ class Dataset(Base):
     __tablename__ = "dataset"
 
     id: int = Column(BigInteger, Identity(), unique=True)
+    created_at: datetime = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
     uuid: UUIDType = Column(
         UUID(as_uuid=True),
         server_default=text("gen_random_uuid()"),
