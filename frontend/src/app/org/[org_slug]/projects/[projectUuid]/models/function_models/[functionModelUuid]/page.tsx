@@ -17,6 +17,7 @@ import {
   Command,
   GitBranch,
   Play,
+  FloppyDisk,
   Plus,
   RocketLaunch,
   Trash,
@@ -330,6 +331,7 @@ const VersionsPage = () => {
 
     setNodes(generatedNodes);
     setEdges(generatedEdges);
+    console.log(generatedNodes);
   }, [functionModelVersionListData, windowWidth, windowHeight]);
 
   const onNodeMouseEnter = useCallback((event, node) => {
@@ -464,6 +466,7 @@ function VersionInfoOverlay({ versionData }) {
 
 function InitialVersionDrawer({ open }: { open: boolean }) {
   const { functionModelData } = useFunctionModel();
+  const { handleSave } = useFunctionModelVersion();
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
   const {
@@ -477,6 +480,7 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
     setSelectedModel,
     setSelectedParser,
     setSelectedFunctions,
+    newVersionCache,
   } = useFunctionModelVersionStore();
 
   useEffect(() => {
@@ -505,6 +509,21 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
           <div className="flex flex-row justify-between items-center mb-2">
             <div className="flex flex-row justify-start items-center gap-x-4">
               <p className="text-2xl font-bold">{functionModelData?.name} V1</p>
+            </div>
+            <div className="flex flex-row w-fit justify-end items-center gap-x-2">
+              <button
+                className="
+                flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-base-content hover:bg-base-content/20 disabled:bg-muted disabled:border-muted-content"
+                onClick={() => handleSave()}
+                disabled={
+                  (newVersionCache && !newVersionCache.uuid?.startsWith("DRAFT")) || 
+                  !(modifiedPrompts?.length > 0) ||
+                  modifiedPrompts?.every?.((prompt) => prompt.content === "")
+                }
+              >
+                <p className="text-base-content">Save</p>
+                <FloppyDisk className="text-base-content" size={20} weight="fill" />
+              </button>
             </div>
           </div>
           <div className="bg-base-200 flex-grow w-full p-4 rounded-t-box overflow-auto">
@@ -622,6 +641,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     selectedFunctionModelVersionUuid,
     isEqualToOriginal,
     isEqualToCache,
+    handleSave,
   } = useFunctionModelVersion();
   const {
     newVersionCache,
@@ -800,7 +820,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
             {isCreateVariantOpen && (
               <div className="flex flex-row w-1/2 justify-between items-center mb-2">
                 <div className="flex flex-col items-start justify-center">
-                  {isEqualToOriginal || !isEqualToCache || !newVersionCache ? (
+                  {isEqualToOriginal || !isEqualToCache || !newVersionCache?.version ? (
                     <p className="text-base-content font-bold text-lg">
                       New Version
                     </p>
@@ -814,6 +834,26 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     From&nbsp;
                     <u>V{originalFunctionModelVersionData?.version}</u>
                   </p>
+                </div>
+                <div className="flex flex-row justify-end items-center gap-x-3">
+                  <button
+                    className={classNames(
+                      "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
+                      "text-base-100 disabled:bg-muted disabled:text-muted-content disabled:border-muted-content"
+                    )}
+                    onClick={() => {
+                      handleSave();
+                    }}
+                    disabled={
+                      isEqualToOriginal || 
+                      (newVersionCache && !newVersionCache.uuid?.startsWith("DRAFT")) || 
+                      !(modifiedPrompts?.length > 0) ||
+                      modifiedPrompts?.every?.((prompt) => prompt.content === "")
+                    }
+                  >
+                    <p>Save</p>
+                    <FloppyDisk size={20} weight="fill" />
+                  </button>
                 </div>
               </div>
             )}

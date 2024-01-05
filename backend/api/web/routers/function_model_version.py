@@ -73,8 +73,6 @@ async def create_function_model_version(
             parsing_type=body.parsing_type,
             output_keys=body.output_keys,
             functions=body.functions,
-            tags=body.tags,
-            memo=body.memo,
             function_model_uuid=body.function_model_uuid,
         )
         session.add(function_model_version)
@@ -92,6 +90,48 @@ async def create_function_model_version(
             for prompt in body.prompts
         ]
         session.add_all(prompts)
+        await session.flush()
+        
+        changelogs = []
+        changelogs.append(
+            {
+                "subject": "function_model_version",
+                "identifier": [str(function_model_version.uuid)],
+                "action": "ADD",
+            }
+        )
+        if last_version == 0:
+            changelogs.append(
+                {
+                    "subject": "function_model_version",
+                    "identifier": [str(function_model_version.uuid)],
+                    "action": "PUBLISH",
+                }
+            )
+        session.add(
+            ProjectChangelog(
+                **{
+                    "logs": changelogs,
+                    "project_uuid": body.project_uuid,
+                }
+            )
+        )
+        await session.flush()
+        
+        if last_version == 0:
+            project_version = (
+                await session.execute(
+                    select(Project.version).where(Project.uuid == body.project_uuid)
+                )
+            ).scalar_one()
+
+            await session.execute(
+                update(Project)
+                .where(Project.uuid == body.project_uuid)
+                .values(version=project_version + 1)
+            )
+            await session.flush()
+
         await session.commit()
         
     except Exception as e:
@@ -100,6 +140,7 @@ async def create_function_model_version(
             status_code=status_code.HTTP_400_BAD_REQUEST,
             detail="Failed to create FunctionModelVersion",
         )
+        
     return function_model_version.uuid
 
 @router.get("/{uuid}", response_model=FunctionModelVersionInstance)
@@ -146,6 +187,12 @@ async def delete_function_model_version(
         raise HTTPException(
             status_code=status_code.HTTP_404_NOT_FOUND,
             detail="FunctionModelVersion with given id not found",
+        )
+        
+    if function_model_version_to_delete.is_published == True:
+        raise HTTPException(
+            status_code=status_code.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete published version",
         )
         
     function_model_version_int = function_model_version_to_delete.version

@@ -73,6 +73,7 @@ async def save_run_logs(
                 **body.model_dump(),
                 "version_uuid": function_model_version_uuid,
                 "project_uuid": project_uuid,
+                "run_from_deployment": False,
             }
         )
         for body in body_list

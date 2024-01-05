@@ -3,6 +3,7 @@ import { fetchFunctionModelVersions } from "./fetchFunctionModelVersions";
 import { updateFunctionModelVersionMemo } from "./updateFunctionModelVersionMemo";
 import { updateFunctionModelVersionTags } from "./updateFunctionModelVersionTags";
 import { updatePublishedFunctionModelVersion } from "./updatePublishedFunctionModelVersion";
+import { createFunctionModelVersion } from "./createFunctionModelVersion";
 
 export {
   fetchFunctionModelVersion,
@@ -10,4 +11,5 @@ export {
   updateFunctionModelVersionMemo,
   updateFunctionModelVersionTags,
   updatePublishedFunctionModelVersion,
+  createFunctionModelVersion,
 };

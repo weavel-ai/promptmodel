@@ -1,6 +1,7 @@
 import { fetchStream } from "./base";
 
 export async function streamFunctionModelRun({
+  sampleInputUuid,
   projectUuid,
   functionModelUuid,
   prompts,
@@ -13,8 +14,9 @@ export async function streamFunctionModelRun({
   functions,
   onNewData,
 }: {
+  sampleInputUuid: string | null;
   projectUuid: string;
-  functionModelUuid: string;
+  functionModelUuid?: string;
   prompts: { role: string; step: number; content: string }[];
   model: string;
   fromVersion?: string | null;
@@ -31,6 +33,7 @@ export async function streamFunctionModelRun({
       project_uuid: projectUuid,
     },
     body: {
+      sample_input_uuid: sampleInputUuid,
       function_model_uuid: functionModelUuid,
       prompts: prompts,
       model: model,
@@ -48,6 +51,7 @@ export async function streamFunctionModelRun({
 export async function streamLocalFunctionModelRun({
   projectUuid,
   functionModelUuid,
+  sampleInputUuid,
   prompts,
   model,
   fromVersion,
@@ -59,7 +63,8 @@ export async function streamLocalFunctionModelRun({
   onNewData,
 }: {
   projectUuid: string;
-  functionModelUuid: string;
+  functionModelUuid: string | null;
+  sampleInputUuid: string | null;
   prompts: { role: string; step: number; content: string }[];
   model: string;
   fromVersion?: string | null;
@@ -77,6 +82,7 @@ export async function streamLocalFunctionModelRun({
     },
     body: {
       function_model_uuid: functionModelUuid,
+      sample_input_uuid: sampleInputUuid,
       prompts: prompts,
       model: model,
       from_version: fromVersion,

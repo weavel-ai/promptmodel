@@ -52,4 +52,16 @@ export interface RunLog {
   cost: number;
   version_uuid: string;
   project_uuid: string;
+  sample_input_uuid?: string;
+}
+
+export interface saveRunLogsRequest {
+  inputs?: Record<string, any>;
+  raw_output?: string;
+  parsed_outputs?: Record<string, any>;
+  tool_calls?: Array<Record<string, any>>;
+  function_call?: Record<string, any>;
+  
+  sample_input_uuid?: string;
+  run_log_metadata?: Record<string, any>;
 }

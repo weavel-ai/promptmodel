@@ -27,7 +27,7 @@ class FunctionModelVersionInstance(PMObject):
     function_model_uuid: str
 
 class CreateFunctionModelVersionBody(PMObject):
-    
+    project_uuid: str
     function_model_uuid: str
     prompts: List[PromptConfig]
     model: Optional[str] = "gpt-3.5-turbo"
@@ -35,8 +35,6 @@ class CreateFunctionModelVersionBody(PMObject):
     parsing_type: Optional[str] = None
     output_keys: Optional[List[str]] = None
     functions: Optional[List[str]] = None
-    tags: Optional[List[str]] = None
-    memo: Optional[str] = None
 
 
 

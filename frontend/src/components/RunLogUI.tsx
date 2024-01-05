@@ -17,6 +17,7 @@ import { SelectSampleInputsModal } from "./modals/SelectSampleInputsModal";
 import { arePrimitiveListsEqual } from "@/utils";
 import { createSampleInput } from "@/apis/sample_inputs";
 import { useProject } from "@/hooks/useProject";
+import { set } from "date-fns";
 
 const modalVariants = cva(
   "fixed z-[999999] bg-base-200/70 backdrop-blur-md p-4 flex justify-center items-center",
@@ -71,6 +72,7 @@ export function RunLogUI({
   const [selectedTab, setSelectedTab] = useState(Tab.Test);
   const [inputs, setInputs] = useState<Array<KeyValueInput>>([]);
   const [inputsCache, setInputsCache] = useState<Array<KeyValueInput>>([]);
+  const [sampleInputUUIDCache, setSampleInputUUIDCache] = useState<string>(null);
   const prompts = useMemo(
     () => (isNewOrCachedVersion ? modifiedPrompts : originalPromptListData),
     [isNewOrCachedVersion, modifiedPrompts, originalPromptListData]
@@ -121,7 +123,7 @@ export function RunLogUI({
         )
           return true;
       } else {
-        return isEqualToOriginal;
+        if (isEqualToOriginal) return true;
       }
     }
     if (inputKeys.length == 0) {
@@ -188,10 +190,6 @@ export function RunLogUI({
       },
       {}
     );
-
-    handleRun(isNewOrCachedVersion, inputsObject);
-    if (Object.keys(inputsObject).length == 0) return;
-    // If inputsObject if different from inputsCache, create new sample input
     let newSample: boolean = true;
     if (!!inputsCache && inputsCache.length > 0) {
       newSample = false;
@@ -207,13 +205,16 @@ export function RunLogUI({
     }
     if (newSample) {
       setInputsCache(inputs);
-      await createSampleInput({
+      const res = await createSampleInput({
         project_uuid: projectUuid,
         function_model_uuid: functionModelUuid,
         input_keys: Object.keys(inputsObject),
         content: inputsObject,
       });
+      setSampleInputUUIDCache(res.uuid);
     }
+
+    handleRun(isNewOrCachedVersion, inputsObject, sampleInputUUIDCache);
   }
 
   const mainUI = (
@@ -251,6 +252,7 @@ export function RunLogUI({
             inputs={inputs}
             setInputs={setInputs}
             setInputsCache={setInputsCache}
+            setSampleInputUUIDCache={setSampleInputUUIDCache}
             handleClickRun={handleClickRun}
             isRunDisabled={isRunDisabled}
           />
@@ -294,6 +296,7 @@ function TestUI({
   inputs,
   setInputs,
   setInputsCache,
+  setSampleInputUUIDCache,
   handleClickRun,
   isRunDisabled,
 }: {
@@ -301,6 +304,7 @@ function TestUI({
   inputs: Array<KeyValueInput>;
   setInputs: (inputs: Array<KeyValueInput>) => void;
   setInputsCache: (inputs: Array<KeyValueInput>) => void;
+  setSampleInputUUIDCache: (uuid: string) => void;
   handleClickRun: () => void;
   isRunDisabled: boolean;
 }) {
@@ -378,6 +382,7 @@ function TestUI({
             };
           });
           setInputsCache(newInputs);
+          setSampleInputUUIDCache(sampleInput.uuid);
           setInputs(newInputs);
         }}
       />

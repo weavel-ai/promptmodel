@@ -37,6 +37,7 @@ class SaveRunLogBody(PMObject):
     function_call: Optional[Dict[str, Any]] = None
     
     sample_input_uuid: Optional[str] = None
+    run_log_metadata: Optional[Dict[str, Any]] = None
 
 class DeploymentRunLogViewInstance(PMObject):
     run_log_uuid: str

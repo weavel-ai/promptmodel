@@ -6,7 +6,7 @@ export const useRunLogs = (versionUuid: string) => {
     queryKey: ["runLogData", { versionUuid: versionUuid }],
     queryFn: async () =>
       await fetchVersionRunLogs({ function_model_version_uuid: versionUuid }),
-    enabled: !!versionUuid,
+    enabled: !!versionUuid && !versionUuid?.startsWith("DRAFT"),
   });
 
   return {
