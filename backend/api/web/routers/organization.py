@@ -52,7 +52,6 @@ async def create_organization(
     return OrganizationInstance(**new_org.model_dump())
 
 
-
 @router.patch("/{organization_id}", response_model=OrganizationInstance)
 async def update_organization(
     jwt: Annotated[str, Depends(get_jwt)],
@@ -77,27 +76,41 @@ async def update_organization(
     return OrganizationInstance(**updated_org)
 
 
-
 @router.get("/{organization_id}", response_model=OrganizationInstance)
 async def get_organization(
     jwt: Annotated[str, Depends(get_jwt)],
     organization_id: str,
     session: AsyncSession = Depends(get_session),
 ):
-
     user_id = jwt["user_id"]
-    self_host = os.getenv("NEXT_PUBLIC_SELF_HOSTED") == "true"
+    is_self_hosted = os.getenv("NEXT_PUBLIC_SELF_HOSTED") == "true"
 
-    if not self_host:
-        user_org = (
-            await session.execute(
-                select(UsersOrganizations)
-                .where(UsersOrganizations.user_id == user_id)
-                .where(UsersOrganizations.organization_id == organization_id)
+    org = (
+        await session.execute(
+            select(Organization).where(Organization.organization_id == organization_id)
+        )
+    ).scalar_one_or_none()
+    if not org:
+        raise HTTPException(
+            status_code=status_code.HTTP_404_NOT_FOUND,
+            detail="Organization with given id not found",
+        )
+
+    user_org = (
+        await session.execute(
+            select(UsersOrganizations)
+            .where(UsersOrganizations.user_id == user_id)
+            .where(UsersOrganizations.organization_id == organization_id)
+        )
+    ).scalar_one_or_none()
+
+    if not user_org:
+        if is_self_hosted:
+            session.add(
+                UsersOrganizations(user_id=user_id, organization_id=organization_id)
             )
-        ).scalar_one_or_none()
-
-        if not user_org:
+            await session.commit()
+        else:
             async with httpx.AsyncClient() as client:
                 res = await client.get(
                     url=f"https://api.clerk.com/v1/users/{user_id}/organization_memberships?limit=100&offset=0",
@@ -115,31 +128,12 @@ async def get_organization(
 
             if organization_id in organization_id_list:
                 session.add(
-                    UsersOrganizations(
-                        user_id=user_id, organization_id=organization_id
-                    )
+                    UsersOrganizations(user_id=user_id, organization_id=organization_id)
                 )
                 await session.commit()
 
-    try:
-        org: Dict = (
-            (
-                await session.execute(
-                    select(Organization).where(
-                        Organization.organization_id == organization_id
-                    )
-                )
-            )
-            .scalar_one()
-            .model_dump()
-        )
+    return OrganizationInstance(**org.model_dump())
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=status_code.HTTP_409_CONFLICT,
-            detail="API KEY already exists",
-        )
-    return OrganizationInstance(**org)
 
 @router.get("/{organization_id}/llm_providers")
 async def get_org_configured_llm_providers(
@@ -163,7 +157,6 @@ async def get_org_configured_llm_providers(
     return JSONResponse(content=configured_providers, status_code=200)
 
 
-
 @router.post("/{organization_id}/llm_providers")
 async def save_organization_llm_provider_config(
     jwt: Annotated[str, Depends(get_jwt)],
@@ -177,9 +170,7 @@ async def save_organization_llm_provider_config(
         await session.execute(
             select(OrganizationLLMProviderConfig)
             .where(OrganizationLLMProviderConfig.organization_id == organization_id)
-            .where(
-                OrganizationLLMProviderConfig.provider_name == body.provider_name
-            )
+            .where(OrganizationLLMProviderConfig.provider_name == body.provider_name)
         )
     ).scalar_one_or_none()
     if provider_config is None:
@@ -209,7 +200,6 @@ async def delete_organization_llm_api_key(
     provider_name: str,
     session: AsyncSession = Depends(get_session),
 ):
-
     # check if configuration exists
     config = (
         await session.execute(

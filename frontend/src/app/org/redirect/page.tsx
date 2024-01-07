@@ -30,10 +30,10 @@ export default function Page() {
   }, [loadingTime, organization?.id]);
 
   useEffect(() => {
-    if (env.SELF_HOSTED && organization?.slug != null) {
-      router.push(`/org/${organization.slug}`);
-      return;
-    }
+    // if (env.SELF_HOSTED && organization?.slug != null) {
+    //   router.push(`/org/${organization.slug}`);
+    //   return;
+    // }
     if (!isLoaded) return;
     if (organization?.id != null && organization?.slug != null) {
       fetchOrganization({ organization_id: organization.id })

@@ -2,11 +2,13 @@ version: "3.8"
 
 services:
   db:
-    image: postgres
+    image: postgres:14.10
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    # volumes:
+    #   - ./seed.sql:/docker-entrypoint-initdb.d/seed.sql
     # volumes:
     #   - ./volumes/postgres_data:/var/lib/postgresql/data
     ports:
@@ -62,6 +64,7 @@ services:
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
         - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
         - REDIS_HOST=${REDIS_HOST:-redis}
+        - SEED_DB=${SEED_DB:-true}
         - PORT=8000
     ports:
       - "8000:8000"
@@ -74,6 +77,7 @@ services:
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
       - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
       - REDIS_HOST=${REDIS_HOST:-redis}
+      - SEED_DB=${SEED_DB:-true}
       - PORT=8000
     depends_on:
       db:
@@ -93,40 +97,40 @@ services:
           # action: rebuild
           action: sync
 
-  frontend:
-    build:
-      context: ./frontend
-      args:
-        - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
-        - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-        - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-http://localhost:8000}
-        - NEXT_PUBLIC_SELF_HOSTED=true
-    # command: npm run dev
-    ports:
-      - "3000:3000"
-    environment:
-      - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
-      - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-http://localhost:8000}
-      - NEXT_PUBLIC_SELF_HOSTED=true
-    depends_on:
-      backend:
-        condition: service_started
-      pg-to-redis-listener:
-        condition: service_started
-    networks:
-      - server
-    restart: always
-    develop:
-      watch:
-        - path: ./frontend
-          ignore:
-            - node_modules/
-          target: /app/
-          action: sync
-          # action: rebuild
-        - path: ./frontend/package.json
-          action: rebuild
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     args:
+  #       - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
+  #       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
+  #       - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-http://localhost:8000}
+  #       - NEXT_PUBLIC_SELF_HOSTED=true
+  #   # command: npm run dev
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - FRONTEND_PUBLIC_URL=${FRONTEND_PUBLIC_URL:-http://localhost:3000}
+  #     - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-yoursecret}
+  #     - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-http://localhost:8000}
+  #     - NEXT_PUBLIC_SELF_HOSTED=true
+  #   depends_on:
+  #     backend:
+  #       condition: service_started
+  #     pg-to-redis-listener:
+  #       condition: service_started
+  #   networks:
+  #     - server
+  #   restart: always
+  #   develop:
+  #     watch:
+  #       - path: ./frontend
+  #         ignore:
+  #           - node_modules/
+  #         target: /app/
+  #         action: sync
+  #         # action: rebuild
+  #       - path: ./frontend/package.json
+  #         action: rebuild
 
 networks:
   server:
