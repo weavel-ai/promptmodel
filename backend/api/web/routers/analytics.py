@@ -12,10 +12,65 @@ from utils.logger import logger
 
 from base.database import get_session
 from db_models import *
-from ..models.analytics import DailyRunLogMetricInstance, DailyChatLogMetricInstance
+from ..models.analytics import (
+    DailyRunLogMetricInstance,
+    DailyChatLogMetricInstance,
+    ProjectDailyRunLogMetricInstance,
+)
 from utils.security import get_jwt
 
 router = APIRouter()
+
+
+@router.get("/project", response_model=List[ProjectDailyRunLogMetricInstance])
+async def fetch_project_daily_run_log_metrics(
+    jwt: Annotated[str, Depends(get_jwt)],
+    project_uuid: str,
+    start_day: str,
+    end_day: str,
+    session: AsyncSession = Depends(get_session),
+):
+    metrics: List[ProjectDailyRunLogMetricInstance] = (
+        (
+            await session.execute(
+                select(ProjectDailyRunLogMetric)
+                .where(ProjectDailyRunLogMetric.project_uuid == project_uuid)
+                .where(
+                    ProjectDailyRunLogMetric.day
+                    >= datetime.strptime(start_day, "%Y-%m-%dT%H:%M:%S.%fZ").date()
+                )
+                .where(
+                    ProjectDailyRunLogMetric.day
+                    <= datetime.strptime(end_day, "%Y-%m-%dT%H:%M:%S.%fZ").date()
+                )
+                .order_by(asc(ProjectDailyRunLogMetric.day))
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    metrics: List[ProjectDailyRunLogMetricInstance] = [
+        ProjectDailyRunLogMetricInstance(**metric.model_dump())
+        for metric in (
+            await session.execute(
+                select(ProjectDailyRunLogMetric)
+                .where(ProjectDailyRunLogMetric.project_uuid == project_uuid)
+                .where(
+                    ProjectDailyRunLogMetric.day
+                    >= datetime.strptime(start_day, "%Y-%m-%dT%H:%M:%S.%fZ").date()
+                )
+                .where(
+                    ProjectDailyRunLogMetric.day
+                    <= datetime.strptime(end_day, "%Y-%m-%dT%H:%M:%S.%fZ").date()
+                )
+                .order_by(asc(ProjectDailyRunLogMetric.day))
+            )
+        )
+        .scalars()
+        .all()
+    ]
+    return metrics
 
 
 @router.get("/function_model", response_model=List[DailyRunLogMetricInstance])
@@ -69,7 +124,6 @@ async def fetch_daily_run_log_metrics(
     return metrics
 
 
-
 @router.get("/chat_model", response_model=List[DailyChatLogMetricInstance])
 async def fetch_daily_chat_log_metrics(
     jwt: Annotated[str, Depends(get_jwt)],
@@ -99,4 +153,3 @@ async def fetch_daily_chat_log_metrics(
         .all()
     ]
     return metrics
-

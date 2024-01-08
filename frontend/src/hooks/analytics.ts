@@ -3,6 +3,37 @@ import { useFunctionModel } from "./useFunctionModel";
 import { useChatModel } from "./useChatModel";
 import { fetchDailyRunLogMetrics } from "@/apis/metrics/fetchDailyRunLogMetrics";
 import { fetchDailyChatLogMetrics } from "@/apis/metrics/fetchDailyChatLogMetrics";
+import { useProject } from "./useProject";
+import { fetchProjectDailyRunLogMetrics } from "@/apis/metrics/fetchProjectDailyRunLogMetrics";
+
+export const useProjectDailyRunLogMetrics = (
+  startDay: string,
+  endDay: string
+) => {
+  const { projectUuid } = useProject();
+
+  const { data: projectDailyRunLogMetrics } = useQuery({
+    queryKey: [
+      "projectDailyRunLogMetrics",
+      {
+        projectUuid: projectUuid,
+        startDay: startDay,
+        endDay: endDay,
+      },
+    ],
+    queryFn: async () =>
+      await fetchProjectDailyRunLogMetrics({
+        project_uuid: projectUuid,
+        start_day: startDay,
+        end_day: endDay,
+      }),
+    enabled: !!projectUuid,
+  });
+
+  return {
+    projectDailyRunLogMetrics,
+  };
+};
 
 export const useDailyRunLogMetrics = (startDay: string, endDay: string) => {
   const { functionModelUuid } = useFunctionModel();

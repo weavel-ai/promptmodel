@@ -80,3 +80,6 @@ volumes
 .env
 .pem
 .vscode
+
+# snaplet
+.snaplet
