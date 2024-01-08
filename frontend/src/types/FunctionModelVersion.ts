@@ -55,6 +55,13 @@ export interface UpdateFunctionModelVersionMemoRequest {
 }
 
 /**
+ * Interface for the request to delete a FunctionModelVersion.
+ */
+export interface DeleteFunctionModelVersionRequest {
+  uuid: string;
+}
+
+/**
  * General interface for representing a FunctionModelVersion in the system.
  */
 export interface FunctionModelVersion {
