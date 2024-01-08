@@ -7,32 +7,10 @@ from sqlalchemy import Result, select, asc, desc, update
 
 from base.database import get_session, get_session_context
 from utils.logger import logger
-from utils.security import get_project
 from db_models import *
 
 API_KEY_HEADER = "Authorization"
 api_key_header = APIKeyHeader(name=API_KEY_HEADER, auto_error=False)
-
-# # TODO: Fix below
-# async def get_token(authorization: str = Depends(api_key_header)):
-#     if not authorization:
-#         raise HTTPException(status_code=400, detail="Authorization header is required!")
-#     auth_header = authorization.split(" ")
-#     if len(auth_header) != 2:
-#         raise HTTPException(status_code=400, detail="Invalid authorization header!")
-#     token = auth_header[1]
-#     try:
-#         agent = (
-#             supabase.table("agent").select("id, name").eq("api_token", token).execute()
-#         ).data
-#         logger.debug(f"Agent authorized: {agent}")
-#         if not agent:  # You can further validate the token here if necessary
-#             raise HTTPException(status_code=400, detail="Token is required!")
-#         return token
-#     except Exception as error:
-#         logger.error(f"Error validating token: {error}")
-#         raise HTTPException(status_code=400, detail="Invalid token!")
-
 
 async def get_user_id(
     authorization: str = Depends(api_key_header),

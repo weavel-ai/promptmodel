@@ -15,6 +15,20 @@ export interface ReadFunctionModelVersionRequest {
 }
 
 /**
+ * Interface for the request to create a new FunctionModelVersion.
+ */
+export interface CreateFunctionModelVersionRequest {
+  project_uuid: string;
+  function_model_uuid: string;
+  prompts: { role: string; step: number; content: string }[];
+  model: string;
+  from_version?: number | null;
+  parsing_type?: string;
+  output_keys?: Array<string>;
+  functions?: Array<string>;
+}
+
+/**
  * Interface for the request to update the published FunctionModelVersion.
  */
 export interface UpdatePublishedFunctionModelVersionRequest {
@@ -38,6 +52,13 @@ export interface UpdateFunctionModelVersionTagsRequest {
 export interface UpdateFunctionModelVersionMemoRequest {
   uuid: string;
   memo: string;
+}
+
+/**
+ * Interface for the request to delete a FunctionModelVersion.
+ */
+export interface DeleteFunctionModelVersionRequest {
+  uuid: string;
 }
 
 /**

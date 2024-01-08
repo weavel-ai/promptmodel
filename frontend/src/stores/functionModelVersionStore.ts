@@ -8,11 +8,13 @@ export type RunLog = {
   raw_output?: string;
   parsed_outputs?: Record<string, any> | string;
   function_call?: Record<string, any> | string;
+  sample_input_uuid?: string;
+  run_log_metadata?: Record<string, any>;
 };
 
 type NewVersionCache = {
   uuid: string;
-  version: number;
+  version?: number;
   prompts: Prompt[];
   model: string;
   parsing_type: ParsingType;

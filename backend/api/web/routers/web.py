@@ -36,7 +36,7 @@ async def run_function_model(
     session: AsyncSession = Depends(get_session),
 ):
     """Run FunctionModel for cloud development environment."""
-    user_auth_check = (
+    user_auth_check: Project = (
         await session.execute(
             select(Project)
             .join(
@@ -89,6 +89,7 @@ async def run_function_model(
             provider_args=provider_args,
         ):
             yield json.dumps(chunk)
+        session.close()
 
     return StreamingResponse(
         stream_run(),
@@ -158,81 +159,10 @@ async def run_cloud_function_model(
         # find function_model_uuid from local db
         function_model_version_uuid: Optional[str] = run_config.version_uuid
         # If function_model_version_uuid is None, create new version & prompt
-        changelogs = []
-        need_project_version_update = False
-
-        if function_model_version_uuid is None:
-            if run_config.from_version is None:
-                version = 1
-                need_project_version_update = True
-            else:
-                latest_version = (
-                    await session.execute(
-                        select(FunctionModelVersion.version)
-                        .where(
-                            FunctionModelVersion.function_model_uuid
-                            == run_config.function_model_uuid
-                        )
-                        .order_by(desc(FunctionModelVersion.version))
-                        .limit(1)
-                    )
-                ).scalar_one()
-
-                version = latest_version + 1
-            new_function_model_version_row = FunctionModelVersion(
-                **{
-                    "function_model_uuid": run_config.function_model_uuid,
-                    "from_version": run_config.from_version,
-                    "version": version,
-                    "model": run_config.model,
-                    "parsing_type": run_config.parsing_type,
-                    "output_keys": run_config.output_keys,
-                    "functions": run_config.functions,
-                    "is_published": True if version == 1 else False,
-                }
-            )
-            session.add(new_function_model_version_row)
-            await session.flush()
-            await session.refresh(new_function_model_version_row)
-
-            changelogs.append(
-                {
-                    "subject": "function_model_version",
-                    "identifier": [str(new_function_model_version_row.uuid)],
-                    "action": "ADD",
-                }
-            )
-
-            if need_project_version_update:
-                changelogs.append(
-                    {
-                        "subject": "function_model_version",
-                        "identifier": [str(new_function_model_version_row.uuid)],
-                        "action": "PUBLISH",
-                    }
-                )
-
-            function_model_version_uuid: str = str(new_function_model_version_row.uuid)
-            for prompt in run_config.prompts:
-                prompt_row = Prompt(
-                    **{
-                        "version_uuid": function_model_version_uuid,
-                        "role": prompt.role,
-                        "step": prompt.step,
-                        "content": prompt.content,
-                    }
-                )
-                session.add(prompt_row)
-            await session.flush()
-
-            data = {
-                "function_model_version_uuid": function_model_version_uuid,
-                "version": version,
-                "status": "running",
-            }
-            yield data
 
         data = {
+            "sample_input_uuid": run_config.sample_input_uuid,
+            "function_model_version_uuid": function_model_version_uuid,
             "status": "running",
             "inputs": sample_input if sample_input else {},
         }
@@ -332,59 +262,33 @@ async def run_cloud_function_model(
             yield data
 
         # Create run log
-
-        session.add(
-            RunLog(
-                **{
-                    "project_uuid": project_uuid,
-                    "version_uuid": function_model_version_uuid,
-                    "inputs": sample_input,
-                    "raw_output": output["raw_output"],
-                    "parsed_outputs": output["parsed_outputs"],
-                    "function_call": function_call,
-                    "run_log_metadata": {
-                        "error_log": error_log,
-                        "error": True,
+        if function_model_version_uuid is not None:
+            session.add(
+                RunLog(
+                    **{
+                        "project_uuid": project_uuid,
+                        "version_uuid": function_model_version_uuid,
+                        "inputs": sample_input,
+                        "raw_output": output["raw_output"],
+                        "parsed_outputs": output["parsed_outputs"],
+                        "function_call": function_call,
+                        "run_log_metadata": {
+                            "error_log": error_log,
+                            "error": True,
+                        }
+                        if error_occurs
+                        else None,
+                        "run_from_deployment": False,
+                        "sample_input_uuid": run_config.sample_input_uuid,
                     }
-                    if error_occurs
-                    else None,
-                    "run_from_deployment": False,
-                }
+                )
             )
-        )
-        await session.commit()
+            await session.commit()
 
         data = {
             "status": "completed",
         }
         yield data
-
-        if len(changelogs) > 0:
-            session.add(
-                ProjectChangelog(
-                    **{
-                        "logs": changelogs,
-                        "project_uuid": project_uuid,
-                    }
-                )
-            )
-            await session.flush()
-
-        if need_project_version_update:
-            project_version = (
-                await session.execute(
-                    select(Project.version).where(Project.uuid == project_uuid)
-                )
-            ).scalar_one()
-
-            await session.execute(
-                update(Project)
-                .where(Project.uuid == project_uuid)
-                .values(version=project_version + 1)
-            )
-            await session.flush()
-
-        await session.commit()
 
     except Exception as error:
         logger.error(f"Error running service: {error}")
@@ -404,7 +308,7 @@ async def run_chat_model(
     session: AsyncSession = Depends(get_session),
 ):
     """Run ChatModel from web."""
-    user_auth_check = (
+    user_auth_check: Project = (
         await session.execute(
             select(Project)
             .join(

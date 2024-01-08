@@ -73,9 +73,7 @@ async def run_local_function_model_generator(
             yield json.dumps(data)
             return
 
-    model = run_config.model
     prompts = run_config.prompts
-    parsing_type = run_config.parsing_type
 
     if sample_input:
         messages_for_run = [
@@ -108,82 +106,15 @@ async def run_local_function_model_generator(
             .mappings()
             .all()
         )  # function_schemas includes mock_response
-
-    # 3. flush function_model_version
+        
     function_model_version_uuid: Optional[str] = run_config.version_uuid
-    need_project_version_update = False
-    changelogs = []
 
-    if function_model_version_uuid is None:
-        if run_config.from_version is None:
-            version = 1
-            need_project_version_update = True
-        else:
-            latest_version = (
-                await session.execute(
-                    select(FunctionModelVersion.version)
-                    .where(
-                        FunctionModelVersion.function_model_uuid
-                        == run_config.function_model_uuid
-                    )
-                    .order_by(desc(FunctionModelVersion.version))
-                    .limit(1)
-                )
-            ).scalar_one()
-
-            version = latest_version + 1
-        new_function_model_version_row = FunctionModelVersion(
-            **{
-                "function_model_uuid": run_config.function_model_uuid,
-                "from_version": run_config.from_version,
-                "version": version,
-                "model": run_config.model,
-                "parsing_type": run_config.parsing_type,
-                "output_keys": run_config.output_keys,
-                "functions": run_config.functions,
-                "is_published": True if version == 1 else False,
-            }
-        )
-        session.add(new_function_model_version_row)
-        await session.flush()
-        await session.refresh(new_function_model_version_row)
-
-        changelogs.append(
-            {
-                "subject": "function_model_version",
-                "identifier": [str(new_function_model_version_row.uuid)],
-                "action": "ADD",
-            }
-        )
-
-        if need_project_version_update:
-            changelogs.append(
-                {
-                    "subject": "function_model_version",
-                    "identifier": [str(new_function_model_version_row.uuid)],
-                    "action": "PUBLISH",
-                }
-            )
-
-        function_model_version_uuid: str = str(new_function_model_version_row.uuid)
-        for prompt in run_config.prompts:
-            prompt_row = Prompt(
-                **{
-                    "version_uuid": function_model_version_uuid,
-                    "role": prompt.role,
-                    "step": prompt.step,
-                    "content": prompt.content,
-                }
-            )
-            session.add(prompt_row)
-        await session.flush()
-
-        data = {
-            "function_model_version_uuid": function_model_version_uuid,
-            "version": version,
-            "status": "running",
-        }
-        yield json.dumps(data)
+    data = {
+        "function_model_version_uuid": function_model_version_uuid,
+        "sample_input_uuid": run_config.sample_input_uuid,
+        "status": "running",
+    }
+    yield json.dumps(data)
 
     websocket_message = {
         "messages_for_run": messages_for_run,
@@ -236,43 +167,33 @@ async def run_local_function_model_generator(
     if function_call:
         function_call["function_response"] = function_response
 
-    new_run_log = RunLog(
-        **{
-            "project_uuid": project["uuid"],
-            "version_uuid": function_model_version_uuid,
-            "inputs": sample_input,
-            "raw_output": output["raw_output"],
-            "parsed_outputs": output["parsed_outputs"],
-            "function_call": function_call,
-            "run_log_metadata": {
-                "error_log": error_log,
-                "error": True,
-            }
-            if error_type
-            else None,
-            "run_from_deployment": False,
-        }
-    )
-
     if error_type and (
         error_type == LocalTaskErrorType.NO_FUNCTION_NAMED_ERROR.value
         or error_type == LocalTaskErrorType.SERVICE_ERROR.value
     ):
         return
-
-    session.add(new_run_log)
-    await session.flush()
-
-    if need_project_version_update:
-        await session.execute(
-            update(Project)
-            .where(Project.uuid == project["uuid"])
-            .values(version=project["version"] + 1)
+    
+    if function_model_version_uuid is not None:
+        new_run_log = RunLog(
+            **{
+                "project_uuid": project["uuid"],
+                "version_uuid": function_model_version_uuid,
+                "inputs": sample_input,
+                "raw_output": output["raw_output"],
+                "parsed_outputs": output["parsed_outputs"],
+                "function_call": function_call,
+                "run_log_metadata": {
+                    "error_log": error_log,
+                    "error": True,
+                }
+                if error_type
+                else None,
+                "run_from_deployment": False,
+                "sample_input_uuid": run_config.sample_input_uuid,
+            }
         )
-        await session.flush()
 
-    if len(changelogs) > 0:
-        session.add(ProjectChangelog(project_uuid=project["uuid"], logs=changelogs))
+        session.add(new_run_log)
         await session.flush()
 
     await session.commit()

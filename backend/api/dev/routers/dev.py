@@ -39,7 +39,8 @@ async def run_function_model(
         <li><b>project_uuid:</b> project uuid</li>
         <li><b>run_config:</b></li>
         <ul>
-            function_model_uuid: str
+            sample_input_uuid: str
+            function_model_uuid: Optional[str]
             prompts: List of prompts (type, step, content)
             model: str
             from_version: previous version number (Optional)

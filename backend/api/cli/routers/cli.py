@@ -16,7 +16,7 @@ from fastapi import (
 from fastapi.responses import JSONResponse
 from starlette import status as status_code
 
-from utils.security import get_api_key, get_project, get_cli_user_id
+from utils.security import get_api_key, get_project, get_cli_user_id, get_project_cli_access_key
 from api.dependency import get_websocket_token
 from utils.logger import logger
 
@@ -625,7 +625,7 @@ async def save_instances_in_code(
     chat_models: list[str],
     samples: list[dict],
     function_schemas: list[dict],
-    project: dict = Depends(get_project),
+    project: dict = Depends(get_project_cli_access_key),
     session: AsyncSession = Depends(get_session),
 ):
     changelogs = []
@@ -1005,7 +1005,7 @@ async def save_chat_log(
 ):
     if not session_uuid and not version_uuid:
         raise HTTPException(
-            HTTP_400_BAD_REQUEST, detail="session_uuid or version_uuid required"
+            status_code=status_code.HTTP_400_BAD_REQUEST, detail="session_uuid or version_uuid required"
         )
 
     # check session
@@ -1020,7 +1020,7 @@ async def save_chat_log(
         print("CREATE_NEW_SESSION")
         if not version_uuid:
             raise HTTPException(
-                HTTP_400_BAD_REQUEST,
+                status_code=status_code.HTTP_400_BAD_REQUEST,
                 detail="If you want to create session with new UUID, version_uuid required",
             )
         # create session

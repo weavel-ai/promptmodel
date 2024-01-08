@@ -4,7 +4,7 @@ import { Drawer } from "@/components/Drawer";
 import { useFunctionModelVersion } from "@/hooks/useFunctionModelVersion";
 import { useFunctionModelVersionStore } from "@/stores/functionModelVersionStore";
 import classNames from "classnames";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
   Background,
   BackgroundVariant,
@@ -17,6 +17,7 @@ import {
   Command,
   GitBranch,
   Play,
+  FloppyDisk,
   Plus,
   RocketLaunch,
   Trash,
@@ -60,10 +61,14 @@ import { VersionTag } from "@/components/VersionTag";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { ParsingType } from "@/types/ParsingType";
 import {
+  deleteFunctionModelVersion,
   updateFunctionModelVersionMemo,
   updatePublishedFunctionModelVersion,
 } from "@/apis/function_model_versions";
 import { Prompt } from "@/types/Prompt";
+import { ContextMenu, ContextMenuItem } from "@/components/menu/ContextMenu";
+import { version } from "os";
+import { Modal } from "@/components/modals/Modal";
 dayjs.extend(relativeTime);
 
 const initialNodes = [];
@@ -242,6 +247,7 @@ const VersionsPage = () => {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
   const [hoveredVersionData, setHoveredVersionData] = useState(null);
+  const [menuData, setMenuData] = useState(null);
   const nodeTypes = useMemo(() => ({ modelVersion: ModelVersionNode }), []);
   const {
     focusedEditor,
@@ -323,6 +329,7 @@ const VersionsPage = () => {
             label: item.version,
             version: item.version,
             isPublished: item.is_published,
+            uuid: item.uuid,
           },
           position: { x: node.x, y: node.y },
         };
@@ -351,6 +358,33 @@ const VersionsPage = () => {
     setHoveredVersionData(null);
   }, []);
 
+  const onNodeContextMenu = useCallback(
+    (event, node) => {
+      // Prevent native context menu from showing
+      event.preventDefault();
+
+      // Calculate position of the context menu. We want to make sure it
+      // doesn't get positioned off-screen.
+      const pane = reactFlowRef.current.getBoundingClientRect();
+      setMenuData({
+        id: node.id,
+        uuid: node.data.uuid,
+        top: event.clientY < pane.height - 200 && event.clientY,
+        left: event.clientX < pane.width - 200 && event.clientX,
+        right: event.clientX >= pane.width - 200 && pane.width - event.clientX,
+        bottom:
+          event.clientY >= pane.height - 200 && pane.height - event.clientY,
+      });
+    },
+    [setMenuData]
+  );
+
+  const onPaneClick = useCallback(() => {
+    setSelectedFunctionModelVersion(null);
+    setMenuData(null)},
+    [setMenuData, setSelectedFunctionModelVersion] 
+  );
+
   return (
     <>
       <ReactFlow
@@ -364,9 +398,8 @@ const VersionsPage = () => {
           y: -windowHeight / 3 + 48,
           zoom: 1.5,
         }}
-        onPaneClick={() => {
-          setSelectedFunctionModelVersion(null);
-        }}
+        onPaneClick={onPaneClick}
+        onNodeContextMenu={onNodeContextMenu}
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}
       >
@@ -415,9 +448,103 @@ const VersionsPage = () => {
       {hoveredVersionData && (
         <VersionInfoOverlay versionData={hoveredVersionData} />
       )}
+      {menuData && (
+        <ModelVersionContextMenu
+          onPaneClick={onPaneClick}
+          menuData={menuData}
+          setMenuData={setMenuData}
+        />
+      )}
     </>
   );
 };
+
+function ModelVersionContextMenu({ onPaneClick, menuData, setMenuData }) {
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  return (
+    <>
+      <ContextMenu onClick={onPaneClick} menuData={menuData}>
+        {
+          (
+            <ContextMenuItem
+              icon={(<Trash className="text-red-500" size={20} />) as ReactNode}
+              label="Delete"
+              onClick={() => {
+                setIsDeleteModalOpen(true);
+                // onPaneClick();
+              }}
+            />
+          ) as ReactNode
+        }
+      </ContextMenu>
+      <DeleteFunctionModelVersionModal
+        isOpen={isDeleteModalOpen}
+        setIsOpen={setIsDeleteModalOpen}
+        setMenuData={setMenuData}
+        versionUuid={menuData.uuid}
+      />
+    </>
+  );
+}
+
+function DeleteFunctionModelVersionModal({
+  isOpen,
+  setIsOpen,
+  setMenuData,
+  versionUuid,
+}) {
+  const { functionModelVersionListData, refetchFunctionModelVersionListData } = useFunctionModelVersion();
+
+  const modelVersion = useMemo(() => {
+    return functionModelVersionListData.find((version) => version.uuid === versionUuid);
+  }, [versionUuid, functionModelVersionListData]);
+
+  async function handleDeleteModel() {
+    const toastId = toast.loading("Deleting...");
+    
+    await deleteFunctionModelVersion({
+      uuid: versionUuid,
+    });
+
+    await refetchFunctionModelVersionListData();
+
+    setIsOpen(false);
+    setMenuData(null);
+    toast.update(toastId, {
+      containerId: "default",
+      render: "Deleted!",
+      type: "success",
+      isLoading: false,
+      autoClose: 1000,
+    });
+  }
+
+  return (
+    <Modal isOpen={isOpen} setIsOpen={setIsOpen}>
+      <div className="bg-popover p-6 rounded-box flex flex-col gap-y-4 items-start">
+        <p className="text-base-content text-xl font-semibold">
+          Delete FunctionModel Version {modelVersion?.version}
+        </p>
+        <p className="text-base-content">
+          Are you sure you want to delete Version {modelVersion?.version}? 
+          This action cannot be undone.
+        </p>
+        <div className="flex flex-row w-full justify-end">
+          <button
+            className={classNames(
+              "flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 bg-red-500 hover:bg-red-500/80",
+              "disabled:bg-neutral-content outline-none active:outline-none focus:outline-none"
+            )}
+            onClick={handleDeleteModel}
+          >
+            <p className="text-base-content">Delete</p>
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 function VersionInfoOverlay({ versionData }) {
   const { functionModelData } = useFunctionModel();
@@ -464,6 +591,7 @@ function VersionInfoOverlay({ versionData }) {
 
 function InitialVersionDrawer({ open }: { open: boolean }) {
   const { functionModelData } = useFunctionModel();
+  const { handleSave } = useFunctionModelVersion();
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
 
   const {
@@ -477,6 +605,7 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
     setSelectedModel,
     setSelectedParser,
     setSelectedFunctions,
+    newVersionCache,
   } = useFunctionModelVersionStore();
 
   useEffect(() => {
@@ -505,6 +634,23 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
           <div className="flex flex-row justify-between items-center mb-2">
             <div className="flex flex-row justify-start items-center gap-x-4">
               <p className="text-2xl font-bold">{functionModelData?.name} V1</p>
+            </div>
+            <div className="flex flex-row w-fit justify-end items-center gap-x-2">
+              <button
+                className={classNames(
+                      "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
+                      "text-base-100 disabled:bg-muted disabled:text-muted-content disabled:border-muted-content"
+                    )}
+                onClick={() => handleSave()}
+                disabled={
+                  (newVersionCache && !newVersionCache.uuid?.startsWith("DRAFT")) || 
+                  !(modifiedPrompts?.length > 0) ||
+                  modifiedPrompts?.every?.((prompt) => prompt.content === "")
+                }
+              >
+                <p>Save</p>
+                <FloppyDisk size={20} weight="fill" />
+              </button>
             </div>
           </div>
           <div className="bg-base-200 flex-grow w-full p-4 rounded-t-box overflow-auto">
@@ -598,7 +744,7 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
               style={{ height: lowerBoxHeight }}
             >
               <RunLogUI
-                versionUuid={null}
+                versionUuid={newVersionCache?.uuid || null}
                 isNewOrCachedVersion
                 isInitialVersion
               />
@@ -622,6 +768,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     selectedFunctionModelVersionUuid,
     isEqualToOriginal,
     isEqualToCache,
+    handleSave,
   } = useFunctionModelVersion();
   const {
     newVersionCache,
@@ -707,7 +854,6 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
       { uuid: selectedFunctionModelVersionUuid },
     ]);
   }
-
   return (
     <Drawer
       open={open}
@@ -800,7 +946,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
             {isCreateVariantOpen && (
               <div className="flex flex-row w-1/2 justify-between items-center mb-2">
                 <div className="flex flex-col items-start justify-center">
-                  {isEqualToOriginal || !isEqualToCache || !newVersionCache ? (
+                  {isEqualToOriginal || !isEqualToCache || !newVersionCache?.version ? (
                     <p className="text-base-content font-bold text-lg">
                       New Version
                     </p>
@@ -814,6 +960,26 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     From&nbsp;
                     <u>V{originalFunctionModelVersionData?.version}</u>
                   </p>
+                </div>
+                <div className="flex flex-row justify-end items-center gap-x-3">
+                  <button
+                    className={classNames(
+                      "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
+                      "text-base-100 disabled:bg-muted disabled:text-muted-content disabled:border-muted-content"
+                    )}
+                    onClick={() => {
+                      handleSave();
+                    }}
+                    disabled={
+                      isEqualToOriginal ||
+                      (newVersionCache && !newVersionCache.uuid?.startsWith("DRAFT") && isEqualToCache) ||
+                      !(modifiedPrompts?.length > 0) ||
+                      modifiedPrompts?.every?.((prompt) => prompt.content === "")
+                    }
+                  >
+                    <p>Save</p>
+                    <FloppyDisk size={20} weight="fill" />
+                  </button>
                 </div>
               </div>
             )}
@@ -1326,7 +1492,6 @@ const PromptDiffComponent = ({ originalPrompt, setModifiedPrompts }) => {
     const originalHeight = originalEditorRef.current?.getContentHeight();
     const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
     const maxHeight = windowHeight * 0.7;
-    console.log(originalHeight, modifiedHeight);
     if (modifiedHeight > originalHeight) {
       setHeight(Math.min(modifiedHeight, maxHeight) + 20);
     } else {

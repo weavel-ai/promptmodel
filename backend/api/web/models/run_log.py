@@ -11,7 +11,6 @@ class RunLogInstance(PMObject):
 
     run_from_deployment: bool
 
-    input_register_name: Optional[str] = None
     inputs: Optional[Dict[str, Any]] = None
     raw_output: Optional[str] = None
     parsed_outputs: Optional[Dict[str, Any]] = None
@@ -28,7 +27,17 @@ class RunLogInstance(PMObject):
 
     version_uuid: str
     project_uuid: str
-
+    sample_input_uuid: Optional[str] = None
+    
+class SaveRunLogBody(PMObject):
+    inputs: Optional[Dict[str, Any]] = None
+    raw_output: Optional[str] = None
+    parsed_outputs: Optional[Dict[str, Any]] = None
+    tool_calls: Optional[List[Dict[str, Any]]] = None
+    function_call: Optional[Dict[str, Any]] = None
+    
+    sample_input_uuid: Optional[str] = None
+    run_log_metadata: Optional[Dict[str, Any]] = None
 
 class DeploymentRunLogViewInstance(PMObject):
     run_log_uuid: str
