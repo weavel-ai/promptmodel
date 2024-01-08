@@ -63,10 +63,39 @@ async def get_project(
             status_code=status_code.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
         )
-    api_key = api_key.replace("Bearer ", "")  # Strip "Bearer " from the header value
+    print(api_key)
+    if api_key.lower().startswith("bearer "):
+        api_key = api_key[7:] # Strip "Bearer " from the header value
     async with get_session_context() as session:
         project = (
             await session.execute(select(Project).where(Project.api_key == api_key))
+        ).scalar_one_or_none()
+    if not project:
+        raise HTTPException(
+            status_code=status_code.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
+    logger.debug(f"api key: {api_key}")
+    logger.debug(f"project: {project.name}")
+
+    return project.model_dump()
+
+
+async def get_project_cli_access_key(
+    api_key: str = Security(api_key_header),
+):
+    """Authenticate and return project based on Cli access key."""
+    if not api_key:
+        raise HTTPException(
+            status_code=status_code.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
+        
+    if api_key.lower().startswith("bearer "):
+        cli_access_key = api_key[7:] # Strip "Bearer " from the header value
+    async with get_session_context() as session:
+        project = (
+            await session.execute(select(Project).where(Project.cli_access_key == cli_access_key))
         ).scalar_one_or_none()
     if not project:
         raise HTTPException(
@@ -83,7 +112,8 @@ async def get_cli_user_id(
     api_key: str = Security(api_key_header),
 ):
     """Authenticate and return CLI user based on API key."""
-    api_key = api_key.replace("Bearer ", "")  # Strip "Bearer " from the header value
+    if api_key.lower().startswith("bearer "):
+        api_key = api_key[7:] # Strip "Bearer " from the header value
     async with get_session_context() as session:
         user_id = (
             await session.execute(
@@ -106,9 +136,8 @@ async def get_api_key(
     """Authenticate and return API key."""
     try:
         print("hi", api_key)
-        api_key = api_key.replace(
-            "Bearer ", ""
-        )  # Strip "Bearer " from the header value
+        if api_key.lower().startswith("bearer "):
+            api_key = api_key[7:] # Strip "Bearer " from the header value
         print(api_key)
         return api_key
     except:
