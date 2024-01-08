@@ -142,8 +142,7 @@ export function RunLogUI({
   useEffect(() => {
     if (
       runTasksCount == null ||
-      runLogData == undefined ||
-      runLogData == null ||
+      (!versionUuid?.startsWith("DRAFT") && (runLogData == undefined || runLogData == null ))||
       !versionUuid
     ) {
       setRunLogList([]);
@@ -175,6 +174,7 @@ export function RunLogUI({
         }),
       ];
     }
+
     if (runLogs[versionUuid]) {
       updatedRunLogList.unshift(...Object.values(runLogs[versionUuid]));
     }

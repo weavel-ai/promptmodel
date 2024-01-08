@@ -22,7 +22,7 @@ export interface CreateFunctionModelVersionRequest {
   function_model_uuid: string;
   prompts: { role: string; step: number; content: string }[];
   model: string;
-  from_version?: string | null;
+  from_version?: number | null;
   parsing_type?: string;
   output_keys?: Array<string>;
   functions?: Array<string>;

@@ -11,7 +11,7 @@ export async function saveRunLogs(
   RunLogDataList: Array<saveRunLogsRequest>
 ): Promise<Array<RunLog>> {
   const response = await webServerClient.post(
-    `/version/${functionModelVersionUuid}`,
+    `run_logs/version/${functionModelVersionUuid}`,
     RunLogDataList
   );
   return response.data;

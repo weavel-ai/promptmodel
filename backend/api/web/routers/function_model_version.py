@@ -141,7 +141,7 @@ async def create_function_model_version(
             detail="Failed to create FunctionModelVersion",
         )
         
-    return function_model_version.uuid
+    return function_model_version
 
 @router.get("/{uuid}", response_model=FunctionModelVersionInstance)
 async def fetch_function_model_version(

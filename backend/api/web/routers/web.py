@@ -89,6 +89,7 @@ async def run_function_model(
             provider_args=provider_args,
         ):
             yield json.dumps(chunk)
+        session.close()
 
     return StreamingResponse(
         stream_run(),

@@ -138,19 +138,28 @@ export const useFunctionModelVersion = () => {
 
   async function handleSave(
   ) {
+    // toast
+    const toastId = toast.loading("Saving...");
+    setTimeout(() => {
+      if (toast.isActive(toastId)) {
+        toast.dismiss();
+      }
+    }, 6000);
+
     const res = await createFunctionModelVersion(
       {
         project_uuid: projectData?.uuid as string,
         function_model_uuid: params?.functionModelUuid as string,
         prompts: modifiedPrompts,
         model: selectedModel,
+        from_version: originalFunctionModelVersionData?.version,
         parsing_type: selectedParser,
         output_keys: outputKeys,
         functions: selectedFunctions,
       } as CreateFunctionModelVersionRequest
     );
 
-      // clear all of run log cache where versionUuid is same with newVersionCache.uuid 
+    // clear all of run log cache where versionUuid is same with newVersionCache.uuid 
     await queryClient.invalidateQueries([
       "runLogData",
       {
@@ -172,7 +181,7 @@ export const useFunctionModelVersion = () => {
     // save all the run logs
     const new_run_logs = await saveRunLogs(
       res.uuid,
-      Object.values(runLogs[oldVersionUuidCache]).map((runLog) => {
+      Object?.values(runLogs[oldVersionUuidCache] || {}).map((runLog) => {
         return {
           inputs: runLog.inputs,
           raw_output: runLog.raw_output,
@@ -183,6 +192,16 @@ export const useFunctionModelVersion = () => {
         };
       }) as saveRunLogsRequest[]
     );
+
+    if (new_run_logs == null) {
+      toast.update(toastId, {
+        containerId: "default",
+        render: "Failed to save run logs",
+        type: "error",
+        autoClose: 4000,
+        isLoading: false,
+      });
+    }
 
     Object.values(new_run_logs).forEach((runLog) => {
       updateRunLogs(res.uuid, runLog.uuid, {
@@ -196,6 +215,19 @@ export const useFunctionModelVersion = () => {
       }
     );
 
+    // update the dashboard
+    await refetchFunctionModelVersionListData();
+    if (!originalFunctionModelVersionData?.uuid) { // when initial stage
+      setSelectedFunctionModelVersion(newVersionCache?.version);
+    }
+
+    toast.update(toastId, {
+      containerId: "default",
+      render: "Completed",
+      type: "success",
+      autoClose: 2000,
+      isLoading: false,
+    });
   }
 
   
@@ -231,7 +263,7 @@ export const useFunctionModelVersion = () => {
   ]);
 
   const isEqualToCache = useMemo(() => {
-    if (modifiedPrompts?.length > 0 && isCreateVariantOpen && newVersionCache) {
+    if (modifiedPrompts?.length > 0 && newVersionCache) {
       const promptsEqual = newVersionCache?.prompts.every((prompt, index) =>
         Object.keys(prompt).every(
           (key) => prompt[key] == modifiedPrompts[index][key]
@@ -249,7 +281,6 @@ export const useFunctionModelVersion = () => {
     }
     return true;
   }, [
-    isCreateVariantOpen,
     newVersionCache,
     selectedModel,
     selectedParser,
@@ -266,19 +297,16 @@ export const useFunctionModelVersion = () => {
     const toastId = toast.loading("Running...");
     let prompts: Prompt[];
     let versionUuid: string;
-    let versionUuidForDraft: string | null;
+    let versionUuidForDraft: string;
 
     if (isNewOrCachedVersion) {
       prompts = modifiedPrompts;
-      versionUuid = isEqualToCache ? newVersionCache?.uuid : `DRAFT_${uuidv4() as string}`; // TODO: Fix this
-      // versionUuid = newVersionCache?.uuid;
-      versionUuidForDraft = versionUuid;
-      console.log("versionUuid", versionUuid); // 
-      console.log("versionUuidForDraft", versionUuidForDraft); // these 2 values are undifined
+      versionUuid = isEqualToCache ? (newVersionCache ? newVersionCache.uuid : `DRAFT_${uuidv4() as string}`) : `DRAFT_${uuidv4() as string}`;
+      versionUuidForDraft = cloneDeep(versionUuid);
     } else {
       prompts = originalPromptListData;
       versionUuid = originalFunctionModelVersionData?.uuid;
-      versionUuidForDraft = versionUuid;
+      versionUuidForDraft = cloneDeep(versionUuid);
     }
     let cacheRawOutput = "";
     const cacheParsedOutputs = {};
@@ -296,7 +324,7 @@ export const useFunctionModelVersion = () => {
       fromVersion: isNewOrCachedVersion
         ? originalFunctionModelVersionData?.version
         : null,
-      versionUuidForDraft: versionUuidForDraft,
+      versionUuuidForDraft: versionUuidForDraft,
       versionUuid: versionUuid?.startsWith("DRAFT") ? null : versionUuid,
       sampleInput: sampleInput,
       parsingType: isNewOrCachedVersion
@@ -319,7 +347,7 @@ export const useFunctionModelVersion = () => {
                 autoClose: 2000,
                 isLoading: false,
               });
-               if (versionUuid) {
+               if (versionUuid && !versionUuid.startsWith("DRAFT")) {
                 await queryClient.invalidateQueries([
                   "runLogData",
                   {
@@ -347,15 +375,16 @@ export const useFunctionModelVersion = () => {
               break;
           }
         }
-
-        setNewVersionCache({
-          uuid: versionUuidForDraft,
-          prompts: cloneDeep(prompts),
-          model: selectedModel,
-          parsing_type: selectedParser,
-          functions: cloneDeep(selectedFunctions),
-        });
-
+        
+        if (versionUuidForDraft.startsWith("DRAFT")) {
+          setNewVersionCache({
+            uuid: versionUuidForDraft,
+            prompts: cloneDeep(prompts),
+            model: selectedModel,
+            parsing_type: selectedParser,
+            functions: cloneDeep(selectedFunctions),
+          });
+        }
 
         if (data?.sample_input_uuid) {
           updateRunLogs(versionUuidForDraft, uuid, {
@@ -365,7 +394,7 @@ export const useFunctionModelVersion = () => {
 
         if (data?.inputs) {
           updateRunLogs(versionUuidForDraft, uuid, {
-            inputs: data?.inputs,
+            inputs: data?.inputs, 
           });
         }
         if (data?.raw_output) {
@@ -431,12 +460,6 @@ export const useFunctionModelVersion = () => {
       });
     }
 
-    if (isNewOrCachedVersion) {
-      await refetchFunctionModelVersionListData();
-      if (!originalFunctionModelVersionData?.uuid) {
-        setSelectedFunctionModelVersion(newVersionCache?.version);
-      }
-    }
     // If toast is still loading after 2 seconds, remove it
     setTimeout(() => {
       if (toast.isActive(toastId)) {

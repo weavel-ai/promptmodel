@@ -331,7 +331,6 @@ const VersionsPage = () => {
 
     setNodes(generatedNodes);
     setEdges(generatedEdges);
-    console.log(generatedNodes);
   }, [functionModelVersionListData, windowWidth, windowHeight]);
 
   const onNodeMouseEnter = useCallback((event, node) => {
@@ -617,7 +616,7 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
               style={{ height: lowerBoxHeight }}
             >
               <RunLogUI
-                versionUuid={null}
+                versionUuid={newVersionCache?.uuid || null}
                 isNewOrCachedVersion
                 isInitialVersion
               />
@@ -727,7 +726,6 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
       { uuid: selectedFunctionModelVersionUuid },
     ]);
   }
-
   return (
     <Drawer
       open={open}
@@ -845,8 +843,8 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                       handleSave();
                     }}
                     disabled={
-                      isEqualToOriginal || 
-                      (newVersionCache && !newVersionCache.uuid?.startsWith("DRAFT")) || 
+                      isEqualToOriginal ||
+                      (newVersionCache && !newVersionCache.uuid?.startsWith("DRAFT") && isEqualToCache) ||
                       !(modifiedPrompts?.length > 0) ||
                       modifiedPrompts?.every?.((prompt) => prompt.content === "")
                     }
@@ -1366,7 +1364,6 @@ const PromptDiffComponent = ({ originalPrompt, setModifiedPrompts }) => {
     const originalHeight = originalEditorRef.current?.getContentHeight();
     const modifiedHeight = modifiedEditorRef.current?.getContentHeight();
     const maxHeight = windowHeight * 0.7;
-    console.log(originalHeight, modifiedHeight);
     if (modifiedHeight > originalHeight) {
       setHeight(Math.min(modifiedHeight, maxHeight) + 20);
     } else {
