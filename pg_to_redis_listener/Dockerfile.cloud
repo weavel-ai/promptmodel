@@ -20,4 +20,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY listener.py .
 
 # Run the script when the container launches
-CMD ["python", "./listener.py"]
+CMD ["python", "-u", "./listener.py"]

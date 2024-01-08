@@ -27,8 +27,9 @@ COPY listener.py .
 COPY entrypoint.sh .
 
 RUN chmod +x entrypoint.sh
+RUN chmod +x listener.py
 
 ENTRYPOINT ["./entrypoint.sh"]
 
 # Run the script when the container launches
-CMD ["python", "./listener.py"]
+CMD ["python",  "-u", "./listener.py"]

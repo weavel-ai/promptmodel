@@ -1,4 +1,5 @@
 from datetime import datetime
+import time
 import os
 import json
 import select
@@ -9,6 +10,7 @@ import redis
 
 
 def connect_to_postgres():
+    print("Start connecting to PostgreSQL")
     try:
         conn = psycopg2.connect(
             dbname=os.environ.get("POSTGRES_DB"),
@@ -25,6 +27,7 @@ def connect_to_postgres():
 
 
 def connect_to_redis():
+    print("Start connecting to Redis")
     try:
         redis_host = os.environ.get("REDIS_HOST") or "localhost"
         redis_port = int(os.environ.get("REDIS_PORT", 6379))
@@ -38,6 +41,7 @@ def connect_to_redis():
 
 
 def listen_to_pg_channels(pg_conn, channels):
+    print("Starting to listen to PostgreSQL channels")
     cursors = {channel: pg_conn.cursor() for channel in channels}
     for channel, cursor in cursors.items():
         cursor.execute(f"LISTEN {channel}")
@@ -45,7 +49,9 @@ def listen_to_pg_channels(pg_conn, channels):
 
 
 pg_conn = connect_to_postgres()
+print("End connecting to PostgreSQL")
 redis_conn = connect_to_redis()
+print("End connecting to Redis")
 
 if not pg_conn or not redis_conn:
     print("Failed to establish database connections. Exiting...")
