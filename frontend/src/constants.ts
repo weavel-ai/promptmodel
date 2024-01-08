@@ -9,7 +9,7 @@ export class env {
   static SELF_HOSTED: boolean = process.env.NEXT_PUBLIC_SELF_HOSTED == "true";
   static ENDPOINT_URL_INTERNAL: string =
     process.env.NEXT_PUBLIC_ENDPOINT_URL.includes("localhost")
-      ? "http://localhost:8000/api"
+      ? "http://127.0.0.1:8000/api"
       : // "https://backend:8000/api"
         process.env.NEXT_PUBLIC_ENDPOINT_URL;
 

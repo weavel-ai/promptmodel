@@ -5,9 +5,16 @@ import { useProject } from "@/hooks/useProject";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRunLogCount } from "@/hooks/useRunLogCount";
 import { useChatLogCount } from "@/hooks/useChatMessagesCount";
+import { DateRange } from "react-day-picker";
+import { subDays } from "date-fns";
+import { DatePickerWithRange } from "@/components/ui/DatePickerWithRange";
+import { useProjectDailyRunLogMetrics } from "@/hooks/analytics";
+import { CustomAreaChart } from "@/components/charts/CustomAreaChart";
+import { Button } from "@/components/ui/button";
+import { SelectTab } from "@/components/SelectTab";
 dayjs.extend(relativeTime);
 
 export default function Page() {
@@ -16,12 +23,92 @@ export default function Page() {
   const { changeLogListData } = useChangeLog();
   const { runLogCountData } = useRunLogCount();
   const { chatMessagesCountData: chatLogCountData } = useChatLogCount();
+  enum Tab {
+    Deployment = "Deployment",
+    Development = "Development",
+  }
+  const TABS = [Tab.Deployment, Tab.Development];
+  const [tab, setTab] = useState(Tab.Deployment);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(Date.now(), 7),
+    to: new Date(),
+  });
+  const { projectDailyRunLogMetrics } = useProjectDailyRunLogMetrics(
+    dayjs(dateRange?.from)?.toISOString(),
+    dayjs(dateRange?.to)?.toISOString()
+  );
+
+  useEffect(() => {
+    console.log(projectDailyRunLogMetrics);
+  }, [projectDailyRunLogMetrics]);
+
+  const displayedProjectDailyRunLogMetrics = projectDailyRunLogMetrics?.filter(
+    (data) => {
+      return data.run_from_deployment === (tab == Tab.Deployment);
+    }
+  );
+
+  const totalCost = displayedProjectDailyRunLogMetrics?.reduce(
+    (acc, curr) => acc + curr.total_cost,
+    0
+  );
+
+  const totalLatency = displayedProjectDailyRunLogMetrics?.reduce(
+    (acc, curr) => acc + curr.avg_latency * curr.total_runs,
+    0
+  );
+
+  const totalRuns = displayedProjectDailyRunLogMetrics?.reduce(
+    (acc, curr) => acc + curr.total_runs,
+    0
+  );
+
+  const totalTokens = displayedProjectDailyRunLogMetrics?.reduce(
+    (acc, curr) => acc + curr.total_token_usage,
+    0
+  );
+
+  const avgLatency = totalRuns != 0 ? totalLatency / totalRuns : 0;
+
+  function formatDate(inputDate: Date): string {
+    const year = inputDate.getFullYear();
+    const month = (inputDate.getMonth() + 1).toString().padStart(2, "0");
+    const day = inputDate.getDate().toString().padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
+
+  let date = new Date(dateRange?.from);
+  const existingDates = displayedProjectDailyRunLogMetrics?.map(
+    (metric) => metric.day
+  );
+
+  while (date <= dateRange?.to) {
+    if (!existingDates?.includes(formatDate(date))) {
+      displayedProjectDailyRunLogMetrics?.push({
+        day: formatDate(date),
+        avg_latency: 0,
+        total_cost: 0,
+        total_runs: 0,
+        total_token_usage: 0,
+        run_from_deployment: true,
+      });
+    }
+    date.setDate(date.getDate() + 1);
+  }
+
+  displayedProjectDailyRunLogMetrics?.sort((a, b) => {
+    if (a.day < b.day) return -1;
+    if (a.day > b.day) return 1;
+    return 0;
+  });
 
   return (
     <div className="w-full h-full pl-28 pt-20 pb-8">
       {/* Header */}
       <div className="w-full h-full flex flex-col gap-y-8 overflow-auto pe-4">
         <div className="w-full flex flex-row gap-x-6">
+          {/* Project Overview */}
           <div className="w-1/2 h-fit">
             <div className="justify-start items-center pb-4">
               <p className="text-2xl font-bold text-base-content">
@@ -43,6 +130,7 @@ export default function Page() {
               {/* TODO */}
             </div>
           </div>
+          {/* Changelog */}
           <div className="w-1/2 h-fit flex flex-col">
             <p className="text-xl font-bold pb-4">Changelog</p>
             {/* TODO */}
@@ -72,7 +160,56 @@ export default function Page() {
             </div>
           </div>
         </div>
-        <div className="w-full h-fit flex flex-col"></div>
+        {/* Analytics */}
+        <div className="w-full h-fit flex flex-col">
+          <div className="w-full h-fit flex flex-row justify-between">
+            <div className="w-full h-fit flex flex-row gap-x-8">
+              <p className="text-2xl font-bold pb-4">Analytics</p>
+              <SelectTab
+                tabs={TABS}
+                selectedTab={tab}
+                onSelect={(newTab) => setTab(newTab as Tab)}
+              />
+            </div>
+
+            <div>
+              <DatePickerWithRange
+                dateRange={dateRange}
+                setDateRange={setDateRange}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4 gap-4 w-full">
+            <CustomAreaChart
+              data={displayedProjectDailyRunLogMetrics}
+              dataKey="total_cost"
+              xAxisDataKey="day"
+              title="Total Cost"
+              mainData={`$${totalCost?.toFixed(6)}`}
+            />
+            <CustomAreaChart
+              data={displayedProjectDailyRunLogMetrics}
+              dataKey="avg_latency"
+              xAxisDataKey="day"
+              title="Average Latency"
+              mainData={`${avgLatency?.toFixed(2)}s`}
+            />
+            <CustomAreaChart
+              data={displayedProjectDailyRunLogMetrics}
+              dataKey="total_runs"
+              xAxisDataKey="day"
+              title="Total Runs"
+              mainData={totalRuns}
+            />
+            <CustomAreaChart
+              data={displayedProjectDailyRunLogMetrics}
+              dataKey="total_token_usage"
+              xAxisDataKey="day"
+              title="Token usage"
+              mainData={totalTokens}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -128,7 +128,7 @@ const AnalyticsPage = () => {
   );
 
   const totalTokens = dailyRunLogMetrics?.reduce(
-    (acc, curr) => acc + curr.total_token_usage.total_tokens,
+    (acc, curr) => acc + curr.total_token_usage,
     0
   );
 
@@ -152,11 +152,7 @@ const AnalyticsPage = () => {
         avg_latency: 0,
         total_cost: 0,
         total_runs: 0,
-        total_token_usage: {
-          total_tokens: 0,
-          prompt_tokens: 0,
-          completion_tokens: 0,
-        },
+        total_token_usage: 0,
       });
     }
     date.setDate(date.getDate() + 1);
@@ -204,7 +200,7 @@ const AnalyticsPage = () => {
           />
           <CustomAreaChart
             data={dailyRunLogMetrics}
-            dataKey="total_token_usage.total_tokens"
+            dataKey="total_token_usage"
             xAxisDataKey="day"
             title="Token usage"
             mainData={totalTokens}

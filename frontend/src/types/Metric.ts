@@ -10,7 +10,16 @@ interface Metric {
 }
 
 /**
- * Interface for request to read daily RunLogMetrics.
+ * Interface for request to read project daily RunLogMetrics.
+ */
+export interface ReadProjectDailyRunLogMetricsRequest {
+  project_uuid: string;
+  start_day: string;
+  end_day: string;
+}
+
+/**
+ * Interface for request to read module daily RunLogMetrics.
  */
 export interface ReadDailyRunLogMetricsRequest {
   function_model_uuid: string;
@@ -28,13 +37,23 @@ export interface ReadDailyChatLogMetricsRequest {
 }
 
 /**
+ * General interface for Project RunLogMetric.
+ */
+export interface ProjectRunLogMetric extends Metric {
+  project_uuid?: string;
+  total_runs: number;
+  total_token_usage: number;
+  run_from_deployment: boolean;
+}
+
+/**
  * General interface for RunLogMetric.
  */
 export interface RunLogMetric extends Metric {
   function_model_uuid?: string;
   function_model_name?: string;
   total_runs: number;
-  total_token_usage: Record<string, any>;
+  total_token_usage: number;
 }
 
 /**
