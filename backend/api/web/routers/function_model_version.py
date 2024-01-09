@@ -390,7 +390,6 @@ async def fetch_batch_runs(
         .all()
     )
 
-    # TODO: make response
     res: List[DatasetBatchRunInstance] = []
     for dataset in dataset_with_eval_metric_list:
         batch_run_for_dataset = [

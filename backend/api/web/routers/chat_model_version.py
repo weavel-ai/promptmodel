@@ -132,7 +132,7 @@ async def update_published_chat_model_version(
         .scalar_one()
         .model_dump()
     )
-    # TODO: add this to response
+    
     updated_project = (
         (
             await session.execute(

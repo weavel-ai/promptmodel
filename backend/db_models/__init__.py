@@ -11,6 +11,13 @@ from .project import (
     CliAccess,
     pwd_context,
 )
+from .prompt_component import (
+    PromptComponent,
+    PromptComponentVersion,
+    ComponentLog,
+    ComponentLogRunLog,
+    ComponentLogScore
+)
 from .dataset import SampleInput, Dataset, DatasetSampleInput, BatchRun
 from .function_schema import FunctionSchema
 from .eval_metric import EvalMetric
