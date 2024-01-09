@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Annotated, Any, Dict, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, delete
+from sqlalchemy import select, desc, delete, func
 from sqlalchemy.dialects.postgresql import insert
 
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
@@ -16,8 +16,11 @@ from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
 from ..models.sample_input import (
+    DatasetSampleInputsCountInstance,
     SampleInputInstance,
     CreateSampleInputBody,
+    UpdateDatasetBody,
+    UpdateSampleInputBody,
     CreateDatasetBody,
     DatasetInstance,
     CreateSampleInputForDatasetBody,
@@ -101,10 +104,41 @@ async def create_sample_input(
     return SampleInputInstance(**new_sample_input.model_dump())
 
 
+@router.patch("/{uuid}", response_model=SampleInputInstance)
+async def update_sample_input(
+    jwt: Annotated[str, Depends(get_jwt)],
+    uuid: str,
+    body: UpdateSampleInputBody,
+    session: AsyncSession = Depends(get_session),
+):
+    sample_input: SampleInput = (
+        await session.execute(select(SampleInput).where(SampleInput.uuid == uuid))
+    ).scalar_one_or_none()
+
+    if sample_input is None:
+        raise HTTPException(
+            status_code=status_code.HTTP_404_NOT_FOUND,
+            detail="SampleInput not found",
+        )
+
+    if body.name:
+        sample_input.name = body.name
+    if body.ground_truth:
+        sample_input.ground_truth = body.ground_truth
+    if body.content:
+        sample_input.content = body.content
+    await session.commit()
+    await session.refresh(sample_input)
+
+    return SampleInputInstance(**sample_input.model_dump())
+
+
 @router.get("/dataset/{dataset_uuid}", response_model=List[SampleInputInstance])
 async def fetch_sample_inputs_in_dataset(
     jwt: Annotated[str, Depends(get_jwt)],
     dataset_uuid: str,
+    page: int = 1,
+    rows_per_page: int = 30,
     session: AsyncSession = Depends(get_session),
 ):
     sample_inputs: List[Dict] = [
@@ -118,12 +152,36 @@ async def fetch_sample_inputs_in_dataset(
                 )
                 .where(DatasetSampleInput.dataset_uuid == dataset_uuid)
                 .order_by(desc(SampleInput.created_at))
+                .order_by(desc(SampleInput.id))
+                .offset(max(0, (page - 1)) * rows_per_page)
+                .limit(rows_per_page)
             )
         )
         .scalars()
         .all()
     ]
     return sample_inputs
+
+
+@router.get(
+    "/dataset/{dataset_uuid}/count", response_model=DatasetSampleInputsCountInstance
+)
+async def fetch_dataset_sample_inputs_count(
+    jwt: Annotated[str, Depends(get_jwt)],
+    dataset_uuid: str,
+    session: AsyncSession = Depends(get_session),
+):
+    sample_inputs_count: int = (
+        await session.execute(
+            select(func.count().label("count"))
+            .select_from(DatasetSampleInput)
+            .where(DatasetSampleInput.dataset_uuid == dataset_uuid)
+        )
+    ).scalar()
+
+    return DatasetSampleInputsCountInstance(
+        dataset_uuid=dataset_uuid, count=sample_inputs_count
+    )
 
 
 @router.post("/dataset", response_model=DatasetInstance)
@@ -155,6 +213,34 @@ async def create_dataset(
     await session.commit()
 
     return DatasetInstance(**new_dataset.model_dump())
+
+
+@router.patch("/dataset/{uuid}", response_model=DatasetInstance)
+async def update_dataset(
+    jwt: Annotated[str, Depends(get_jwt)],
+    uuid: str,
+    body: UpdateDatasetBody,
+    session: AsyncSession = Depends(get_session),
+):
+    dataset: Dataset = (
+        await session.execute(select(Dataset).where(Dataset.uuid == uuid))
+    ).scalar_one_or_none()
+
+    if dataset is None:
+        raise HTTPException(
+            status_code=status_code.HTTP_404_NOT_FOUND,
+            detail="Dataset not found",
+        )
+
+    if body.name:
+        dataset.name = body.name
+    if body.description:
+        dataset.description = body.description
+
+    await session.commit()
+    await session.refresh(dataset)
+
+    return DatasetInstance(**dataset.model_dump())
 
 
 @router.post("/dataset/{dataset_uuid}")

@@ -5,7 +5,7 @@ import { InputField } from "../InputField";
 import { Modal } from "./Modal";
 import classNames from "classnames";
 import { useFunctionModelDatasets } from "@/hooks/useFunctionModelDatasets";
-import { useParams } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 
 interface CreateDatasetModalProps {
@@ -18,12 +18,14 @@ export function CreateDatasetModal({
   setIsOpen,
 }: CreateDatasetModalProps) {
   const params = useParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const { createDatasetMutation } = useFunctionModelDatasets();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
   async function handleCreateDataset() {
-    await createDatasetMutation.mutateAsync({
+    const dataset = await createDatasetMutation.mutateAsync({
       project_uuid: params?.projectUuid as string,
       function_model_uuid: params?.functionModelUuid as string,
       name: name,
@@ -31,6 +33,7 @@ export function CreateDatasetModal({
     });
     setIsOpen(false);
     toast.success("Dataset created!");
+    router.push(`${pathname}/datasets/${dataset.uuid}`);
   }
 
   return (

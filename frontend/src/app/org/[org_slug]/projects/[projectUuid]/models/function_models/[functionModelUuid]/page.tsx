@@ -81,7 +81,7 @@ import { ContextMenu, ContextMenuItem } from "@/components/menu/ContextMenu";
 import { Modal } from "@/components/modals/Modal";
 import { useFunctionModelDatasets } from "@/hooks/useFunctionModelDatasets";
 import { CreateDatasetModal } from "@/components/modals/CreateDatasetModal";
-import { Dataset } from "@/types/SampleInput";
+import { Dataset, DatasetWithEvalMetric } from "@/types/SampleInput";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 dayjs.extend(relativeTime);
@@ -1665,52 +1665,51 @@ function DatasetsPage() {
             <tbody className="bg-base-200">
               {functionModelDatasetListData?.length == 0 && (
                 <tr className="align-top">
-                  <td className="w-fit">
-                    <p className="text-base-content font-medium ps-1">
-                      No dataset
-                    </p>
-                  </td>
-                  <td className="flex flex-row gap-x-6 items-center">
+                  <td className="w-fit" colSpan={2}>
                     <p className="text-base-content font-medium ps-1">
                       No dataset
                     </p>
                   </td>
                 </tr>
               )}
-              {functionModelDatasetListData?.map((dataset: Dataset, idx) => (
-                <tr
-                  key={idx}
-                  className={classNames(
-                    "transition-all align-top hover:shadow-sm hover:bg-base-content/5 hover:cursor-pointer"
-                  )}
-                  onClick={() => {
-                    router.push(`${pathname}/datasets/${dataset.uuid}`);
-                  }}
-                >
-                  <td
+              {functionModelDatasetListData?.map(
+                (dataset: DatasetWithEvalMetric, idx) => (
+                  <tr
+                    key={idx}
                     className={classNames(
-                      "w-fit",
-                      idx == functionModelDatasetListData.length - 1 &&
-                        "rounded-bl-md"
+                      "transition-all align-top hover:shadow-sm hover:bg-base-content/5 hover:cursor-pointer"
                     )}
+                    onClick={() => {
+                      router.push(
+                        `${pathname}/datasets/${dataset.dataset_uuid}`
+                      );
+                    }}
                   >
-                    <p className="text-base-content font-medium ps-1">
-                      {dataset.name}
-                    </p>
-                  </td>
-                  <td
-                    className={classNames(
-                      "flex flex-row gap-x-6 items-center",
-                      idx == functionModelDatasetListData.length - 1 &&
-                        "rounded-br-md"
-                    )}
-                  >
-                    <p className="text-base-content font-medium ps-1">
-                      {dataset.description}
-                    </p>
-                  </td>
-                </tr>
-              ))}
+                    <td
+                      className={classNames(
+                        "w-fit",
+                        idx == functionModelDatasetListData.length - 1 &&
+                          "rounded-bl-md"
+                      )}
+                    >
+                      <p className="text-base-content font-medium ps-1">
+                        {dataset.dataset_name}
+                      </p>
+                    </td>
+                    <td
+                      className={classNames(
+                        "flex flex-row gap-x-6 items-center",
+                        idx == functionModelDatasetListData.length - 1 &&
+                          "rounded-br-md"
+                      )}
+                    >
+                      <p className="text-base-content font-medium ps-1">
+                        {dataset.dataset_description}
+                      </p>
+                    </td>
+                  </tr>
+                )
+              )}
             </tbody>
           </table>
         </div>

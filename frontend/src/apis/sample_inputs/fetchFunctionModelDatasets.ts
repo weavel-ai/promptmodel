@@ -1,5 +1,8 @@
 import { webServerClient } from "@/apis/base";
-import { ReadFunctionModelDatasetsRequest, Dataset } from "@/types/SampleInput";
+import {
+  ReadFunctionModelDatasetsRequest,
+  DatasetWithEvalMetric,
+} from "@/types/SampleInput";
 
 /**
  * Reads a FunctionModel's Datasets.
@@ -8,7 +11,7 @@ import { ReadFunctionModelDatasetsRequest, Dataset } from "@/types/SampleInput";
  */
 export async function fetchFunctionModelDatasets(
   requestData: ReadFunctionModelDatasetsRequest
-): Promise<Array<Dataset>> {
+): Promise<Array<DatasetWithEvalMetric>> {
   const { function_model_uuid } = requestData;
   const response = await webServerClient.get(
     `/function_models/${function_model_uuid}/datasets`

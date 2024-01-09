@@ -28,11 +28,22 @@ class CreateSampleInputBody(PMObject):
     ground_truth: Optional[str] = None
 
 
+class UpdateSampleInputBody(PMObject):
+    name: Optional[str] = None
+    content: Dict[str, Any]
+    ground_truth: Optional[str] = None
+
+
 class CreateDatasetBody(PMObject):
     project_uuid: str
     name: str
     description: Optional[str] = None
     function_model_uuid: Optional[str] = None
+
+
+class UpdateDatasetBody(PMObject):
+    name: Optional[str] = None
+    description: Optional[str] = None
 
 
 class DatasetInstance(PMObject):
@@ -42,6 +53,11 @@ class DatasetInstance(PMObject):
     project_uuid: str
     eval_metric_uuid: Optional[str] = None
     function_model_uuid: Optional[str] = None
+
+
+class DatasetSampleInputsCountInstance(PMObject):
+    dataset_uuid: str
+    count: int
 
 
 class DatasetWithEvalMetricFunctionModelInstance(PMObject):
