@@ -968,11 +968,16 @@ async def save_run_log(
     session: AsyncSession = Depends(get_session),
 ):
     api_response = run_log_request_body.api_response
-    latency = api_response["_response_ms"] if "_response_ms" in api_response else None
+    
+    if not isinstance(api_response, dict):
+        api_response = api_response.model_dump()
+
+    latency = api_response["response_ms"] if "response_ms" in api_response else None
+    latency = api_response["_response_ms"] if "_response_ms" in api_response else latency
     if not latency:
         if "latency" in run_log_request_body.metadata:
             latency = run_log_request_body.metadata["latency"]
-
+            
     # save log
     run_log_row = RunLog(
         uuid=run_log_request_body.uuid,
