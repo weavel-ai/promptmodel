@@ -10,7 +10,7 @@ class PromptConfig(PMObject):
 
 
 class FunctionModelRunConfig(PMObject):
-    sample_input_uuid: Optional[str]
+    sample_input_uuid: Optional[str] = None
     function_model_uuid: Optional[str] = None
     prompts: List[PromptConfig]
     model: Optional[str] = "gpt-3.5-turbo"

@@ -217,6 +217,7 @@ async def run_cloud_function_model(
             **provider_args.model_dump(),
         )
         async for item in res:
+            print(item)
             if item.raw_output is not None:
                 output["raw_output"] += item.raw_output
                 data = {
