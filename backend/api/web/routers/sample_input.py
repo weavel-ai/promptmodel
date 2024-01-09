@@ -88,6 +88,8 @@ async def create_sample_input(
                 status_code=status_code.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Same name in project",
             )
+    if body.content is None or body.content == {} or body.input_keys is None or body.input_keys == []:
+        return Response(status_code=status_code.HTTP_200_OK)
     new_sample_input = SampleInput(**body.model_dump())
     session.add(new_sample_input)
     await session.commit()
