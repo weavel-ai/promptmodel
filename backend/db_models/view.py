@@ -105,6 +105,19 @@ class DailyRunLogMetric(Base):
     total_runs: int = Column(BigInteger)
 
 
+class ProjectDailyRunLogMetric(Base):
+    __tablename__ = "project_daily_run_log_metric"
+
+    project_uuid: UUIDType = Column(UUID(as_uuid=True), primary_key=True)
+
+    day: date = Column(Date, primary_key=True)
+    total_cost: Optional[float] = Column(Float)
+    avg_latency: Optional[float] = Column(Float)
+    total_token_usage: Optional[int] = Column(BigInteger)
+    total_runs: int = Column(BigInteger)
+    run_from_deployment: bool = Column(Boolean, primary_key=True)
+
+
 class DeployedChatModelVersion(Base):
     __tablename__ = "deployed_chat_model_version"
 
