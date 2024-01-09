@@ -114,7 +114,6 @@ async def delete_chat_model(
     uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
-    # TODO
     user_auth_check = (
         await session.execute(
             select(ChatModel)
