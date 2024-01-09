@@ -201,7 +201,6 @@ const VersionsPage = () => {
   } = useChatModelVersionStore();
   const nodeTypes = useMemo(() => ({ modelVersion: ModelVersionNode }), []);
 
-  const queryClient = useQueryClient();
   const selectedChatModelVersionUuid = useMemo(() => {
     if (!chatModelVersionListData || !selectedChatModelVersion) return null;
     return chatModelVersionListData.find(
