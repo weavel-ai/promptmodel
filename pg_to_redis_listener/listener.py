@@ -91,7 +91,7 @@ last_check_time = time.time()
 while True:
     current_time = time.time()
     try:
-        if current_time - last_check_time >= 3600:
+        if current_time - last_check_time >= 60:
             print(f"Checking database connections at {datetime.now()}")
             last_check_time = current_time
             if not check_pg_connection(pg_conn):
