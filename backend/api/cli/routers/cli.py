@@ -27,9 +27,10 @@ from db_models import *
 from modules.types import InstanceType
 from litellm.utils import completion_cost, token_counter
 from ..models import *
+from .prompt_component import router as prompt_component_router
 
 router = APIRouter()
-
+router.include_router(prompt_component_router, prefix="/prompt_component")
 
 @router.get("/cli_access/check", response_model=bool)
 async def check_cli_access(
