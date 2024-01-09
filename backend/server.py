@@ -20,6 +20,7 @@ frontend_url = os.getenv("FRONTEND_PUBLIC_URL", "http://localhost:3000")
 origins = ["*"]
 
 
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc: HTTPException):
     logger.error(exc, exc.detail)

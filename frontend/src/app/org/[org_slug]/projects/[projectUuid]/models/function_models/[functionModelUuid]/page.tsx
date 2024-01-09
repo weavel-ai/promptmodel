@@ -2,9 +2,20 @@
 
 import { Drawer } from "@/components/Drawer";
 import { useFunctionModelVersion } from "@/hooks/useFunctionModelVersion";
-import { useFunctionModelVersionStore } from "@/stores/functionModelVersionStore";
+import {
+  FUNCTION_MODEL_VERSION_PAGE_TAB,
+  FUNCTION_MODEL_VERSION_PAGE_TABS,
+  useFunctionModelVersionStore,
+} from "@/stores/functionModelVersionStore";
 import classNames from "classnames";
-import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import ReactFlow, {
   Background,
   BackgroundVariant,
@@ -67,45 +78,42 @@ import {
 } from "@/apis/function_model_versions";
 import { Prompt } from "@/types/Prompt";
 import { ContextMenu, ContextMenuItem } from "@/components/menu/ContextMenu";
-import { version } from "os";
 import { Modal } from "@/components/modals/Modal";
+import { useFunctionModelDatasets } from "@/hooks/useFunctionModelDatasets";
+import { CreateDatasetModal } from "@/components/modals/CreateDatasetModal";
+import { Dataset, DatasetWithEvalMetric } from "@/types/SampleInput";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 dayjs.extend(relativeTime);
 
 const initialNodes = [];
 const initialEdges = [];
 
-enum Tab {
-  Analytics = "Analytics",
-  Versions = "Versions",
-}
-
-const TABS = [Tab.Analytics, Tab.Versions];
-
 export default function Page() {
-  const [tab, setTab] = useState(Tab.Versions);
   const { functionModelData } = useFunctionModel();
   const { functionModelVersionListData } = useFunctionModelVersion();
-  const { isCreateVariantOpen } = useFunctionModelVersionStore();
+  const { isCreateVariantOpen, tab, setTab } = useFunctionModelVersionStore();
 
   return (
     <div className="w-full h-full">
       {functionModelVersionListData?.length > 0 && !isCreateVariantOpen && (
         <div className="fixed top-16 left-24 z-50">
           <SelectTab
-            tabs={TABS}
+            tabs={FUNCTION_MODEL_VERSION_PAGE_TABS}
             selectedTab={tab}
-            onSelect={(newTab) => setTab(newTab as Tab)}
+            onSelect={(newTab) => setTab(newTab)}
           />
         </div>
       )}
-      {tab == Tab.Analytics && <AnalyticsPage />}
-      {tab == Tab.Versions && <VersionsPage />}
+      {tab == FUNCTION_MODEL_VERSION_PAGE_TAB.Analytics && <AnalyticsPage />}
+      {tab == FUNCTION_MODEL_VERSION_PAGE_TAB.Versions && <VersionsPage />}
+      {tab == FUNCTION_MODEL_VERSION_PAGE_TAB.Datasets && <DatasetsPage />}
     </div>
   );
 }
 
 // Analytics Tab Page
-const AnalyticsPage = () => {
+function AnalyticsPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(Date.now(), 7),
     to: new Date(),
@@ -234,10 +242,10 @@ const AnalyticsPage = () => {
       </div>
     </div>
   );
-};
+}
 
 // Versions Tab Page
-const VersionsPage = () => {
+function VersionsPage() {
   const [windowWidth, windowHeight] = useWindowSize();
   const { functionModelVersionListData } = useFunctionModelVersion();
   const [nodes, setNodes] = useState(initialNodes);
@@ -377,9 +385,8 @@ const VersionsPage = () => {
 
   const onPaneClick = useCallback(() => {
     setSelectedFunctionModelVersion(null);
-    setMenuData(null)},
-    [setMenuData, setSelectedFunctionModelVersion] 
-  );
+    setMenuData(null);
+  }, [setMenuData, setSelectedFunctionModelVersion]);
 
   return (
     <>
@@ -453,7 +460,7 @@ const VersionsPage = () => {
       )}
     </>
   );
-};
+}
 
 function ModelVersionContextMenu({ onPaneClick, menuData, setMenuData }) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -490,15 +497,18 @@ function DeleteFunctionModelVersionModal({
   setMenuData,
   versionUuid,
 }) {
-  const { functionModelVersionListData, refetchFunctionModelVersionListData } = useFunctionModelVersion();
+  const { functionModelVersionListData, refetchFunctionModelVersionListData } =
+    useFunctionModelVersion();
 
   const modelVersion = useMemo(() => {
-    return functionModelVersionListData.find((version) => version.uuid === versionUuid);
+    return functionModelVersionListData.find(
+      (version) => version.uuid === versionUuid
+    );
   }, [versionUuid, functionModelVersionListData]);
 
   async function handleDeleteModel() {
     const toastId = toast.loading("Deleting...");
-    
+
     await deleteFunctionModelVersion({
       uuid: versionUuid,
     });
@@ -523,8 +533,8 @@ function DeleteFunctionModelVersionModal({
           Delete FunctionModel Version {modelVersion?.version}
         </p>
         <p className="text-base-content">
-          Are you sure you want to delete Version {modelVersion?.version}? 
-          This action cannot be undone.
+          Are you sure you want to delete Version {modelVersion?.version}? This
+          action cannot be undone.
         </p>
         <div className="flex flex-row w-full justify-end">
           <button
@@ -634,12 +644,13 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
             <div className="flex flex-row w-fit justify-end items-center gap-x-2">
               <button
                 className={classNames(
-                      "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
-                      "text-base-100 disabled:bg-muted disabled:text-muted-content disabled:border-muted-content"
-                    )}
+                  "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-base-content hover:bg-base-content/80",
+                  "text-base-100 disabled:bg-muted disabled:text-muted-content disabled:border-muted-content"
+                )}
                 onClick={() => handleSave()}
                 disabled={
-                  (newVersionCache && !newVersionCache.uuid?.startsWith("DRAFT")) || 
+                  (newVersionCache &&
+                    !newVersionCache.uuid?.startsWith("DRAFT")) ||
                   !(modifiedPrompts?.length > 0) ||
                   modifiedPrompts?.every?.((prompt) => prompt.content === "")
                 }
@@ -942,7 +953,9 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
             {isCreateVariantOpen && (
               <div className="flex flex-row w-1/2 justify-between items-center mb-2">
                 <div className="flex flex-col items-start justify-center">
-                  {isEqualToOriginal || !isEqualToCache || !newVersionCache?.version ? (
+                  {isEqualToOriginal ||
+                  !isEqualToCache ||
+                  !newVersionCache?.version ? (
                     <p className="text-base-content font-bold text-lg">
                       New Version
                     </p>
@@ -968,9 +981,13 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     }}
                     disabled={
                       isEqualToOriginal ||
-                      (newVersionCache && !newVersionCache.uuid?.startsWith("DRAFT") && isEqualToCache) ||
+                      (newVersionCache &&
+                        !newVersionCache.uuid?.startsWith("DRAFT") &&
+                        isEqualToCache) ||
                       !(modifiedPrompts?.length > 0) ||
-                      modifiedPrompts?.every?.((prompt) => prompt.content === "")
+                      modifiedPrompts?.every?.(
+                        (prompt) => prompt.content === ""
+                      )
                     }
                   >
                     <p>Save</p>
@@ -1601,6 +1618,102 @@ function ModelVersionNode({ data }) {
         V <span className="font-bold text-xl not-italic">{data.label}</span>
       </p>
       <Handle type="source" position={Position.Bottom} />
+    </div>
+  );
+}
+
+// Datasets Tab Page
+function DatasetsPage() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { functionModelDatasetListData } = useFunctionModelDatasets();
+  const [isCreateDatasetModalOpen, setIsCreateDatasetModalOpen] =
+    useState<boolean>(false);
+
+  return (
+    <div className="overflow-y-auto w-full h-full">
+      <CreateDatasetModal
+        isOpen={isCreateDatasetModalOpen}
+        setIsOpen={setIsCreateDatasetModalOpen}
+      />
+      <div className="flex flex-col gap-y-2 justify-start items-center w-full py-28 pl-24 pr-6">
+        <div className="flex flex-row justify-between mt-2 w-full">
+          <p className="text-2xl font-semibold my-2">Datasets</p>
+          <button
+            className={classNames(
+              "btn btn-outline btn-sm h-10 rounded-md flex flex-row gap-x-1 items-center text-base-content/90 hover:text-base-content",
+              "normal-case font-normal hover:bg-base-content/10 border-muted-content/80"
+            )}
+            onClick={() => setIsCreateDatasetModalOpen(true)}
+          >
+            <Plus size={16} />
+            <p>Add dataset</p>
+          </button>
+        </div>
+        <div className="w-full overflow-auto">
+          <table className="w-full table table-pin-cols">
+            <thead className="z-10 w-full rounded-md">
+              <tr className="text-base-content">
+                <th className="w-fit !bg-base-300 rounded-tl-md">
+                  <p className="text-base font-medium ps-1">Name</p>
+                </th>
+                <th className="flex flex-row gap-x-6 items-center flex-grow !bg-base-300 rounded-tr-md">
+                  <p className="text-base font-medium ps-1">Description</p>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-base-200">
+              {functionModelDatasetListData?.length == 0 && (
+                <tr className="align-top">
+                  <td className="w-fit" colSpan={2}>
+                    <p className="text-base-content font-medium ps-1">
+                      No dataset
+                    </p>
+                  </td>
+                </tr>
+              )}
+              {functionModelDatasetListData?.map(
+                (dataset: DatasetWithEvalMetric, idx) => (
+                  <tr
+                    key={idx}
+                    className={classNames(
+                      "transition-all align-top hover:shadow-sm hover:bg-base-content/5 hover:cursor-pointer"
+                    )}
+                    onClick={() => {
+                      router.push(
+                        `${pathname}/datasets/${dataset.dataset_uuid}`
+                      );
+                    }}
+                  >
+                    <td
+                      className={classNames(
+                        "w-fit",
+                        idx == functionModelDatasetListData.length - 1 &&
+                          "rounded-bl-md"
+                      )}
+                    >
+                      <p className="text-base-content font-medium ps-1">
+                        {dataset.dataset_name}
+                      </p>
+                    </td>
+                    <td
+                      className={classNames(
+                        "flex flex-row gap-x-6 items-center",
+                        idx == functionModelDatasetListData.length - 1 &&
+                          "rounded-br-md"
+                      )}
+                    >
+                      <p className="text-base-content font-medium ps-1">
+                        {dataset.dataset_description}
+                      </p>
+                    </td>
+                  </tr>
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

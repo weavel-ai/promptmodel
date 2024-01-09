@@ -47,6 +47,7 @@
     "react-hotkeys-hook": "^4.4.1",
     "react-json-view": "^1.21.3",
     "react-modern-drawer": "^1.2.2",
+    "react-papaparse": "^4.4.0",
     "react-responsive": "^9.0.2",
     "react-sortablejs": "^6.1.4",
     "react-svg": "^16.1.31",

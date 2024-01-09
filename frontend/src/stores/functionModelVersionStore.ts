@@ -3,6 +3,18 @@ import { Prompt } from "@/types/Prompt";
 import { editor } from "monaco-editor";
 import { create } from "zustand";
 
+export enum FUNCTION_MODEL_VERSION_PAGE_TAB {
+  Analytics = "Analytics",
+  Versions = "Versions",
+  Datasets = "Datasets",
+}
+
+export const FUNCTION_MODEL_VERSION_PAGE_TABS = [
+  FUNCTION_MODEL_VERSION_PAGE_TAB.Analytics,
+  FUNCTION_MODEL_VERSION_PAGE_TAB.Versions,
+  FUNCTION_MODEL_VERSION_PAGE_TAB.Datasets,
+];
+
 export type RunLog = {
   inputs?: Record<string, any> | string;
   raw_output?: string;
@@ -23,6 +35,7 @@ type NewVersionCache = {
 };
 
 type Store = {
+  tab: FUNCTION_MODEL_VERSION_PAGE_TAB;
   isCreateVariantOpen: boolean;
   fullScreenRunVersionUuid: string | null;
   selectedFunctionModelVersion: number | null;
@@ -42,6 +55,7 @@ type Store = {
 };
 
 type Actions = {
+  setTab: (tab: string) => void;
   setIsCreateVariantOpen: (isOpen: boolean) => void;
   setFullScreenRunVersionUuid: (version: string) => void;
   setSelectedFunctionModelVersion: (version: number) => void;
@@ -66,6 +80,7 @@ type Actions = {
 };
 
 export const useFunctionModelVersionStore = create<Store & Actions>((set) => ({
+  tab: FUNCTION_MODEL_VERSION_PAGE_TAB.Analytics,
   isCreateVariantOpen: false,
   fullScreenRunVersionUuid: null,
   selectedFunctionModelVersion: null,
@@ -82,6 +97,14 @@ export const useFunctionModelVersionStore = create<Store & Actions>((set) => ({
   functionModelVersionLists: {},
   focusedEditor: null,
   showSlashOptions: false,
+  setTab: (tab: string) =>
+    set({
+      tab: FUNCTION_MODEL_VERSION_PAGE_TABS.includes(
+        tab as FUNCTION_MODEL_VERSION_PAGE_TAB
+      )
+        ? (tab as FUNCTION_MODEL_VERSION_PAGE_TAB)
+        : FUNCTION_MODEL_VERSION_PAGE_TAB.Analytics,
+    }),
   setIsCreateVariantOpen: (isOpen) => set({ isCreateVariantOpen: isOpen }),
   setFullScreenRunVersionUuid: (version) =>
     set({ fullScreenRunVersionUuid: version }),
