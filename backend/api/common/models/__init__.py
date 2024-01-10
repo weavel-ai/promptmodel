@@ -5,14 +5,14 @@ from .models import (
     FunctionModelBatchRunConfig,
 )
 
-from .unit_logger import (
-    CreateUnitLoggerBody,
-    CreateUnitLoggerVersionBody,
+from .unit import (
+    CreateUnitBody,
+    CreateUnitVersionBody,
     CreateUnitLogBody,
     CreateUnitLogResponse,
     ConnectUnitLogRunLogBody,
     ScoreUnitLogBody,
-    UnitLoggerInstance,
-    UnitLoggerVersionInstance,
+    UnitInstance,
+    UnitVersionInstance,
     UnitLogInstance,
 )

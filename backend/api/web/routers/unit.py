@@ -1,4 +1,4 @@
-"""APIs for UnitLogger"""
+"""APIs for Unit"""
 from datetime import datetime
 from typing import Annotated, List
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,40 +12,40 @@ from utils.logger import logger
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from api.common.models.unit_logger import (
-    UnitLoggerInstance,
-    UnitLoggerVersionInstance,
+from api.common.models.unit import (
+    UnitInstance,
+    UnitVersionInstance,
     UnitLogInstance,
 )
 
 router = APIRouter()
 
-@router.get("/project/{project_uuid}", response_model=List[UnitLoggerInstance])
-async def fetch_unit_logger_list(
+@router.get("/project/{project_uuid}", response_model=List[UnitInstance])
+async def fetch_unit_list(
     jwt: dict = Depends(get_jwt),
     project_uuid: str = None,
     session: AsyncSession = Depends(get_session),
 ):
     """Fetch list of prompt components"""
-    component_list: List[UnitLogger] = (
+    component_list: List[Unit] = (
         await session.execute(
-            select(UnitLogger)
-            .where(UnitLogger.project_uuid == project_uuid)
+            select(Unit)
+            .where(Unit.project_uuid == project_uuid)
         )
     ).scalars().all()
     
-    version_list: List[UnitLoggerVersion] = (
-        await session.execute(select(UnitLoggerVersion).where(UnitLoggerVersion.unit_logger_uuid.in_([component.uuid for component in component_list])))
+    version_list: List[UnitVersion] = (
+        await session.execute(select(UnitVersion).where(UnitVersion.unit_uuid.in_([component.uuid for component in component_list])))
     ).scalars().all()
     
     component_version_list = {}
     for version in version_list:
-        if version.unit_logger_uuid not in component_version_list:
-            component_version_list[version.unit_logger_uuid] = []
-        component_version_list[version.unit_logger_uuid].append(version.uuid)
+        if version.unit_uuid not in component_version_list:
+            component_version_list[version.unit_uuid] = []
+        component_version_list[version.unit_uuid].append(version.uuid)
     
     res = [
-        UnitLoggerInstance(
+        UnitInstance(
             uuid=component.uuid,
             name=component.name,
             project_uuid=component.project_uuid,
@@ -57,19 +57,19 @@ async def fetch_unit_logger_list(
     
     return res
 
-@router.get("/{component_uuid}/versions", response_model=List[UnitLoggerVersionInstance])
-async def fetch_unit_logger_versions(
+@router.get("/{component_uuid}/versions", response_model=List[UnitVersionInstance])
+async def fetch_unit_versions(
     jwt: dict = Depends(get_jwt),
     component_uuid: str = None,
     session: AsyncSession = Depends(get_session),
 ):
     """Fetch List of prompt component versions"""
-    version_list: List[UnitLoggerVersionInstance] = [
-        UnitLoggerVersionInstance(**version.model_dump())
+    version_list: List[UnitVersionInstance] = [
+        UnitVersionInstance(**version.model_dump())
         for version in (
         await session.execute(
-                select(UnitLoggerVersion)
-                .where(UnitLoggerVersion.unit_logger_uuid == component_uuid)
+                select(UnitVersion)
+                .where(UnitVersion.unit_uuid == component_uuid)
             )
         ).scalars().all()
     ]
@@ -89,8 +89,8 @@ async def fetch_logs(
     if not version_uuid and component_uuid:
         version_uuid_list: List[str] = (
             await session.execute(
-                select(UnitLoggerVersion.uuid)
-                .where(UnitLoggerVersion.unit_logger_uuid == component_uuid)
+                select(UnitVersion.uuid)
+                .where(UnitVersion.unit_uuid == component_uuid)
             )
         ).scalars().all()
         log_query = log_query.where(UnitLog.version_uuid.in_(version_uuid_list))

@@ -27,8 +27,8 @@ from db_models import *
 from modules.types import InstanceType
 from litellm.utils import completion_cost, token_counter
 from ..models import *
-from api.common.models.unit_logger import (
-    CreateUnitLoggerVersionBody,
+from api.common.models.unit import (
+    CreateUnitVersionBody,
     CreateUnitLogBody,
     CreateUnitLogResponse,
     ConnectUnitLogRunLogBody,
@@ -38,25 +38,25 @@ from api.common.models.unit_logger import (
 router = APIRouter()
 
 @router.post("")
-async def create_unit_logger_version(
-    body: CreateUnitLoggerVersionBody,
+async def create_unit_version(
+    body: CreateUnitVersionBody,
     project: dict = Depends(get_project),
     session: AsyncSession = Depends(get_session),
 ):
-    # check if unit_logger with name exists
-    component: UnitLogger = (
+    # check if unit with name exists
+    component: Unit = (
         await session.execute(
-            select(UnitLogger)
+            select(Unit)
             .where(
-                UnitLogger.project_uuid == project["uuid"]
-            ).where(UnitLogger.name == body.name)
+                Unit.project_uuid == project["uuid"]
+            ).where(Unit.name == body.name)
         )
     ).scalar_one_or_none()
     
     if not component:
         # create
         session.add(
-            UnitLogger(
+            Unit(
                 name=body.name,
                 project_uuid=project["uuid"],
             )
@@ -65,21 +65,21 @@ async def create_unit_logger_version(
         await session.refresh(component)
     
     # check version exist
-    version: UnitLoggerVersion = (
+    version: UnitVersion = (
         await session.execute(
-            select(UnitLoggerVersion)
+            select(UnitVersion)
             .where(
-                UnitLoggerVersion.unit_logger_uuid == component.uuid
-            ).where(UnitLoggerVersion.version == body.version)
+                UnitVersion.unit_uuid == component.uuid
+            ).where(UnitVersion.version == body.version)
         )
     ).scalar_one_or_none()
     
     if not version:
         # create
         session.add(
-            UnitLoggerVersion(
+            UnitVersion(
                 version=body.version,
-                unit_logger_uuid=component.uuid,
+                unit_uuid=component.uuid,
             )
         )
         await session.commit()
@@ -93,18 +93,18 @@ async def create_unit_log(
     project: dict = Depends(get_project),
     session: AsyncSession = Depends(get_session),
 ):
-    # check if unit_logger with name exists
-    component: UnitLogger = (
+    # check if unit with name exists
+    component: Unit = (
         await session.execute(
-            select(UnitLogger)
+            select(Unit)
             .where(
-                UnitLogger.project_uuid == project["uuid"]
-            ).where(UnitLogger.name == body.name)
+                Unit.project_uuid == project["uuid"]
+            ).where(Unit.name == body.name)
         )
     ).scalar_one_or_none()
     if not component:
         # create
-        component = UnitLogger(
+        component = Unit(
             name=body.name,
             project_uuid=project["uuid"],
         )
@@ -113,20 +113,20 @@ async def create_unit_log(
         await session.refresh(component)
     
     # check version exist
-    version: UnitLoggerVersion = (
+    version: UnitVersion = (
         await session.execute(
-            select(UnitLoggerVersion)
+            select(UnitVersion)
             .where(
-                UnitLoggerVersion.unit_logger_uuid == component.uuid
-            ).where(UnitLoggerVersion.version == body.version)
+                UnitVersion.unit_uuid == component.uuid
+            ).where(UnitVersion.version == body.version)
         )
     ).scalar_one_or_none()
     
     if not version:
         # create
-        version = UnitLoggerVersion(
+        version = UnitVersion(
             version=body.version,
-            unit_logger_uuid=component.uuid,
+            unit_uuid=component.uuid,
         )
         session.add(version)
         await session.commit()

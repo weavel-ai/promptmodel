@@ -11,9 +11,9 @@ from .project import (
     CliAccess,
     pwd_context,
 )
-from .unit_logger import (
-    UnitLogger,
-    UnitLoggerVersion,
+from .unit import (
+    Unit,
+    UnitVersion,
     UnitLog,
     UnitLogRunLog,
     UnitLogScore

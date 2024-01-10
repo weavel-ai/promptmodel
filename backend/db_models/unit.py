@@ -23,8 +23,8 @@ if TYPE_CHECKING:
     from .project import Project
     
 
-class UnitLogger(Base):
-    __tablename__ = "unit_logger"
+class Unit(Base):
+    __tablename__ = "unit"
 
     id: int = Column(BigInteger, Identity())
     created_at: datetime = Column(
@@ -50,8 +50,8 @@ class UnitLogger(Base):
     )
 
 
-class UnitLoggerVersion(Base):
-    __tablename__ = "unit_logger_version"
+class UnitVersion(Base):
+    __tablename__ = "unit_version"
 
     id: int = Column(BigInteger, Identity())
     created_at: datetime = Column(
@@ -66,10 +66,10 @@ class UnitLoggerVersion(Base):
 
     version: int = Column(BigInteger)
 
-    unit_logger_uuid: UUIDType = Column(
+    unit_uuid: UUIDType = Column(
         UUID(as_uuid=True),
         ForeignKey(
-            "unit_logger.uuid",
+            "unit.uuid",
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),
@@ -91,7 +91,7 @@ class UnitLog(Base):
     version_uuid: UUIDType = Column(
         UUID(as_uuid=True),
         ForeignKey(
-            "unit_logger_version.uuid",
+            "unit_version.uuid",
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),

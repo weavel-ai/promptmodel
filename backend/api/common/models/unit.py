@@ -1,13 +1,13 @@
-"""API models for UnitLogger"""
+"""API models for Unit"""
 
 from typing import Optional, List, Dict, Any
 from modules.types import PMObject
 
-class CreateUnitLoggerBody(PMObject):
+class CreateUnitBody(PMObject):
     name: str
     project_uuid: str
     
-class CreateUnitLoggerVersionBody(PMObject):
+class CreateUnitVersionBody(PMObject):
     name: str
     version: int
     project_uuid: str
@@ -30,13 +30,13 @@ class ScoreUnitLogBody(PMObject):
     unit_log_uuid: str
     scores: Dict[str, Any]
 
-class UnitLoggerInstance(PMObject):
+class UnitInstance(PMObject):
     uuid: str
     name: str
     created_at: str
     version_list: List[int]
     
-class UnitLoggerVersionInstance(PMObject):
+class UnitVersionInstance(PMObject):
     uuid: str
     name: str
     version: int
