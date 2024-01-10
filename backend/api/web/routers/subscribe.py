@@ -44,6 +44,7 @@ async def redis_listener(
     try:
         while True:
             message = await pubsub.get_message(ignore_subscribe_messages=True)
+
             if message:
                 # Decode the bytes data to string and then load it as JSON
                 data_str = message["data"].decode("utf-8")

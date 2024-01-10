@@ -27,7 +27,7 @@ const containerVariants = cva(
 );
 
 const tabVariants = cva(
-  "w-full h-full px-3 flex justify-center items-center cursor-pointer transition-colors bg-transparent z-0",
+  "min-w-fit w-full h-full px-3 flex justify-center items-center cursor-pointer transition-colors bg-transparent z-0",
   {
     variants: {
       variant: {
@@ -127,7 +127,7 @@ export const SelectTab = ({
           )}
           onClick={() => onSelect(tab)}
         >
-          <p className="flex-shrink-0">{tab}</p>
+          <p className="flex-shrink-0 w-fit">{tab}</p>
         </div>
       ))}
       <motion.div

@@ -861,15 +861,15 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
       { uuid: selectedFunctionModelVersionUuid },
     ]);
   }
+
   return (
     <Drawer
       open={open}
       direction="right"
-      style={{ width: isCreateVariantOpen ? "calc(100vw - 5rem)" : "auto" }}
-      classNames={classNames(
-        isCreateVariantOpen ? "backdrop-blur-md" : "!w-[60vw]",
-        "mr-4"
-      )}
+      style={{
+        width: isCreateVariantOpen ? "calc(100vw - 5rem)" : "max(60vw, 40rem)",
+      }}
+      classNames={classNames(isCreateVariantOpen && "backdrop-blur-md", "mr-4")}
     >
       {open && (
         <div

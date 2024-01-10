@@ -28,16 +28,51 @@ class RunLogInstance(PMObject):
     version_uuid: str
     project_uuid: str
     sample_input_uuid: Optional[str] = None
-    
+
+
+class RunLogWithScoreInstance(PMObject):
+    id: int
+    created_at: str
+    uuid: str
+
+    run_from_deployment: bool
+
+    inputs: Optional[Dict[str, Any]] = None
+    raw_output: Optional[str] = None
+    parsed_outputs: Optional[Dict[str, Any]] = None
+    tool_calls: Optional[List[Dict[str, Any]]] = None
+    function_call: Optional[Dict[str, Any]] = None
+
+    run_log_metadata: Optional[Dict[str, Any]] = None
+
+    latency: Optional[float] = None
+    cost: Optional[float] = None
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+
+    version_uuid: str
+    project_uuid: str
+    sample_input_uuid: Optional[str] = None
+
+    # From RunLogScore
+    score: float
+
+    # From EvalMetric
+    eval_metric_name: str
+    eval_metric_uuid: str
+
+
 class SaveRunLogBody(PMObject):
     inputs: Optional[Dict[str, Any]] = None
     raw_output: Optional[str] = None
     parsed_outputs: Optional[Dict[str, Any]] = None
     tool_calls: Optional[List[Dict[str, Any]]] = None
     function_call: Optional[Dict[str, Any]] = None
-    
+
     sample_input_uuid: Optional[str] = None
     run_log_metadata: Optional[Dict[str, Any]] = None
+
 
 class DeploymentRunLogViewInstance(PMObject):
     run_log_uuid: str

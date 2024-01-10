@@ -26,8 +26,7 @@ from .function_model_version import (
     CreateFunctionModelVersionBody,
     UpdatePublishedFunctionModelVersionBody,
     UpdateFunctionModelVersionTagsBody,
-    DatasetBatchRunInstance,\
-    FunctionModelVersionBatchRunInstance
+    FunctionModelVersionBatchRunInstance,
 )
 
 from .function_model import (
@@ -36,14 +35,19 @@ from .function_model import (
     DatasetForFunctionModelInstance,
 )
 from .prompt import PromptInstance
-from .run_log import RunLogInstance, SaveRunLogBody, DeploymentRunLogViewInstance, RunLogsCountInstance
+from .run_log import (
+    RunLogInstance,
+    SaveRunLogBody,
+    DeploymentRunLogViewInstance,
+    RunLogsCountInstance,
+)
 from .sample_input import (
     SampleInputInstance,
     CreateSampleInputBody,
     CreateDatasetBody,
     DatasetInstance,
     CreateSampleInputForDatasetBody,
-    DatasetWithEvalMetricFunctionModelInstance
+    DatasetWithEvalMetricFunctionModelInstance,
 )
 from .tags import TagsInstance, CreateTagsBody
 from .user import UserInstance, CreateUserBody
