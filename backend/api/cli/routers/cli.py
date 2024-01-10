@@ -27,9 +27,10 @@ from db_models import *
 from modules.types import InstanceType
 from litellm.utils import completion_cost, token_counter
 from ..models import *
+from .unit import router as unit_router
 
 router = APIRouter()
-
+router.include_router(unit_router, prefix="/unit")
 
 @router.get("/cli_access/check", response_model=bool)
 async def check_cli_access(
