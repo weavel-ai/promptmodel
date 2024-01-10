@@ -11,12 +11,12 @@ from .project import (
     CliAccess,
     pwd_context,
 )
-from .prompt_component import (
-    PromptComponent,
-    PromptComponentVersion,
-    ComponentLog,
-    ComponentLogRunLog,
-    ComponentLogScore
+from .unit_logger import (
+    UnitLogger,
+    UnitLoggerVersion,
+    UnitLog,
+    UnitLogRunLog,
+    UnitLogScore
 )
 from .dataset import SampleInput, Dataset, DatasetSampleInput, BatchRun
 from .function_schema import FunctionSchema

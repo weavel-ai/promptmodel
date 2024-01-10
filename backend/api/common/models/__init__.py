@@ -5,14 +5,14 @@ from .models import (
     FunctionModelBatchRunConfig,
 )
 
-from .prompt_component import (
-    CreatePromptComponentBody,
-    CreatePromptComponentVersionBody,
-    CreateComponentLogBody,
-    CreateComponentLogResponse,
-    ConnectComponentRunLogBody,
-    ScoreComponentRunLogBody,
-    PromptComponentInstance,
-    PromptComponentVersionInstance,
-    ComponentLogInstance,
+from .unit_logger import (
+    CreateUnitLoggerBody,
+    CreateUnitLoggerVersionBody,
+    CreateUnitLogBody,
+    CreateUnitLogResponse,
+    ConnectUnitLogRunLogBody,
+    ScoreUnitLogBody,
+    UnitLoggerInstance,
+    UnitLoggerVersionInstance,
+    UnitLogInstance,
 )

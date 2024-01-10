@@ -19,7 +19,7 @@ from .sample_input import router as sample_input_router
 from .tags import router as tags_router
 from .user import router as user_router
 from .subscribe import router as subscribe_router
-from .prompt_component import router as prompt_component_router
+from .unit_logger import router as unit_logger_router
 
 router = APIRouter()
 router.include_router(web_router, tags=["web"])
@@ -73,4 +73,4 @@ router.include_router(analytics_router, prefix="/metrics", tags=["metric"])
 
 router.include_router(subscribe_router, prefix="/subscribe", tags=["subscribe"])
 
-router.include_router(prompt_component_router, prefix="/prompt_components", tags=["prompt_component"])
+router.include_router(unit_logger_router, prefix="/unit_loggers", tags=["unit_logger"])

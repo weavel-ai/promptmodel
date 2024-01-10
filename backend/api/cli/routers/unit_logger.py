@@ -1,4 +1,4 @@
-"""APIs for Component Logging"""
+"""APIs for Unit Logging"""
 from uuid import uuid4
 
 from typing import Any, Dict, List, Optional, Union
@@ -27,36 +27,36 @@ from db_models import *
 from modules.types import InstanceType
 from litellm.utils import completion_cost, token_counter
 from ..models import *
-from api.common.models.prompt_component import (
-    CreatePromptComponentVersionBody,
-    CreateComponentLogBody,
-    CreateComponentLogResponse,
-    ConnectComponentRunLogBody,
-    ScoreComponentRunLogBody,
+from api.common.models.unit_logger import (
+    CreateUnitLoggerVersionBody,
+    CreateUnitLogBody,
+    CreateUnitLogResponse,
+    ConnectUnitLogRunLogBody,
+    ScoreUnitLogBody,
 )
 
 router = APIRouter()
 
 @router.post("")
-async def create_prompt_component_version(
-    body: CreatePromptComponentVersionBody,
+async def create_unit_logger_version(
+    body: CreateUnitLoggerVersionBody,
     project: dict = Depends(get_project),
     session: AsyncSession = Depends(get_session),
 ):
-    # check if prompt_component with name exists
-    component: PromptComponent = (
+    # check if unit_logger with name exists
+    component: UnitLogger = (
         await session.execute(
-            select(PromptComponent)
+            select(UnitLogger)
             .where(
-                PromptComponent.project_uuid == project["uuid"]
-            ).where(PromptComponent.name == body.name)
+                UnitLogger.project_uuid == project["uuid"]
+            ).where(UnitLogger.name == body.name)
         )
     ).scalar_one_or_none()
     
     if not component:
         # create
         session.add(
-            PromptComponent(
+            UnitLogger(
                 name=body.name,
                 project_uuid=project["uuid"],
             )
@@ -65,21 +65,21 @@ async def create_prompt_component_version(
         await session.refresh(component)
     
     # check version exist
-    version: PromptComponentVersion = (
+    version: UnitLoggerVersion = (
         await session.execute(
-            select(PromptComponentVersion)
+            select(UnitLoggerVersion)
             .where(
-                PromptComponentVersion.prompt_component_uuid == component.uuid
-            ).where(PromptComponentVersion.version == body.version)
+                UnitLoggerVersion.unit_logger_uuid == component.uuid
+            ).where(UnitLoggerVersion.version == body.version)
         )
     ).scalar_one_or_none()
     
     if not version:
         # create
         session.add(
-            PromptComponentVersion(
+            UnitLoggerVersion(
                 version=body.version,
-                prompt_component_uuid=component.uuid,
+                unit_logger_uuid=component.uuid,
             )
         )
         await session.commit()
@@ -87,24 +87,24 @@ async def create_prompt_component_version(
     
     return Response(status_code=status_code.HTTP_200_OK)
 
-@router.post("/log", response_model=CreateComponentLogResponse)
-async def create_component_log(
-    body: CreateComponentLogBody,
+@router.post("/log", response_model=CreateUnitLogResponse)
+async def create_unit_log(
+    body: CreateUnitLogBody,
     project: dict = Depends(get_project),
     session: AsyncSession = Depends(get_session),
 ):
-    # check if prompt_component with name exists
-    component: PromptComponent = (
+    # check if unit_logger with name exists
+    component: UnitLogger = (
         await session.execute(
-            select(PromptComponent)
+            select(UnitLogger)
             .where(
-                PromptComponent.project_uuid == project["uuid"]
-            ).where(PromptComponent.name == body.name)
+                UnitLogger.project_uuid == project["uuid"]
+            ).where(UnitLogger.name == body.name)
         )
     ).scalar_one_or_none()
     if not component:
         # create
-        component = PromptComponent(
+        component = UnitLogger(
             name=body.name,
             project_uuid=project["uuid"],
         )
@@ -113,51 +113,56 @@ async def create_component_log(
         await session.refresh(component)
     
     # check version exist
-    version: PromptComponentVersion = (
+    version: UnitLoggerVersion = (
         await session.execute(
-            select(PromptComponentVersion)
+            select(UnitLoggerVersion)
             .where(
-                PromptComponentVersion.prompt_component_uuid == component.uuid
-            ).where(PromptComponentVersion.version == body.version)
+                UnitLoggerVersion.unit_logger_uuid == component.uuid
+            ).where(UnitLoggerVersion.version == body.version)
         )
     ).scalar_one_or_none()
     
     if not version:
         # create
-        version = PromptComponentVersion(
+        version = UnitLoggerVersion(
             version=body.version,
-            prompt_component_uuid=component.uuid,
+            unit_logger_uuid=component.uuid,
         )
         session.add(version)
         await session.commit()
         await session.refresh(version)
 
     # create log
-    log = ComponentLog(
+    log = UnitLog(
         version_uuid=version.uuid,
     )
     session.add(log)
     await session.commit()
     await session.refresh(log)
     
-    return CreateComponentLogResponse(uuid=log.uuid)
+    return CreateUnitLogResponse(
+        name=body.name,
+        version=body.version,
+        version_uuid=version.uuid,
+        log_uuid=log.uuid,
+    )
 
 
 @router.post("/connect")
-async def connect_component_log_run_log(
-    body: ConnectComponentRunLogBody,
+async def connect_unit_log_run_log(
+    body: ConnectUnitLogRunLogBody,
     project: dict = Depends(get_project),
     session: AsyncSession = Depends(get_session),
 ):
-    component_log: ComponentLog = (
+    unit_log: UnitLog = (
         await session.execute(
-            select(ComponentLog).where(ComponentLog.uuid == body.component_log_uuid)
+            select(UnitLog).where(UnitLog.uuid == body.unit_log_uuid)
         )
     ).scalar_one_or_none()
-    if not component_log:
+    if not unit_log:
         raise HTTPException(
             status_code=status_code.HTTP_404_NOT_FOUND,
-            detail=f"ComponentLog not found for uuid {body.component_log_uuid}",
+            detail=f"UnitLog not found for uuid {body.unit_log_uuid}",
         )
     
     run_log: RunLog = (
@@ -172,8 +177,8 @@ async def connect_component_log_run_log(
             detail=f"RunLog not found for uuid {body.run_log_uuid}",
         )
     
-    relationship = ComponentLogRunLog(
-        component_log_uuid=component_log.uuid,
+    relationship = UnitLogRunLog(
+        unit_log_uuid=unit_log.uuid,
         run_log_uuid=run_log.uuid,
     )
     session.add(relationship)
@@ -183,21 +188,21 @@ async def connect_component_log_run_log(
 
 
 @router.post("/score")
-async def save_component_log_score(
-    body: ScoreComponentRunLogBody,
+async def save_unit_log_score(
+    body: ScoreUnitLogBody,
     project: dict = Depends(get_project),
     session: AsyncSession = Depends(get_session),
 ):
-    component_log: ComponentLog = (
+    unit_log: UnitLog = (
         await session.execute(
-            select(ComponentLog).where(ComponentLog.uuid == body.component_log_uuid)
+            select(UnitLog).where(UnitLog.uuid == body.unit_log_uuid)
         )
     ).scalar_one_or_none()
     
-    if not component_log:
+    if not unit_log:
         raise HTTPException(
             status_code=status_code.HTTP_404_NOT_FOUND,
-            detail=f"ComponentLog not found for uuid {body.component_log_uuid}",
+            detail=f"UnitLog not found for uuid {body.unit_log_uuid}",
         )
 
     # update run_log_score in original_value
@@ -210,8 +215,8 @@ async def save_component_log_score(
                 .where(
                     EvalMetric.project_uuid == project["uuid"]
                 )
-                .where(EvalMetric.function_model_uuid is None)
-                .where(EvalMetric.chat_model_uuid is None)
+                .where(EvalMetric.function_model_uuid.is_(None))
+                .where(EvalMetric.chat_model_uuid.is_(None))
             )
         ).scalars().all()
         
@@ -270,11 +275,11 @@ async def save_component_log_score(
 
     eval_metric_dict = {x.name: x.uuid for x in eval_metric_to_use}
 
-    scores_to_add: List[ComponentLogScore] = []
+    scores_to_add: List[UnitLogScore] = []
     for key, value in body.scores.items():
         scores_to_add.append(
-            ComponentLogScore(
-                component_log_uuid=body.component_log_uuid,
+            UnitLogScore(
+                unit_log_uuid=body.unit_log_uuid,
                 eval_metric_uuid=eval_metric_dict[key],
                 value=value,
             )
@@ -283,16 +288,16 @@ async def save_component_log_score(
     for score in scores_to_add:
         (
             await session.execute(
-                insert(ComponentLogScore)
+                insert(UnitLogScore)
                 .values(
-                    component_log_uuid=score.component_log_uuid,
+                    unit_log_uuid=score.unit_log_uuid,
                     eval_metric_uuid=score.eval_metric_uuid,
                     value=score.value,
                 )
                 .on_conflict_do_update(  # if conflict, append
                     index_elements=[
-                        ComponentLogScore.component_log_uuid,
-                        ComponentLogScore.eval_metric_uuid,
+                        UnitLogScore.unit_log_uuid,
+                        UnitLogScore.eval_metric_uuid,
                     ],
                     set_={"value": score.value},
                 )

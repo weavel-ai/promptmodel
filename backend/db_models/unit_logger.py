@@ -23,8 +23,8 @@ if TYPE_CHECKING:
     from .project import Project
     
 
-class PromptComponent(Base):
-    __tablename__ = "prompt_component"
+class UnitLogger(Base):
+    __tablename__ = "unit_logger"
 
     id: int = Column(BigInteger, Identity())
     created_at: datetime = Column(
@@ -50,8 +50,8 @@ class PromptComponent(Base):
     )
 
 
-class PromptComponentVersion(Base):
-    __tablename__ = "prompt_component_version"
+class UnitLoggerVersion(Base):
+    __tablename__ = "unit_logger_version"
 
     id: int = Column(BigInteger, Identity())
     created_at: datetime = Column(
@@ -66,18 +66,18 @@ class PromptComponentVersion(Base):
 
     version: int = Column(BigInteger)
 
-    prompt_component_uuid: UUIDType = Column(
+    unit_logger_uuid: UUIDType = Column(
         UUID(as_uuid=True),
         ForeignKey(
-            "prompt_component.uuid",
+            "unit_logger.uuid",
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),
         nullable=False,
     )
 
-class ComponentLog(Base):
-    __tablename__ = "component_log"
+class UnitLog(Base):
+    __tablename__ = "unit_log"
     
     id: int = Column(BigInteger, Identity())
     created_at: datetime = Column(
@@ -91,29 +91,30 @@ class ComponentLog(Base):
     version_uuid: UUIDType = Column(
         UUID(as_uuid=True),
         ForeignKey(
-            "prompt_component_version.uuid",
+            "unit_logger_version.uuid",
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),
         nullable=False,
     )
     
-class ComponentLogScore(Base):
-    __tablename__ = "component_log_score"
+class UnitLogScore(Base):
+    __tablename__ = "unit_log_score"
     
     id: int = Column(BigInteger, Identity())
     created_at: datetime = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
     
-    component_log_uuid: UUIDType = Column(
+    unit_log_uuid: UUIDType = Column(
         UUID(as_uuid=True),
         ForeignKey(
-            "component_log.uuid",
+            "unit_log.uuid",
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),
         nullable=False,
+        primary_key=True,
     )
     eval_metric_uuid: UUIDType = Column(
         UUID(as_uuid=True),
@@ -123,23 +124,24 @@ class ComponentLogScore(Base):
             ondelete="CASCADE",
         ),
         nullable=False,
+        primary_key=True,
     )
     
     value: float = Column(Float, nullable=False)
     
 
-class ComponentLogRunLog(Base):
-    __tablename__ = "component_log_run_log"
+class UnitLogRunLog(Base):
+    __tablename__ = "unit_log_run_log"
     
     id: int = Column(BigInteger, Identity())
     created_at: datetime = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
     
-    component_log_uuid: UUIDType = Column(
+    unit_log_uuid: UUIDType = Column(
         UUID(as_uuid=True),
         ForeignKey(
-            "component_log.uuid",
+            "unit_log.uuid",
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),
