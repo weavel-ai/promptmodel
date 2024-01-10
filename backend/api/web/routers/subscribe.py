@@ -48,8 +48,10 @@ async def redis_listener(
                 # Decode the bytes data to string and then load it as JSON
                 data_str = message["data"].decode("utf-8")
                 data_json: Dict[str, Any] = json.loads(data_str)
+                print("websocket send json : ", data_json)
                 await websocket.send_json(data_json)
-            await asyncio.sleep(5)  # Prevents the loop from running too fast
+            else:
+                await asyncio.sleep(5)  # Prevents the loop from running too fast
     except Exception as exception:
         print(exception)
         await pubsub.unsubscribe(channel)
