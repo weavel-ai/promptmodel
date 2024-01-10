@@ -32,10 +32,11 @@ export const InputField = (
           <textarea
             className={classNames(
               "bg-transparent outline-none hover:outline-none focus:outline-none",
-              "w-full text-sm",
+              "w-full",
               props.inputClassName,
               validatorError && "input-error"
             )}
+            placeholder={props.placeholder}
             value={props.value}
             onChange={(e) => props.setValue(e.target.value)}
           />

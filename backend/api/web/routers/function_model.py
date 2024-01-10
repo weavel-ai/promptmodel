@@ -12,7 +12,11 @@ from utils.logger import logger
 from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
-from ..models.function_model import FunctionModelInstance, CreateFunctionModelBody, DatasetForFunctionModelInstance
+from ..models.function_model import (
+    FunctionModelInstance,
+    CreateFunctionModelBody,
+    DatasetForFunctionModelInstance,
+)
 
 router = APIRouter()
 
@@ -37,7 +41,6 @@ async def fetch_function_models(
         .all()
     ]
     return function_models
-
 
 
 @router.post("", response_model=FunctionModelInstance)
@@ -77,14 +80,11 @@ async def create_function_model(
             status_code=status_code.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Same name in project",
         )
-    new_function_model = FunctionModel(
-        name=body.name, project_uuid=body.project_uuid
-    )
+    new_function_model = FunctionModel(name=body.name, project_uuid=body.project_uuid)
     session.add(new_function_model)
     await session.commit()
     await session.refresh(new_function_model)
     return FunctionModelInstance(**new_function_model.model_dump())
-
 
 
 @router.patch("/{uuid}", response_model=FunctionModelInstance)
@@ -108,7 +108,6 @@ async def edit_function_model_name(
     )
     await session.commit()
     return FunctionModelInstance(**updated_model)
-
 
 
 @router.delete("/{uuid}", response_model=FunctionModelInstance)
@@ -150,7 +149,6 @@ async def delete_function_model(
     )
     await session.commit()
     return FunctionModelInstance(**deleted_model)
-    
 
 
 @router.get("/{uuid}/datasets", response_model=List[DatasetForFunctionModelInstance])
@@ -164,21 +162,20 @@ async def fetch_datasets(
         for d in (
             await session.execute(
                 select(
-                    Dataset.uuid.label('dataset_uuid'), 
-                    Dataset.name.label('dataset_name'), 
-                    Dataset.description.label('dataset_description'), 
-                    EvalMetric.name.label('eval_metric_name'), 
-                    EvalMetric.uuid.label('eval_metric_uuid'), 
-                    EvalMetric.description.label('eval_metric_description')
+                    Dataset.uuid.label("dataset_uuid"),
+                    Dataset.name.label("dataset_name"),
+                    Dataset.description.label("dataset_description"),
+                    EvalMetric.name.label("eval_metric_name"),
+                    EvalMetric.uuid.label("eval_metric_uuid"),
+                    EvalMetric.description.label("eval_metric_description"),
                 )
                 .join(EvalMetric, Dataset.eval_metric_uuid == EvalMetric.uuid)
-                .join(
-                    FunctionModel, Dataset.function_model_uuid == FunctionModel.uuid
-                )
+                .join(FunctionModel, Dataset.function_model_uuid == FunctionModel.uuid)
                 .where(FunctionModel.uuid == uuid)
             )
-        ).mappings().all()
+        )
+        .mappings()
+        .all()
     ]
 
     return datasets
-

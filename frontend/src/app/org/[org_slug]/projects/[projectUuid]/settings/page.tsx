@@ -17,6 +17,7 @@ import { Modal } from "@/components/modals/Modal";
 import { InputField } from "@/components/InputField";
 import { useOrganization } from "@/hooks/auth/useOrganization";
 import { ReactSVG } from "react-svg";
+import { ClickToConfirmDeleteButton } from "@/components/buttons/ClickToConfirmDeleteButton";
 
 export default function Page() {
   const { projectData } = useProject();
@@ -104,34 +105,11 @@ function APIKeyInput({
 }) {
   const { deleteLLMProviderConfig } = useOrganization();
   const [isInputModalOpen, setIsInputModalOpen] = useState<boolean>(false);
-  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] =
-    useState<boolean>(false);
-  const confirmDeleteRef = useRef(null);
-
-  function handleClickOutside(event: any) {
-    if (
-      confirmDeleteRef.current &&
-      !confirmDeleteRef.current.contains(event.target)
-    ) {
-      setIsConfirmDeleteOpen(false);
-    }
-  }
-
-  useEffect(() => {
-    // Catch click outside of confirm delete button
-    if (isConfirmDeleteOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isConfirmDeleteOpen]);
 
   function handleDelete() {
     deleteLLMProviderConfig({
       provider_name: provider.name,
     });
-    setIsConfirmDeleteOpen(false);
   }
 
   return (
@@ -168,32 +146,9 @@ function APIKeyInput({
             <p>Configure</p>
           )}
         </button>
-        {isConfigured &&
-          (isConfirmDeleteOpen ? (
-            <button
-              ref={confirmDeleteRef}
-              className="transition-all btn btn-sm btn-neutral text-red-500 text-base-content group flex flex-row gap-x-2 items-center"
-              onClick={handleDelete}
-            >
-              <TrashSimple
-                size={16}
-                weight="fill"
-                className="transition-colors group-hover:text-red-400"
-              />
-              <p>really delete?</p>
-            </button>
-          ) : (
-            <button
-              className="btn btn-square btn-sm btn-neutral group"
-              onClick={() => setIsConfirmDeleteOpen(true)}
-            >
-              <TrashSimple
-                size={16}
-                weight="fill"
-                className="transition-colors group-hover:text-red-400"
-              />
-            </button>
-          ))}
+        {isConfigured && (
+          <ClickToConfirmDeleteButton handleDelete={handleDelete} />
+        )}
       </div>
       <APIKeyInputModal
         provider={provider}
