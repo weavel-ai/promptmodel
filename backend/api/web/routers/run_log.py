@@ -14,6 +14,7 @@ from utils.security import get_jwt
 from db_models import *
 from ..models.run_log import (
     RunLogInstance,
+    RunLogWithScoreInstance,
     SaveRunLogBody,
     DeploymentRunLogViewInstance,
     RunLogsCountInstance,
@@ -45,7 +46,10 @@ async def fetch_version_run_logs(
     ]
     return run_logs
 
-@router.post("/version/{function_model_version_uuid}", response_model=List[RunLogInstance])
+
+@router.post(
+    "/version/{function_model_version_uuid}", response_model=List[RunLogInstance]
+)
 async def save_run_logs(
     jwt: Annotated[str, Depends(get_jwt)],
     function_model_version_uuid: str,
@@ -54,11 +58,12 @@ async def save_run_logs(
 ):
     version_to_add: FunctionModelVersion = (
         await session.execute(
-            select(FunctionModelVersion)
-            .where(FunctionModelVersion.uuid == function_model_version_uuid)
+            select(FunctionModelVersion).where(
+                FunctionModelVersion.uuid == function_model_version_uuid
+            )
         )
     ).scalar_one()
-    
+
     project_uuid: str = (
         await session.execute(
             select(FunctionModel.project_uuid).where(
@@ -66,7 +71,7 @@ async def save_run_logs(
             )
         )
     ).scalar_one()
-    
+
     run_logs = [
         RunLog(
             **{
@@ -80,7 +85,7 @@ async def save_run_logs(
     ]
     session.add_all(run_logs)
     await session.commit()
-    
+
     run_logs: List[RunLogInstance] = [
         RunLogInstance(**run_log.model_dump())
         for run_log in (
@@ -138,25 +143,56 @@ async def fetch_run_logs(
     ]
     return run_logs
 
-@router.get("/batch_run", response_model=List[RunLogInstance])
+
+@router.get("/batch_run", response_model=List[RunLogWithScoreInstance])
 async def fetch_run_log_in_batch_run(
     jwt: Annotated[str, Depends(get_jwt)],
     batch_run_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
-    run_logs: List[RunLogInstance] = [
-        RunLogInstance(**run_log.model_dump())
-        for run_log in (
+    # run_log_with_scores: List[RunLogWithScoreInstance] = [
+    #     RunLogWithScoreInstance(**run_log.model_dump())
+    #     for run_log in (
+    #         await session.execute(
+    #             select(
+    #                 RunLog,
+    #                 RunLogScore.value.label("score"),
+    #                 EvalMetric.name.label("eval_metric_name"),
+    #                 EvalMetric.uuid.label("eval_metric_uuid"),
+    #             )
+    #             .join(RunLogScore, RunLog.uuid == RunLogScore.run_log_uuid)
+    #             .join(EvalMetric, RunLogScore.eval_metric_uuid == EvalMetric.uuid)
+    #             .where(RunLog.batch_run_uuid == batch_run_uuid)
+    #             .order_by(desc(RunLog.created_at))
+    #         )
+    #     )
+    #     .scalars()
+    #     .all()
+    # ]
+    run_log_with_scores: List[RunLogWithScoreInstance] = [
+        RunLogWithScoreInstance(
+            **run_log_model.model_dump(),
+            score=score,
+            eval_metric_name=eval_metric_name,
+            eval_metric_uuid=eval_metric_uuid
+        )
+        for run_log_model, score, eval_metric_name, eval_metric_uuid in (
             await session.execute(
-                select(RunLog)
+                select(
+                    RunLog,
+                    RunLogScore.value.label("score"),
+                    EvalMetric.name.label("eval_metric_name"),
+                    EvalMetric.uuid.label("eval_metric_uuid"),
+                )
+                .join(RunLogScore, RunLog.uuid == RunLogScore.run_log_uuid)
+                .join(EvalMetric, RunLogScore.eval_metric_uuid == EvalMetric.uuid)
                 .where(RunLog.batch_run_uuid == batch_run_uuid)
                 .order_by(desc(RunLog.created_at))
             )
-        )
-        .scalars()
-        .all()
+        ).all()
     ]
-    return run_logs
+
+    return run_log_with_scores
 
 
 @router.get("/count", response_model=RunLogsCountInstance)
@@ -181,4 +217,3 @@ async def fetch_run_logs_count(
         )
 
     return RunLogsCountInstance(project_uuid=project_uuid, count=run_logs_count)
-

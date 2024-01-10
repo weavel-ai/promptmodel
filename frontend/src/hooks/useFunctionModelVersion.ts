@@ -136,8 +136,7 @@ export const useFunctionModelVersion = () => {
     setSelectedParser,
   ]);
 
-  async function handleSave(
-  ) {
+  async function handleSave() {
     // toast
     const toastId = toast.loading("Saving...");
     setTimeout(() => {
@@ -146,20 +145,18 @@ export const useFunctionModelVersion = () => {
       }
     }, 6000);
 
-    const res = await createFunctionModelVersion(
-      {
-        project_uuid: projectData?.uuid as string,
-        function_model_uuid: params?.functionModelUuid as string,
-        prompts: modifiedPrompts,
-        model: selectedModel,
-        from_version: originalFunctionModelVersionData?.version,
-        parsing_type: selectedParser,
-        output_keys: outputKeys,
-        functions: selectedFunctions,
-      } as CreateFunctionModelVersionRequest
-    );
+    const res = await createFunctionModelVersion({
+      project_uuid: projectData?.uuid as string,
+      function_model_uuid: params?.functionModelUuid as string,
+      prompts: modifiedPrompts,
+      model: selectedModel,
+      from_version: originalFunctionModelVersionData?.version,
+      parsing_type: selectedParser,
+      output_keys: outputKeys,
+      functions: selectedFunctions,
+    } as CreateFunctionModelVersionRequest);
 
-    // clear all of run log cache where versionUuid is same with newVersionCache.uuid 
+    // clear all of run log cache where versionUuid is same with newVersionCache.uuid
     await queryClient.invalidateQueries([
       "runLogData",
       {
@@ -211,13 +208,13 @@ export const useFunctionModelVersion = () => {
         function_call: runLog.function_call,
         sample_input_uuid: runLog.sample_input_uuid,
         run_log_metadata: runLog.run_log_metadata,
-        });
-      }
-    );
+      });
+    });
 
     // update the dashboard
     await refetchFunctionModelVersionListData();
-    if (!originalFunctionModelVersionData?.uuid) { // when initial stage
+    if (!originalFunctionModelVersionData?.uuid) {
+      // when initial stage
       setSelectedFunctionModelVersion(newVersionCache?.version);
     }
 
@@ -229,8 +226,6 @@ export const useFunctionModelVersion = () => {
       isLoading: false,
     });
   }
-
-  
 
   const isEqualToOriginal = useMemo(() => {
     if (modifiedPrompts?.length > 0 && isCreateVariantOpen) {
@@ -301,7 +296,11 @@ export const useFunctionModelVersion = () => {
 
     if (isNewOrCachedVersion) {
       prompts = modifiedPrompts;
-      versionUuid = isEqualToCache ? (newVersionCache ? newVersionCache.uuid : `DRAFT_${uuidv4() as string}`) : `DRAFT_${uuidv4() as string}`;
+      versionUuid = isEqualToCache
+        ? newVersionCache
+          ? newVersionCache.uuid
+          : `DRAFT_${uuidv4() as string}`
+        : `DRAFT_${uuidv4() as string}`;
       versionUuidForDraft = cloneDeep(versionUuid);
     } else {
       prompts = originalPromptListData;
@@ -311,7 +310,7 @@ export const useFunctionModelVersion = () => {
     let cacheRawOutput = "";
     const cacheParsedOutputs = {};
     let cacheFunctionCallData = {};
-    
+
     const uuid = uuidv4(); // new RunLog UUID, only used in frontend
     const args: any = {
       projectUuid: params?.projectUuid as string,
@@ -347,7 +346,7 @@ export const useFunctionModelVersion = () => {
                 autoClose: 2000,
                 isLoading: false,
               });
-               if (versionUuid && !versionUuid.startsWith("DRAFT")) {
+              if (versionUuid && !versionUuid.startsWith("DRAFT")) {
                 await queryClient.invalidateQueries([
                   "runLogData",
                   {
@@ -355,7 +354,7 @@ export const useFunctionModelVersion = () => {
                   },
                 ]);
                 removeRunLog(versionUuid, uuid);
-               }
+              }
               break;
             case "failed":
               toast.update(toastId, {
@@ -375,7 +374,7 @@ export const useFunctionModelVersion = () => {
               break;
           }
         }
-        
+
         if (versionUuidForDraft.startsWith("DRAFT")) {
           setNewVersionCache({
             uuid: versionUuidForDraft,
@@ -394,7 +393,7 @@ export const useFunctionModelVersion = () => {
 
         if (data?.inputs) {
           updateRunLogs(versionUuidForDraft, uuid, {
-            inputs: data?.inputs, 
+            inputs: data?.inputs,
           });
         }
         if (data?.raw_output) {
@@ -432,12 +431,12 @@ export const useFunctionModelVersion = () => {
           });
         }
 
-        if (data?.log && data?.status == "failed"){
+        if (data?.log && data?.status == "failed") {
           updateRunLogs(versionUuidForDraft, uuid, {
             run_log_metadata: {
-              "error": true,
-              "error_log": data?.log,
-            }
+              error: true,
+              error_log: data?.log,
+            },
           });
         }
       },
