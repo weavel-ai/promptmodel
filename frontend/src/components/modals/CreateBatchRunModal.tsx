@@ -32,7 +32,9 @@ export function CreateBatchRunModal({
       dataset_uuid: selectedDatasetUuid,
     });
     setIsOpen(false);
-    versionBatchRunListQuery.refetch();
+    setTimeout(() => {
+      versionBatchRunListQuery.refetch();
+    }, 1000);
     toast.success("Batch run started");
   }
 
