@@ -443,8 +443,10 @@ function VersionsPage() {
               },
             ]);
             setShowSlashOptions(false);
-            // Add output key
-            setOutputKeys([...outputKeys, outputKey]);
+            // Add output key if it doesn't exist
+            if (!outputKeys.includes(outputKey)) {
+              setOutputKeys([...outputKeys, outputKey]);
+            }
             // Calculate new cursor position
             const newColumnPosition = position.column + outputFormatText.length;
             // Set cursor to the end of the inserted value

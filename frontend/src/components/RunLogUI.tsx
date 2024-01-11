@@ -457,16 +457,18 @@ function BatchRunUI({ versionUuid }: { versionUuid: string }) {
             </tr>
           </thead>
           <tbody className="bg-base-100">
-            {versionUuid && versionBatchRunListQuery?.isLoading && (
-              <tr className="align-top">
-                <td colSpan={4}>
-                  <div className="flex w-full justify-center items-center">
-                    <div className="loading" />
-                  </div>
-                </td>
-              </tr>
-            )}
-            {!versionUuid && (
+            {!!versionUuid &&
+              !versionUuid?.startsWith("DRAFT") &&
+              versionBatchRunListQuery?.isLoading && (
+                <tr className="align-top">
+                  <td colSpan={4}>
+                    <div className="flex w-full justify-center items-center">
+                      <div className="loading" />
+                    </div>
+                  </td>
+                </tr>
+              )}
+            {(versionUuid?.startsWith("DRAFT") || !versionUuid) && (
               <tr className="align-top">
                 <td className="align-top w-fit" colSpan={4}>
                   <p>Save this version to create/view batch runs</p>
