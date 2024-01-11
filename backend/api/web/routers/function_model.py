@@ -116,7 +116,7 @@ async def delete_function_model(
     uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
-    # TODO
+    
     user_auth_check = (
         await session.execute(
             select(FunctionModel)

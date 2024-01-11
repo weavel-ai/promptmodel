@@ -11,6 +11,13 @@ from .project import (
     CliAccess,
     pwd_context,
 )
+from .unit import (
+    Unit,
+    UnitVersion,
+    UnitLog,
+    UnitLogRunLog,
+    UnitLogScore
+)
 from .dataset import SampleInput, Dataset, DatasetSampleInput, BatchRun
 from .function_schema import FunctionSchema
 from .eval_metric import EvalMetric

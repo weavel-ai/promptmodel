@@ -4,3 +4,15 @@ from .models import (
     ChatModelRunConfig,
     FunctionModelBatchRunConfig,
 )
+
+from .unit import (
+    CreateUnitBody,
+    CreateUnitVersionBody,
+    CreateUnitLogBody,
+    CreateUnitLogResponse,
+    ConnectUnitLogRunLogBody,
+    ScoreUnitLogBody,
+    UnitInstance,
+    UnitVersionInstance,
+    UnitLogInstance,
+)

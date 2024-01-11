@@ -48,6 +48,7 @@ view_name_list = [
     "deployed_chat_model_version",
     "deployed_function_model_version",
     "deployment_run_log_view",
+    "project_daily_run_log_metric"
 ]
 
 target_metadata = Base.metadata
