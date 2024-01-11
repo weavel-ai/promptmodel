@@ -26,6 +26,7 @@ class FunctionModelVersionInstance(PMObject):
 
     function_model_uuid: str
 
+
 class CreateFunctionModelVersionBody(PMObject):
     project_uuid: str
     function_model_uuid: str
@@ -35,7 +36,6 @@ class CreateFunctionModelVersionBody(PMObject):
     parsing_type: Optional[str] = None
     output_keys: Optional[List[str]] = None
     functions: Optional[List[str]] = None
-
 
 
 class UpdatePublishedFunctionModelVersionBody(PMObject):
@@ -48,20 +48,10 @@ class UpdateFunctionModelVersionTagsBody(PMObject):
     tags: Optional[List[str]] = None
 
 
-
-class DatasetBatchRunInstance(PMObject):
-    dataset_uuid: str
-    dataset_name: str
-    dataset_description: Optional[str] = None
-    eval_metric_uuid: str = None
-    eval_metric_name: str = None
-    eval_metric_description: Optional[str] = None
-    batch_run_uuid: Optional[str] = None
-    batch_run_score: Optional[float] = None
-    batch_run_status: Optional[str] = None
-    batch_run_created_at: Optional[str] = None
-
 class FunctionModelVersionBatchRunInstance(PMObject):
-    batch_run_uuid: str
-    batch_run_status: str
-    batch_run_score: Optional[float] = None
+    uuid: str
+    created_at: str
+    finished_at: str
+    dataset_uuid: str
+    status: str
+    score: Optional[float] = None

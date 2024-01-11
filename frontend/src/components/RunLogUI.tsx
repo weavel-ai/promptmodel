@@ -1,7 +1,7 @@
 import { RunLog } from "@/types/RunLog";
 import { useRunLogs } from "@/hooks/useRunLog";
 import { useFunctionModelVersionStore } from "@/stores/functionModelVersionStore";
-import { ArrowSquareIn, CornersOut, Play } from "@phosphor-icons/react";
+import { ArrowSquareIn, CornersOut, Flask, Play } from "@phosphor-icons/react";
 import classNames from "classnames";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
@@ -18,6 +18,12 @@ import { arePrimitiveListsEqual } from "@/utils";
 import { createSampleInput } from "@/apis/sample_inputs";
 import { useProject } from "@/hooks/useProject";
 import { set } from "date-fns";
+import { useFunctionModelVersionDetails } from "@/hooks/useFunctionModelVersionDetails";
+import { useFunctionModelDatasets } from "@/hooks/useFunctionModelDatasets";
+import { CreateBatchRunModal } from "./modals/CreateBatchRunModal";
+import { BatchRunLogModal } from "./modals/BatchRunLogsModal";
+import { BatchRun } from "@/types/BatchRun";
+import dayjs from "dayjs";
 
 const modalVariants = cva(
   "fixed z-[999999] bg-base-200/70 backdrop-blur-md p-4 flex justify-center items-center",
@@ -38,10 +44,11 @@ const modalVariants = cva(
 
 enum Tab {
   Test = "Test",
+  BatchRun = "Batch Run",
   RunLogs = "Run Logs",
 }
 
-const TABS = [Tab.Test, Tab.RunLogs];
+const TABS = [Tab.Test, Tab.BatchRun, Tab.RunLogs];
 
 export function RunLogUI({
   versionUuid,
@@ -72,7 +79,11 @@ export function RunLogUI({
   const [selectedTab, setSelectedTab] = useState(Tab.Test);
   const [inputs, setInputs] = useState<Array<KeyValueInput>>([]);
   const [inputsCache, setInputsCache] = useState<Array<KeyValueInput>>([]);
-  const [sampleInputUUIDCache, setSampleInputUUIDCache] = useState<string>(null);
+  const [sampleInputUUIDCache, setSampleInputUUIDCache] =
+    useState<string>(null);
+  const [isCreateBatchRunModalOpen, setIsCreateBatchRunModalOpen] =
+    useState(false);
+
   const prompts = useMemo(
     () => (isNewOrCachedVersion ? modifiedPrompts : originalPromptListData),
     [isNewOrCachedVersion, modifiedPrompts, originalPromptListData]
@@ -142,7 +153,8 @@ export function RunLogUI({
   useEffect(() => {
     if (
       runTasksCount == null ||
-      (!versionUuid?.startsWith("DRAFT") && (runLogData == undefined || runLogData == null ))||
+      (!versionUuid?.startsWith("DRAFT") &&
+        (runLogData == undefined || runLogData == null)) ||
       !versionUuid
     ) {
       setRunLogList([]);
@@ -227,23 +239,37 @@ export function RunLogUI({
           variant="underline"
           selectorZIndex={0}
         />
-        {versionUuid != null && (
-          <button
-            className="btn btn-sm bg-transparent border-transparent items-center hover:bg-neutral-content/20"
-            onClick={() => {
-              if (fullScreenRunVersionUuid == versionUuid) {
-                setFullScreenRunVersionUuid(null);
-                return;
-              }
-              setFullScreenRunVersionUuid(versionUuid);
-            }}
-          >
-            <CornersOut size={22} />
-            {fullScreenRunVersionUuid == versionUuid && (
-              <kbd className="kbd">Esc</kbd>
-            )}
-          </button>
-        )}
+        <div className="flex flex-row gap-x-3 items-center justify-end">
+          {selectedTab == Tab.BatchRun && versionUuid && (
+            <button
+              className={classNames(
+                "flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 bg-transparent hover:bg-base-content/10",
+                "!border-base-content/80 !text-base-content/80"
+              )}
+              onClick={() => setIsCreateBatchRunModalOpen(true)}
+            >
+              <p>Create batch run</p>
+              <Flask size={20} weight="fill" />
+            </button>
+          )}
+          {versionUuid != null && (
+            <button
+              className="btn btn-sm bg-transparent border-transparent items-center hover:bg-neutral-content/20"
+              onClick={() => {
+                if (fullScreenRunVersionUuid == versionUuid) {
+                  setFullScreenRunVersionUuid(null);
+                  return;
+                }
+                setFullScreenRunVersionUuid(versionUuid);
+              }}
+            >
+              <CornersOut size={22} />
+              {fullScreenRunVersionUuid == versionUuid && (
+                <kbd className="kbd">Esc</kbd>
+              )}
+            </button>
+          )}
+        </div>
       </div>
       {selectedTab == Tab.Test && (
         <div className="h-full pb-6">
@@ -258,6 +284,12 @@ export function RunLogUI({
           />
         </div>
       )}
+      {selectedTab == Tab.BatchRun && <BatchRunUI versionUuid={versionUuid} />}
+      <CreateBatchRunModal
+        isOpen={isCreateBatchRunModalOpen}
+        setIsOpen={setIsCreateBatchRunModalOpen}
+        versionUuid={versionUuid}
+      />
       {selectedTab == Tab.RunLogs && <RunLogTable runLogList={runLogList} />}
     </div>
   );
@@ -390,12 +422,101 @@ function TestUI({
   );
 }
 
-const RunLogTable = ({ runLogList }) => {
+function BatchRunUI({ versionUuid }: { versionUuid: string }) {
+  const { versionBatchRunListQuery } =
+    useFunctionModelVersionDetails(versionUuid);
+  const { findDataset } = useFunctionModelDatasets();
+
+  const [selectedBatchRun, setSelectedBatchRun] = useState<BatchRun | null>(
+    null
+  );
+
+  return (
+    <div className="flex flex-col gap-y-3 h-full overflow-hidden relative">
+      <BatchRunLogModal
+        isOpen={selectedBatchRun != null}
+        setIsOpen={() => setSelectedBatchRun(null)}
+        batchRun={selectedBatchRun}
+      />
+      <div className="w-full h-full overflow-auto">
+        <table className="table">
+          <thead className="sticky top-0 z-10 bg-base-100 w-full">
+            <tr className="text-base-content">
+              <th className="w-fit">
+                <p className="text-lg font-medium ps-1">Created</p>
+              </th>
+              <th className="w-fit">
+                <p className="text-lg font-medium ps-1">Dataset</p>
+              </th>
+              <th className="w-fit">
+                <p className="text-lg font-medium ps-1">Score</p>
+              </th>
+              <th className="w-fit">
+                <p className="text-lg font-medium ps-1">Status</p>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-base-100">
+            {versionUuid && versionBatchRunListQuery?.isLoading && (
+              <tr className="align-top">
+                <td colSpan={4}>
+                  <div className="flex w-full justify-center items-center">
+                    <div className="loading" />
+                  </div>
+                </td>
+              </tr>
+            )}
+            {!versionUuid && (
+              <tr className="align-top">
+                <td className="align-top w-fit" colSpan={4}>
+                  <p>Save this version to create/view batch runs</p>
+                </td>
+              </tr>
+            )}
+            {versionBatchRunListQuery?.data?.length == 0 && (
+              <tr className="align-top">
+                <td className="align-top w-fit" colSpan={4}>
+                  <p>No batch run yet</p>
+                </td>
+              </tr>
+            )}
+            {versionBatchRunListQuery?.data?.map((batchRun, idx) => (
+              <tr
+                key={idx}
+                className="align-top transition-all hover:bg-base-content/10 hover:cursor-pointer"
+                onClick={() => {
+                  setSelectedBatchRun(batchRun);
+                }}
+              >
+                <td className="align-top w-fit">
+                  <p>
+                    {dayjs(batchRun.created_at).format("YYYY-MM-DD HH:mm:ss")}
+                  </p>
+                </td>
+                <td className="align-top w-fit">
+                  <p>{findDataset(batchRun.dataset_uuid)?.dataset_name}</p>
+                </td>
+                <td className="align-top w-fit">
+                  <p>{batchRun.score}</p>
+                </td>
+                <td className="align-top w-fit">
+                  <p>{batchRun.status}</p>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function RunLogTable({ runLogList }) {
   const [showRaw, setShowRaw] = useState(false);
 
   return (
     <div className="overflow-auto">
-      <table className="w-full table table-pin-cols">
+      <table className="w-full table">
         <thead className="sticky top-0 z-10 bg-base-100 w-full">
           <tr className="text-base-content">
             <th className="w-fit">
@@ -406,8 +527,8 @@ const RunLogTable = ({ runLogList }) => {
               <div className="join">
                 <button
                   className={classNames(
-                    "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                    showRaw && "bg-base-300",
+                    "btn join-item btn-xs font-medium h-fit hover:bg-base-content/20 text-xs",
+                    showRaw && "bg-base-content/80 text-base-100",
                     !showRaw && "bg-base-300/40"
                   )}
                   onClick={() => setShowRaw(true)}
@@ -416,8 +537,8 @@ const RunLogTable = ({ runLogList }) => {
                 </button>
                 <button
                   className={classNames(
-                    "btn join-item btn-xs font-medium h-fit hover:bg-base-300/70 text-xs",
-                    !showRaw && "bg-base-300",
+                    "btn join-item btn-xs font-medium h-fit hover:bg-base-content/20 text-xs",
+                    !showRaw && "bg-base-content/80 text-base-100",
                     showRaw && "bg-base-300/40"
                   )}
                   onClick={() => setShowRaw(false)}
@@ -439,7 +560,7 @@ const RunLogTable = ({ runLogList }) => {
       </table>
     </div>
   );
-};
+}
 
 const RunLogRow = ({
   showRaw,

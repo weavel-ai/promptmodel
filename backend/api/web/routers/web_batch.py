@@ -31,7 +31,9 @@ router = APIRouter()
 
 
 async def function_model_batch_run_background_task(
-    batch_run_config: FunctionModelBatchRunConfig, batch_run_uuid: str, router_config: Dict[str, Any]
+    batch_run_config: FunctionModelBatchRunConfig,
+    batch_run_uuid: str,
+    router_config: Dict[str, Any],
 ):
     try:
         async with get_session_context() as session:
@@ -76,7 +78,8 @@ async def function_model_batch_run_background_task(
                             DatasetSampleInput.sample_input_uuid == SampleInput.uuid,
                         )
                         .where(
-                            DatasetSampleInput.dataset_uuid == batch_run_config.dataset_uuid
+                            DatasetSampleInput.dataset_uuid
+                            == batch_run_config.dataset_uuid
                         )
                     )
                 )
@@ -103,7 +106,7 @@ async def function_model_batch_run_background_task(
                 res: ModelResponse = await router.acompletion(
                     model=model, messages=messages
                 )
-                
+
                 print(f"SampleInput {sample_input_row.id} completed")
 
                 return sample_input_row, res
@@ -119,10 +122,12 @@ async def function_model_batch_run_background_task(
                 for sample_input in sample_inputs_to_run
             ]
 
-            results: List[Tuple(SampleInput, ModelResponse)] = await asyncio.gather(*tasks)
+            results: List[Tuple(SampleInput, ModelResponse)] = await asyncio.gather(
+                *tasks
+            )
 
             # make RunLogs & RunLogScore
-            
+
             # TODO: make this to select metric
             gt_exact_match_metric: EvalMetric = (
                 await session.execute(
@@ -131,14 +136,14 @@ async def function_model_batch_run_background_task(
                     .where(EvalMetric.name == "gt_exact_match")
                 )
             ).scalar_one()
-            
+
             score = 0
             for result in results:
                 success = 0
                 sample_input_row, res = result
                 sample_input_row: SampleInput = sample_input_row
                 res: ModelResponse = res
-                
+
                 gt = sample_input_row.ground_truth
                 prediction = res.choices[0].message.content
                 # print(prediction)
@@ -147,7 +152,7 @@ async def function_model_batch_run_background_task(
                 if gt == prediction:
                     score += 1
                     success = 1
-                
+
                 run_log = RunLog(
                     run_from_deployment=False,
                     inputs=sample_input_row.content,
@@ -165,19 +170,19 @@ async def function_model_batch_run_background_task(
                 session.add(run_log)
                 await session.commit()
                 await session.refresh(run_log)
-                
+
                 run_log_score = RunLogScore(
                     run_log_uuid=run_log.uuid,
                     eval_metric_uuid=gt_exact_match_metric.uuid,
-                    value=success
+                    value=success,
                 )
                 session.add(run_log_score)
                 await session.commit()
-            
+
             # save run_log and score
-            
+
             score = score / len(results)
-            
+
             # update BatchRun status = "completed"
             (
                 await session.execute(
@@ -234,7 +239,7 @@ async def batch_run_function_model(
     if not user_auth_check:
         raise HTTPException(
             status_code=status_code.HTTP_401_UNAUTHORIZED,
-            detail="User don't have access to this project",
+            detail="User doesn't have access to this project",
         )
 
     batch_run_exist_check = (
@@ -251,7 +256,7 @@ async def batch_run_function_model(
     if batch_run_exist_check:
         raise HTTPException(
             status_code=status_code.HTTP_409_CONFLICT,
-            detail="Batch run already exist",
+            detail="Batch run already exists",
         )
 
     # make router config
@@ -277,22 +282,21 @@ async def batch_run_function_model(
     ]:  # not supported yet
         raise HTTPException(
             status_code=status_code.HTTP_403_FORBIDDEN,
-            detail="This LLM Provider is not supported yet",
+            detail="This LLM provider is not supported yet",
         )
-    
+
     organization_id = (
         await session.execute(
-            select(Project.organization_id).where(Project.uuid == batch_run_config.project_uuid)
+            select(Project.organization_id).where(
+                Project.uuid == batch_run_config.project_uuid
+            )
         )
     ).scalar_one()
-    
 
     organization_provider_config: OrganizationLLMProviderConfig = (
         await session.execute(
             select(OrganizationLLMProviderConfig)
-            .where(
-                OrganizationLLMProviderConfig.organization_id == organization_id
-            )
+            .where(OrganizationLLMProviderConfig.organization_id == organization_id)
             .where(OrganizationLLMProviderConfig.provider_name == llm_provider)
         )
     ).scalar_one_or_none()
@@ -302,7 +306,7 @@ async def batch_run_function_model(
             status_code=status_code.HTTP_403_FORBIDDEN,
             detail=f"Organization doesn't have API keys set for {llm_provider}. Please set API keys in project settings.",
         )
-        
+
     provider_args = LLMProviderArgs()
     # get value for key that includes "API_KEY"
     for key, val in organization_provider_config.env_vars.items():
@@ -312,7 +316,7 @@ async def batch_run_function_model(
             provider_args.api_base = val
         elif "api_version" in key.lower():
             provider_args.api_version = val
-    
+
     # TODO: use params later
     # provider_env_var = dict(organization_provider_config.env_vars)
     # api_key_key = list(filter(lambda x: "API_KEY" in x, provider_env_var.keys()))[0]
@@ -377,4 +381,3 @@ async def batch_run_function_model(
     )
 
     return Response(status_code=200)
-

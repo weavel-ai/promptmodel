@@ -65,8 +65,8 @@ function AuthProvider({ children }) {
 
   useEffect(() => {
     getAndSetToken();
-    // Refresh local token every 50 seconds
-    setInterval(getAndSetToken, 1000 * 50);
+    // Refresh local token every 30 seconds
+    setInterval(getAndSetToken, 1000 * 30);
   }, [getAndSetToken]);
 
   const configCallback = useCallback(

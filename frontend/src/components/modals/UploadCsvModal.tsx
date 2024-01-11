@@ -250,7 +250,7 @@ function SelectHeaderPage({
 }: PageProps) {
   return (
     <div className="w-full h-full flex flex-col gap-y-2">
-      <p className="text-sm text-muted-content">
+      <p className="text-base-content">
         Select the row that contains the header.
       </p>
       <p className="text-sm font-medium text-muted-content my-1">Header row</p>
@@ -381,7 +381,7 @@ function MapColumnsPage({
 
   return (
     <div className="w-full h-full flex flex-col gap-y-2">
-      <p className="text-sm text-muted-content">
+      <p className="text-base-content">
         Map columns to input keys / ground truth.
       </p>
       <p className="text-sm font-medium text-muted-content my-1">Header row</p>

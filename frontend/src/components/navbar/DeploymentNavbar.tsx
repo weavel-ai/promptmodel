@@ -129,7 +129,7 @@ export const DeploymentNavbar = (props: NavbarProps) => {
                 "transition-colors hover:bg-gradient-to-br from-white to-primary",
                 michroma.className
               )}
-              href={organization?.slug ? `/org/${organization.slug}` : "/"}
+              href={organization?.slug ? `/org/redirect` : "/"}
             >
               {PRODUCT_NAME}
             </Link>
