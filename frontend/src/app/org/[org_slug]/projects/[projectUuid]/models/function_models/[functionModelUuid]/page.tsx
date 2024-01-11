@@ -94,6 +94,15 @@ export default function Page() {
   const { functionModelVersionListData } = useFunctionModelVersion();
   const { isCreateVariantOpen, tab, setTab } = useFunctionModelVersionStore();
 
+  useEffect(() => {
+    if (
+      !functionModelVersionListData ||
+      functionModelVersionListData?.length == 0
+    ) {
+      setTab(FUNCTION_MODEL_VERSION_PAGE_TAB.Versions);
+    }
+  }, [functionModelVersionListData, setTab]);
+
   return (
     <div className="w-full h-full">
       {functionModelVersionListData?.length > 0 && !isCreateVariantOpen && (
