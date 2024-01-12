@@ -227,7 +227,6 @@ async def run_cloud_function_model(
             **provider_args.model_dump(),
         )
         async for item in res:
-            print(item.api_response)
             if (item.api_response is not None) and (
                 item.api_response.choices[0].finish_reason is not None
             ):
