@@ -392,6 +392,10 @@ function SampleInputDrawer({
     groundTruthRef.current = groundTruth;
   }, [groundTruth]);
 
+  useEffect(() => {
+    setGroundTruth(sampleInput?.ground_truth);
+  }, [sampleInput]);
+
   async function handleDelete() {
     await deleteSampleInput({
       sample_input_uuid: sampleInput?.uuid,
