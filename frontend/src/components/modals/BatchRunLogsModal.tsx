@@ -175,7 +175,7 @@ export function BatchRunLogModal({
                       />
                     )}
                   </td>
-                  <td className="align-top">{runLog.latency}s</td>
+                  <td className="align-top">{runLog.latency}ms</td>
                   <td className="align-top">${runLog.cost}</td>
                   <td className="align-top">{runLog.total_tokens}</td>
                   <td className="align-top">{runLog.score}</td>
