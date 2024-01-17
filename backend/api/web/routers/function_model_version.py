@@ -75,6 +75,7 @@ async def create_function_model_version(
             output_keys=body.output_keys,
             functions=body.functions,
             function_model_uuid=body.function_model_uuid,
+            created_by=jwt["user_id"],
         )
         session.add(function_model_version)
         await session.flush()

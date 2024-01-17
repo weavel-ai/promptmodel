@@ -25,6 +25,7 @@ class FunctionModelVersionInstance(PMObject):
     memo: Optional[str] = None
 
     function_model_uuid: str
+    created_by: Optional[str] = None
 
 
 class CreateFunctionModelVersionBody(PMObject):

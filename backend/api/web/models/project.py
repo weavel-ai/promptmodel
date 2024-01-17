@@ -24,6 +24,8 @@ class ProjectInstance(PMObject):
 
     description: Optional[str] = None
     cli_access_token: Optional[str] = None
+    
+    is_public: Optional[bool] = None
 
 class ProjectDatasetInstance(PMObject):
     dataset_uuid: str

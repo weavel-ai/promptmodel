@@ -3,7 +3,7 @@ import secrets
 from datetime import datetime
 from typing import Annotated, Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from fastapi import APIRouter, HTTPException, Depends
 from starlette import status as status_code
@@ -24,43 +24,43 @@ async def create_project(
     body: CreateProjectBody,
     session: AsyncSession = Depends(get_session),
 ):
-        # check same name
-        project_in_db = (
-            await session.execute(
-                select(Project)
-                .where(Project.name == body.name)
-                .where(Project.organization_id == body.organization_id)
-            )
-        ).scalar_one_or_none()
-
-        if project_in_db:
-            raise HTTPException(
-                status_code=status_code.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Project with given name already exists",
-            )
-
-        api_key = secrets.token_urlsafe(32)
-        new_project = Project(
-            name=body.name,
-            organization_id=body.organization_id,
-            description=body.description,
-            api_key=api_key,
+    # check same name
+    project_in_db = (
+        await session.execute(
+            select(Project)
+            .where(Project.name == body.name)
+            .where(Project.organization_id == body.organization_id)
         )
-        session.add(new_project)
-        await session.flush()
-        await session.refresh(new_project)
+    ).scalar_one_or_none()
 
-        accuracy = EvalMetric(
-            project_uuid=new_project.uuid,
-            name="gt_exact_match",
-            description="default metric, exact match with ground truth",
-            extent=[0, 1],
+    if project_in_db:
+        raise HTTPException(
+            status_code=status_code.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Project with given name already exists",
         )
-        session.add(accuracy)
-        await session.commit()
 
-        return ProjectInstance(**new_project.model_dump())
-    
+    api_key = secrets.token_urlsafe(32)
+    new_project = Project(
+        name=body.name,
+        organization_id=body.organization_id,
+        description=body.description,
+        api_key=api_key,
+    )
+    session.add(new_project)
+    await session.flush()
+    await session.refresh(new_project)
+
+    accuracy = EvalMetric(
+        project_uuid=new_project.uuid,
+        name="gt_exact_match",
+        description="default metric, exact match with ground truth",
+        extent=[0, 1],
+    )
+    session.add(accuracy)
+    await session.commit()
+
+    return ProjectInstance(**new_project.model_dump())
+
 
 
 @router.get("", response_model=List[ProjectInstance])
@@ -103,19 +103,19 @@ async def get_project(
     uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
-        try:
-            project: Dict = (
-                (await session.execute(select(Project).where(Project.uuid == uuid)))
-                .scalar_one()
-                .model_dump()
-            )
-        except Exception as e:
-            logger.error(e)
-            raise HTTPException(
-                status_code=status_code.HTTP_404_NOT_FOUND,
-                detail="Project with given uuid not found",
-            )
-        return ProjectInstance(**project)
+    try:
+        project: Dict = (
+            (await session.execute(select(Project).where(Project.uuid == uuid)))
+            .scalar_one()
+            .model_dump()
+        )
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(
+            status_code=status_code.HTTP_404_NOT_FOUND,
+            detail="Project with given uuid not found",
+        )
+    return ProjectInstance(**project)
     
 @router.get("/{uuid}/datasets", response_model=List[ProjectDatasetInstance])
 async def get_project_dataset(
@@ -156,3 +156,46 @@ async def get_project_dataset(
     print(datasets)
     
     return datasets
+
+@router.patch("/{uuid}/public", response_model=ProjectInstance)
+async def set_project_public(
+    jwt: Annotated[str, Depends(get_jwt)],
+    uuid: str,
+    is_public: bool,
+    session: AsyncSession = Depends(get_session),
+):
+    # check user have access to project
+    project: Project = (
+        await session.execute(select(Project).where(Project.uuid == uuid))
+    ).scalar_one_or_none()
+    
+    if not project:
+        raise HTTPException(
+            status_code=status_code.HTTP_404_NOT_FOUND,
+            detail="Project with given uuid not found",
+        )
+    
+    user_uuids: List[str] = (
+        await session.execute(
+            select(UsersOrganizations)
+            .where(UsersOrganizations.organization_id == project.organization_id)
+        )
+    ).scalars().all()
+    
+    if jwt["user_id"] not in user_uuids:
+        raise HTTPException(
+            status_code=status_code.HTTP_401_UNAUTHORIZED,
+            detail="User don't have access to this project",
+        )
+
+    await session.execute(
+        update(Project)
+        .where(Project.uuid == uuid)
+        .values(is_public=is_public)
+    )
+    
+    await session.commit()
+    
+    project.is_public = is_public
+    
+    return ProjectInstance(**project.model_dump())

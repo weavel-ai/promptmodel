@@ -98,6 +98,16 @@ class FunctionModelVersion(Base):
         ),
         nullable=False,
     )
+    
+    created_by: Optional[str] = Column(
+        Text,
+        ForeignKey(
+            "user.user_id",
+            onupdate="CASCADE",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+    )
 
     # function_model: "FunctionModel" = Relationship(back_populates="function_model_versions")
     # prompts: List["Prompt"] = Relationship(back_populates="function_model_version")

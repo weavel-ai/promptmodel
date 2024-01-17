@@ -142,6 +142,8 @@ class Project(Base):
         ForeignKey("cli_access.api_key", onupdate="CASCADE", ondelete="SET NULL"),
         nullable=True,
     )
+    
+    is_public: Optional[bool] = Column(Boolean, nullable=True, default=False)
 
     organization_id: str = Column(
         Text,
