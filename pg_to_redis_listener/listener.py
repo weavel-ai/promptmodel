@@ -91,21 +91,6 @@ last_check_time = time.time()
 while True:
     current_time = time.time()
     try:
-        if current_time - last_check_time >= 3600:
-            print(f"Checking database connections at {datetime.now()}")
-            last_check_time = current_time
-            if not check_pg_connection(pg_conn):
-                pg_conn = connect_to_postgres()
-                if pg_conn:
-                    listen_to_pg_channels(pg_conn, channels)
-                else:
-                    print("Failed to reestablish PostgreSQL connection. Exiting...")
-                    raise psycopg2.DatabaseError
-            if not check_redis_connection(redis_conn):
-                redis_conn = connect_to_redis()
-                if not redis_conn:
-                    print("Failed to reestablish Redis connection. Exiting...")
-                    raise redis.RedisError
         
         if select.select([pg_conn], [], [], 60) == ([], [], []):
             print(
@@ -127,6 +112,22 @@ while True:
                     redis_conn.publish(channel, notify.payload)
                     # Remove the notification from the queue
                 pg_conn.notifies.remove(notify)
+                
+        if current_time - last_check_time >= 180:
+            print(f"Checking database connections at {datetime.now()}")
+            last_check_time = current_time
+            if not check_pg_connection(pg_conn):
+                pg_conn = connect_to_postgres()
+                if pg_conn:
+                    listen_to_pg_channels(pg_conn, channels)
+                else:
+                    print("Failed to reestablish PostgreSQL connection. Exiting...")
+                    raise psycopg2.DatabaseError
+            if not check_redis_connection(redis_conn):
+                redis_conn = connect_to_redis()
+                if not redis_conn:
+                    print("Failed to reestablish Redis connection. Exiting...")
+                    raise redis.RedisError
     except (psycopg2.DatabaseError, redis.RedisError) as error:
         print(f"Error: {error}")
         pg_conn = connect_to_postgres()

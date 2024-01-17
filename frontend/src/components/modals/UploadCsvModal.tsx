@@ -367,6 +367,18 @@ function MapColumnsPage({
     }, {});
   }, [inputKeyMappings, headerRowData, groundTruthColumnIndex]);
 
+  useEffect(() => {
+    // Set the input key mappings to the header row data, in snake case
+    if (!headerRowData) return;
+    const newInputKeyMappings: Record<string, string> = {};
+    for (const col of headerRowData) {
+      newInputKeyMappings[col] = col
+        .toLowerCase()
+        .replace(/[^a-zA-Z0-9]/g, "_");
+    }
+    setInputKeyMappings(newInputKeyMappings);
+  }, [headerRowData, setInputKeyMappings]);
+
   function validateInputKey(errorCol: string, inputKey: string) {
     let newErrorCols: Array<string> = cloneDeep(errorKeys);
     if (!inputKeySchema.safeParse(inputKey).success) {
@@ -394,92 +406,94 @@ function MapColumnsPage({
           </tr>
         </tbody>
       </table>
-      <div className="flex flex-row justify-start items-start gap-x-4">
-        <div className="w-fit flex flex-col justify-start items-start gap-y-2">
-          <p className="text-sm font-medium text-muted-content my-1">
-            Example input
-          </p>
-          <ReactJson
-            src={inputKeyMap}
-            name={false}
-            displayDataTypes={false}
-            displayObjectSize={false}
-            enableClipboard={false}
-            theme="harmonic"
-          />
+      <div className="flex flex-col gap-y-2 max-h-[70vh]">
+        <div className="flex flex-row justify-start items-start gap-x-4">
+          <div className="w-fit flex flex-col justify-start items-start gap-y-2">
+            <p className="text-sm font-medium text-muted-content my-1">
+              Example input
+            </p>
+            <ReactJson
+              src={inputKeyMap}
+              name={false}
+              displayDataTypes={false}
+              displayObjectSize={false}
+              enableClipboard={false}
+              theme="harmonic"
+            />
+          </div>
+          <div className="flex flex-col justify-start items-start gap-y-2">
+            <p className="text-sm font-medium text-muted-content my-1">
+              Ground truth column
+            </p>
+            <select
+              className="select select-bordered w-full max-w-xs"
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "") {
+                  setGroundTruthColumnIndex(null);
+                  return;
+                }
+                setGroundTruthColumnIndex(parseInt(value));
+              }}
+            >
+              <option value={null}>None</option>
+              {headerRowData?.map((col: any, j) => (
+                <option key={j} value={j}>
+                  {col}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="flex flex-col justify-start items-start gap-y-2">
-          <p className="text-sm font-medium text-muted-content my-1">
-            Ground truth column
-          </p>
-          <select
-            className="select select-bordered w-full max-w-xs"
-            onChange={(e) => {
-              const value = e.target.value;
-              if (value === "") {
-                setGroundTruthColumnIndex(null);
-                return;
-              }
-              setGroundTruthColumnIndex(parseInt(value));
-            }}
-          >
-            <option value={null}>None</option>
-            {headerRowData?.map((col: any, j) => (
-              <option key={j} value={j}>
-                {col}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-      <div className="flex-grow max-h-[50vh] overflow-auto my-2">
-        <table className="table table-pin-rows">
-          <thead>
-            <tr className="text-base-content">
-              <th>Column</th>
-              <th>Input key name (Leave empty to ignore)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {headerRowData?.map((col: any, j: number) => {
-              if (j == groundTruthColumnIndex) {
-                return null;
-              }
-              return (
-                <tr key={j}>
-                  <td>{col}</td>
-                  <td className="flex flex-col gap-y-1 items-start">
-                    <input
-                      type="text"
-                      className="input input-bordered w-full"
-                      value={inputKeyMappings?.[col]}
-                      onChange={(e) => {
-                        const inputKey = e.target.value;
-                        if (inputKey?.length === 0) {
+        <div className="flex-grow overflow-auto my-2">
+          <table className="table">
+            <thead className="bg-base-100 sticky top-0">
+              <tr className="text-base-content text-base">
+                <th className="w-fit">Column</th>
+                <th>Input key name (Leave empty to ignore)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {headerRowData?.map((col: any, j: number) => {
+                if (j == groundTruthColumnIndex) {
+                  return null;
+                }
+                return (
+                  <tr key={j}>
+                    <td className="w-fit">{col}</td>
+                    <td className="flex flex-col gap-y-1 items-start">
+                      <input
+                        type="text"
+                        className="input input-bordered w-full"
+                        value={inputKeyMappings?.[col]}
+                        onChange={(e) => {
+                          const inputKey = e.target.value;
+                          if (inputKey?.length === 0) {
+                            const newInputKeyMappings = { ...inputKeyMappings };
+                            delete newInputKeyMappings[col];
+                            setInputKeyMappings?.(newInputKeyMappings);
+                            return;
+                          }
                           const newInputKeyMappings = { ...inputKeyMappings };
-                          delete newInputKeyMappings[col];
+                          newInputKeyMappings[col] = inputKey;
                           setInputKeyMappings?.(newInputKeyMappings);
-                          return;
-                        }
-                        const newInputKeyMappings = { ...inputKeyMappings };
-                        newInputKeyMappings[col] = inputKey;
-                        setInputKeyMappings?.(newInputKeyMappings);
-                        validateInputKey(col, inputKey);
-                      }}
-                    />
+                          validateInputKey(col, inputKey);
+                        }}
+                      />
 
-                    {errorKeys.includes(col) && (
-                      <p className="text-red-500 text-sm">
-                        Invalid input key format. Use letters, numbers, and
-                        underscores.
-                      </p>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                      {errorKeys.includes(col) && (
+                        <p className="text-red-500 text-sm">
+                          Invalid input key format. Use letters, numbers, and
+                          underscores.
+                        </p>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
       <div className="flex flex-row w-full justify-end gap-x-2 mt-2">
         <button

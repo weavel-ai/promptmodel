@@ -94,7 +94,12 @@ async def create_sample_input(
                 status_code=status_code.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Same name in project",
             )
-    if body.content is None or body.content == {} or body.input_keys is None or body.input_keys == []:
+    if (
+        body.content is None
+        or body.content == {}
+        or body.input_keys is None
+        or body.input_keys == []
+    ):
         return Response(status_code=status_code.HTTP_200_OK)
     new_sample_input = SampleInput(**body.model_dump())
     session.add(new_sample_input)
@@ -285,7 +290,7 @@ async def save_sample_inputs_in_dataset(
         )
 
     # create sample inputs
-    sample_input_list: List[Dict] = [
+    sample_input_list: List[Dict] = [  # Doesn't contain uuid
         SampleInput(
             **sample_input.model_dump(),
             function_model_uuid=dataset.function_model_uuid,
@@ -294,25 +299,23 @@ async def save_sample_inputs_in_dataset(
         for sample_input in body
     ]
 
-    sample_input_uuid_list: List[SampleInput] = (
-        (
-            await session.execute(
-                insert(SampleInput)
-                .values(sample_input_list)
-                .returning(SampleInput.uuid)
-            )
+    # Add sample inputs to db, and get created uuids
+    sample_input_uuid_list: List[str] = [
+        str(
+            (
+                await session.execute(
+                    insert(SampleInput).values(sample_input).returning(SampleInput.uuid)
+                )
+            ).scalar_one()
         )
-        .scalars()
-        .all()
-    )
+        for sample_input in sample_input_list
+    ]
 
-    dataset_sample_input = []
-    for sample_input_uuid in sample_input_uuid_list:
-        dataset_sample_input.append(
-            DatasetSampleInput(
-                dataset_uuid=dataset.uuid, sample_input_uuid=sample_input_uuid
-            )
-        )
+    dataset_sample_input = [
+        DatasetSampleInput(dataset_uuid=dataset.uuid, sample_input_uuid=uuid)
+        for uuid in sample_input_uuid_list
+    ]
+
     session.add_all(dataset_sample_input)
     await session.commit()
 

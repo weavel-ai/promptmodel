@@ -94,6 +94,15 @@ export default function Page() {
   const { functionModelVersionListData } = useFunctionModelVersion();
   const { isCreateVariantOpen, tab, setTab } = useFunctionModelVersionStore();
 
+  useEffect(() => {
+    if (
+      !functionModelVersionListData ||
+      functionModelVersionListData?.length == 0
+    ) {
+      setTab(FUNCTION_MODEL_VERSION_PAGE_TAB.Versions);
+    }
+  }, [functionModelVersionListData, setTab]);
+
   return (
     <div className="w-full h-full">
       {functionModelVersionListData?.length > 0 && !isCreateVariantOpen && (
@@ -434,8 +443,10 @@ function VersionsPage() {
               },
             ]);
             setShowSlashOptions(false);
-            // Add output key
-            setOutputKeys([...outputKeys, outputKey]);
+            // Add output key if it doesn't exist
+            if (!outputKeys.includes(outputKey)) {
+              setOutputKeys([...outputKeys, outputKey]);
+            }
             // Calculate new cursor position
             const newColumnPosition = position.column + outputFormatText.length;
             // Set cursor to the end of the inserted value
