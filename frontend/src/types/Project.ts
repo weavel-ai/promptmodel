@@ -37,4 +37,5 @@ export interface Project {
   organization_id: string;
   description: string;
   cli_access_token: string;
+  is_public: boolean;
 }

@@ -12,16 +12,18 @@ import {
 import { toast } from "react-toastify";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { LLMProvider, LLMProviders } from "@/constants";
+import { LLMProvider, LLMProviders, env } from "@/constants";
 import { Modal } from "@/components/modals/Modal";
 import { InputField } from "@/components/InputField";
 import { useOrganization } from "@/hooks/auth/useOrganization";
 import { ReactSVG } from "react-svg";
 import { ClickToConfirmDeleteButton } from "@/components/buttons/ClickToConfirmDeleteButton";
+import { SupabaseClient, createClient } from "@supabase/supabase-js";
 
 export default function Page() {
-  const { projectData } = useProject();
+  const { projectData, updateIsPublicMutation } = useProject();
   const { configuredLLMProviderList } = useOrganization();
+  const [isOpen, setIsOpen] = useState(false);
 
   const supportedProviders = useMemo(
     () =>
@@ -91,6 +93,32 @@ export default function Page() {
             />
           ))}
         </div>
+        <div className="pt-16 flex flex-row gap-x-32">
+          <div className="flex flex-col gap-y-4">
+            <p className="text-lg font-semibold">Change Project Visibility</p>
+            <p className="text-sm">
+              Your project is currently{" "}
+              {projectData?.is_public ? "public" : "private"}
+            </p>
+          </div>
+          <div className="flex flex-col justify-center">
+            <button
+              className="btn btn-sm w-fit bg-transparent border-red-500 border-2 text-red-500 hover:bg-red-500 hover:text-base-100"
+              onClick={() => {
+                setIsOpen(true);
+              }}
+            >
+              {projectData?.is_public ? "Change Private" : "Change Public"}
+            </button>
+          </div>
+        </div>
+        <PublicStateModifyModel
+          isOpen={isOpen}
+          setIsOpen={setIsOpen}
+          isPublic={projectData?.is_public}
+          projectUuid={projectData?.uuid}
+          updateIsPublicMutation={updateIsPublicMutation}
+        />
       </div>
     </div>
   );
@@ -238,6 +266,74 @@ function APIKeyInputModal(props: APIKeyInputModalProps) {
             )}
           </button>
         </div>
+      </div>
+    </Modal>
+  );
+}
+
+function PublicStateModifyModel({
+  isOpen,
+  setIsOpen,
+  isPublic,
+  projectUuid,
+  updateIsPublicMutation,
+}) {
+  async function setIsPublic(isPublic: boolean) {
+    const toastId = toast.loading("Converting...");
+    const supabase: SupabaseClient = createClient(
+      env.SUPABASE_URL,
+      env.SUPABASE_KEY
+    );
+    await supabase
+      .from("project")
+      .update({ is_public: isPublic })
+      .match({ uuid: projectUuid });
+
+    toast.update(toastId, {
+      containerId: "default",
+      render: "Converted!",
+      type: "success",
+      isLoading: false,
+      autoClose: 1000,
+    });
+  }
+
+  return (
+    <Modal isOpen={isOpen} setIsOpen={setIsOpen}>
+      <div className="bg-popover p-6 rounded-box flex flex-col gap-y-4 items-start">
+        <p className="text-base-content text-xl font-semibold">
+          Change Project Visibilty
+        </p>
+        <p>
+          {isPublic
+            ? "If the project is private, only project contributers can read and add prompts."
+            : "If the project is public, anyone can read and add prompts."}
+        </p>
+        <div className="w-full flex flex-row justify-end items-center gap-x-2 mt-2">
+          <button
+            className="btn btn-sm btn-ghost normal-case"
+            onClick={() => setIsOpen(false)}
+          >
+            Cancel
+          </button>
+          <button
+            className="btn btn-sm bg-red-500 normal-case text-base-content"
+            onClick={() => {
+              updateIsPublicMutation.mutateAsync(isPublic);
+              setIsOpen(false);
+            }}
+          >
+            <p>Confirm</p>
+          </button>
+        </div>
+        {/*<div className="mt-4 flex flex-row gap-x-2 justify-self-end">
+          <button className="btn btn-sm bg-transparent border-none">
+            <p className="text-red-500 text-sm">Confirm</p>
+          </button>
+          <button className="btn btn-sm bg-transparent border-none">
+            <p className="text-base-content text-sm">Cancel</p>
+          </button>
+          </div>*/}
       </div>
     </Modal>
   );

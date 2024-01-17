@@ -15,6 +15,8 @@ import { useProjectDailyRunLogMetrics } from "@/hooks/analytics";
 import { CustomAreaChart } from "@/components/charts/CustomAreaChart";
 import { Button } from "@/components/ui/button";
 import { SelectTab } from "@/components/SelectTab";
+import { SupabaseClient, createClient } from "@supabase/supabase-js";
+import { env } from "@/constants";
 dayjs.extend(relativeTime);
 
 export default function Page() {
@@ -26,9 +28,15 @@ export default function Page() {
   enum Tab {
     Deployment = "Deployment",
     Development = "Development",
+    Public = "Public",
+    Private = "Private",
   }
-  const TABS = [Tab.Deployment, Tab.Development];
-  const [tab, setTab] = useState(Tab.Deployment);
+  const ANALYSISTABS = [Tab.Deployment, Tab.Development];
+  const [analysisTab, setAnalysisTab] = useState(Tab.Deployment);
+  const ISPUBLICTABS = [Tab.Public, Tab.Private];
+  const [isPublicTab, setIsPublicTab] = useState(
+    projectData?.is_public ? Tab.Public : Tab.Private
+  );
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(Date.now(), 7),
     to: new Date(),
@@ -44,7 +52,7 @@ export default function Page() {
 
   const displayedProjectDailyRunLogMetrics = projectDailyRunLogMetrics?.filter(
     (data) => {
-      return data.run_from_deployment === (tab == Tab.Deployment);
+      return data.run_from_deployment === (analysisTab == Tab.Deployment);
     }
   );
 
@@ -103,6 +111,17 @@ export default function Page() {
     return 0;
   });
 
+  async function setIsPublic(isPublic: boolean) {
+    const supabase: SupabaseClient = createClient(
+      env.SUPABASE_URL,
+      env.SUPABASE_KEY
+    );
+    await supabase
+      .from("project")
+      .update({ is_public: isPublic })
+      .match({ uuid: projectData.uuid });
+  }
+
   return (
     <div className="w-full h-full pl-28 pt-20 pb-8">
       {/* Header */}
@@ -110,10 +129,15 @@ export default function Page() {
         <div className="w-full flex flex-row gap-x-6">
           {/* Project Overview */}
           <div className="w-1/2 h-fit">
-            <div className="justify-start items-center pb-4">
+            <div className="w-full h-fit flex flex-row gap-x-6 pb-4 content-center">
               <p className="text-2xl font-bold text-base-content">
                 Project Overview
               </p>
+              <div className="flex flex-col justify-center">
+                <p className="text-xs px-2 border-base-content/70 bg-transparent border-2 rounded-full text-base-content">
+                  {projectData?.is_public ? "Public" : "Private"}
+                </p>
+              </div>
             </div>
             <div className="bg-base-200 rounded-box p-4 w-full h-fit flex flex-col gap-y-2">
               <p className="text-xl font-bold">{projectData?.name}</p>
@@ -166,9 +190,9 @@ export default function Page() {
             <div className="w-full h-fit flex flex-row gap-x-8">
               <p className="text-2xl font-bold pb-4">Analytics</p>
               <SelectTab
-                tabs={TABS}
-                selectedTab={tab}
-                onSelect={(newTab) => setTab(newTab as Tab)}
+                tabs={ANALYSISTABS}
+                selectedTab={analysisTab}
+                onSelect={(newTab) => setAnalysisTab(newTab as Tab)}
               />
             </div>
 
@@ -216,8 +240,6 @@ export default function Page() {
 }
 
 const ChangeLogComponent = ({ changeLog }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
   return (
     <div className="flex flex-col gap-y-2">
       {changeLog.logs?.map((log, idx) => {
