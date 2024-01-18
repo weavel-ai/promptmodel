@@ -51,4 +51,4 @@ RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]
 
-CMD uvicorn server:app --host 0.0.0.0 --port $PORT
+# CMD uvicorn server:app --host 0.0.0.0 --port $PORT

@@ -24,18 +24,13 @@ import { Prompt } from "@/types/Prompt";
 import { version } from "os";
 import { StdioNull } from "child_process";
 import { useUser } from "@clerk/nextjs";
+import { useAuth } from "./auth/useAuth";
 
 export const useFunctionModelVersion = () => {
   const params = useParams();
   const queryClient = useQueryClient();
   const { projectData } = useProject();
-  const { user } = useUser();
-
-  useEffect(() => {
-    console.log(user);
-    console.log(user?.imageUrl);
-    console.log(user?.web3Wallets);
-  }, [user]);
+  const { userId } = useAuth();
 
   const {
     runLogs,
@@ -163,7 +158,7 @@ export const useFunctionModelVersion = () => {
       parsing_type: selectedParser,
       output_keys: outputKeys,
       functions: selectedFunctions,
-      created_by: user.id,
+      created_by: userId,
     } as CreateFunctionModelVersionRequest);
 
     // clear all of run log cache where versionUuid is same with newVersionCache.uuid

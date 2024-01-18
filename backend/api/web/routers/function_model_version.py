@@ -58,8 +58,8 @@ async def fetch_function_model_versions_with_user(
                             )
                         )
                     )
-                    .scalars()
-                    .one_or_none()
+                    .mappings()
+                    .one_or_none() or {}
                 )
             ),
         )
@@ -170,8 +170,8 @@ async def create_function_model_version(
     return function_model_version
 
 
-@router.get("/{uuid}", response_model=FunctionModelVersionInstance)
-async def fetch_function_model_version(
+@router.get("/{uuid}", response_model=FunctionModelVersionWithUserInstance)
+async def fetch_function_model_version_with_user(
     jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -194,7 +194,25 @@ async def fetch_function_model_version(
             status_code=status_code.HTTP_404_NOT_FOUND,
             detail="FunctionModelVersion with given id not found",
         )
-    return FunctionModelVersionInstance(**function_model_version)
+        
+    function_model_version_with_user: FunctionModelVersionWithUserInstance = FunctionModelVersionWithUserInstance(
+       **(FunctionModelVersionInstance(**function_model_version).model_dump()),
+        user=FunctionModelVersionAuthor(
+            **(
+                (
+                    await session.execute(
+                       select(User.email, User.image_url).where(
+                            User.user_id == function_model_version["created_by"]
+                        )
+                    )
+                )
+                .mappings()
+                .one_or_none() or {}
+            )
+        )
+    )    
+        
+    return function_model_version_with_user
 
 
 @router.delete("/{uuid}")
