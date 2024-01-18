@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { SelectTab } from "@/components/SelectTab";
 import { SupabaseClient, createClient } from "@supabase/supabase-js";
 import { env } from "@/constants";
+import { Badge } from "@/components/ui/badge";
 dayjs.extend(relativeTime);
 
 export default function Page() {
@@ -134,9 +135,15 @@ export default function Page() {
                 Project Overview
               </p>
               <div className="flex flex-col justify-center">
-                <p className="text-xs px-2 border-base-content/70 bg-transparent border-2 rounded-full text-base-content">
+                <Badge
+                  className="text-xs"
+                  variant={projectData?.is_public ? "secondary" : "outline"}
+                >
                   {projectData?.is_public ? "Public" : "Private"}
-                </p>
+                </Badge>
+                {/* <p className="text-xs px-2 border-base-content/70 bg-transparent border-2 rounded-full text-base-content">
+                  {projectData?.is_public ? "Public" : "Private"}
+                </p> */}
               </div>
             </div>
             <div className="bg-base-200 rounded-box p-4 w-full h-fit flex flex-col gap-y-2">

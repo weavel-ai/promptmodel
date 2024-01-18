@@ -16,6 +16,7 @@ import { subscribeTable } from "@/apis/subscribe";
 import { useAuth } from "./auth/useAuth";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { useSupabaseClient } from "@/apis/supabase";
+import { Project } from "@/types/Project";
 
 export const useProject = () => {
   const params = useParams();
@@ -95,7 +96,7 @@ export const useProject = () => {
       const toastId = toast.loading("Converting...");
       await supabaseWithoutToken
         .from("project")
-        .update({ is_public: isPublic })
+        .update({ is_public: !isPublic })
         .match({ uuid: params?.projectUuid });
 
       toast.update(toastId, {
@@ -107,16 +108,17 @@ export const useProject = () => {
       });
       return { isPublic };
     },
-    onSuccess: ({ isPublic }: { isPublic: boolean }) => {
-      const previousData: Record<string, any> = queryClient.getQueryData([
-        "projectData",
-        { projectUuid: params?.projectUuid },
-      ]);
-      queryClient.setQueryData(
+    onSuccess: () => {
+      console.log("On Success");
+      queryClient.setQueryData<Project>(
         ["projectData", { projectUuid: params?.projectUuid }],
-        {
-          ...previousData,
-          is_public: isPublic,
+        (oldData) => {
+          if (!oldData) return;
+
+          return {
+            ...oldData,
+            is_public: !oldData.is_public,
+          };
         }
       );
     },

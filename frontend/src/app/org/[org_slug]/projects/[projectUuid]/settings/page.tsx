@@ -272,26 +272,6 @@ function APIKeyInputModal(props: APIKeyInputModalProps) {
 function PublicStateModifyModal({ isOpen, setIsOpen, isPublic, projectUuid }) {
   const { updateIsPublicMutation } = useProject();
 
-  async function setIsPublic(isPublic: boolean) {
-    const toastId = toast.loading("Converting...");
-    const supabase: SupabaseClient = createClient(
-      env.SUPABASE_URL,
-      env.SUPABASE_KEY
-    );
-    await supabase
-      .from("project")
-      .update({ is_public: isPublic })
-      .match({ uuid: projectUuid });
-
-    toast.update(toastId, {
-      containerId: "default",
-      render: "Converted!",
-      type: "success",
-      isLoading: false,
-      autoClose: 1000,
-    });
-  }
-
   return (
     <Modal isOpen={isOpen} setIsOpen={setIsOpen}>
       <div className="bg-popover p-6 rounded-box flex flex-col gap-y-4 items-start">
@@ -301,7 +281,7 @@ function PublicStateModifyModal({ isOpen, setIsOpen, isPublic, projectUuid }) {
         <p>
           {isPublic
             ? "If the project is private, only project contributers can read and add prompts."
-            : "If the project is public, anyone can read and add prompts."}
+            : "If the project is public, anyone can view your prompts and create variants."}
         </p>
         <div className="w-full flex flex-row justify-end items-center gap-x-2 mt-2">
           <button
