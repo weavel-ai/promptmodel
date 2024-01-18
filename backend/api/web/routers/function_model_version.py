@@ -13,8 +13,10 @@ from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
 from ..models.function_model_version import (
+    FunctionModelVersionAuthor,
     FunctionModelVersionInstance,
     CreateFunctionModelVersionBody,
+    FunctionModelVersionWithUserInstance,
     UpdatePublishedFunctionModelVersionBody,
     UpdateFunctionModelVersionTagsBody,
     FunctionModelVersionBatchRunInstance,
@@ -24,8 +26,8 @@ router = APIRouter()
 
 
 # FunctionModelVersion Endpoints
-@router.get("", response_model=List[FunctionModelVersionInstance])
-async def fetch_function_model_versions(
+@router.get("", response_model=List[FunctionModelVersionWithUserInstance])
+async def fetch_function_model_versions_with_user(
     jwt: Annotated[str, Depends(get_jwt)],
     function_model_uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -42,7 +44,29 @@ async def fetch_function_model_versions(
         .scalars()
         .all()
     ]
-    return function_model_versions
+
+    # Fetch user email & image_url, and append it to corresponding version before returning
+    function_model_versions_with_user: List[FunctionModelVersionWithUserInstance] = [
+        FunctionModelVersionWithUserInstance(
+            **function_model_version.model_dump(),
+            user=FunctionModelVersionAuthor(
+                **(
+                    (
+                        await session.execute(
+                            select(User.email, User.image_url).where(
+                                User.user_id == function_model_version.created_by
+                            )
+                        )
+                    )
+                    .scalars()
+                    .one_or_none()
+                )
+            ),
+        )
+        for function_model_version in function_model_versions
+    ]
+
+    return function_model_versions_with_user
 
 
 @router.post("")

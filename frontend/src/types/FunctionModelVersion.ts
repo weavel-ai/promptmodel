@@ -63,6 +63,16 @@ export interface DeleteFunctionModelVersionRequest {
 }
 
 /**
+ * Interface for the request to read a FunctionModelVersion with User information.
+ */
+export interface FunctionModelVersionWithUser extends FunctionModelVersion {
+  user: {
+    image_url: string;
+    email: string;
+  };
+}
+
+/**
  * General interface for representing a FunctionModelVersion in the system.
  */
 export interface FunctionModelVersion {
