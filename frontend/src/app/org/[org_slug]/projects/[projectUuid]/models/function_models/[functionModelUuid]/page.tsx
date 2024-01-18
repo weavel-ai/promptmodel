@@ -611,14 +611,14 @@ function VersionInfoOverlay({ versionData }) {
       )}
       <div className="flex flex-row gap-x-1 items-center">
         <Image
-          src={hoveredVersionData.user.image_url}
+          src={hoveredVersionData.user?.image_url}
           alt="Version Author"
           width={32}
           height={32}
           className="rounded-full"
         />
         <p className="text-sm text-base-content/70">
-          {hoveredVersionData.user.email}
+          {hoveredVersionData.user?.email}
         </p>
       </div>
     </div>
@@ -940,10 +940,10 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
 
                 <div
                   className="ml-2 tooltip tooltip-right"
-                  data-tip={originalFunctionModelVersionData?.user.email}
+                  data-tip={originalFunctionModelVersionData?.user?.email}
                 >
                   <Image
-                    src={originalFunctionModelVersionData?.user.image_url}
+                    src={originalFunctionModelVersionData?.user?.image_url}
                     alt="Version Author"
                     width={32}
                     height={32}
