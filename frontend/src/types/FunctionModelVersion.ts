@@ -26,6 +26,7 @@ export interface CreateFunctionModelVersionRequest {
   parsing_type?: string;
   output_keys?: Array<string>;
   functions?: Array<string>;
+  created_by?: string;
 }
 
 /**
@@ -80,4 +81,5 @@ export interface FunctionModelVersion {
   tags: Array<string>;
   memo: string;
   function_model_uuid: string;
+  created_by: string;
 }
