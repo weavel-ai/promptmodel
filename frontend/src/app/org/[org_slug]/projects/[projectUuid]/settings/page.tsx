@@ -21,7 +21,7 @@ import { ClickToConfirmDeleteButton } from "@/components/buttons/ClickToConfirmD
 import { SupabaseClient, createClient } from "@supabase/supabase-js";
 
 export default function Page() {
-  const { projectData, updateIsPublicMutation } = useProject();
+  const { projectData } = useProject();
   const { configuredLLMProviderList } = useOrganization();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -49,7 +49,7 @@ export default function Page() {
 
   return (
     <div className="w-full h-full pl-20">
-      <div className="w-full h-full flex flex-col justify-start gap-y-6 pt-20 pl-8 pb-8">
+      <div className="w-full h-full min-h-fit flex flex-col justify-start gap-y-6 pt-20 pl-8 pb-20">
         {/* Header */}
         <div className="flex flex-row justify-start items-center">
           <p className="text-2xl font-bold text-base-content">
@@ -93,31 +93,29 @@ export default function Page() {
             />
           ))}
         </div>
-        <div className="pt-16 flex flex-row gap-x-32">
+        <div className="pt-16 flex flex-row gap-x-16 items-start">
           <div className="flex flex-col gap-y-4">
             <p className="text-lg font-semibold">Change Project Visibility</p>
             <p className="text-sm">
-              Your project is currently{" "}
-              {projectData?.is_public ? "public" : "private"}
+              {projectData?.is_public
+                ? "Your project is currently public. Anyone can view your prompts and create variants."
+                : "Your project is currently private."}
             </p>
           </div>
-          <div className="flex flex-col justify-center">
-            <button
-              className="btn btn-sm w-fit bg-transparent border-red-500 border-2 text-red-500 hover:bg-red-500 hover:text-base-100"
-              onClick={() => {
-                setIsOpen(true);
-              }}
-            >
-              {projectData?.is_public ? "Change Private" : "Change Public"}
-            </button>
-          </div>
+          <button
+            className="btn btn-sm w-fit bg-transparent border-red-500 border-2 text-red-500 hover:bg-red-500 hover:text-base-100"
+            onClick={() => {
+              setIsOpen(true);
+            }}
+          >
+            {projectData?.is_public ? "Set Private" : "Set Public"}
+          </button>
         </div>
-        <PublicStateModifyModel
+        <PublicStateModifyModal
           isOpen={isOpen}
           setIsOpen={setIsOpen}
           isPublic={projectData?.is_public}
           projectUuid={projectData?.uuid}
-          updateIsPublicMutation={updateIsPublicMutation}
         />
       </div>
     </div>
@@ -271,13 +269,9 @@ function APIKeyInputModal(props: APIKeyInputModalProps) {
   );
 }
 
-function PublicStateModifyModel({
-  isOpen,
-  setIsOpen,
-  isPublic,
-  projectUuid,
-  updateIsPublicMutation,
-}) {
+function PublicStateModifyModal({ isOpen, setIsOpen, isPublic, projectUuid }) {
+  const { updateIsPublicMutation } = useProject();
+
   async function setIsPublic(isPublic: boolean) {
     const toastId = toast.loading("Converting...");
     const supabase: SupabaseClient = createClient(
@@ -317,23 +311,15 @@ function PublicStateModifyModel({
             Cancel
           </button>
           <button
-            className="btn btn-sm bg-red-500 normal-case text-base-content"
-            onClick={() => {
-              updateIsPublicMutation.mutateAsync(isPublic);
+            className="btn btn-sm bg-red-500 normal-case text-base-content hover:bg-red-500/80"
+            onClick={async () => {
+              await updateIsPublicMutation.mutateAsync({ isPublic: isPublic });
               setIsOpen(false);
             }}
           >
             <p>Confirm</p>
           </button>
         </div>
-        {/*<div className="mt-4 flex flex-row gap-x-2 justify-self-end">
-          <button className="btn btn-sm bg-transparent border-none">
-            <p className="text-red-500 text-sm">Confirm</p>
-          </button>
-          <button className="btn btn-sm bg-transparent border-none">
-            <p className="text-base-content text-sm">Cancel</p>
-          </button>
-          </div>*/}
       </div>
     </Modal>
   );

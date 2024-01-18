@@ -105,19 +105,19 @@ export const useProject = () => {
         isLoading: false,
         autoClose: 1000,
       });
+      return { isPublic };
     },
-    onSuccess: () => {
-      const previousData = queryClient.getQueryData([
+    onSuccess: ({ isPublic }: { isPublic: boolean }) => {
+      const previousData: Record<string, any> = queryClient.getQueryData([
         "projectData",
         { projectUuid: params?.projectUuid },
       ]);
       queryClient.setQueryData(
         ["projectData", { projectUuid: params?.projectUuid }],
-        previousData
-      );
-      queryClient.setQueryData(
-        ["projectData", { projectUuid: params?.projectUuid }],
-        (is_public: boolean) => !is_public
+        {
+          ...previousData,
+          is_public: isPublic,
+        }
       );
     },
   });
