@@ -35,8 +35,8 @@ class EvalMetric(Base):
         server_default=text("gen_random_uuid()"),
     )
 
-    project_uuid: UUIDType = Column(
-        UUID(as_uuid=True),
+    project_uuid: str = Column(
+        Text,
         ForeignKey(
             "project.uuid",
             onupdate="CASCADE",

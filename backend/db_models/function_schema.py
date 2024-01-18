@@ -43,8 +43,8 @@ class FunctionSchema(Base):
     description: Optional[str] = Column(Text, nullable=True)
     mock_response: Optional[str] = Column(Text, nullable=True)
 
-    project_uuid: UUIDType = Column(
-        UUID(as_uuid=True),
+    project_uuid: str = Column(
+        Text,
         ForeignKey(
             "project.uuid",
             onupdate="CASCADE",
