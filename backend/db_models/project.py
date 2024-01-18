@@ -82,6 +82,7 @@ class User(Base):
     hashed_password: str = Column(Text, nullable=True)
     first_name: str = Column(Text, nullable=True)
     last_name: str = Column(Text, nullable=True)
+    image_url: Optional[str] = Column(Text, nullable=True)
     is_test: bool = Column(Boolean, nullable=False, default=False)
 
     # cli_access: "CliAccess" = Relationship(back_populates="user"
@@ -142,7 +143,7 @@ class Project(Base):
         ForeignKey("cli_access.api_key", onupdate="CASCADE", ondelete="SET NULL"),
         nullable=True,
     )
-    
+
     is_public: Optional[bool] = Column(Boolean, nullable=True, default=False)
 
     organization_id: str = Column(
