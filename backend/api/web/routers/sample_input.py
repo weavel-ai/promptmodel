@@ -401,6 +401,51 @@ async def connect_sample_input_to_dataset(
     return Response(status_code=200)
 
 
+@router.delete("/dataset/{dataset_uuid}")
+async def delete_dataset(
+    jwt: Annotated[str, Depends(get_jwt)],
+    dataset_uuid: str,
+    session: AsyncSession = Depends(get_session),
+):
+    dataset: Dataset = (
+        await session.execute(select(Dataset).where(Dataset.uuid == dataset_uuid))
+    ).scalar_one_or_none()
+
+    if dataset is None:
+        raise HTTPException(
+            status_code=status_code.HTTP_404_NOT_FOUND,
+            detail="Dataset not found",
+        )
+
+    # check if user have access to project
+    user_id = jwt["user_id"]
+
+    project_check = (
+        await session.execute(
+            select(Project)
+            .join(Organization, Organization.organization_id == Project.organization_id)
+            .join(
+                UsersOrganizations,
+                UsersOrganizations.organization_id == Organization.organization_id,
+            )
+            .where(Project.uuid == dataset.project_uuid)
+            .where(UsersOrganizations.user_id == user_id)
+        )
+    ).scalar_one_or_none()
+
+    if project_check is None:
+        raise HTTPException(
+            status_code=status_code.HTTP_401_UNAUTHORIZED,
+            detail="User Cannot Access SampleInput",
+        )
+
+    # Delete dataset
+    await session.execute(delete(Dataset).where(Dataset.uuid == dataset_uuid))
+    await session.commit()
+
+    return Response(status_code=200)
+
+
 @router.delete("/{sample_input_uuid}")
 async def delete_sample_input(
     jwt: Annotated[str, Depends(get_jwt)],

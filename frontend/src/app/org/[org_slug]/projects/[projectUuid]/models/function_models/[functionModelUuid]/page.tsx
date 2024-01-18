@@ -56,7 +56,6 @@ import {
   PromptEditor,
 } from "@/components/editor/PromptEditor";
 import { useWindowHeight, useWindowSize } from "@react-hook/window-size";
-import { SampleSelector } from "@/components/SampleSelector";
 import { ModelDisplay, ModelSelector } from "@/components/ModelSelector";
 import { TagsInput } from "react-tag-input-component";
 import { FunctionSelector } from "@/components/select/FunctionSelector";

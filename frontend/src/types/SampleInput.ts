@@ -107,6 +107,13 @@ export interface DeleteSampleInputRequest {
 }
 
 /**
+ * Interface for request to delete a Dataset.
+ */
+export interface DeleteDatasetRequest {
+  dataset_uuid: string;
+}
+
+/**
  * Interface for datset with eval metric.
  */
 export interface DatasetWithEvalMetric {
