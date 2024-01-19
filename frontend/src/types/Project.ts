@@ -20,7 +20,7 @@ export interface ReadProjectRequest {
  * Interface for the request to read an organization's projects.
  */
 export interface ReadOrgProjectsRequest {
-  organization_id: string;
+  organization_slug: string;
 }
 
 /**

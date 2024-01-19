@@ -25,6 +25,7 @@ import { SelectNavigator } from "../SelectNavigator";
 import { useChatModel } from "@/hooks/useChatModel";
 import { LocalConnectionStatus } from "../LocalConnectionStatus";
 import { updateOrganization } from "@/apis/organizations";
+import { useOrganizationBySlug } from "@/hooks/useOrganizationBySlug";
 
 const michroma = Michroma({
   weight: ["400"],
@@ -41,6 +42,7 @@ export const DeploymentNavbar = (props: NavbarProps) => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { isSignedIn, userId } = useAuth();
+  const { organizationDataBySlug } = useOrganizationBySlug();
   const { organization } = useOrganization();
   const { orgData, refetchOrgData } = useOrgData();
   const { projectData, projectListData } = useProject();
@@ -118,7 +120,7 @@ export const DeploymentNavbar = (props: NavbarProps) => {
         // Navigation bar content for desktop view
         <div
           className={classNames(
-            "flex flex-row justify-between items-center w-full gap-x-4"
+            "flex flex-row justify-between items-center w-full gap-x-4 mt-1"
           )}
         >
           <div className="flex flex-row justify-start items-center w-full gap-x-4">
@@ -135,25 +137,34 @@ export const DeploymentNavbar = (props: NavbarProps) => {
             </Link>
             {/* Project navigator */}
             {params?.projectUuid && (
-              <SelectNavigator
-                statusType="connection"
-                current={{
-                  label: projectListData?.find(
-                    (project) => project.uuid == params?.projectUuid
-                  )?.name,
-                  online: projectListData?.find(
-                    (project) => project.uuid == params?.projectUuid
-                  )?.online,
-                  href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models`,
-                }}
-                options={projectListData?.map((project) => {
-                  return {
-                    label: project.name,
-                    online: project.online,
-                    href: `/org/${params?.org_slug}/projects/${project?.uuid}/models`,
-                  };
-                })}
-              />
+              <div className="flex flex-row items-center ms-2">
+                <button
+                  className="btn btn-sm bg-transparent text-base-content"
+                  onClick={() => router.push("/org/redirect")}
+                >
+                  {organizationDataBySlug?.name}
+                </button>
+                <p className="text-xl mr-3">/</p>
+                <SelectNavigator
+                  statusType="connection"
+                  current={{
+                    label: projectListData?.find(
+                      (project) => project.uuid == params?.projectUuid
+                    )?.name,
+                    online: projectListData?.find(
+                      (project) => project.uuid == params?.projectUuid
+                    )?.online,
+                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models`,
+                  }}
+                  options={projectListData?.map((project) => {
+                    return {
+                      label: project.name,
+                      online: project.online,
+                      href: `/org/${params?.org_slug}/projects/${project?.uuid}/models`,
+                    };
+                  })}
+                />
+              </div>
             )}
             <div className="flex flex-row items-center">
               {modelType && (

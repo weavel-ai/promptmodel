@@ -29,11 +29,15 @@ export const useProject = () => {
   const { supabaseWithoutToken } = useSupabaseClient();
 
   const { data: projectListData, refetch: refetchProjectListData } = useQuery({
-    queryKey: ["projectListData", { orgId: organization?.id }],
+    queryKey: ["projectListData", { orgSlug: params?.org_slug as string }],
     queryFn: async () =>
-      await fetchOrgProjects({ organization_id: organization?.id }),
+      await fetchOrgProjects({ organization_slug: params?.org_slug as string }),
     enabled: !!organization?.id && isSignedIn,
   });
+
+  // useEffect(() => {
+  //   console.log(projectListData);
+  // }, [projectListData]);
 
   const { data: projectData, refetch: refetchProjectData } = useQuery({
     queryKey: ["projectData", { projectUuid: params?.projectUuid }],

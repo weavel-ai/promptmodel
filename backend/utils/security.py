@@ -241,6 +241,60 @@ async def get_jwt(
         return token
     except HTTPException as exception:
         raise exception
+    
+async def get_jwt_public(
+    request: Request,
+    raw_jwt: str = Security(api_key_header),
+):
+    try:
+        if self_hosted:
+            public_key = os.environ.get("NEXTAUTH_SECRET")
+            print(raw_jwt)
+            if not raw_jwt:
+                print("1")
+                return {}
+            # strip Bearer
+            if raw_jwt.lower().startswith("bearer "):
+                token = raw_jwt[7:]
+            if not token:
+                # print("2")
+                return {}
+            try:
+                token = jwt.decode(token, public_key, algorithms=["HS512"])
+            except jwt.InvalidTokenError as err:
+                # print("3")
+                return {}
+
+            if "sub" in token and "user_id" not in token:
+                token["user_id"] = token["sub"]
+
+            return token
+        async with httpx.AsyncClient() as client:
+            res = await client.get(os.environ.get("CLERK_JWKS_URL"))
+            public_key = decode_jwk(res.json()["keys"][0])
+
+        if not raw_jwt:
+            raise HTTPException(
+                status_code=status_code.HTTP_401_UNAUTHORIZED,
+                detail="No token found in request Header.",
+            )
+        # strip Bearer
+        if raw_jwt.lower().startswith("bearer "):
+            token = raw_jwt[7:]
+
+        if not token:
+            # print("4")
+            return {}
+        try:
+            token = jwt.decode(token, public_key, algorithms=["RS256"])
+        except jwt.InvalidTokenError as err:
+            # print("5")
+            print(err)
+            return {}
+
+        return token
+    except HTTPException as exception:
+        raise exception
 
 
 def create_hashed_identifier(prefix: str, value: str):

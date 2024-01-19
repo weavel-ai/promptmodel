@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from starlette import status as status_code
 
 from utils.logger import logger
-from utils.security import get_jwt
+from utils.security import get_jwt, get_jwt_public
 from base.database import get_session
 from db_models import *
 from ..models.project import ProjectInstance, CreateProjectBody, ProjectDatasetInstance
@@ -65,23 +65,34 @@ async def create_project(
 
 @router.get("", response_model=List[ProjectInstance])
 async def fetch_projects(
-    jwt: Annotated[str, Depends(get_jwt)],
-    organization_id: str,
+    jwt: Annotated[str, Depends(get_jwt_public)],
+    organization_slug: str,
     session: AsyncSession = Depends(get_session),
 ):
-    check_user_auth = (
+    print(jwt)
+    organization_id = (
         await session.execute(
-            select(UsersOrganizations)
-            .where(UsersOrganizations.user_id == jwt["user_id"])
-            .where(UsersOrganizations.organization_id == organization_id)
+            select(Organization.organization_id)
+            .where(Organization.slug == organization_slug)
         )
     ).scalar_one_or_none()
+    
+    # print(organization_slug)
+    # print(organization_id)
+    
+    # check_user_auth = (
+    #     await session.execute(
+    #         select(UsersOrganizations)
+    #         .where(UsersOrganizations.user_id == jwt["user_id"])
+    #         .where(UsersOrganizations.organization_id == organization_id)
+    #     )
+    # ).scalar_one_or_none()
 
-    if not check_user_auth:
-        raise HTTPException(
-            status_code=status_code.HTTP_401_UNAUTHORIZED,
-            detail="User don't have access to this organization",
-        )
+    # if not check_user_auth:
+    #     raise HTTPException(
+    #         status_code=status_code.HTTP_401_UNAUTHORIZED,
+    #         detail="User don't have access to this organization",
+    #     )
 
     projects: List[ProjectInstance] = [
         ProjectInstance(**project.model_dump())
