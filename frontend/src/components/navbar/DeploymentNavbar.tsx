@@ -133,33 +133,6 @@ export const DeploymentNavbar = (props: NavbarProps) => {
             >
               {PRODUCT_NAME}
             </Link>
-            {pathname == "/" ? (
-              <div className="px-6 pt-1 group justify-center">
-                <Link
-                  href="https://www.promptmodel.run/docs"
-                  target="_blank"
-                  className={classNames("relative")}
-                >
-                  <p className="font-semibold">Docs</p>
-                  <AnimatedUnderline />
-                </Link>
-              </div>
-            ) : (
-              <div className="h-[32px]">
-                {env?.SELF_HOSTED ? (
-                  <div className="py-1 px-2 rounded-md bg-base-300 font-sans font-medium ">
-                    {organization?.name}
-                  </div>
-                ) : (
-                  <OrganizationSwitcher
-                    hidePersonal
-                    afterCreateOrganizationUrl="/org/redirect"
-                    afterSelectOrganizationUrl="/org/redirect"
-                    createOrganizationUrl="/org/new"
-                  />
-                )}
-              </div>
-            )}
             {/* Project navigator */}
             {params?.projectUuid && (
               <SelectNavigator
@@ -246,6 +219,22 @@ export const DeploymentNavbar = (props: NavbarProps) => {
               online={projectData?.online}
               statusType="connection"
             />
+          </div>
+          <div className="h-[32px]">
+            {env?.SELF_HOSTED ? (
+              isSignedIn && (
+                <div className="py-1 px-2 rounded-md bg-base-300 font-sans font-medium ">
+                  {organization?.name}
+                </div>
+              )
+            ) : (
+              <OrganizationSwitcher
+                hidePersonal
+                afterCreateOrganizationUrl="/org/redirect"
+                afterSelectOrganizationUrl="/org/redirect"
+                createOrganizationUrl="/org/new"
+              />
+            )}
           </div>
           {!pathname.includes("sign-in") && !pathname.includes("sign-up") && (
             <SignInButton />

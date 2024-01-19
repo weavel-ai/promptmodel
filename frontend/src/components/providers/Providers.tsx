@@ -5,11 +5,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "react-toastify/dist/ReactToastify.css";
 import { ToastContainer, toast } from "react-toastify";
 import { initAmplitude } from "@/services/amplitude";
-import { RealtimeProvider } from "./providers/RealtimeProvider";
-import { useCallback, useEffect, useState } from "react";
+import { RealtimeProvider } from "./RealtimeProvider";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { env } from "@/constants";
 import { internalServerClient, webServerClient } from "@/apis/base";
 import { useAuth } from "@/hooks/auth/useAuth";
+import { useProject } from "@/hooks/useProject";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,6 +57,14 @@ export function Providers({ children, session }) {
 
 function AuthProvider({ children }) {
   const { getToken, isSignedIn, isLoaded } = useAuth();
+  const { projectUuid } = useProject();
+  const projectUuidRef = useRef(projectUuid);
+
+  useEffect(() => {
+    if (projectUuidRef.current !== projectUuid) {
+      projectUuidRef.current = projectUuid;
+    }
+  }, [projectUuid]);
 
   const getAndSetToken = useCallback(async () => {
     getToken().then((token: string) => {
@@ -73,9 +82,10 @@ function AuthProvider({ children }) {
     async (config: any) => {
       const token = await getToken();
       config.headers.Authorization = token ? `Bearer ${token}` : "";
+      config.headers["x-project-uuid"] = projectUuidRef.current;
       return config;
     },
-    [getToken]
+    [getToken, projectUuidRef]
   );
 
   useEffect(() => {

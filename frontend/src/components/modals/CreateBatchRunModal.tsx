@@ -7,6 +7,7 @@ import { useFunctionModelVersionDetails } from "@/hooks/useFunctionModelVersionD
 import { startFunctionModelVersionBatchRun } from "@/apis/function_model_versions/startBatchRun";
 import { useProject } from "@/hooks/useProject";
 import { toast } from "react-toastify";
+import { useAuth } from "@/hooks/auth/useAuth";
 
 interface CreateBatchRunModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export function CreateBatchRunModal({
   setIsOpen,
   versionUuid,
 }: CreateBatchRunModalProps) {
+  const { isSignedIn } = useAuth();
   const { projectUuid } = useProject();
   const { startBatchRunMutation, versionBatchRunListQuery } =
     useFunctionModelVersionDetails(versionUuid);
@@ -26,6 +28,10 @@ export function CreateBatchRunModal({
   const [selectedDatasetUuid, setSelectedDatasetUuid] = useState(null);
 
   async function handleClickCreate() {
+    if (!isSignedIn) {
+      toast.error("You must sign in to create a batch run");
+      return;
+    }
     startBatchRunMutation.mutateAsync({
       function_model_version_uuid: versionUuid,
       project_uuid: projectUuid,

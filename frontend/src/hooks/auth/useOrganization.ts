@@ -8,6 +8,7 @@ import {
 } from "@/types/Organization";
 import { useOrganization as useClerkOrganization } from "@clerk/nextjs";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useAuth } from "./useAuth";
 
 type NextOrganization = {
   id: string;
@@ -25,12 +26,14 @@ type ClerkOrgReturn = ReturnType<typeof useClerkOrganization>;
 type OrgReturn = NextOrgReturn | ClerkOrgReturn;
 
 function useNextOrganization(): NextOrgReturn {
+  const { isSignedIn } = useAuth();
+
   return {
     isLoaded: true,
     organization: {
-      id: "org_selfhosted",
-      name: env.ORG_NAME,
-      slug: env.ORG_SLUG,
+      id: isSignedIn && "org_selfhosted",
+      name: isSignedIn && env.ORG_NAME,
+      slug: isSignedIn && env.ORG_SLUG,
     },
   };
 }

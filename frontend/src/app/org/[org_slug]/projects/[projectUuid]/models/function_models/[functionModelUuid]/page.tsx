@@ -84,6 +84,8 @@ import { CreateDatasetModal } from "@/components/modals/CreateDatasetModal";
 import { Dataset, DatasetWithEvalMetric } from "@/types/SampleInput";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useAuthorization } from "@/hooks/auth/useAuthorization";
+import { useAuth } from "@/hooks/auth/useAuth";
 dayjs.extend(relativeTime);
 
 const initialNodes = [];
@@ -776,6 +778,7 @@ function InitialVersionDrawer({ open }: { open: boolean }) {
 
 function VersionDetailsDrawer({ open }: { open: boolean }) {
   const queryClient = useQueryClient();
+  const { isAuthorizedForProject } = useAuthorization();
   const { projectData } = useProject();
   const { functionModelData } = useFunctionModel();
   const {
@@ -810,6 +813,9 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     setShowSlashOptions,
   } = useFunctionModelVersionStore();
   const [lowerBoxHeight, setLowerBoxHeight] = useState(240);
+  const [memo, setMemo] = useState<string>(
+    originalFunctionModelVersionData?.memo
+  );
 
   useHotkeys(
     "esc",
@@ -835,6 +841,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
   }
 
   async function handleClickPublish() {
+    if (!isAuthorizedForProject) return;
     const toastId = toast.loading("Publishing...");
 
     const previousPublishedUuid = functionModelVersionListData?.find(
@@ -862,10 +869,18 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
     });
   }
 
-  async function handleSetMemo(newMemo: string) {
+  async function handleSetMemo() {
+    if (!isAuthorizedForProject) {
+      /**
+       * @todo Disable/enable this based on the author of each version
+       */
+      toast.error("You are not authorized to edit this model.");
+      setMemo(originalFunctionModelVersionData?.memo);
+      return;
+    }
     await updateFunctionModelVersionMemo({
       uuid: selectedFunctionModelVersionUuid,
-      memo: newMemo,
+      memo: memo,
     });
     queryClient.invalidateQueries([
       "functionModelVersionData",
@@ -921,21 +936,22 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
               </div>
               {!isCreateVariantOpen && (
                 <div className="flex flex-row gap-x-2 items-center justify-end">
-                  {!originalFunctionModelVersionData?.is_published && (
-                    <button
-                      className="flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 bg-secondary-content hover:bg-secondary group"
-                      onClick={handleClickPublish}
-                    >
-                      <RocketLaunch
-                        className="text-secondary group-hover:text-secondary-content transition-colors"
-                        size={20}
-                        weight="fill"
-                      />
-                      <p className="text-base-100 group-hover:text-secondary-content transition-colors">
-                        Publish
-                      </p>
-                    </button>
-                  )}
+                  {!originalFunctionModelVersionData?.is_published &&
+                    isAuthorizedForProject && (
+                      <button
+                        className="flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 bg-secondary-content hover:bg-secondary group"
+                        onClick={handleClickPublish}
+                      >
+                        <RocketLaunch
+                          className="text-secondary group-hover:text-secondary-content transition-colors"
+                          size={20}
+                          weight="fill"
+                        />
+                        <p className="text-base-100 group-hover:text-secondary-content transition-colors">
+                          Publish
+                        </p>
+                      </button>
+                    )}
                   <button
                     className="flex flex-row gap-x-2 items-center btn btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content bg-transparent hover:bg-neutral-content/20"
                     onClick={handleClickCreateVariant}
@@ -1090,8 +1106,9 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     <ClickToEditInput
                       textarea
                       value={originalFunctionModelVersionData?.memo}
-                      setValue={handleSetMemo}
+                      setValue={setMemo}
                       placeholder="Memo"
+                      onBlur={handleSetMemo}
                     />
                   </div>
                 </div>
@@ -1229,9 +1246,10 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                   </label>
                   <ClickToEditInput
                     textarea
-                    value={originalFunctionModelVersionData?.memo}
-                    setValue={handleSetMemo}
+                    value={memo}
+                    setValue={setMemo}
                     placeholder="Memo"
+                    onBlur={handleSetMemo}
                   />
                 </div>
               </div>
@@ -1637,6 +1655,7 @@ function ModelVersionNode({ data }) {
 function DatasetsPage() {
   const pathname = usePathname();
   const router = useRouter();
+  const { isAuthorizedForProject } = useAuthorization();
   const { functionModelDatasetListData } = useFunctionModelDatasets();
   const [isCreateDatasetModalOpen, setIsCreateDatasetModalOpen] =
     useState<boolean>(false);
@@ -1655,7 +1674,15 @@ function DatasetsPage() {
               "btn btn-outline btn-sm h-10 rounded-md flex flex-row gap-x-1 items-center text-base-content/90 hover:text-base-content",
               "normal-case font-normal hover:bg-base-content/10 border-muted-content/80"
             )}
-            onClick={() => setIsCreateDatasetModalOpen(true)}
+            onClick={() => {
+              if (!isAuthorizedForProject) {
+                toast.error(
+                  "You are not authorized to add a dataset in this project."
+                );
+                return;
+              }
+              setIsCreateDatasetModalOpen(true);
+            }}
           >
             <Plus size={16} />
             <p>Add dataset</p>
