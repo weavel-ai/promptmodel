@@ -224,19 +224,19 @@ async def get_jwt(
                 status_code=status_code.HTTP_401_UNAUTHORIZED, detail="Invalid token."
             ) from err
 
-        # check if token is expired
-        current_time = time.time()
-        if current_time > token["exp"]:
-            raise Exception("Token has expired")
-        if current_time < token["nbf"]:
-            raise Exception("Token not yet valid")
+        # # check if token is expired
+        # current_time = time.time()
+        # if current_time > token["exp"]:
+        #     raise Exception("Token has expired")
+        # if current_time < token["nbf"]:
+        #     raise Exception("Token not yet valid")
 
-        # Validate 'azp' claim
-        if token["azp"] not in origins:
-            raise Exception("Invalid 'azp' claim")
+        # # Validate 'azp' claim
+        # if token["azp"] not in origins:
+        #     raise Exception("Invalid 'azp' claim")
 
-        if "sub" in token and "user_id" not in token:
-            token["user_id"] = token["sub"]
+        # if "sub" in token and "user_id" not in token:
+        #     token["user_id"] = token["sub"]
 
         return token
     except HTTPException as exception:

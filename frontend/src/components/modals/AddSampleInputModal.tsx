@@ -23,43 +23,19 @@ import {
   KeyValueInput,
   KeyValueInputField,
 } from "../inputs/KeyValueInputField";
+import { useDatasetSampleInputs } from "@/hooks/useDatasetSampleInputs";
 
-function handleEditorDidMount(editor: editor.IStandaloneCodeEditor) {
-  editor.onKeyDown((e: IKeyboardEvent) => {
-    if (e.code === "Enter" && e.shiftKey) {
-      e.preventDefault();
-      const position = editor.getPosition();
-      editor.executeEdits("", [
-        {
-          range: {
-            startLineNumber: position.lineNumber,
-            startColumn: position.column,
-            endLineNumber: position.lineNumber,
-            endColumn: position.column,
-          },
-          text: "\\n",
-          forceMoveMarkers: true,
-        },
-      ]);
-      editor.setPosition({
-        lineNumber: position.lineNumber,
-        column: position.column + 2,
-      });
-    }
-  });
-}
-
-export const CreateSampleInputModal = ({
+export const AddSampleInputModal = ({
   isOpen,
   setIsOpen,
   onCreated,
 }: {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onCreated?: (name: string) => void;
+  onCreated?: (name: string) => void; // deprecated
 }) => {
   const params = useParams();
-  const [name, setName] = useState("");
+  const { postDatasetSampleInputsMutation } = useDatasetSampleInputs();
   const [inputs, setInputs] = useState<Array<KeyValueInput>>([
     {
       id: Math.random().toString(),
@@ -69,7 +45,6 @@ export const CreateSampleInputModal = ({
   ]);
 
   useEffect(() => {
-    setName("");
     setInputs([
       {
         id: Math.random().toString(),
@@ -80,53 +55,31 @@ export const CreateSampleInputModal = ({
   }, [isOpen]);
 
   const createDisabled = useMemo(() => {
-    return (
-      name === "" ||
-      inputs.some((input) => input.key === "" || input.value === "")
-    );
-  }, [name, inputs]);
+    return inputs.some((input) => input.key === "" || input.value === "");
+  }, [inputs]);
 
   async function handleCreateSampleInput() {
-    const toastId = toast.loading("Creating...");
-    await createSampleInput({
-      project_uuid: params.projectUuid as string,
-      name: name,
-      input_keys: inputs.map((input) => input.key),
-      content: inputs.reduce((acc, input) => {
-        acc[input.key] = input.value;
-        return acc;
-      }, {}),
+    await postDatasetSampleInputsMutation.mutateAsync({
+      body: [
+        {
+          input_keys: inputs.map((input) => input.key),
+          content: inputs.reduce((acc, curr) => {
+            acc[curr.key] = curr.value;
+            return acc;
+          }, {}),
+        },
+      ],
     });
-    toast.update(toastId, {
-      containerId: "default",
-      render: `Created ${name}!`,
-      type: "success",
-      isLoading: false,
-      autoClose: 2000,
-    });
-    onCreated?.(name);
     setIsOpen(false);
   }
 
   return (
     <Modal isOpen={isOpen} setIsOpen={setIsOpen} zIndex={999999}>
       <div className="bg-popover shadow-lg p-6 rounded-box flex flex-col gap-y-2 justify-start items-start min-w-[60vw] max-h-[80vh]">
-        <p className="text-popover-content font-bold text-2xl mb-2">
-          Add sample inputs
-        </p>
+        <p className="text-popover-content font-bold text-2xl mb-2">Add data</p>
         <p className="text-muted-content mb-1">
-          Sample inputs will be used to test your FunctionModel. These inputs
-          will be shared throughout this current project.
+          Add sample input data to your dataset.
         </p>
-        <InputField
-          value={name}
-          setValue={setName}
-          placeholder="Sample name"
-          label="Sample name"
-          type="text"
-          autoComplete="off"
-          className="my-1"
-        />
         <div className="w-full max-h-[60vh] overflow-auto">
           <ReactSortable
             list={inputs}
@@ -165,7 +118,7 @@ export const CreateSampleInputModal = ({
           }
         >
           <Plus className="text-base-content" size={20} weight="bold" />
-          <p className="text-base-content">Add new input</p>
+          <p className="text-base-content">Add new key</p>
         </button>
         <div className="flex flex-row w-full justify-end">
           <button
