@@ -86,6 +86,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthorization } from "@/hooks/auth/useAuthorization";
 import { useAuth } from "@/hooks/auth/useAuth";
+import Image from "next/image";
 dayjs.extend(relativeTime);
 
 const initialNodes = [];
@@ -574,6 +575,9 @@ function VersionInfoOverlay({ versionData }) {
     );
   }, [versionData, functionModelVersionListData]);
 
+  // console.log(functionModelVersionListData);
+  // console.log(hoveredVersionData.user);
+
   return (
     <div
       className={classNames(
@@ -596,14 +600,29 @@ function VersionInfoOverlay({ versionData }) {
       <p className="text-sm text-muted-content">
         Created {dayjs(hoveredVersionData?.created_at).fromNow()}
       </p>
+
       <div className="flex flex-row gap-x-1">
         {hoveredVersionData?.tags?.map((tag: string) => (
           <VersionTag key={tag} name={tag} />
         ))}
       </div>
       {hoveredVersionData?.memo && (
-        <p className="p-1 bg-input rounded-md">{hoveredVersionData?.memo}</p>
+        <p className="p-1 bg-input rounded-md mb-4">
+          {hoveredVersionData?.memo}
+        </p>
       )}
+      <div className="flex flex-row gap-x-1 items-center">
+        <Image
+          src={hoveredVersionData.user?.image_url}
+          alt="Version Author"
+          width={32}
+          height={32}
+          className="rounded-full"
+        />
+        <p className="text-sm text-base-content/70">
+          {hoveredVersionData.user?.email}
+        </p>
+      </div>
     </div>
   );
 }
@@ -905,7 +924,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
           )}
         >
           {/* Header */}
-          <div className="flex flex-row justify-between items-center mb-2 w-full">
+          <div className="flex flex-row justify-between items-center w-full pb-2">
             <div
               className={classNames(
                 "flex flex-row items-center justify-between",
@@ -931,6 +950,19 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                     modelType="FunctionModel"
                     versionUuid={selectedFunctionModelVersionUuid}
                     previousTags={originalFunctionModelVersionData?.tags}
+                  />
+                </div>
+
+                <div
+                  className="ml-2 tooltip tooltip-right"
+                  data-tip={originalFunctionModelVersionData?.user?.email}
+                >
+                  <Image
+                    src={originalFunctionModelVersionData?.user?.image_url}
+                    alt="Version Author"
+                    width={32}
+                    height={32}
+                    className="rounded-full"
                   />
                 </div>
               </div>
@@ -1024,6 +1056,7 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
               </div>
             )}
           </div>
+
           {/* Prompt editor */}
           <motion.div className="bg-base-200 w-full p-4 rounded-t-box overflow-auto flex-grow">
             {isCreateVariantOpen ? (
