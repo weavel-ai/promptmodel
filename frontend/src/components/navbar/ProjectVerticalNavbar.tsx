@@ -15,9 +15,11 @@ import classNames from "classnames";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { useAuthorization } from "@/hooks/auth/useAuthorization";
 
 export const ProjectVerticalNavbar = () => {
   const params = useParams();
+  const { isAuthorizedForProject } = useAuthorization();
   const {
     isCreateVariantOpen: isCreateChatModelVariantOpen,
     setIsCreateVariantOpen: setIsCreateChatModelVariantOpen,
@@ -60,12 +62,16 @@ export const ProjectVerticalNavbar = () => {
         <VerticalNavbarItem label="Models" subPath="/models">
           <SquaresFour weight="fill" className="text-base-content" size={20} />
         </VerticalNavbarItem>
-        <VerticalNavbarItem label="Runs" subPath="/runs">
-          <Table weight="fill" className="text-base-content" size={20} />
-        </VerticalNavbarItem>
-        <VerticalNavbarItem label="Settings" subPath="/settings">
-          <GearSix weight="fill" className="text-base-content" size={20} />
-        </VerticalNavbarItem>
+        {isAuthorizedForProject && (
+          <VerticalNavbarItem label="Runs" subPath="/runs">
+            <Table weight="fill" className="text-base-content" size={20} />
+          </VerticalNavbarItem>
+        )}
+        {isAuthorizedForProject && (
+          <VerticalNavbarItem label="Settings" subPath="/settings">
+            <GearSix weight="fill" className="text-base-content" size={20} />
+          </VerticalNavbarItem>
+        )}
       </div>
       <div className="flex flex-col h-fit justify-end pb-8 gap-y-5">
         <VerticalNavbarItem

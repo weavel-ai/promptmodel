@@ -6,7 +6,7 @@ import hashlib
 import time
 from dotenv import load_dotenv
 from typing import Annotated
-from fastapi import HTTPException, Security, Depends
+from fastapi import HTTPException, Request, Security, Depends
 from fastapi.security.api_key import APIKeyHeader
 import httpx
 from starlette import status as status_code
@@ -65,7 +65,7 @@ async def get_project(
         )
     print(api_key)
     if api_key.lower().startswith("bearer "):
-        api_key = api_key[7:] # Strip "Bearer " from the header value
+        api_key = api_key[7:]  # Strip "Bearer " from the header value
     async with get_session_context() as session:
         project = (
             await session.execute(select(Project).where(Project.api_key == api_key))
@@ -90,12 +90,14 @@ async def get_project_cli_access_key(
             status_code=status_code.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
         )
-        
+
     if api_key.lower().startswith("bearer "):
-        cli_access_key = api_key[7:] # Strip "Bearer " from the header value
+        cli_access_key = api_key[7:]  # Strip "Bearer " from the header value
     async with get_session_context() as session:
         project = (
-            await session.execute(select(Project).where(Project.cli_access_key == cli_access_key))
+            await session.execute(
+                select(Project).where(Project.cli_access_key == cli_access_key)
+            )
         ).scalar_one_or_none()
     if not project:
         raise HTTPException(
@@ -113,7 +115,7 @@ async def get_cli_user_id(
 ):
     """Authenticate and return CLI user based on API key."""
     if api_key.lower().startswith("bearer "):
-        api_key = api_key[7:] # Strip "Bearer " from the header value
+        api_key = api_key[7:]  # Strip "Bearer " from the header value
     async with get_session_context() as session:
         user_id = (
             await session.execute(
@@ -137,7 +139,7 @@ async def get_api_key(
     try:
         print("hi", api_key)
         if api_key.lower().startswith("bearer "):
-            api_key = api_key[7:] # Strip "Bearer " from the header value
+            api_key = api_key[7:]  # Strip "Bearer " from the header value
         print(api_key)
         return api_key
     except:
@@ -148,9 +150,26 @@ async def get_api_key(
 
 
 async def get_jwt(
+    request: Request,
     raw_jwt: str = Security(api_key_header),
 ):
     """Authenticate and return API key."""
+    project_uuid = request.headers.get("x-project-uuid")
+    if project_uuid:
+        async with get_session_context() as session:
+            project: Project = (
+                await session.execute(
+                    select(Project).where(Project.uuid == project_uuid)
+                )
+            ).scalar_one_or_none()
+            if not project:
+                raise HTTPException(
+                    status_code=status_code.HTTP_401_UNAUTHORIZED,
+                    detail="Could not validate credentials",
+                )
+            print(project.model_dump())
+            if project.is_public:
+                return {"user_id": "public"}
     try:
         if self_hosted:
             public_key = os.environ.get("NEXTAUTH_SECRET")
@@ -224,7 +243,7 @@ async def get_jwt(
         raise exception
 
 
-def create_hashed_identifier(prefix: str, value: str):  
+def create_hashed_identifier(prefix: str, value: str):
     """Create a hashed identifier from a prefix and value."""
     # Hash the value
     hash_object = hashlib.sha256(value.encode())

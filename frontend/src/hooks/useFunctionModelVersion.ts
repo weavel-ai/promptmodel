@@ -23,14 +23,13 @@ import { ParsingType } from "@/types/ParsingType";
 import { Prompt } from "@/types/Prompt";
 import { version } from "os";
 import { StdioNull } from "child_process";
-import { useUser } from "@clerk/nextjs";
 import { useAuth } from "./auth/useAuth";
 
 export const useFunctionModelVersion = () => {
   const params = useParams();
   const queryClient = useQueryClient();
   const { projectData } = useProject();
-  const { userId } = useAuth();
+  const { userId, isSignedIn } = useAuth();
 
   const {
     runLogs,
@@ -141,6 +140,10 @@ export const useFunctionModelVersion = () => {
   ]);
 
   async function handleSave() {
+    if (!isSignedIn) {
+      toast.error("You must sign in to perform this action.");
+      return;
+    }
     // toast
     const toastId = toast.loading("Saving...");
     setTimeout(() => {
@@ -294,6 +297,10 @@ export const useFunctionModelVersion = () => {
     sampleInput?: Record<string, string>,
     sampleInputUuid?: string | null
   ) {
+    if (!isSignedIn) {
+      toast.error("You must sign in to perform this action.");
+      return;
+    }
     const toastId = toast.loading("Running...");
     let prompts: Prompt[];
     let versionUuid: string;

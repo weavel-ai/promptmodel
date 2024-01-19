@@ -28,7 +28,7 @@ router = APIRouter()
 # FunctionModelVersion Endpoints
 @router.get("", response_model=List[FunctionModelVersionWithUserInstance])
 async def fetch_function_model_versions_with_user(
-    jwt: Annotated[str, Depends(get_jwt)],
+    # jwt: Annotated[str, Depends(get_jwt)],
     function_model_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
@@ -59,7 +59,8 @@ async def fetch_function_model_versions_with_user(
                         )
                     )
                     .mappings()
-                    .one_or_none() or {}
+                    .one_or_none()
+                    or {}
                 )
             ),
         )

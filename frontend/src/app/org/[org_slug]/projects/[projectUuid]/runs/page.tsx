@@ -17,6 +17,7 @@ import { fetchProjectRunLogs } from "@/apis/run_logs";
 import { subscribeTable } from "@/apis/subscribe";
 import { RunLog } from "@/types/RunLog";
 import { ChatLogView } from "@/types/ChatLogView";
+import { ProjectAuthProvider } from "@/components/providers/ProjectAuthProvider";
 
 const ROWS_PER_PAGE = 50;
 
@@ -195,110 +196,118 @@ export default function Page() {
   }, [isRealtime, subscribeToRunLogs, subscribeToChatLogs]);
 
   return (
-    <div className="w-full h-full pl-20 overflow-hidden">
-      <div className="w-full h-full flex flex-col pt-16">
-        {/* TODO: ADD FILTERS */}
-        <div className="w-full flex flex-row justify-between items-center px-2 pb-2">
-          {/* <p className="text-lg font-medium text-base-content">Filter</p> */}
-          <SelectTab
-            tabs={TABS}
-            selectedTab={selectedTab}
-            onSelect={(newTab) => setSelectedTab(newTab as Tab)}
-          />
-          <div className="w-full flex flex-row justify-end gap-x-4 mr-4 items-center">
-            {selectedTab == Tab.CHAT_MODEL && chatLogListData && (
-              <CSVLink
-                data={cloneDeep(chatLogListData)?.map((log) => {
-                  log.user_input = escapeCSV(log.user_input);
-                  log.assistant_output = escapeCSV(log.assistant_output);
-                  return log;
-                })}
-                filename={`${projectData?.name}_chat_logs.csv`}
-                headers={CHAT_CSV_HEADERS}
-                className={classNames(
-                  "rounded-full transition-colors p-2 hover:bg-neutral-content/20 tooltip tooltip-left tooltip-secondary"
-                )}
-                enclosingCharacter=""
-                data-tip="Download CSV"
-              >
-                <CloudArrowDown size={24} weight="bold" className="shrink-0" />
-                {/* <p className="shrink-0">Download CSV</p> */}
-              </CSVLink>
-            )}
-            <p>Realtime</p>
-            <input
-              type="checkbox"
-              className="toggle toggle-info"
-              checked={isRealtime}
-              onChange={(e) => setIsRealtime(e.target.checked)}
+    <ProjectAuthProvider>
+      <div className="w-full h-full pl-20 overflow-hidden">
+        <div className="w-full h-full flex flex-col pt-16">
+          {/* TODO: ADD FILTERS */}
+          <div className="w-full flex flex-row justify-between items-center px-2 pb-2">
+            {/* <p className="text-lg font-medium text-base-content">Filter</p> */}
+            <SelectTab
+              tabs={TABS}
+              selectedTab={selectedTab}
+              onSelect={(newTab) => setSelectedTab(newTab as Tab)}
             />
+            <div className="w-full flex flex-row justify-end gap-x-4 mr-4 items-center">
+              {selectedTab == Tab.CHAT_MODEL && chatLogListData && (
+                <CSVLink
+                  data={cloneDeep(chatLogListData)?.map((log) => {
+                    log.user_input = escapeCSV(log.user_input);
+                    log.assistant_output = escapeCSV(log.assistant_output);
+                    return log;
+                  })}
+                  filename={`${projectData?.name}_chat_logs.csv`}
+                  headers={CHAT_CSV_HEADERS}
+                  className={classNames(
+                    "rounded-full transition-colors p-2 hover:bg-neutral-content/20 tooltip tooltip-left tooltip-secondary"
+                  )}
+                  enclosingCharacter=""
+                  data-tip="Download CSV"
+                >
+                  <CloudArrowDown
+                    size={24}
+                    weight="bold"
+                    className="shrink-0"
+                  />
+                  {/* <p className="shrink-0">Download CSV</p> */}
+                </CSVLink>
+              )}
+              <p>Realtime</p>
+              <input
+                type="checkbox"
+                className="toggle toggle-info"
+                checked={isRealtime}
+                onChange={(e) => setIsRealtime(e.target.checked)}
+              />
+            </div>
+          </div>
+          <LogsUI
+            logData={
+              selectedTab == Tab.FUNCTION_MODEL
+                ? runLogListData
+                : chatLogListData
+            }
+            type={selectedTab}
+          />
+          <div className="w-full min-h-fit flex flex-row justify-start items-center p-2 bg-base-200 rounded-b text-sm gap-x-2">
+            <button
+              className="btn btn-outline btn-xs"
+              onClick={() => {
+                if (page > 1) {
+                  setPage(page - 1);
+                }
+              }}
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <p>Page</p>
+            <input
+              type="number"
+              value={page}
+              onChange={(e) => setPage(parseInt(e.target.value))}
+              className="input bg-input input-xs w-[3rem] text-center flex-shrink focus:outline-none active:outline-none"
+            />
+            <p className="flex-shrink-0">
+              of{" "}
+              {Math.ceil(
+                (selectedTab == Tab.FUNCTION_MODEL
+                  ? runLogCountData?.count
+                  : chatLogCountData?.count) / ROWS_PER_PAGE
+              )}
+            </p>
+            <button
+              className="btn btn-outline btn-xs mr-2"
+              onClick={() => {
+                if (
+                  page <
+                  Math.ceil(
+                    (selectedTab == Tab.FUNCTION_MODEL
+                      ? runLogCountData?.count
+                      : chatLogCountData?.count) / ROWS_PER_PAGE
+                  )
+                ) {
+                  setPage(page + 1);
+                }
+              }}
+            >
+              <ArrowRight size={20} />
+            </button>
+            {isRunLogLoading ? (
+              <div className="loading loading-spinner loading-sm" />
+            ) : (
+              <p className="">{ROWS_PER_PAGE} records</p>
+            )}
+            <div className="divider divider-horizontal" />
+            <p className="text-muted-content">
+              Total{" "}
+              {selectedTab == Tab.FUNCTION_MODEL
+                ? runLogCountData?.count
+                : chatLogCountData?.count}{" "}
+              runs
+            </p>
           </div>
         </div>
-        <LogsUI
-          logData={
-            selectedTab == Tab.FUNCTION_MODEL ? runLogListData : chatLogListData
-          }
-          type={selectedTab}
-        />
-        <div className="w-full min-h-fit flex flex-row justify-start items-center p-2 bg-base-200 rounded-b text-sm gap-x-2">
-          <button
-            className="btn btn-outline btn-xs"
-            onClick={() => {
-              if (page > 1) {
-                setPage(page - 1);
-              }
-            }}
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <p>Page</p>
-          <input
-            type="number"
-            value={page}
-            onChange={(e) => setPage(parseInt(e.target.value))}
-            className="input bg-input input-xs w-[3rem] text-center flex-shrink focus:outline-none active:outline-none"
-          />
-          <p className="flex-shrink-0">
-            of{" "}
-            {Math.ceil(
-              (selectedTab == Tab.FUNCTION_MODEL
-                ? runLogCountData?.count
-                : chatLogCountData?.count) / ROWS_PER_PAGE
-            )}
-          </p>
-          <button
-            className="btn btn-outline btn-xs mr-2"
-            onClick={() => {
-              if (
-                page <
-                Math.ceil(
-                  (selectedTab == Tab.FUNCTION_MODEL
-                    ? runLogCountData?.count
-                    : chatLogCountData?.count) / ROWS_PER_PAGE
-                )
-              ) {
-                setPage(page + 1);
-              }
-            }}
-          >
-            <ArrowRight size={20} />
-          </button>
-          {isRunLogLoading ? (
-            <div className="loading loading-spinner loading-sm" />
-          ) : (
-            <p className="">{ROWS_PER_PAGE} records</p>
-          )}
-          <div className="divider divider-horizontal" />
-          <p className="text-muted-content">
-            Total{" "}
-            {selectedTab == Tab.FUNCTION_MODEL
-              ? runLogCountData?.count
-              : chatLogCountData?.count}{" "}
-            runs
-          </p>
-        </div>
       </div>
-    </div>
+    </ProjectAuthProvider>
   );
 }
 

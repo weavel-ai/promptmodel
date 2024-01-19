@@ -19,6 +19,7 @@ import { useFunctionModel } from "@/hooks/useFunctionModel";
 import { useChatModel } from "@/hooks/useChatModel";
 import { updateChatModelVersionTags } from "@/apis/chat_model_versions";
 import { updateFunctionModelVersionTags } from "@/apis/function_model_versions";
+import { useAuthorization } from "@/hooks/auth/useAuthorization";
 
 interface TagsSelectorProps {
   modelType: "FunctionModel" | "ChatModel";
@@ -32,6 +33,7 @@ export function TagsSelector({
   previousTags,
 }: TagsSelectorProps) {
   const queryClient = useQueryClient();
+  const { isAuthorizedForProject } = useAuthorization();
   const { tagsListData } = useTags();
   const { projectUuid } = useProject();
   const { functionModelUuid } = useFunctionModel();
@@ -164,7 +166,20 @@ export function TagsSelector({
 
   if (!isInputShown) {
     if (selectedTags?.length == 0) {
-      return <AddTagsButton onClick={() => setIsInputShown(true)} />;
+      return (
+        <AddTagsButton
+          onClick={() => {
+            if (!isAuthorizedForProject) {
+              /**
+               * @todo: Authorize this based on author of the version
+               */
+              toast.error("You are not authorized to edit this tag.");
+              return;
+            }
+            setIsInputShown(true);
+          }}
+        />
+      );
     } else {
       return (
         <div

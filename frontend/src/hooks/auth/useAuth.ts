@@ -1,6 +1,7 @@
 import { env } from "@/constants";
 import { useAuth as useClerkAuth, useUser } from "@clerk/nextjs";
 import { useSession } from "next-auth/react";
+import { useProject } from "../useProject";
 
 interface SessionUser {
   email?: string;
@@ -53,9 +54,9 @@ function useNextAuth(): NextAuthReturn {
     isLoaded: status !== "loading",
     isSignedIn: status === "authenticated",
     userId: session?.user_id,
-    orgId: "self",
-    orgRole: "admin",
-    orgSlug: "admin",
+    orgId: status === "authenticated" && "org_selfhosted",
+    orgRole: status === "authenticated" && "admin",
+    orgSlug: status === "authenticated" && "admin",
     getToken: getToken,
     user: {
       email: session?.user?.email,

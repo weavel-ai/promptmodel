@@ -28,6 +28,7 @@ import { InputField } from "@/components/InputField";
 import { toast } from "react-toastify";
 import { deleteChatModel, editChatModel } from "@/apis/chat_models";
 import { deleteFunctionModel, editFunctionModel } from "@/apis/function_models";
+import { useAuthorization } from "@/hooks/auth/useAuthorization";
 
 dayjs.extend(relativeTime);
 
@@ -46,6 +47,7 @@ enum Tab {
 const TABS = [Tab.FUNCTION_MODEL, Tab.CHAT_MODEL];
 
 export default function Page() {
+  const { isAuthorizedForProject } = useAuthorization();
   const [windowWidth, windowHeight] = useWindowSize();
   const queryClient = useQueryClient();
   const [nodes, setNodes] = useState(initialNodes);
@@ -171,7 +173,9 @@ export default function Page() {
             onSelect={(newTab) => setSelectedTab(newTab as Tab)}
           />
         </div>
-        <CreateNewButton onClick={() => setShowCreateModelModal(true)} />
+        {isAuthorizedForProject && (
+          <CreateNewButton onClick={() => setShowCreateModelModal(true)} />
+        )}
         <CreateModelModal
           isOpen={showCreateModelModal}
           setIsOpen={setShowCreateModelModal}
