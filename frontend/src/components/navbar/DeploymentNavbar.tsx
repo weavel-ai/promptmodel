@@ -25,22 +25,19 @@ import { SelectNavigator } from "../SelectNavigator";
 import { useChatModel } from "@/hooks/useChatModel";
 import { LocalConnectionStatus } from "../LocalConnectionStatus";
 import { updateOrganization } from "@/apis/organizations";
+import { useOrganizationBySlug } from "@/hooks/useOrganizationBySlug";
 
 const michroma = Michroma({
   weight: ["400"],
   subsets: ["latin"],
 });
 
-interface NavbarProps {
-  title?: string;
-}
-
-export const DeploymentNavbar = (props: NavbarProps) => {
+export function DeploymentNavbar() {
   const pathname = usePathname();
   const params = useParams();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const { isSignedIn, userId } = useAuth();
+  const { organizationDataBySlug } = useOrganizationBySlug();
   const { organization } = useOrganization();
   const { orgData, refetchOrgData } = useOrgData();
   const { projectData, projectListData } = useProject();
@@ -118,7 +115,7 @@ export const DeploymentNavbar = (props: NavbarProps) => {
         // Navigation bar content for desktop view
         <div
           className={classNames(
-            "flex flex-row justify-between items-center w-full gap-x-4"
+            "flex flex-row justify-between items-center w-full gap-x-4 mt-1"
           )}
         >
           <div className="flex flex-row justify-start items-center w-full gap-x-4">
@@ -133,56 +130,40 @@ export const DeploymentNavbar = (props: NavbarProps) => {
             >
               {PRODUCT_NAME}
             </Link>
-            {pathname == "/" ? (
-              <div className="px-6 pt-1 group justify-center">
-                <Link
-                  href="https://www.promptmodel.run/docs"
-                  target="_blank"
-                  className={classNames("relative")}
-                >
-                  <p className="font-semibold">Docs</p>
-                  <AnimatedUnderline />
-                </Link>
-              </div>
-            ) : (
-              <div className="h-[32px]">
-                {env?.SELF_HOSTED ? (
-                  <div className="py-1 px-2 rounded-md bg-base-300 font-sans font-medium ">
-                    {organization?.name}
-                  </div>
-                ) : (
-                  <OrganizationSwitcher
-                    hidePersonal
-                    afterCreateOrganizationUrl="/org/redirect"
-                    afterSelectOrganizationUrl="/org/redirect"
-                    createOrganizationUrl="/org/new"
-                  />
-                )}
-              </div>
-            )}
             {/* Project navigator */}
-            {params?.projectUuid && (
-              <SelectNavigator
-                statusType="connection"
-                current={{
-                  label: projectListData?.find(
-                    (project) => project.uuid == params?.projectUuid
-                  )?.name,
-                  online: projectListData?.find(
-                    (project) => project.uuid == params?.projectUuid
-                  )?.online,
-                  href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models`,
-                }}
-                options={projectListData?.map((project) => {
-                  return {
-                    label: project.name,
-                    online: project.online,
-                    href: `/org/${params?.org_slug}/projects/${project?.uuid}/models`,
-                  };
-                })}
-              />
-            )}
-            <div className="flex flex-row items-center">
+            <div className="flex flex-row items-center ms-2">
+              <Link
+                className="bg-transparent transition-colors text-base-content rounded-md px-2 py-1 text-sm hover:bg-base-content/10"
+                href={`/org/${params?.org_slug}`}
+              >
+                {organizationDataBySlug?.name}
+              </Link>
+              {params?.projectUuid && (
+                <>
+                  <p className="text-lg">/</p>
+                  <SelectNavigator
+                    statusType="connection"
+                    current={{
+                      label: projectListData?.find(
+                        (project) => project.uuid == params?.projectUuid
+                      )?.name,
+                      online: projectListData?.find(
+                        (project) => project.uuid == params?.projectUuid
+                      )?.online,
+                      href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models`,
+                    }}
+                    options={projectListData?.map((project) => {
+                      return {
+                        label: project.name,
+                        online: project.online,
+                        href: `/org/${params?.org_slug}/projects/${project?.uuid}/models`,
+                      };
+                    })}
+                  />
+                </>
+              )}
+            </div>
+            <div className="flex flex-row items-center text-sm">
               {modelType && (
                 <div className="flex flex-row">
                   <p>{modelType}</p>
@@ -247,6 +228,22 @@ export const DeploymentNavbar = (props: NavbarProps) => {
               statusType="connection"
             />
           </div>
+          <div className="h-[32px]">
+            {env?.SELF_HOSTED ? (
+              isSignedIn && (
+                <div className="py-1 px-2 rounded-md bg-base-300 font-sans font-medium ">
+                  {organization?.name}
+                </div>
+              )
+            ) : (
+              <OrganizationSwitcher
+                hidePersonal
+                afterCreateOrganizationUrl="/org/redirect"
+                afterSelectOrganizationUrl="/org/redirect"
+                createOrganizationUrl="/org/new"
+              />
+            )}
+          </div>
           {!pathname.includes("sign-in") && !pathname.includes("sign-up") && (
             <SignInButton />
           )}
@@ -254,4 +251,4 @@ export const DeploymentNavbar = (props: NavbarProps) => {
       }
     </div>
   );
-};
+}

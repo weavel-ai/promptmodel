@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from starlette import status as status_code
 
 from utils.logger import logger
-from utils.security import get_jwt
+from utils.security import get_jwt, get_jwt_public
 from base.database import get_session
 from db_models import *
 from ..models.project import ProjectInstance, CreateProjectBody, ProjectDatasetInstance
@@ -62,39 +62,48 @@ async def create_project(
     return ProjectInstance(**new_project.model_dump())
 
 
-
 @router.get("", response_model=List[ProjectInstance])
 async def fetch_projects(
-    jwt: Annotated[str, Depends(get_jwt)],
-    organization_id: str,
+    jwt: Annotated[str, Depends(get_jwt_public)],
+    organization_slug: str,
     session: AsyncSession = Depends(get_session),
 ):
-    check_user_auth = (
+    print(jwt)
+    organization_id = (
         await session.execute(
-            select(UsersOrganizations)
-            .where(UsersOrganizations.user_id == jwt["user_id"])
-            .where(UsersOrganizations.organization_id == organization_id)
+            select(Organization.organization_id).where(
+                Organization.slug == organization_slug
+            )
         )
     ).scalar_one_or_none()
 
-    if not check_user_auth:
-        raise HTTPException(
-            status_code=status_code.HTTP_401_UNAUTHORIZED,
-            detail="User don't have access to this organization",
-        )
+    # print(organization_slug)
+    # print(organization_id)
+
+    is_authorized = False
+
+    if jwt.get("user_id"):
+        is_authorized = (
+            await session.execute(
+                select(UsersOrganizations)
+                .where(UsersOrganizations.user_id == jwt["user_id"])
+                .where(UsersOrganizations.organization_id == organization_id)
+            )
+        ).scalar_one_or_none()
+
+    query = (
+        select(Project).where(Project.organization_id == organization_id)
+        if is_authorized
+        else select(Project)
+        .where(Project.organization_id == organization_id)
+        .where(Project.is_public == True)
+    )
 
     projects: List[ProjectInstance] = [
         ProjectInstance(**project.model_dump())
-        for project in (
-            await session.execute(
-                select(Project).where(Project.organization_id == organization_id)
-            )
-        )
-        .scalars()
-        .all()
+        for project in (await session.execute(query)).scalars().all()
     ]
     return projects
-
 
 
 @router.get("/{uuid}", response_model=ProjectInstance)
@@ -116,7 +125,8 @@ async def get_project(
             detail="Project with given uuid not found",
         )
     return ProjectInstance(**project)
-    
+
+
 @router.get("/{uuid}/datasets", response_model=List[ProjectDatasetInstance])
 async def get_project_dataset(
     jwt: Annotated[str, Depends(get_jwt)],
@@ -126,36 +136,39 @@ async def get_project_dataset(
     project: Project = (
         await session.execute(select(Project).where(Project.uuid == uuid))
     ).scalar_one_or_none()
-    
+
     if not project:
         raise HTTPException(
             status_code=status_code.HTTP_404_NOT_FOUND,
             detail="Project with given uuid not found",
         )
-    
+
     datasets: List[ProjectDatasetInstance] = [
-        ProjectDatasetInstance(**d) 
+        ProjectDatasetInstance(**d)
         for d in (
             await session.execute(
                 select(
-                    Dataset.uuid.label('dataset_uuid'), 
-                    Dataset.name.label('dataset_name'), 
-                    Dataset.description.label('dataset_description'), 
-                    EvalMetric.name.label('eval_metric_name'), 
-                    EvalMetric.uuid.label('eval_metric_uuid'), 
-                    EvalMetric.description.label('eval_metric_description'), 
-                    FunctionModel.name.label('function_model_name'), 
-                    FunctionModel.uuid.label('function_model_uuid')
+                    Dataset.uuid.label("dataset_uuid"),
+                    Dataset.name.label("dataset_name"),
+                    Dataset.description.label("dataset_description"),
+                    EvalMetric.name.label("eval_metric_name"),
+                    EvalMetric.uuid.label("eval_metric_uuid"),
+                    EvalMetric.description.label("eval_metric_description"),
+                    FunctionModel.name.label("function_model_name"),
+                    FunctionModel.uuid.label("function_model_uuid"),
                 )
                 .join(EvalMetric, Dataset.eval_metric_uuid == EvalMetric.uuid)
                 .join(FunctionModel, Dataset.function_model_uuid == FunctionModel.uuid)
                 .where(Dataset.project_uuid == uuid)
             )
-        ).mappings().all()
+        )
+        .mappings()
+        .all()
     ]
     print(datasets)
-    
+
     return datasets
+
 
 @router.patch("/{uuid}/public", response_model=ProjectInstance)
 async def set_project_public(
@@ -168,20 +181,25 @@ async def set_project_public(
     project: Project = (
         await session.execute(select(Project).where(Project.uuid == uuid))
     ).scalar_one_or_none()
-    
+
     if not project:
         raise HTTPException(
             status_code=status_code.HTTP_404_NOT_FOUND,
             detail="Project with given uuid not found",
         )
-    
+
     user_uuids: List[str] = (
-        await session.execute(
-            select(UsersOrganizations)
-            .where(UsersOrganizations.organization_id == project.organization_id)
+        (
+            await session.execute(
+                select(UsersOrganizations).where(
+                    UsersOrganizations.organization_id == project.organization_id
+                )
+            )
         )
-    ).scalars().all()
-    
+        .scalars()
+        .all()
+    )
+
     if jwt["user_id"] not in user_uuids:
         raise HTTPException(
             status_code=status_code.HTTP_401_UNAUTHORIZED,
@@ -189,13 +207,11 @@ async def set_project_public(
         )
 
     await session.execute(
-        update(Project)
-        .where(Project.uuid == uuid)
-        .values(is_public=is_public)
+        update(Project).where(Project.uuid == uuid).values(is_public=is_public)
     )
-    
+
     await session.commit()
-    
+
     project.is_public = is_public
-    
+
     return ProjectInstance(**project.model_dump())

@@ -20,6 +20,7 @@ from ..models.organization import (
     OrganizationInstance,
     CreateOrganizationBody,
     UpsertLLMProviderConfigBody,
+    OrganizationInstanceBySlug
 )
 
 router = APIRouter()
@@ -134,6 +135,19 @@ async def get_organization(
 
     return OrganizationInstance(**org.model_dump())
 
+@router.get("/slug/{organization_slug}", response_model=OrganizationInstanceBySlug)
+async def get_organization_by_slug(
+    organization_slug: str,
+    session: AsyncSession = Depends(get_session),
+):
+    organization_name = (
+        await session.execute(
+            select(Organization.name)
+            .where(Organization.slug == organization_slug)
+        )
+    ).scalar_one_or_none()
+
+    return OrganizationInstanceBySlug(name=organization_name)
 
 @router.get("/{organization_id}/llm_providers")
 async def get_org_configured_llm_providers(

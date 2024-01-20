@@ -13,8 +13,10 @@ from base.database import get_session
 from utils.security import get_jwt
 from db_models import *
 from ..models.function_model_version import (
+    FunctionModelVersionAuthor,
     FunctionModelVersionInstance,
     CreateFunctionModelVersionBody,
+    FunctionModelVersionWithUserInstance,
     UpdatePublishedFunctionModelVersionBody,
     UpdateFunctionModelVersionTagsBody,
     FunctionModelVersionBatchRunInstance,
@@ -24,9 +26,9 @@ router = APIRouter()
 
 
 # FunctionModelVersion Endpoints
-@router.get("", response_model=List[FunctionModelVersionInstance])
-async def fetch_function_model_versions(
-    jwt: Annotated[str, Depends(get_jwt)],
+@router.get("", response_model=List[FunctionModelVersionWithUserInstance])
+async def fetch_function_model_versions_with_user(
+    # jwt: Annotated[str, Depends(get_jwt)],
     function_model_uuid: str,
     session: AsyncSession = Depends(get_session),
 ):
@@ -42,7 +44,30 @@ async def fetch_function_model_versions(
         .scalars()
         .all()
     ]
-    return function_model_versions
+
+    # Fetch user email & image_url, and append it to corresponding version before returning
+    function_model_versions_with_user: List[FunctionModelVersionWithUserInstance] = [
+        FunctionModelVersionWithUserInstance(
+            **function_model_version.model_dump(),
+            user=FunctionModelVersionAuthor(
+                **(
+                    (
+                        await session.execute(
+                            select(User.email, User.image_url).where(
+                                User.user_id == function_model_version.created_by
+                            )
+                        )
+                    )
+                    .mappings()
+                    .one_or_none()
+                    or {}
+                )
+            ),
+        )
+        for function_model_version in function_model_versions
+    ]
+
+    return function_model_versions_with_user
 
 
 @router.post("")
@@ -146,8 +171,8 @@ async def create_function_model_version(
     return function_model_version
 
 
-@router.get("/{uuid}", response_model=FunctionModelVersionInstance)
-async def fetch_function_model_version(
+@router.get("/{uuid}", response_model=FunctionModelVersionWithUserInstance)
+async def fetch_function_model_version_with_user(
     jwt: Annotated[str, Depends(get_jwt)],
     uuid: str,
     session: AsyncSession = Depends(get_session),
@@ -170,7 +195,25 @@ async def fetch_function_model_version(
             status_code=status_code.HTTP_404_NOT_FOUND,
             detail="FunctionModelVersion with given id not found",
         )
-    return FunctionModelVersionInstance(**function_model_version)
+        
+    function_model_version_with_user: FunctionModelVersionWithUserInstance = FunctionModelVersionWithUserInstance(
+       **(FunctionModelVersionInstance(**function_model_version).model_dump()),
+        user=FunctionModelVersionAuthor(
+            **(
+                (
+                    await session.execute(
+                       select(User.email, User.image_url).where(
+                            User.user_id == function_model_version["created_by"]
+                        )
+                    )
+                )
+                .mappings()
+                .one_or_none() or {}
+            )
+        )
+    )    
+        
+    return function_model_version_with_user
 
 
 @router.delete("/{uuid}")

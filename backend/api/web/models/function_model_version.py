@@ -28,6 +28,15 @@ class FunctionModelVersionInstance(PMObject):
     created_by: Optional[str] = None
 
 
+class FunctionModelVersionAuthor(PMObject):
+    email: str
+    image_url: Optional[str] = None
+
+
+class FunctionModelVersionWithUserInstance(FunctionModelVersionInstance):
+    user: FunctionModelVersionAuthor
+
+
 class CreateFunctionModelVersionBody(PMObject):
     project_uuid: str
     function_model_uuid: str

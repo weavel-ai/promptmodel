@@ -9,6 +9,7 @@ import { ClickToEditInput } from "@/components/inputs/ClickToEditInput";
 import { AddSampleInputModal } from "@/components/modals/AddSampleInputModal";
 import { UploadCsvModal } from "@/components/modals/UploadCsvModal";
 import { Badge } from "@/components/ui/badge";
+import { useAuthorization } from "@/hooks/auth/useAuthorization";
 import {
   ROWS_PER_PAGE,
   useDatasetSampleInputs,
@@ -38,6 +39,7 @@ import { toast } from "react-toastify";
 
 export default function Page() {
   const pathname = usePathname();
+  const { isAuthorizedForProject } = useAuthorization();
   const router = useRouter();
   const { findDataset, updateDatasetMutation, deleteDatasetMutation } =
     useFunctionModelDatasets();
@@ -235,7 +237,16 @@ export default function Page() {
                 "btn btn-outline btn-sm h-10 rounded-md flex flex-row gap-x-1 items-center text-base-content/90 hover:text-base-content",
                 "normal-case font-normal hover:bg-base-content/10 border-muted-content/80"
               )}
-              onClick={() => setIsUploadModalOpen(true)}
+              onClick={() => {
+                if (!isAuthorizedForProject) {
+                  /**
+                   * @todo: Authorize this based on author of the version
+                   */
+                  toast.error("You are not authorized to perform this action.");
+                  return;
+                }
+                setIsUploadModalOpen(true);
+              }}
             >
               <FileArrowUp size={20} weight="fill" />
               <p>Upload file</p>

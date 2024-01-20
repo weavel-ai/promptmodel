@@ -2,7 +2,6 @@
 
 import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
 import { useFunctionModelVersionStore } from "@/stores/functionModelVersionStore";
-import { useOrganization } from "@/hooks/auth/useOrganization";
 import {
   DiscordLogo,
   GearSix,
@@ -15,9 +14,11 @@ import classNames from "classnames";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { useAuthorization } from "@/hooks/auth/useAuthorization";
 
 export const ProjectVerticalNavbar = () => {
   const params = useParams();
+  const { isAuthorizedForProject } = useAuthorization();
   const {
     isCreateVariantOpen: isCreateChatModelVariantOpen,
     setIsCreateVariantOpen: setIsCreateChatModelVariantOpen,
@@ -60,12 +61,16 @@ export const ProjectVerticalNavbar = () => {
         <VerticalNavbarItem label="Models" subPath="/models">
           <SquaresFour weight="fill" className="text-base-content" size={20} />
         </VerticalNavbarItem>
-        <VerticalNavbarItem label="Runs" subPath="/runs">
-          <Table weight="fill" className="text-base-content" size={20} />
-        </VerticalNavbarItem>
-        <VerticalNavbarItem label="Settings" subPath="/settings">
-          <GearSix weight="fill" className="text-base-content" size={20} />
-        </VerticalNavbarItem>
+        {isAuthorizedForProject && (
+          <VerticalNavbarItem label="Runs" subPath="/runs">
+            <Table weight="fill" className="text-base-content" size={20} />
+          </VerticalNavbarItem>
+        )}
+        {isAuthorizedForProject && (
+          <VerticalNavbarItem label="Settings" subPath="/settings">
+            <GearSix weight="fill" className="text-base-content" size={20} />
+          </VerticalNavbarItem>
+        )}
       </div>
       <div className="flex flex-col h-fit justify-end pb-8 gap-y-5">
         <VerticalNavbarItem
@@ -102,13 +107,12 @@ const VerticalNavbarItem = ({
 }) => {
   const pathname = usePathname();
   const params = useParams();
-  const { organization } = useOrganization();
 
   return (
     <Link
       href={
         href ??
-        `/org/${organization?.slug}/projects/${params?.projectUuid}${subPath}`
+        `/org/${params?.org_slug}/projects/${params?.projectUuid}${subPath}`
       }
       target={external && "_blank"}
       className={classNames(
