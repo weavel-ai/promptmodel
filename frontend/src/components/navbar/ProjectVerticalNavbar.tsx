@@ -55,19 +55,19 @@ export const ProjectVerticalNavbar = () => {
       )}
     >
       <div className="flex flex-col h-fit gap-y-5 justify-start items-center">
-        <VerticalNavbarItem label="Overview" subPath="/overview">
+        <VerticalNavbarItem label="Overview" subPath="/pm/overview">
           <Info weight="fill" className="text-base-content" size={20} />
         </VerticalNavbarItem>
-        <VerticalNavbarItem label="Models" subPath="/models">
+        <VerticalNavbarItem label="Models" subPath="/pm/models">
           <SquaresFour weight="fill" className="text-base-content" size={20} />
         </VerticalNavbarItem>
         {isAuthorizedForProject && (
-          <VerticalNavbarItem label="Runs" subPath="/runs">
+          <VerticalNavbarItem label="Runs" subPath="/pm/runs">
             <Table weight="fill" className="text-base-content" size={20} />
           </VerticalNavbarItem>
         )}
         {isAuthorizedForProject && (
-          <VerticalNavbarItem label="Settings" subPath="/settings">
+          <VerticalNavbarItem label="Settings" subPath="/pm/settings">
             <GearSix weight="fill" className="text-base-content" size={20} />
           </VerticalNavbarItem>
         )}
