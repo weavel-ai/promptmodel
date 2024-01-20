@@ -1,6 +1,7 @@
 import { webServerClient } from "@/apis/base";
 import {
   FunctionModelVersion,
+  FunctionModelVersionWithUser,
   ReadFunctionModelVersionsRequest,
 } from "@/types/FunctionModelVersion";
 
@@ -11,7 +12,7 @@ import {
  */
 export async function fetchFunctionModelVersions(
   functionModelData: ReadFunctionModelVersionsRequest
-): Promise<Array<FunctionModelVersion>> {
+): Promise<Array<FunctionModelVersionWithUser>> {
   const response = await webServerClient.get("/function_model_versions", {
     params: functionModelData,
   });

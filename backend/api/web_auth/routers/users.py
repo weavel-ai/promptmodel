@@ -15,6 +15,7 @@ router = APIRouter(prefix="/users")
 
 load_dotenv()
 
+
 @router.post("", status_code=status_code.HTTP_201_CREATED, response_model=UserRead)
 async def create_user(
     user: UserCreate, session: AsyncSession = Depends(get_session)
@@ -28,18 +29,14 @@ async def create_user(
             **user.model_dump(exclude={"password"})
         )
         session.add(new_user)
-        
-        print(new_user)
-        
+
         await session.flush()
         await session.refresh(new_user)
-            
+
         org_list: List[Organization] = (
             await session.execute(select(Organization))
         ).all()
 
-        print(org_list)
-        
         if len(org_list) == 0:
             # create Organization
             org_name = os.environ.get("ORG_NAME", "admin")
@@ -53,16 +50,16 @@ async def create_user(
             session.add(new_org)
             await session.flush()
             await session.refresh(new_org)
-            
+
             # Create UsersOrganizations
             new_user_org = UsersOrganizations(
                 user_id=new_user.user_id,
                 organization_id=new_org.organization_id,
             )
-            session.add(new_user_org) 
+            session.add(new_user_org)
             await session.flush()
             await session.refresh(new_user_org)
-            
+
         await session.commit()
 
         return UserRead(**new_user.model_dump())
@@ -121,9 +118,7 @@ async def read_user_me(
     session: AsyncSession = Depends(get_session),
 ) -> UserRead:
     """Return the current user."""
-    user_res = (
-        await session.execute(select(User).where(User.email == email))
-    ).all()
+    user_res = (await session.execute(select(User).where(User.email == email))).all()
     if not user_res:
         return Response(
             status_code=status_code.HTTP_404_NOT_FOUND,

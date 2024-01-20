@@ -6,7 +6,7 @@ import hashlib
 import time
 from dotenv import load_dotenv
 from typing import Annotated
-from fastapi import HTTPException, Security, Depends
+from fastapi import HTTPException, Request, Security, Depends
 from fastapi.security.api_key import APIKeyHeader
 import httpx
 from starlette import status as status_code
@@ -63,9 +63,8 @@ async def get_project(
             status_code=status_code.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
         )
-    print(api_key)
     if api_key.lower().startswith("bearer "):
-        api_key = api_key[7:] # Strip "Bearer " from the header value
+        api_key = api_key[7:]  # Strip "Bearer " from the header value
     async with get_session_context() as session:
         project = (
             await session.execute(select(Project).where(Project.api_key == api_key))
@@ -90,12 +89,14 @@ async def get_project_cli_access_key(
             status_code=status_code.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
         )
-        
+
     if api_key.lower().startswith("bearer "):
-        cli_access_key = api_key[7:] # Strip "Bearer " from the header value
+        cli_access_key = api_key[7:]  # Strip "Bearer " from the header value
     async with get_session_context() as session:
         project = (
-            await session.execute(select(Project).where(Project.cli_access_key == cli_access_key))
+            await session.execute(
+                select(Project).where(Project.cli_access_key == cli_access_key)
+            )
         ).scalar_one_or_none()
     if not project:
         raise HTTPException(
@@ -113,7 +114,7 @@ async def get_cli_user_id(
 ):
     """Authenticate and return CLI user based on API key."""
     if api_key.lower().startswith("bearer "):
-        api_key = api_key[7:] # Strip "Bearer " from the header value
+        api_key = api_key[7:]  # Strip "Bearer " from the header value
     async with get_session_context() as session:
         user_id = (
             await session.execute(
@@ -135,10 +136,8 @@ async def get_api_key(
 ):
     """Authenticate and return API key."""
     try:
-        print("hi", api_key)
         if api_key.lower().startswith("bearer "):
-            api_key = api_key[7:] # Strip "Bearer " from the header value
-        print(api_key)
+            api_key = api_key[7:]  # Strip "Bearer " from the header value
         return api_key
     except:
         raise HTTPException(
@@ -148,9 +147,25 @@ async def get_api_key(
 
 
 async def get_jwt(
+    request: Request,
     raw_jwt: str = Security(api_key_header),
 ):
     """Authenticate and return API key."""
+    project_uuid = request.headers.get("x-project-uuid")
+    if project_uuid:
+        async with get_session_context() as session:
+            project: Project = (
+                await session.execute(
+                    select(Project).where(Project.uuid == project_uuid)
+                )
+            ).scalar_one_or_none()
+            if not project:
+                raise HTTPException(
+                    status_code=status_code.HTTP_401_UNAUTHORIZED,
+                    detail="Could not validate credentials",
+                )
+            if project.is_public:
+                return {"user_id": "public"}
     try:
         if self_hosted:
             public_key = os.environ.get("NEXTAUTH_SECRET")
@@ -205,26 +220,72 @@ async def get_jwt(
                 status_code=status_code.HTTP_401_UNAUTHORIZED, detail="Invalid token."
             ) from err
 
-        # check if token is expired
-        current_time = time.time()
-        if current_time > token["exp"]:
-            raise Exception("Token has expired")
-        if current_time < token["nbf"]:
-            raise Exception("Token not yet valid")
+        # # check if token is expired
+        # current_time = time.time()
+        # if current_time > token["exp"]:
+        #     raise Exception("Token has expired")
+        # if current_time < token["nbf"]:
+        #     raise Exception("Token not yet valid")
 
-        # Validate 'azp' claim
-        if token["azp"] not in origins:
-            raise Exception("Invalid 'azp' claim")
+        # # Validate 'azp' claim
+        # if token["azp"] not in origins:
+        #     raise Exception("Invalid 'azp' claim")
 
-        if "sub" in token and "user_id" not in token:
-            token["user_id"] = token["sub"]
+        # if "sub" in token and "user_id" not in token:
+        #     token["user_id"] = token["sub"]
 
         return token
     except HTTPException as exception:
         raise exception
 
 
-def create_hashed_identifier(prefix: str, value: str):  
+async def get_jwt_public(
+    request: Request,
+    raw_jwt: str = Security(api_key_header),
+):
+    try:
+        if self_hosted:
+            public_key = os.environ.get("NEXTAUTH_SECRET")
+            if not raw_jwt:
+                return {}
+            # strip Bearer
+            if raw_jwt.lower().startswith("bearer "):
+                token = raw_jwt[7:]
+            if not token:
+                return {}
+            try:
+                token = jwt.decode(token, public_key, algorithms=["HS512"])
+            except jwt.InvalidTokenError as err:
+                return {}
+
+            if "sub" in token and "user_id" not in token:
+                token["user_id"] = token["sub"]
+
+            return token
+        async with httpx.AsyncClient() as client:
+            res = await client.get(os.environ.get("CLERK_JWKS_URL"))
+            public_key = decode_jwk(res.json()["keys"][0])
+
+        if not raw_jwt:
+            return {}
+        # strip Bearer
+        if raw_jwt.lower().startswith("bearer "):
+            token = raw_jwt[7:]
+
+        if not token:
+            return {}
+        try:
+            token = jwt.decode(token, public_key, algorithms=["RS256"])
+        except jwt.InvalidTokenError as err:
+            print(err)
+            return {}
+
+        return token
+    except HTTPException as exception:
+        raise exception
+
+
+def create_hashed_identifier(prefix: str, value: str):
     """Create a hashed identifier from a prefix and value."""
     # Hash the value
     hash_object = hashlib.sha256(value.encode())

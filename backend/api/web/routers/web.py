@@ -96,7 +96,6 @@ async def run_function_model(
     )
 
 
-
 async def run_cloud_function_model(
     session: AsyncSession,
     project_uuid: str,
@@ -152,6 +151,11 @@ async def run_cloud_function_model(
             return
     # Start FunctionModel Running
     output = {"raw_output": "", "parsed_outputs": {}}
+    model_res = litellm.ModelResponse(
+        usage=litellm.Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0),
+        model=run_config.model,
+    )
+    latency = 0
     function_call = None
     try:
         # create function_model_dev_instance
@@ -181,7 +185,13 @@ async def run_cloud_function_model(
                 for prompt in prompts
             ]
         else:
-            messages = [prompt.model_dump() for prompt in prompts]
+            messages = [
+                {
+                    "content": prompt.content,
+                    "role": prompt.role,
+                }
+                for prompt in prompts
+            ]
 
         error_occurs = False
         error_log = None
@@ -217,7 +227,21 @@ async def run_cloud_function_model(
             **provider_args.model_dump(),
         )
         async for item in res:
-            print(item)
+            if (item.api_response is not None) and (
+                item.api_response.choices[0].finish_reason is not None
+            ):
+                model_res = item.api_response
+                model_res.model = model
+                latency = (
+                    item.api_response["response_ms"]
+                    if "response_ms" in item.api_response
+                    else None
+                )
+                latency = (
+                    item.api_response["_response_ms"]
+                    if "_response_ms" in item.api_response
+                    else latency
+                )
             if item.raw_output is not None:
                 output["raw_output"] += item.raw_output
                 data = {
@@ -272,6 +296,11 @@ async def run_cloud_function_model(
                         "inputs": sample_input,
                         "raw_output": output["raw_output"],
                         "parsed_outputs": output["parsed_outputs"],
+                        "prompt_tokens": model_res.usage.get("prompt_tokens"),
+                        "completion_tokens": model_res.usage.get("completion_tokens"),
+                        "total_tokens": model_res.usage.get("total_tokens"),
+                        "cost": litellm.completion_cost(model_res),
+                        "latency": latency,
                         "function_call": function_call,
                         "run_log_metadata": {
                             "error_log": error_log,
@@ -362,7 +391,6 @@ async def run_chat_model(
             provider_args=provider_args,
         ):
             yield json.dumps(chunk)
-
 
     return StreamingResponse(
         stream_run(),

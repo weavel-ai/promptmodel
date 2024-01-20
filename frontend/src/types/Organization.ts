@@ -29,6 +29,13 @@ export interface ReadOrganizationRequest {
 }
 
 /**
+ * Interface for the request to read an organization's information by slug.
+ */
+export interface ReadOrganizationBySlugRequest {
+  slug: string;
+}
+
+/**
  * Interface for the request to read an organization's configred LLM provider names.
  */
 export interface ReadOrganizationConfiguredLLMProviders {
@@ -52,8 +59,8 @@ export interface DeleteOrganizationLLMProviderConfig {
   organization_id: string;
   provider_name: string;
 }
-
-/**
+``;
+/**`
  * General Organization interface for representing a organization in the system.
  * This is typically used for responses where sensitive information is not included.
  */
@@ -64,4 +71,11 @@ export interface Organization {
   name: string;
   slug: string;
   // Additional fields can be included as necessary
+}
+
+/**
+ * Interface for the request to read an organization's information by slug.
+ */
+export interface OrganizationBySlug {
+  name: string;
 }

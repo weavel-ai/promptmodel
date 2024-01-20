@@ -4,6 +4,7 @@ import { fetchFunctionModelDatasets } from "@/apis/sample_inputs/fetchFunctionMo
 import { createDataset } from "@/apis/sample_inputs/createDataset";
 import { updateDataset } from "@/apis/sample_inputs/updateDataset";
 import { Dataset, DatasetWithEvalMetric } from "@/types/SampleInput";
+import { deleteDataset } from "@/apis/sample_inputs/deleteDataset";
 
 export const useFunctionModelDatasets = () => {
   const params = useParams();
@@ -58,6 +59,12 @@ export const useFunctionModelDatasets = () => {
     },
   });
 
+  const deleteDatasetMutation = useMutation({
+    mutationKey: ["deleteDataset"],
+    mutationFn: deleteDataset,
+    onSuccess: () => refetchFunctionModelDatasetListData(),
+  });
+
   function findDataset(uuid: string) {
     return functionModelDatasetListData?.find(
       (dataset) => dataset.dataset_uuid === uuid
@@ -69,6 +76,7 @@ export const useFunctionModelDatasets = () => {
     refetchFunctionModelDatasetListData,
     createDatasetMutation,
     updateDatasetMutation,
+    deleteDatasetMutation,
     findDataset,
   };
 };

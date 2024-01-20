@@ -15,6 +15,8 @@ const initialButtonVariants = cva(
       variant: {
         neutral: "btn-neutral text-base-content",
         colored: "bg-red-500 text-base-content hover:bg-red-500",
+        outline:
+          "btn-outline text-red-500 font-medium border-red-500 hover:border-red-500 hover:bg-red-500/20 hover:text-red-500",
       },
     },
     defaultVariants: {
@@ -30,6 +32,8 @@ const confirmButtonVariants = cva(
       variant: {
         neutral: "btn-neutral text-red-500",
         colored: "bg-red-500 text-base-content hover:bg-red-500",
+        outline:
+          "btn-outline !text-base-content bg-red-500/90 hover:bg-red-500/70 !border-red-500",
       },
     },
     defaultVariants: {

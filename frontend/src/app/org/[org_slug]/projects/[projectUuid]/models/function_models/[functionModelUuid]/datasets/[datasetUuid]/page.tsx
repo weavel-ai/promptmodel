@@ -1,12 +1,15 @@
 "use client";
 
+import { deleteDataset } from "@/apis/sample_inputs/deleteDataset";
 import { deleteSampleInput } from "@/apis/sample_inputs/deleteSampleInput";
 import { updateSampleInput } from "@/apis/sample_inputs/updateSampleInput";
 import { Drawer } from "@/components/Drawer";
 import { ClickToConfirmDeleteButton } from "@/components/buttons/ClickToConfirmDeleteButton";
 import { ClickToEditInput } from "@/components/inputs/ClickToEditInput";
+import { AddSampleInputModal } from "@/components/modals/AddSampleInputModal";
 import { UploadCsvModal } from "@/components/modals/UploadCsvModal";
 import { Badge } from "@/components/ui/badge";
+import { useAuthorization } from "@/hooks/auth/useAuthorization";
 import {
   ROWS_PER_PAGE,
   useDatasetSampleInputs,
@@ -21,13 +24,14 @@ import {
   ArrowLeft,
   ArrowRight,
   FileArrowUp,
+  Plus,
   XCircle,
 } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import classNames from "classnames";
 import dayjs from "dayjs";
 import Link from "next/link";
-import { useParams, usePathname } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import ReactJson from "react-json-view";
@@ -35,7 +39,10 @@ import { toast } from "react-toastify";
 
 export default function Page() {
   const pathname = usePathname();
-  const { findDataset, updateDatasetMutation } = useFunctionModelDatasets();
+  const { isAuthorizedForProject } = useAuthorization();
+  const router = useRouter();
+  const { findDataset, updateDatasetMutation, deleteDatasetMutation } =
+    useFunctionModelDatasets();
   const {
     datasetUuid,
     datasetSampleInputsQuery,
@@ -44,6 +51,8 @@ export default function Page() {
     setPage,
   } = useDatasetSampleInputs();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
+  const [isAddInputModalOpen, setIsAddInputModalOpen] =
+    useState<boolean>(false);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isTableAtTop, setIsTableAtTop] = useState<boolean>(false);
@@ -136,6 +145,14 @@ export default function Page() {
     };
   }, []);
 
+  useEffect(() => {
+    newDatasetNameRef.current = newDatasetName;
+  }, [newDatasetName]);
+
+  useEffect(() => {
+    newDatasetDescriptionRef.current = newDatasetDescription;
+  }, [newDatasetDescription]);
+
   async function handleUpdateDataset() {
     const data = {
       uuid: datasetUuid,
@@ -147,17 +164,16 @@ export default function Page() {
     if (newDatasetDescriptionRef.current != null) {
       data["description"] = newDatasetDescriptionRef.current;
     }
-    console.log(data);
     await updateDatasetMutation.mutateAsync(data);
   }
 
-  useEffect(() => {
-    newDatasetNameRef.current = newDatasetName;
-  }, [newDatasetName]);
-
-  useEffect(() => {
-    newDatasetDescriptionRef.current = newDatasetDescription;
-  }, [newDatasetDescription]);
+  async function handleDeleteDataset() {
+    await deleteDatasetMutation.mutateAsync({
+      dataset_uuid: datasetUuid,
+    });
+    toast.success("Dataset deleted");
+    router.push(`${pathname?.slice(0, pathname?.indexOf("/datasets"))}`);
+  }
 
   return (
     <div className="overflow-y-auto w-full h-full" ref={scrollRef}>
@@ -197,17 +213,44 @@ export default function Page() {
                 onBlur={handleUpdateDataset}
               />
             </div>
+            {/* Delete button */}
+            <ClickToConfirmDeleteButton
+              variant="outline"
+              handleDelete={handleDeleteDataset}
+              label="Delete dataset"
+            />
           </div>
-          <button
-            className={classNames(
-              "btn btn-outline btn-sm h-10 rounded-md flex flex-row gap-x-1 items-center text-base-content/90 hover:text-base-content",
-              "normal-case font-normal hover:bg-base-content/10 border-muted-content/80"
-            )}
-            onClick={() => setIsUploadModalOpen(true)}
-          >
-            <FileArrowUp size={20} weight="fill" />
-            <p>Upload file</p>
-          </button>
+          <div className="flex flex-col items-end gap-y-2">
+            <button
+              className={classNames(
+                "btn btn-outline btn-sm h-10 rounded-md flex flex-row gap-x-1 items-center text-base-content/90 hover:text-base-content",
+                "normal-case font-normal hover:bg-base-content/10 border-muted-content/80"
+              )}
+              onClick={() => setIsAddInputModalOpen(true)}
+            >
+              <Plus size={20} weight="bold" />
+              <p>Add data</p>
+            </button>
+            <button
+              className={classNames(
+                "btn btn-outline btn-sm h-10 rounded-md flex flex-row gap-x-1 items-center text-base-content/90 hover:text-base-content",
+                "normal-case font-normal hover:bg-base-content/10 border-muted-content/80"
+              )}
+              onClick={() => {
+                if (!isAuthorizedForProject) {
+                  /**
+                   * @todo: Authorize this based on author of the version
+                   */
+                  toast.error("You are not authorized to perform this action.");
+                  return;
+                }
+                setIsUploadModalOpen(true);
+              }}
+            >
+              <FileArrowUp size={20} weight="fill" />
+              <p>Upload file</p>
+            </button>
+          </div>
         </div>
         <div
           // max height: 100vh - 3rem
@@ -358,6 +401,10 @@ export default function Page() {
       <UploadCsvModal
         isOpen={isUploadModalOpen}
         setIsOpen={setIsUploadModalOpen}
+      />
+      <AddSampleInputModal
+        isOpen={isAddInputModalOpen}
+        setIsOpen={setIsAddInputModalOpen}
       />
       <div ref={sampleInputDrawerRef}>
         <SampleInputDrawer

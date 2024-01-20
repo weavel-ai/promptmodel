@@ -1,6 +1,7 @@
 "use client";
 
 import { LocalConnectionStatus } from "@/components/LocalConnectionStatus";
+import { Badge } from "@/components/ui/badge";
 import { useProject } from "@/hooks/useProject";
 import { Project } from "@/types/Project";
 import { GearSix, Plus } from "@phosphor-icons/react";
@@ -76,7 +77,18 @@ const ProjectComponent = ({ project }: { project: Project }) => {
         />
       </div>
 
-      <p className="text-sm text-neutral-content">V{project.version}</p>
+      <div className="w-full flex flex-row justify-between">
+        <p className="text-sm text-neutral-content">V{project.version}</p>
+        <Badge
+          className="text-xs"
+          variant={project?.is_public ? "secondary" : "outline"}
+        >
+          {project?.is_public ? "Public" : "Private"}
+        </Badge>
+        {/* <p className="text-xs px-2 border-base-content/70 bg-transparent border-2 rounded-full text-base-content">
+          {project?.is_public ? "Public" : "Private"}
+        </p> */}
+      </div>
     </Link>
   );
 };

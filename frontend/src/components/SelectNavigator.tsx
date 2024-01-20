@@ -24,9 +24,7 @@ export const SelectNavigator = ({
   statusType,
   options,
 }: SelectNavigatorProps) => {
-  const [showOptions, setShowOptions] = useState<boolean>(false);
   const [optionsPosition, setOptionsPosition] = useState(null);
-  const params = useParams();
   const containerRef = useRef<HTMLAnchorElement | null>(null);
   const optionsRef = useRef<HTMLDivElement | null>(null);
   const optionsPositionRef = useRef(optionsPosition); // Create a ref to hold the optionsPosition state
@@ -60,7 +58,7 @@ export const SelectNavigator = ({
           ref={containerRef}
           href={current?.href}
           className={classNames(
-            "bg-base-content/10 w-full h-full rounded-md px-2 py-1 transition-colors hover:bg-base-content/20 flex flex-row items-center gap-x-2"
+            "w-full h-full rounded-md px-2 py-1 transition-colors hover:bg-base-content/10 flex flex-row items-center gap-x-2"
           )}
         >
           <LocalConnectionStatus
@@ -68,7 +66,7 @@ export const SelectNavigator = ({
             statusType={statusType}
             mini
           />
-          <p>{current.label}</p>
+          <p className="text-sm">{current.label}</p>
         </Link>
         <button
           onClick={() => {

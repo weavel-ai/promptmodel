@@ -4,7 +4,7 @@ import classNames from "classnames";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ModalPortal } from "./ModalPortal";
 import { motion } from "framer-motion";
-import { CreateSampleInputModal } from "./modals/CreateSampleInputsModal";
+import { AddSampleInputModal } from "./modals/AddSampleInputModal";
 import ReactJson from "react-json-view";
 
 interface SampleSelectorProps {
@@ -12,6 +12,9 @@ interface SampleSelectorProps {
   setSample: (name: string) => void;
 }
 
+/**
+ * @deprecated
+ */
 export const SampleSelector = (props: SampleSelectorProps) => {
   const { sampleInputListData, refetchSampleInputListData } = useSamples();
   const [isOpen, setIsOpen] = useState(false);
@@ -225,7 +228,7 @@ export const SampleSelector = (props: SampleSelectorProps) => {
           </ModalPortal>
         )}
       </div>
-      <CreateSampleInputModal
+      <AddSampleInputModal
         isOpen={showCreateSampleInputsModal}
         setIsOpen={setShowCreateSampleInputsModal}
         onCreated={handleNewSampleCreated}

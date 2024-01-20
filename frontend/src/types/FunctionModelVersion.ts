@@ -26,6 +26,7 @@ export interface CreateFunctionModelVersionRequest {
   parsing_type?: string;
   output_keys?: Array<string>;
   functions?: Array<string>;
+  created_by?: string;
 }
 
 /**
@@ -62,6 +63,16 @@ export interface DeleteFunctionModelVersionRequest {
 }
 
 /**
+ * Interface for the request to read a FunctionModelVersion with User information.
+ */
+export interface FunctionModelVersionWithUser extends FunctionModelVersion {
+  user: {
+    image_url?: string;
+    email?: string;
+  };
+}
+
+/**
  * General interface for representing a FunctionModelVersion in the system.
  */
 export interface FunctionModelVersion {
@@ -80,4 +91,5 @@ export interface FunctionModelVersion {
   tags: Array<string>;
   memo: string;
   function_model_uuid: string;
+  created_by: string;
 }

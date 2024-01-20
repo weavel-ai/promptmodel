@@ -50,7 +50,7 @@ export function KeyValueInputField({
       />
       {isKeyEditable && (
         <button
-          className="mt-6 p-1 hover:bg-red-500/20 rounded-md cursor-pointer"
+          className="mt-6 p-2 hover:bg-red-500/20 rounded-md cursor-pointer"
           onClick={onDelete}
         >
           <Trash className="text-red-500" size={20} />

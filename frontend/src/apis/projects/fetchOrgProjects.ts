@@ -7,10 +7,14 @@ import { Project, ReadOrgProjectsRequest } from "@/types/Project";
  * @returns A promise that resolves to a list of the Project interface.
  */
 export async function fetchOrgProjects(
-  orgData: ReadOrgProjectsRequest
+  orgData: ReadOrgProjectsRequest,
+  token: string
 ): Promise<Array<Project>> {
   const response = await webServerClient.get("/projects", {
     params: orgData,
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
   return response.data;
 }
