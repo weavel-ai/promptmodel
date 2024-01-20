@@ -29,7 +29,7 @@ class FunctionModelVersionInstance(PMObject):
 
 
 class FunctionModelVersionAuthor(PMObject):
-    email: str
+    email: Optional[str] = None
     image_url: Optional[str] = None
 
 

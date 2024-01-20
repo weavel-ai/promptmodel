@@ -67,8 +67,8 @@ export interface DeleteFunctionModelVersionRequest {
  */
 export interface FunctionModelVersionWithUser extends FunctionModelVersion {
   user: {
-    image_url: string;
-    email: string;
+    image_url?: string;
+    email?: string;
   };
 }
 
