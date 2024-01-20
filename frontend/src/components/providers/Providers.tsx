@@ -83,7 +83,6 @@ function AuthProvider({ children }) {
       const token = await getToken();
       config.headers.Authorization = token ? `Bearer ${token}` : "";
       config.headers["x-project-uuid"] = projectUuidRef.current;
-      console.log(config);
       return config;
     },
     [getToken, projectUuidRef]

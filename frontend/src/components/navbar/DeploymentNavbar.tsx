@@ -32,14 +32,9 @@ const michroma = Michroma({
   subsets: ["latin"],
 });
 
-interface NavbarProps {
-  title?: string;
-}
-
-export const DeploymentNavbar = (props: NavbarProps) => {
+export function DeploymentNavbar() {
   const pathname = usePathname();
   const params = useParams();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const { isSignedIn, userId } = useAuth();
   const { organizationDataBySlug } = useOrganizationBySlug();
@@ -136,37 +131,39 @@ export const DeploymentNavbar = (props: NavbarProps) => {
               {PRODUCT_NAME}
             </Link>
             {/* Project navigator */}
-            {params?.projectUuid && (
-              <div className="flex flex-row items-center ms-2">
-                <button
-                  className="btn btn-sm bg-transparent text-base-content"
-                  onClick={() => router.push("/org/redirect")}
-                >
-                  {organizationDataBySlug?.name}
-                </button>
-                <p className="text-xl mr-3">/</p>
-                <SelectNavigator
-                  statusType="connection"
-                  current={{
-                    label: projectListData?.find(
-                      (project) => project.uuid == params?.projectUuid
-                    )?.name,
-                    online: projectListData?.find(
-                      (project) => project.uuid == params?.projectUuid
-                    )?.online,
-                    href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models`,
-                  }}
-                  options={projectListData?.map((project) => {
-                    return {
-                      label: project.name,
-                      online: project.online,
-                      href: `/org/${params?.org_slug}/projects/${project?.uuid}/models`,
-                    };
-                  })}
-                />
-              </div>
-            )}
-            <div className="flex flex-row items-center">
+            <div className="flex flex-row items-center ms-2">
+              <Link
+                className="bg-transparent transition-colors text-base-content rounded-md px-2 py-1 text-sm hover:bg-base-content/10"
+                href={`/org/${params?.org_slug}`}
+              >
+                {organizationDataBySlug?.name}
+              </Link>
+              {params?.projectUuid && (
+                <>
+                  <p className="text-lg">/</p>
+                  <SelectNavigator
+                    statusType="connection"
+                    current={{
+                      label: projectListData?.find(
+                        (project) => project.uuid == params?.projectUuid
+                      )?.name,
+                      online: projectListData?.find(
+                        (project) => project.uuid == params?.projectUuid
+                      )?.online,
+                      href: `/org/${params?.org_slug}/projects/${params?.projectUuid}/models`,
+                    }}
+                    options={projectListData?.map((project) => {
+                      return {
+                        label: project.name,
+                        online: project.online,
+                        href: `/org/${params?.org_slug}/projects/${project?.uuid}/models`,
+                      };
+                    })}
+                  />
+                </>
+              )}
+            </div>
+            <div className="flex flex-row items-center text-sm">
               {modelType && (
                 <div className="flex flex-row">
                   <p>{modelType}</p>
@@ -254,4 +251,4 @@ export const DeploymentNavbar = (props: NavbarProps) => {
       }
     </div>
   );
-};
+}

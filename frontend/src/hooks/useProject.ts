@@ -20,7 +20,7 @@ import { Project } from "@/types/Project";
 
 export const useProject = () => {
   const params = useParams();
-  const { isSignedIn } = useAuth();
+  const { getToken } = useAuth();
   const { organization } = useOrganization();
   const { projectStream, setProjectStream } = useRealtimeStore();
   const [toastId, setToastId] = useState(null);
@@ -30,9 +30,16 @@ export const useProject = () => {
 
   const { data: projectListData, refetch: refetchProjectListData } = useQuery({
     queryKey: ["projectListData", { orgSlug: params?.org_slug as string }],
-    queryFn: async () =>
-      await fetchOrgProjects({ organization_slug: params?.org_slug as string }),
-    enabled: !!organization?.id && isSignedIn,
+    queryFn: async () => {
+      const token = await getToken();
+      return await fetchOrgProjects(
+        {
+          organization_slug: params?.org_slug as string,
+        },
+        token
+      );
+    },
+    enabled: !!params?.org_slug,
   });
 
   // useEffect(() => {

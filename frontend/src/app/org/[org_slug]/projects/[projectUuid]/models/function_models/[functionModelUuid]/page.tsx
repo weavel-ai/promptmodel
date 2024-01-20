@@ -86,6 +86,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuthorization } from "@/hooks/auth/useAuthorization";
 import { useAuth } from "@/hooks/auth/useAuth";
 import Image from "next/image";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 dayjs.extend(relativeTime);
 
 const initialNodes = [];
@@ -574,9 +575,6 @@ function VersionInfoOverlay({ versionData }) {
     );
   }, [versionData, functionModelVersionListData]);
 
-  // console.log(functionModelVersionListData);
-  // console.log(hoveredVersionData.user);
-
   return (
     <div
       className={classNames(
@@ -611,15 +609,9 @@ function VersionInfoOverlay({ versionData }) {
         </p>
       )}
       <div className="flex flex-row gap-x-1 items-center">
-        <Image
-          src={hoveredVersionData.user?.image_url}
-          alt="Version Author"
-          width={32}
-          height={32}
-          className="rounded-full"
-        />
+        <ProfileAvatar imageUrl={hoveredVersionData?.user?.image_url} />
         <p className="text-sm text-base-content/70">
-          {hoveredVersionData.user?.email}
+          {hoveredVersionData?.user?.email}
         </p>
       </div>
     </div>
@@ -911,9 +903,9 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
       open={open}
       direction="right"
       style={{
-        width: isCreateVariantOpen ? "calc(100vw - 5rem)" : "max(60vw, 40rem)",
+        width: isCreateVariantOpen ? "calc(100vw - 5rem)" : "max(65vw, 40rem)",
       }}
-      classNames={classNames(isCreateVariantOpen && "backdrop-blur-md", "mr-4")}
+      classNames={classNames(isCreateVariantOpen && "backdrop-blur-md", "mr-2")}
     >
       {open && (
         <div
@@ -956,12 +948,8 @@ function VersionDetailsDrawer({ open }: { open: boolean }) {
                   className="ml-2 tooltip tooltip-right"
                   data-tip={originalFunctionModelVersionData?.user?.email}
                 >
-                  <Image
-                    src={originalFunctionModelVersionData?.user?.image_url}
-                    alt="Version Author"
-                    width={32}
-                    height={32}
-                    className="rounded-full"
+                  <ProfileAvatar
+                    imageUrl={originalFunctionModelVersionData?.user?.image_url}
                   />
                 </div>
               </div>

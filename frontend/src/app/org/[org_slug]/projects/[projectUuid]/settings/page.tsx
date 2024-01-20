@@ -97,7 +97,7 @@ export default function Page() {
               />
             ))}
           </div>
-          <div className="pt-16 flex flex-row gap-x-16 items-start">
+          <div className="pt-4 flex flex-row gap-x-16 items-start">
             <div className="flex flex-col gap-y-4">
               <p className="text-lg font-semibold">Change Project Visibility</p>
               <p className="text-sm">

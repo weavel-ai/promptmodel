@@ -2,7 +2,6 @@
 
 import { useChatModelVersionStore } from "@/stores/chatModelVersionStore";
 import { useFunctionModelVersionStore } from "@/stores/functionModelVersionStore";
-import { useOrganization } from "@/hooks/auth/useOrganization";
 import {
   DiscordLogo,
   GearSix,
@@ -108,13 +107,12 @@ const VerticalNavbarItem = ({
 }) => {
   const pathname = usePathname();
   const params = useParams();
-  const { organization } = useOrganization();
 
   return (
     <Link
       href={
         href ??
-        `/org/${organization?.slug}/projects/${params?.projectUuid}${subPath}`
+        `/org/${params?.org_slug}/projects/${params?.projectUuid}${subPath}`
       }
       target={external && "_blank"}
       className={classNames(
