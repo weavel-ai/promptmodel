@@ -241,7 +241,8 @@ async def get_jwt(
         return token
     except HTTPException as exception:
         raise exception
-    
+
+
 async def get_jwt_public(
     request: Request,
     raw_jwt: str = Security(api_key_header),
@@ -274,10 +275,7 @@ async def get_jwt_public(
             public_key = decode_jwk(res.json()["keys"][0])
 
         if not raw_jwt:
-            raise HTTPException(
-                status_code=status_code.HTTP_401_UNAUTHORIZED,
-                detail="No token found in request Header.",
-            )
+            return {}
         # strip Bearer
         if raw_jwt.lower().startswith("bearer "):
             token = raw_jwt[7:]
