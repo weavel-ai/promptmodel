@@ -18,7 +18,7 @@ const authMiddlewareConfig: NextAuthMiddlewareOptions = {
 };
 
 // Export a middleware function that decides which middleware to use
-const middleware = !env.SELF_HOSTED
+const middleware = env.SELF_HOSTED
   ? withAuth(selfHostedMiddleware, authMiddlewareConfig)
   : defaultMiddleware;
 

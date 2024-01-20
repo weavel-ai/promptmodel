@@ -47,10 +47,6 @@ export default function Page() {
     dayjs(dateRange?.to)?.toISOString()
   );
 
-  useEffect(() => {
-    console.log(projectDailyRunLogMetrics);
-  }, [projectDailyRunLogMetrics]);
-
   const displayedProjectDailyRunLogMetrics = projectDailyRunLogMetrics?.filter(
     (data) => {
       return data.run_from_deployment === (analysisTab == Tab.Deployment);

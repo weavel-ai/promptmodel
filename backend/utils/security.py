@@ -63,7 +63,6 @@ async def get_project(
             status_code=status_code.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
         )
-    print(api_key)
     if api_key.lower().startswith("bearer "):
         api_key = api_key[7:]  # Strip "Bearer " from the header value
     async with get_session_context() as session:
@@ -137,10 +136,8 @@ async def get_api_key(
 ):
     """Authenticate and return API key."""
     try:
-        print("hi", api_key)
         if api_key.lower().startswith("bearer "):
             api_key = api_key[7:]  # Strip "Bearer " from the header value
-        print(api_key)
         return api_key
     except:
         raise HTTPException(
@@ -167,7 +164,6 @@ async def get_jwt(
                     status_code=status_code.HTTP_401_UNAUTHORIZED,
                     detail="Could not validate credentials",
                 )
-            print(project.model_dump())
             if project.is_public:
                 return {"user_id": "public"}
     try:
@@ -250,20 +246,16 @@ async def get_jwt_public(
     try:
         if self_hosted:
             public_key = os.environ.get("NEXTAUTH_SECRET")
-            print(raw_jwt)
             if not raw_jwt:
-                print("1")
                 return {}
             # strip Bearer
             if raw_jwt.lower().startswith("bearer "):
                 token = raw_jwt[7:]
             if not token:
-                # print("2")
                 return {}
             try:
                 token = jwt.decode(token, public_key, algorithms=["HS512"])
             except jwt.InvalidTokenError as err:
-                # print("3")
                 return {}
 
             if "sub" in token and "user_id" not in token:
@@ -281,12 +273,10 @@ async def get_jwt_public(
             token = raw_jwt[7:]
 
         if not token:
-            # print("4")
             return {}
         try:
             token = jwt.decode(token, public_key, algorithms=["RS256"])
         except jwt.InvalidTokenError as err:
-            # print("5")
             print(err)
             return {}
 

@@ -56,7 +56,6 @@ function SelfHostedSignUp() {
     const toastId = toast.loading("Signing up...");
     try {
       const resData = await createUser(data);
-      console.log(resData)
       toast.update(toastId, {
         render: "Sign up successful",
         type: "success",
@@ -70,7 +69,7 @@ function SelfHostedSignUp() {
           name: resData.first_name + " " + resData.last_name,
         },
       });
-      router.push("/org/redirect")
+      router.push("/org/redirect");
       reset();
     } catch (error: any) {
       toast.update(toastId, {

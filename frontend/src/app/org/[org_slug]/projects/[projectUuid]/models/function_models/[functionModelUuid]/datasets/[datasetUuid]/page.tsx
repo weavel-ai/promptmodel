@@ -164,7 +164,6 @@ export default function Page() {
     if (newDatasetDescriptionRef.current != null) {
       data["description"] = newDatasetDescriptionRef.current;
     }
-    console.log(data);
     await updateDatasetMutation.mutateAsync(data);
   }
 

@@ -68,7 +68,6 @@ async def fetch_projects(
     organization_slug: str,
     session: AsyncSession = Depends(get_session),
 ):
-    print(jwt)
     organization_id = (
         await session.execute(
             select(Organization.organization_id).where(
@@ -76,9 +75,6 @@ async def fetch_projects(
             )
         )
     ).scalar_one_or_none()
-
-    # print(organization_slug)
-    # print(organization_id)
 
     is_authorized = False
 
@@ -165,7 +161,6 @@ async def get_project_dataset(
         .mappings()
         .all()
     ]
-    print(datasets)
 
     return datasets
 
