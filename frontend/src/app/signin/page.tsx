@@ -9,7 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { signIn } from "next-auth/react";
 import { z } from "zod";
-import { PromptmodelLogo } from "@/components/PromptmodelLogo";
+import { PromptmodelLogo } from "@/components/logos/PromptmodelLogo";
 import Link from "next/link";
 import { toast } from "react-toastify";
 
