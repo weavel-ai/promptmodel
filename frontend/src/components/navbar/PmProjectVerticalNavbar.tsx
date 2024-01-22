@@ -16,7 +16,7 @@ import { useParams, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { useAuthorization } from "@/hooks/auth/useAuthorization";
 
-export const ProjectVerticalNavbar = () => {
+export const PmProjectVerticalNavbar = () => {
   const params = useParams();
   const { isAuthorizedForProject } = useAuthorization();
   const {

@@ -11,8 +11,8 @@ import { useOrganization } from "@/hooks/auth/useOrganization";
 import { SignInButton } from "../buttons/SignInButton";
 import { useMediaQuery } from "react-responsive";
 import { AnimatedUnderline } from "../AnimatedUnderline";
-import { CaretRight, List, X } from "@phosphor-icons/react";
-import { Michroma, Russo_One } from "next/font/google";
+import { ArrowRight, CaretRight, List, X } from "@phosphor-icons/react";
+import { Roboto_Mono } from "next/font/google";
 import { useOrgData } from "@/hooks/useOrgData";
 import { useProject } from "@/hooks/useProject";
 import { useFunctionModel } from "@/hooks/useFunctionModel";
@@ -25,7 +25,7 @@ import { PromptmodelLogo } from "../logos/PromptmodelLogo";
 import { WeavelLogo } from "../logos/WeavelLogo";
 import { Drawer } from "../Drawer";
 
-const michroma = Michroma({
+const robotoMono = Roboto_Mono({
   weight: ["400"],
   subsets: ["latin"],
 });
@@ -125,16 +125,7 @@ export function DeploymentNavbar() {
             >
               <List size={24} weight="bold" />
             </button>
-            <Link
-              className={classNames(
-                "btn btn-link px-0 normal-case no-underline hover:no-underline flex-0",
-                "text-lg font-extrabold text-transparent bg-clip-text bg-white",
-                "transition-colors hover:bg-gradient-to-br from-white to-primary",
-                michroma.className
-              )}
-              href={organization?.slug ? `/org/redirect` : "/"}
-            >
-              {/* {PRODUCT_NAME} */}
+            <Link href={organization?.slug ? `/org/redirect` : "/"}>
               <PromptmodelLogo />
             </Link>
             {/* Project navigator */}
@@ -271,6 +262,9 @@ function MenuDrawer({
   isOpen: boolean;
   onClose: () => void;
 }) {
+  const params = useParams();
+  const { projectUuid } = useProject();
+
   return (
     <Drawer
       fullHeight
@@ -280,11 +274,7 @@ function MenuDrawer({
       open={isOpen}
       onClose={onClose}
       direction="left"
-      classNames="h-full"
-      style={{
-        width: "calc(min(50vw, 20rem)",
-        backgroundColor: "transparent",
-      }}
+      classNames="h-full w-[calc(min(50vw, 20rem))] bg-transparent"
     >
       <div
         className={classNames(
@@ -293,20 +283,40 @@ function MenuDrawer({
         )}
       >
         <div className="flex flex-row justify-between items-center w-full">
-          <PromptmodelLogo />
+          <div className="flex flex-row justify-start items-center gap-x-3 w-fit">
+            <PromptmodelLogo />
+            <p
+              className={classNames(
+                "text-sm font-medium bg-clip-text bg-gradient-to-br from-base-content to-sky-500 text-transparent",
+                robotoMono.className
+              )}
+            >
+              Promptmodel
+            </p>
+          </div>
           <button className="btn btn-square btn-sm btn-ghost" onClick={onClose}>
-            <X size={24} weight="bold" className="text-muted-content" />
+            <X size={16} weight="bold" className="text-muted-content" />
           </button>
         </div>
         <Link
-          href="/"
+          href={`/org/${params?.org_slug}/projects/${projectUuid}/wv`}
           className={classNames(
             "flex flex-row justify-start items-center gap-x-2 w-full",
-            "px-1 py-2 rounded-md transition-colors hover:bg-base-content/20"
+            "p-2 rounded-md transition-colors hover:bg-base-content/10 group",
+            !projectUuid && "hidden"
           )}
+          onClick={onClose}
         >
-          <WeavelLogo />
+          <WeavelLogo size={24} />
           <p className="text-sm">Weavel Analytics</p>
+          <ArrowRight
+            size={16}
+            weight="bold"
+            className={classNames(
+              "text-base-content",
+              "transition-all opacity-0 group-hover:opacity-100 group-hover:ml-4"
+            )}
+          />
         </Link>
       </div>
     </Drawer>

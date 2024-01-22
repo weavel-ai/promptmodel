@@ -1,10 +1,11 @@
 import { ReactSVG } from "react-svg";
 
-export const WeavelLogo = () => (
+export const WeavelLogo = ({ size = 28 }: { size?: number }) => (
   <ReactSVG
     src="/weavel-logo.svg"
+    draggable="false"
     beforeInjection={(svg) => {
-      svg.setAttribute("style", "width: 28px; height: 28px;");
+      svg.setAttribute("style", `width: ${size}px; height: ${size}px;`);
     }}
   />
 );

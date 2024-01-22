@@ -1,9 +1,6 @@
-import { Inter } from "next/font/google";
-import { ProjectVerticalNavbar } from "@/components/navbar/ProjectVerticalNavbar";
-
 export const metadata = {
-  title: "Dashboard - Promptmodel",
-  description: "Scalable prompt management",
+  title: "Dashboard - Weavel",
+  description: "Conversational data analysis for your team.",
 };
 
 export default function ProjectLayout({
@@ -11,10 +8,5 @@ export default function ProjectLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="w-full h-full">
-      <ProjectVerticalNavbar />
-      {children}
-    </div>
-  );
+  return <div className="w-full h-full">{children}</div>;
 }
