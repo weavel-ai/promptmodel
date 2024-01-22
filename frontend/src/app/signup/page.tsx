@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { env } from "@/constants";
-import { PromptmodelLogo } from "@/components/PromptmodelLogo";
+import { PromptmodelLogo } from "@/components/logos/PromptmodelLogo";
 import Link from "next/link";
 import { toast } from "react-toastify";
 import { createUser } from "@/apis/users";

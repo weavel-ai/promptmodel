@@ -2,22 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { PRODUCT_NAME, env } from "@/constants";
+import { env } from "@/constants";
 import classNames from "classnames";
-import {
-  useParams,
-  usePathname,
-  useRouter,
-  useSearchParams,
-} from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { OrganizationSwitcher } from "@clerk/nextjs";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useOrganization } from "@/hooks/auth/useOrganization";
 import { SignInButton } from "../buttons/SignInButton";
 import { useMediaQuery } from "react-responsive";
 import { AnimatedUnderline } from "../AnimatedUnderline";
-import { CaretRight } from "@phosphor-icons/react";
-import { Michroma, Russo_One } from "next/font/google";
+import { ArrowRight, CaretRight, List, X } from "@phosphor-icons/react";
+import { Roboto_Mono } from "next/font/google";
 import { useOrgData } from "@/hooks/useOrgData";
 import { useProject } from "@/hooks/useProject";
 import { useFunctionModel } from "@/hooks/useFunctionModel";
@@ -26,8 +21,11 @@ import { useChatModel } from "@/hooks/useChatModel";
 import { LocalConnectionStatus } from "../LocalConnectionStatus";
 import { updateOrganization } from "@/apis/organizations";
 import { useOrganizationBySlug } from "@/hooks/useOrganizationBySlug";
+import { PromptmodelLogo } from "../logos/PromptmodelLogo";
+import { WeavelLogo } from "../logos/WeavelLogo";
+import { Drawer } from "../Drawer";
 
-const michroma = Michroma({
+const robotoMono = Roboto_Mono({
   weight: ["400"],
   subsets: ["latin"],
 });
@@ -43,6 +41,7 @@ export function DeploymentNavbar() {
   const { projectData, projectListData } = useProject();
   const { functionModelListData } = useFunctionModel();
   const { chatModelListData } = useChatModel();
+  const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState(false);
   // Mobile
   const isMobile = useMediaQuery({ query: "(max-width: 768px)" });
   const [showDropdown, setShowDropdown] = useState(false);
@@ -99,14 +98,15 @@ export function DeploymentNavbar() {
   return (
     <div
       className={classNames(
-        pathname.match(/.*\/org\/[^/]+$/) ||
-          pathname.match(/.*\/org\/[^/]+\/settings/) ||
-          pathname.match(/.*\/org\/[^/]+\/projects\/new/) ||
-          pathname == "/signup" ||
-          pathname == "/signin"
-          ? "max-w-6xl w-full self-center"
-          : "w-screen",
-        "flex justify-center h-12 py-2 px-6 transition-all",
+        "w-screen",
+        // pathname.match(/.*\/org\/[^/]+$/) ||
+        //   pathname.match(/.*\/org\/[^/]+\/settings/) ||
+        //   pathname.match(/.*\/org\/[^/]+\/projects\/new/) ||
+        //   pathname == "/signup" ||
+        //   pathname == "/signin"
+        //   ? "max-w-6xl w-full self-center"
+        //   : "w-screen",
+        "flex justify-center h-12 px-6 transition-all",
         "fixed top-0",
         "bg-base-100/5 backdrop-blur-sm z-50"
       )}
@@ -115,23 +115,21 @@ export function DeploymentNavbar() {
         // Navigation bar content for desktop view
         <div
           className={classNames(
-            "flex flex-row justify-between items-center w-full gap-x-4 mt-1"
+            "flex flex-row justify-between items-center w-full h-full gap-x-4"
           )}
         >
-          <div className="flex flex-row justify-start items-center w-full gap-x-4">
-            <Link
-              className={classNames(
-                "btn btn-link px-0 normal-case no-underline hover:no-underline flex-0",
-                "text-lg font-extrabold text-transparent bg-clip-text bg-white",
-                "transition-colors hover:bg-gradient-to-br from-white to-primary",
-                michroma.className
-              )}
-              href={organization?.slug ? `/org/redirect` : "/"}
+          <div className="flex flex-row justify-start items-center w-full h-full gap-x-2">
+            <button
+              className="btn btn-square btn-sm btn-ghost"
+              onClick={() => setIsMenuDrawerOpen(true)}
             >
-              {PRODUCT_NAME}
+              <List size={24} weight="bold" />
+            </button>
+            <Link href={organization?.slug ? `/org/redirect` : "/"}>
+              <PromptmodelLogo />
             </Link>
             {/* Project navigator */}
-            <div className="flex flex-row items-center ms-2">
+            <div className="flex flex-row items-center">
               <Link
                 className="bg-transparent transition-colors text-base-content rounded-md px-2 py-1 text-sm hover:bg-base-content/10"
                 href={`/org/${params?.org_slug}`}
@@ -249,6 +247,78 @@ export function DeploymentNavbar() {
           )}
         </div>
       }
+      <MenuDrawer
+        isOpen={isMenuDrawerOpen}
+        onClose={() => setIsMenuDrawerOpen(false)}
+      />
     </div>
+  );
+}
+
+function MenuDrawer({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const params = useParams();
+  const { projectUuid } = useProject();
+
+  return (
+    <Drawer
+      fullHeight
+      enableOverlay
+      zIndex={9999999}
+      overlayClassName="!bg-base-content !opacity-5 transition-all"
+      open={isOpen}
+      onClose={onClose}
+      direction="left"
+      classNames="h-full w-[calc(min(50vw, 20rem))] bg-transparent"
+    >
+      <div
+        className={classNames(
+          "w-full h-full bg-popover/95 backdrop-blur-sm p-4 flex flex-col gap-y-2 justify-start items-start",
+          "rounded-r-3xl drop-shadow-2xl"
+        )}
+      >
+        <div className="flex flex-row justify-between items-center w-full">
+          <div className="flex flex-row justify-start items-center gap-x-3 w-fit">
+            <PromptmodelLogo />
+            <p
+              className={classNames(
+                "text-sm font-medium bg-clip-text bg-gradient-to-br from-base-content to-sky-500 text-transparent",
+                robotoMono.className
+              )}
+            >
+              Promptmodel
+            </p>
+          </div>
+          <button className="btn btn-square btn-sm btn-ghost" onClick={onClose}>
+            <X size={16} weight="bold" className="text-muted-content" />
+          </button>
+        </div>
+        <Link
+          href={`/org/${params?.org_slug}/projects/${projectUuid}/wv`}
+          className={classNames(
+            "flex flex-row justify-start items-center gap-x-2 w-full",
+            "p-2 rounded-md transition-colors hover:bg-base-content/10 group",
+            !projectUuid && "hidden"
+          )}
+          onClick={onClose}
+        >
+          <WeavelLogo size={24} />
+          <p className="text-sm">Weavel Analytics</p>
+          <ArrowRight
+            size={16}
+            weight="bold"
+            className={classNames(
+              "text-base-content",
+              "transition-all opacity-0 group-hover:opacity-100 group-hover:ml-4"
+            )}
+          />
+        </Link>
+      </div>
+    </Drawer>
   );
 }

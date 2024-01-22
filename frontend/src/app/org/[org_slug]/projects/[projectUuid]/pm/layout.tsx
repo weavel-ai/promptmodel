@@ -1,4 +1,5 @@
-import { ProjectVerticalNavbar } from "@/components/navbar/ProjectVerticalNavbar";
+import { Inter } from "next/font/google";
+import { PmProjectVerticalNavbar } from "@/components/navbar/PmProjectVerticalNavbar";
 
 export const metadata = {
   title: "Dashboard - Promptmodel",
@@ -12,7 +13,7 @@ export default function ProjectLayout({
 }) {
   return (
     <div className="w-full h-full">
-      <ProjectVerticalNavbar />
+      <PmProjectVerticalNavbar />
       {children}
     </div>
   );
