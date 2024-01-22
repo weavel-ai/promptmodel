@@ -11,7 +11,14 @@ import { useOrganization } from "@/hooks/auth/useOrganization";
 import { SignInButton } from "../buttons/SignInButton";
 import { useMediaQuery } from "react-responsive";
 import { AnimatedUnderline } from "../AnimatedUnderline";
-import { ArrowRight, CaretRight, List, X } from "@phosphor-icons/react";
+import {
+  ArrowRight,
+  CaretRight,
+  Globe,
+  List,
+  ShareNetwork,
+  X,
+} from "@phosphor-icons/react";
 import { Roboto_Mono } from "next/font/google";
 import { useOrgData } from "@/hooks/useOrgData";
 import { useProject } from "@/hooks/useProject";
@@ -278,11 +285,11 @@ function MenuDrawer({
     >
       <div
         className={classNames(
-          "w-full h-full bg-popover/95 backdrop-blur-sm p-4 flex flex-col gap-y-2 justify-start items-start",
+          "w-full h-full bg-popover/95 backdrop-blur-sm p-4 flex flex-col justify-start items-start",
           "rounded-r-3xl drop-shadow-2xl"
         )}
       >
-        <div className="flex flex-row justify-between items-center w-full">
+        <div className="flex flex-row justify-between items-center w-full mb-2">
           <div className="flex flex-row justify-start items-center gap-x-3 w-fit">
             <PromptmodelLogo />
             <p
@@ -309,6 +316,26 @@ function MenuDrawer({
         >
           <WeavelLogo size={24} />
           <p className="text-sm">Weavel Analytics</p>
+          <ArrowRight
+            size={16}
+            weight="bold"
+            className={classNames(
+              "text-base-content",
+              "transition-all opacity-0 group-hover:opacity-100 group-hover:ml-4"
+            )}
+          />
+        </Link>
+        <div className="divider my-0"></div>
+        <Link
+          href={"/explore"}
+          className={classNames(
+            "flex flex-row justify-start items-center gap-x-2 w-full",
+            "p-2 rounded-md transition-colors hover:bg-base-content/10 group"
+          )}
+          onClick={onClose}
+        >
+          <Globe size={24} className="text-base-primary" />
+          <p className="text-sm">Explore</p>
           <ArrowRight
             size={16}
             weight="bold"

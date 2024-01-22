@@ -78,4 +78,5 @@ export interface Organization {
  */
 export interface OrganizationBySlug {
   name: string;
+  organization_id: string;
 }

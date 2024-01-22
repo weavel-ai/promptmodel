@@ -122,7 +122,6 @@ async def get_project(
         )
     return ProjectInstance(**project)
 
-
 @router.get("/{uuid}/datasets", response_model=List[ProjectDatasetInstance])
 async def get_project_dataset(
     jwt: Annotated[str, Depends(get_jwt)],

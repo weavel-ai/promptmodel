@@ -21,6 +21,7 @@ class OrganizationInstance(PMObject):
     
 class OrganizationInstanceBySlug(PMObject):
     name: str
+    organization_id: str
 
 class UpsertLLMProviderConfigBody(PMObject):
     provider_name: str

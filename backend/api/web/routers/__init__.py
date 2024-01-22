@@ -20,6 +20,7 @@ from .tags import router as tags_router
 from .user import router as user_router
 from .subscribe import router as subscribe_router
 from .unit import router as unit_router
+from .explore import router as explore_router
 
 router = APIRouter()
 router.include_router(web_router, tags=["web"])
@@ -74,3 +75,5 @@ router.include_router(analytics_router, prefix="/metrics", tags=["metric"])
 router.include_router(subscribe_router, prefix="/subscribe", tags=["subscribe"])
 
 router.include_router(unit_router, prefix="/units", tags=["unit"])
+
+router.include_router(explore_router, prefix="/explore", tags=["explore"])
