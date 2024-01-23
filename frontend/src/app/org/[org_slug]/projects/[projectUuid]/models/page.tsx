@@ -166,7 +166,7 @@ export default function Page() {
         onNodeContextMenu={onNodeContextMenu}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-        <div className="fixed top-16 left-24 z-50">
+        <div className="fixed top-16 left-24 z-40">
           <SelectTab
             tabs={TABS}
             selectedTab={selectedTab}

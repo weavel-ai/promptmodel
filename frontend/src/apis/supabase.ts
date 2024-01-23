@@ -1,6 +1,6 @@
 "use client";
 
-import { env } from "@/constants";
+import { ENV } from "@/constants";
 import { SupabaseClient, createClient } from "@supabase/supabase-js";
 import { Database } from "@/supabase.types";
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -22,14 +22,14 @@ export const useSupabaseClient = () => {
   });
 
   const supabaseWithoutToken = useMemo(
-    () => createClient(env.SUPABASE_URL, env.SUPABASE_KEY),
+    () => createClient(ENV.SUPABASE_URL, ENV.SUPABASE_KEY),
     []
   );
 
   const createSupabaseClient = useCallback(async () => {
     if (!isSignedIn) return null;
     const token = await getToken({ template: "supabase-colab" });
-    return createClient(env.SUPABASE_URL, env.SUPABASE_KEY, {
+    return createClient(ENV.SUPABASE_URL, ENV.SUPABASE_KEY, {
       global: {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -39,7 +39,7 @@ export const useSupabaseClient = () => {
   }, [isSignedIn]);
 
   useEffect(() => {
-    if (isSignedIn && !env.SELF_HOSTED) {
+    if (isSignedIn && !ENV.SELF_HOSTED) {
       createSupabaseClient().then((client) => {
         setStatus((prev) => ({
           ...prev,

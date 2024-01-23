@@ -1,4 +1,4 @@
-import { env } from "@/constants";
+import { ENV } from "@/constants";
 import { SubscribeTableRequest } from "@/types/SubscribeTable";
 import { webServerClient } from "../base";
 
@@ -13,10 +13,10 @@ export async function subscribeTable(
 
   let endpoint: string;
   // Format websocket endpoint (https:// or http:// -> ws:// or wss://)
-  if (env.ENDPOINT_URL.startsWith("https://")) {
-    endpoint = env.ENDPOINT_URL.replace("https://", "wss://");
-  } else if (env.ENDPOINT_URL.startsWith("http://")) {
-    endpoint = env.ENDPOINT_URL.replace("http://", "ws://");
+  if (ENV.ENDPOINT_URL.startsWith("https://")) {
+    endpoint = ENV.ENDPOINT_URL.replace("https://", "wss://");
+  } else if (ENV.ENDPOINT_URL.startsWith("http://")) {
+    endpoint = ENV.ENDPOINT_URL.replace("http://", "ws://");
   } else {
     throw new Error("Invalid endpoint URL");
   }

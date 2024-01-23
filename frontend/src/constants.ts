@@ -5,7 +5,7 @@ export class Routes {
   // static CREATE_ANSWER: string = "/create"
 }
 
-export class env {
+export class ENV {
   static SELF_HOSTED: boolean = process.env.NEXT_PUBLIC_SELF_HOSTED == "true";
   static ENDPOINT_URL_INTERNAL: string =
     process.env.NEXT_PUBLIC_ENDPOINT_URL.includes("localhost")

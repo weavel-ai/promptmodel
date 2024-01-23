@@ -1,4 +1,4 @@
-import { env } from "@/constants";
+import { ENV } from "@/constants";
 import { getServerSession, type NextAuthOptions } from "next-auth";
 
 // Providers
@@ -45,20 +45,20 @@ const providers: Provider[] = [
   }),
 ];
 
-if (env.AUTH_GOOGLE_CLIENT_ID && env.AUTH_GOOGLE_CLIENT_SECRET)
+if (ENV.AUTH_GOOGLE_CLIENT_ID && ENV.AUTH_GOOGLE_CLIENT_SECRET)
   providers.push(
     GoogleProvider({
-      clientId: env.AUTH_GOOGLE_CLIENT_ID,
-      clientSecret: env.AUTH_GOOGLE_CLIENT_SECRET,
+      clientId: ENV.AUTH_GOOGLE_CLIENT_ID,
+      clientSecret: ENV.AUTH_GOOGLE_CLIENT_SECRET,
       allowDangerousEmailAccountLinking: true,
     })
   );
 
-if (env.AUTH_GITHUB_CLIENT_ID && env.AUTH_GITHUB_CLIENT_SECRET)
+if (ENV.AUTH_GITHUB_CLIENT_ID && ENV.AUTH_GITHUB_CLIENT_SECRET)
   providers.push(
     GitHubProvider({
-      clientId: env.AUTH_GITHUB_CLIENT_ID,
-      clientSecret: env.AUTH_GITHUB_CLIENT_SECRET,
+      clientId: ENV.AUTH_GITHUB_CLIENT_ID,
+      clientSecret: ENV.AUTH_GITHUB_CLIENT_SECRET,
       allowDangerousEmailAccountLinking: true,
     })
   );
@@ -93,7 +93,7 @@ export const authOptions: NextAuthOptions = {
       }
       session.user = user;
       // Add encoded jwt
-      session.access_token = jwt.sign(session, env.NEXTAUTH_SECRET, {
+      session.access_token = jwt.sign(session, ENV.NEXTAUTH_SECRET, {
         algorithm: "HS512",
       });
       return session;

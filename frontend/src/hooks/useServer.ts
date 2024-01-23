@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "./auth/useAuth";
 import { useMemo } from "react";
 import axios from "axios";
-import { env } from "@/constants";
+import { ENV } from "@/constants";
 
 const AXIOS_HEADERS = {
   "Content-type": "application/json",
@@ -22,7 +22,7 @@ export function useServer() {
 
   const serverClient = useMemo(() => {
     return axios.create({
-      baseURL: `${env.ENDPOINT_URL}/web`,
+      baseURL: `${ENV.ENDPOINT_URL}/web`,
       headers: {
         ...AXIOS_HEADERS,
         Authorization: `Bearer ${accessToken}`,
