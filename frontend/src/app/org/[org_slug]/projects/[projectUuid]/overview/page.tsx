@@ -4,7 +4,6 @@ import { useChangeLog } from "@/hooks/useChangelog";
 import { useProject } from "@/hooks/useProject";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useRunLogCount } from "@/hooks/useRunLogCount";
 import { useChatLogCount } from "@/hooks/useChatMessagesCount";
@@ -13,15 +12,11 @@ import { subDays } from "date-fns";
 import { DatePickerWithRange } from "@/components/ui/DatePickerWithRange";
 import { useProjectDailyRunLogMetrics } from "@/hooks/analytics";
 import { CustomAreaChart } from "@/components/charts/CustomAreaChart";
-import { Button } from "@/components/ui/button";
 import { SelectTab } from "@/components/SelectTab";
-import { SupabaseClient, createClient } from "@supabase/supabase-js";
-import { env } from "@/constants";
 import { Badge } from "@/components/ui/badge";
 dayjs.extend(relativeTime);
 
 export default function Page() {
-  const params = useParams();
   const { projectData } = useProject();
   const { changeLogListData } = useChangeLog();
   const { runLogCountData } = useRunLogCount();
@@ -34,10 +29,6 @@ export default function Page() {
   }
   const ANALYSISTABS = [Tab.Deployment, Tab.Development];
   const [analysisTab, setAnalysisTab] = useState(Tab.Deployment);
-  const ISPUBLICTABS = [Tab.Public, Tab.Private];
-  const [isPublicTab, setIsPublicTab] = useState(
-    projectData?.is_public ? Tab.Public : Tab.Private
-  );
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(Date.now(), 7),
     to: new Date(),
@@ -107,17 +98,6 @@ export default function Page() {
     if (a.day > b.day) return 1;
     return 0;
   });
-
-  async function setIsPublic(isPublic: boolean) {
-    const supabase: SupabaseClient = createClient(
-      env.SUPABASE_URL,
-      env.SUPABASE_KEY
-    );
-    await supabase
-      .from("project")
-      .update({ is_public: isPublic })
-      .match({ uuid: projectData.uuid });
-  }
 
   return (
     <div className="w-full h-full pl-28 pt-20 pb-8">

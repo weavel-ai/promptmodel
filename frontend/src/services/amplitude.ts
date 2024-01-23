@@ -1,9 +1,9 @@
 import * as amplitude from "@amplitude/analytics-browser";
-import { env, PRODUCT_NAME } from "@/constants";
+import { ENV, PRODUCT_NAME } from "@/constants";
 
 export const initAmplitude = () => {
-  if (!env.AMPLITUDE_API_KEY) return;
-  amplitude.init(env.AMPLITUDE_API_KEY, undefined, {
+  if (!ENV.AMPLITUDE_API_KEY) return;
+  amplitude.init(ENV.AMPLITUDE_API_KEY, undefined, {
     defaultTracking: {
       sessions: true,
       pageViews: false,
@@ -14,7 +14,7 @@ export const initAmplitude = () => {
 };
 
 export const logEvent = (event: string, data?: any) => {
-  if (process.env.NODE_ENV == "development" || !env.AMPLITUDE_API_KEY) return;
+  if (process.env.NODE_ENV == "development" || !ENV.AMPLITUDE_API_KEY) return;
   amplitude.logEvent(event, {
     ...data,
   });

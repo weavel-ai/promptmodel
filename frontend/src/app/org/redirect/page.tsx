@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { useOrganization } from "@/hooks/auth/useOrganization";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { env } from "@/constants";
+import { ENV } from "@/constants";
 import { createOrganization, fetchOrganization } from "@/apis/organizations";
 import { AxiosError } from "axios";
 

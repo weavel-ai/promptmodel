@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { env } from "@/constants";
+import { ENV } from "@/constants";
 import { PromptmodelLogo } from "@/components/logos/PromptmodelLogo";
 import Link from "next/link";
 import { toast } from "react-toastify";
@@ -25,7 +25,7 @@ let validationSchema = z
 export default function Page() {
   const params = useSearchParams();
 
-  if (env.SELF_HOSTED) {
+  if (ENV.SELF_HOSTED) {
     return <SelfHostedSignUp />;
   }
 

@@ -12,7 +12,7 @@ import {
 import { toast } from "react-toastify";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { LLMProvider, LLMProviders, env } from "@/constants";
+import { LLMProvider, LLMProviders, ENV } from "@/constants";
 import { Modal } from "@/components/modals/Modal";
 import { InputField } from "@/components/InputField";
 import { useOrganization } from "@/hooks/auth/useOrganization";

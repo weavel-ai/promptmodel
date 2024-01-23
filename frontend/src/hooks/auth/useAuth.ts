@@ -1,4 +1,4 @@
-import { env } from "@/constants";
+import { ENV } from "@/constants";
 import { useAuth as useClerkAuth, useUser } from "@clerk/nextjs";
 import { useSession } from "next-auth/react";
 import { useProject } from "../useProject";
@@ -67,7 +67,7 @@ function useNextAuth(): NextAuthReturn {
   };
 }
 
-export const useAuth = env.SELF_HOSTED ? useNextAuth : useCustomClerkAuth;
+export const useAuth = ENV.SELF_HOSTED ? useNextAuth : useCustomClerkAuth;
 // export function useAuth() {
 //   return env.SELF_HOSTED ? useNextAuth() : useCustomClerkAuth();
 // }

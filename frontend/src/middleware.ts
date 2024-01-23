@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { NextAuthMiddlewareOptions, withAuth } from "next-auth/middleware";
-import { env } from "./constants";
+import { ENV } from "./constants";
 
 function defaultMiddleware(req: NextRequest) {
   return NextResponse.next();
@@ -18,7 +18,7 @@ const authMiddlewareConfig: NextAuthMiddlewareOptions = {
 };
 
 // Export a middleware function that decides which middleware to use
-const middleware = env.SELF_HOSTED
+const middleware = ENV.SELF_HOSTED
   ? withAuth(selfHostedMiddleware, authMiddlewareConfig)
   : defaultMiddleware;
 

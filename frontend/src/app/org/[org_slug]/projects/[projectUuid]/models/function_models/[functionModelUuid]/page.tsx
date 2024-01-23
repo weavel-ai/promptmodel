@@ -109,7 +109,7 @@ export default function Page() {
   return (
     <div className="w-full h-full">
       {functionModelVersionListData?.length > 0 && !isCreateVariantOpen && (
-        <div className="fixed top-16 left-24 z-50">
+        <div className="fixed top-16 left-24 z-40">
           <SelectTab
             tabs={FUNCTION_MODEL_VERSION_PAGE_TABS}
             selectedTab={tab}

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { env } from "@/constants";
+import { ENV } from "@/constants";
 import classNames from "classnames";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { OrganizationSwitcher } from "@clerk/nextjs";
@@ -227,7 +227,7 @@ export function DeploymentNavbar() {
             />
           </div>
           <div className="h-[32px]">
-            {env?.SELF_HOSTED ? (
+            {ENV?.SELF_HOSTED ? (
               isSignedIn && (
                 <div className="py-1 px-2 rounded-md bg-base-300 font-sans font-medium ">
                   {organization?.name}
@@ -282,12 +282,12 @@ function MenuDrawer({
           "rounded-r-3xl drop-shadow-2xl"
         )}
       >
-        <div className="flex flex-row justify-between items-center w-full">
+        <div className="flex flex-row justify-between items-center w-full mb-2">
           <div className="flex flex-row justify-start items-center gap-x-3 w-fit">
             <PromptmodelLogo />
             <p
               className={classNames(
-                "text-sm font-medium bg-clip-text bg-gradient-to-br from-base-content to-sky-500 text-transparent",
+                "text-sm font-medium bg-clip-text bg-gradient-to-br from-base-content text-transparent to-sky-500",
                 robotoMono.className
               )}
             >
@@ -299,11 +299,12 @@ function MenuDrawer({
           </button>
         </div>
         <Link
-          href={`/org/${params?.org_slug}/projects/${projectUuid}/wv`}
+          href={`https://analytics.weavel.ai/${params?.org_slug}/projects/${projectUuid}`}
           className={classNames(
             "flex flex-row justify-start items-center gap-x-2 w-full",
-            "p-2 rounded-md transition-colors hover:bg-base-content/10 group",
-            !projectUuid && "hidden"
+            "p-2 rounded-md transition-colors hover:bg-base-content/10 group hover:!cursor-not-allowed",
+            !projectUuid && "hidden",
+            "hidden"
           )}
           onClick={onClose}
         >

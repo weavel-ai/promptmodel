@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AnimatedUnderline } from "../AnimatedUnderline";
-import { env } from "@/constants";
+import { ENV } from "@/constants";
 import { useEffect, useRef, useState } from "react";
 import classNames from "classnames";
 import { motion } from "framer-motion";
@@ -21,7 +21,7 @@ export function SignInButton() {
     return <></>;
   }
 
-  if (env.SELF_HOSTED) {
+  if (ENV.SELF_HOSTED) {
     return <SelfHostedSignInButton />;
   }
 

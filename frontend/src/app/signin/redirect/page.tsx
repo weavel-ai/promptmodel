@@ -4,7 +4,7 @@ import { fetchUser } from "@/apis/users";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { env } from "@/constants";
+import { ENV } from "@/constants";
 import { createClerkUser } from "@/apis/users/createClerkUser";
 import { AxiosError } from "axios";
 
@@ -14,7 +14,7 @@ export default function Page() {
 
   // Save Clerk user id and email to supabase if user not created yet
   useEffect(() => {
-    if (env.SELF_HOSTED) {
+    if (ENV.SELF_HOSTED) {
       if (!isSignedIn) return;
     } else {
       if (!isSignedIn) return;

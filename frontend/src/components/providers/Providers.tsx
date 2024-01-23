@@ -7,7 +7,7 @@ import { ToastContainer, toast } from "react-toastify";
 import { initAmplitude } from "@/services/amplitude";
 import { RealtimeProvider } from "./RealtimeProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { env } from "@/constants";
+import { ENV } from "@/constants";
 import { internalServerClient, webServerClient } from "@/apis/base";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useProject } from "@/hooks/useProject";
@@ -48,7 +48,7 @@ export function Providers({ children, session }) {
     </QueryClientProvider>
   );
 
-  if (env.SELF_HOSTED) {
+  if (ENV.SELF_HOSTED) {
     return <SessionProvider session={session}>{content}</SessionProvider>;
   }
 
