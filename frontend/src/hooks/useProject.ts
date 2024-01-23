@@ -17,6 +17,7 @@ import { useAuth } from "./auth/useAuth";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { useSupabaseClient } from "@/apis/supabase";
 import { Project } from "@/types/Project";
+import { fetchPublicProjectList } from "@/apis/projects/fetchPublicProject";
 
 export const useProject = () => {
   const params = useParams();
@@ -42,16 +43,22 @@ export const useProject = () => {
     enabled: !!params?.org_slug,
   });
 
-  // useEffect(() => {
-  //   console.log(projectListData);
-  // }, [projectListData]);
-
   const { data: projectData, refetch: refetchProjectData } = useQuery({
     queryKey: ["projectData", { projectUuid: params?.projectUuid }],
     queryFn: async () =>
       await fetchProject({ uuid: params?.projectUuid as string }),
     enabled: !!params?.projectUuid,
   });
+
+  const { data: publicProjectListData, refetch: refetchPublicProjectListData } =
+    useQuery({
+      queryKey: ["publicProjectData"],
+      queryFn: async () => await fetchPublicProjectList(),
+    });
+
+  // useEffect(() => {
+  //   console.log("publicProjectListData", publicProjectListData);
+  // }, [publicProjectListData]);
 
   useEffect(() => {
     isOnlineRef.current = projectData?.online;
@@ -138,6 +145,7 @@ export const useProject = () => {
   return {
     projectData,
     projectListData,
+    publicProjectListData,
     refetchProjectListData,
     projectUuid: params?.projectUuid as string,
     subscribeToProject,

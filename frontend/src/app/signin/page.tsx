@@ -4,12 +4,12 @@ import { SignIn } from "@clerk/nextjs";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
-import { PRODUCT_NAME, env } from "@/constants";
+import { PRODUCT_NAME, ENV } from "@/constants";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { signIn } from "next-auth/react";
 import { z } from "zod";
-import { PromptmodelLogo } from "@/components/PromptmodelLogo";
+import { PromptmodelLogo } from "@/components/logos/PromptmodelLogo";
 import Link from "next/link";
 import { toast } from "react-toastify";
 
@@ -27,7 +27,7 @@ export default function Page() {
 
   useEffect(() => {
     if (isSignedIn) {
-      if (env.SELF_HOSTED) {
+      if (ENV.SELF_HOSTED) {
         router.push("/org/redirect");
       } else {
         router.push("/signin/redirect");
@@ -35,7 +35,7 @@ export default function Page() {
     }
   }, [isSignedIn, router]);
 
-  if (env.SELF_HOSTED) {
+  if (ENV.SELF_HOSTED) {
     return <SelfHostedSignIn />;
   }
 

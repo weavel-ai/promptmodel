@@ -1,7 +1,7 @@
 import { deleteOrganizationLLMProviderConfig } from "@/apis/organizations/deleteOrganizationLLMProviderConfig";
 import { fetchOrganizationConfiguredLLMProviders } from "@/apis/organizations/fetchOrganizationLLMProviderKeys";
 import { upsertOrganizationLLMProviderConfig } from "@/apis/organizations/upsertOrganizationLLMProviderConfig";
-import { env } from "@/constants";
+import { ENV } from "@/constants";
 import {
   DeleteOrganizationLLMProviderConfig,
   UpsertOrganizationLLMProviderConfig,
@@ -14,6 +14,7 @@ type NextOrganization = {
   id: string;
   name: string;
   slug: string | null;
+  defaultService: string;
 };
 
 type NextOrgReturn = {
@@ -32,13 +33,14 @@ function useNextOrganization(): NextOrgReturn {
     isLoaded: true,
     organization: {
       id: isSignedIn && "org_selfhosted",
-      name: isSignedIn && env.ORG_NAME,
-      slug: isSignedIn && env.ORG_SLUG,
+      name: isSignedIn && ENV.ORG_NAME,
+      slug: isSignedIn && ENV.ORG_SLUG,
+      defaultService: "promptmodel",
     },
   };
 }
 
-const _useOrganization: () => OrgReturn = env.SELF_HOSTED
+const _useOrganization: () => OrgReturn = ENV.SELF_HOSTED
   ? useNextOrganization
   : useClerkOrganization;
 

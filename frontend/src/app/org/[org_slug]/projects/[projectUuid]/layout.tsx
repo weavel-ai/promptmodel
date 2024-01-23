@@ -1,3 +1,4 @@
+import { Inter } from "next/font/google";
 import { ProjectVerticalNavbar } from "@/components/navbar/ProjectVerticalNavbar";
 
 export const metadata = {

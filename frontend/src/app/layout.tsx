@@ -6,7 +6,7 @@ import { Providers } from "@/components/providers/Providers";
 import { ClerkProvider } from "@clerk/nextjs";
 import { DeploymentNavbar } from "@/components/navbar/DeploymentNavbar";
 import { ModalRoot } from "@/components/ModalPortal";
-import { env } from "@/constants";
+import { ENV } from "@/constants";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/apis/auth";
 
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 function ClerkWrapper({ children }: { children: React.ReactNode }) {
-  if (env.SELF_HOSTED) return <>{children}</>;
+  if (ENV.SELF_HOSTED) return <>{children}</>;
 
   return (
     <ClerkProvider

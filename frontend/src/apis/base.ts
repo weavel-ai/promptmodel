@@ -1,5 +1,5 @@
 import axios from "axios";
-import { env } from "@/constants";
+import { ENV } from "@/constants";
 
 import { parseMultipleJson } from "@/utils";
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -9,17 +9,17 @@ const AXIOS_HEADERS = {
 };
 
 export const webServerClient = axios.create({
-  baseURL: `${env.ENDPOINT_URL}/web`,
+  baseURL: `${ENV.ENDPOINT_URL}/web`,
   headers: AXIOS_HEADERS,
 });
 
 export const unauthorizedWebServerClient = axios.create({
-  baseURL: `${env.ENDPOINT_URL}/web`,
+  baseURL: `${ENV.ENDPOINT_URL}/web`,
   headers: AXIOS_HEADERS,
 });
 
 export const internalServerClient = axios.create({
-  baseURL: `${env.ENDPOINT_URL_INTERNAL}/web`,
+  baseURL: `${ENV.ENDPOINT_URL_INTERNAL}/web`,
   headers: AXIOS_HEADERS,
 });
 
@@ -34,7 +34,7 @@ export const fetchStream = async ({
   body?: Record<string, any>;
   onNewData: (data: Record<string, any>) => void;
 }) => {
-  let formattedUrl: string = env.ENDPOINT_URL + url;
+  let formattedUrl: string = ENV.ENDPOINT_URL + url;
   if (params) {
     formattedUrl += `?${Object.keys(params)
       .map((key) => `${key}=${params[key]}`)
