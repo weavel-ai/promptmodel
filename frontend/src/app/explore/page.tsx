@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import dayjs from "dayjs";
 
 import relativeTime from "dayjs/plugin/relativeTime";
+import Link from "next/link";
 
 dayjs.extend(relativeTime);
 
@@ -17,8 +18,8 @@ export default function Page() {
     console.log(publicFunctionModelListData);
   }, [publicFunctionModelListData]);
   return (
-    <div className="w-full h-full py-12">
-      <div className="flex flex-col pt-16 items-center gap-y-8 overflow-auto">
+    <div className="w-full h-full py-12 flex justify-center items-start">
+      <div className="flex flex-col pt-4 items-center gap-y-8 overflow-auto w-full max-w-xl">
         <p className="w-full max-w-2xl text-2xl font-semibold text-left">
           Latest Projects
         </p>
@@ -62,61 +63,62 @@ const ProjectComponent = ({
   functionModel: PublicFunctionModel;
 }) => {
   return (
-    <div className="w-full h-full max-w-xl flex flex-col">
+    <div className="w-full h-full flex flex-col">
       <div className="w-full bg-base-200/70 flex flex-col px-6 pt-4 rounded-t">
         <div className="flex flex-row">
           <BookOpenText size={24} className="mr-3" />
-          <div className="flex flex-row items-center">
-            <a
+          <div className="flex flex-row items-center truncate">
+            <Link
               href={`/org/${functionModel.organization["slug"]}`}
-              className="text-lg font-light link link-hover"
+              className="font-light link link-hover flex-shrink-0"
             >
               {functionModel.organization["name"]}
-            </a>
-            <p className="mx-2 text-xl">/</p>
-            <a
-              href={`/org/${functionModel.organization["slug"]}/projects/${functionModel.project_uuid}/pm`}
-              className="text-lg font-light link link-hover"
+            </Link>
+            <span className="mx-2 text-xl">/</span>
+            <Link
+              href={`/org/${functionModel.organization["slug"]}/projects/${functionModel.project_uuid}`}
+              className="font-light link link-hover flex-shrink-0"
             >
               {functionModel.project_name}
-            </a>
-            <p className="mx-2 text-xl">/</p>
-            <a
-              href={`/org/${functionModel.organization["slug"]}/projects/${functionModel.project_uuid}/pm/models`}
-              className="text-lg link link-hover"
+            </Link>
+            <span className="mx-2 text-xl">/</span>
+            <Link
+              href={`/org/${functionModel.organization["slug"]}/projects/${functionModel.project_uuid}/models/function_models/${functionModel.uuid}`}
+              className="link link-hover flex-shrink-0"
             >
               {functionModel.name}
-            </a>
+            </Link>
           </div>
         </div>
-        <div className="flex flex-row gap-x-2   mt-4">
-          <p className="bg-base-300 px-2 py-1 rounded-t text-sm flex flex-row items-center">
+        <div className="flex flex-row gap-x-2 mt-4">
+          <p className="bg-base-300 p-2 rounded-t text-sm flex flex-row items-center">
             <Note size={16} className="mr-1" />
-            Description
+            Project Description
           </p>
-          <a
-            href={`/org/${functionModel.organization["slug"]}/projects/${functionModel.project_uuid}/pm/models/function_models/${functionModel.uuid}/`}
-            className="px-2 py-1 text-sm flex flex-row items-center"
+          <Link
+            href={`/org/${functionModel.organization["slug"]}/projects/${functionModel.project_uuid}/models/function_models/${functionModel.uuid}/`}
+            className="p-2 text-sm flex flex-row items-center opacity-80 hover:opacity-100 transition-opacity"
           >
             <Graph size={16} className="mr-1" />
             Versions
-          </a>
-          <a
-            href={`/org/${functionModel.organization["slug"]}/projects/${functionModel.project_uuid}/pm/models`}
-            className="px-2 py-1 text-sm flex flex-row items-center hover:cursor-not-allowed"
+          </Link>
+          <div
+            // href={`/org/${functionModel.organization["slug"]}/projects/${functionModel.project_uuid}/models`}
+            className="p-2 text-sm flex flex-row items-center hover:cursor-not-allowed opacity-80 "
           >
             <Chats size={16} className="mr-1" />
             Comments
-          </a>
+          </div>
         </div>
       </div>
       <div className="w-full bg-base-300 rounded-b pt-2 pb-3 flex flex-col">
-        <p className="text-base-content/80 text-sm px-6 mb-1">
+        <p className="text-base-content/80 text-sm px-6 py-2">
           {functionModel.project_description
             ? functionModel.project_description
             : "No description"}
         </p>
-        <p className="text-sm text-base-content/70 border-t-2 border-base-200/70 px-6 pt-3">
+        <div className="divider my-1 before:bg-base-200/70 after:bg-base-200/70" />
+        <p className="text-xs text-muted-content px-6 py-1">
           Created {dayjs(functionModel.created_at).fromNow()}
         </p>
       </div>
