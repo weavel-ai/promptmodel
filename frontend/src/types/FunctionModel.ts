@@ -41,3 +41,26 @@ export interface FunctionModel {
   online: boolean;
   project_uuid: string;
 }
+
+/**
+ * Interface for the request to read public FunctionModels.
+ */
+export interface ReadPublicFunctionModelsRequest {
+  page: number;
+  rows_per_page: number;
+}
+
+/**
+ * Interface for representing public FunctionModels.
+ */
+export interface PublicFunctionModel {
+  id: number;
+  uuid: string;
+  created_at: string;
+  name: string;
+  online: boolean;
+  project_uuid: string;
+  project_name: string;
+  project_description: string;
+  organization: JSON;
+}

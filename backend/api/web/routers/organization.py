@@ -140,14 +140,14 @@ async def get_organization_by_slug(
     organization_slug: str,
     session: AsyncSession = Depends(get_session),
 ):
-    organization_name = (
+    organization_info = (
         await session.execute(
-            select(Organization.name)
+            select(Organization.name, Organization.organization_id)
             .where(Organization.slug == organization_slug)
         )
-    ).scalar_one_or_none()
+    ).mappings().one_or_none()
 
-    return OrganizationInstanceBySlug(name=organization_name)
+    return OrganizationInstanceBySlug(name=organization_info["name"], organization_id=organization_info["organization_id"])
 
 @router.get("/{organization_id}/llm_providers")
 async def get_org_configured_llm_providers(

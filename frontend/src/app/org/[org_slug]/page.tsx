@@ -2,6 +2,9 @@
 
 import { LocalConnectionStatus } from "@/components/LocalConnectionStatus";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/auth/useAuth";
+import { useAuthorization } from "@/hooks/auth/useAuthorization";
+import { useOrganizationBySlug } from "@/hooks/useOrganizationBySlug";
 import { useProject } from "@/hooks/useProject";
 import { Project } from "@/types/Project";
 import { GearSix, Plus } from "@phosphor-icons/react";
@@ -9,18 +12,23 @@ import classNames from "classnames";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { toast } from "react-toastify";
+import { Toast } from "react-toastify/dist/components";
 
 export default function Page() {
   const pathname = usePathname();
   const router = useRouter();
   const { projectListData } = useProject();
+  const { orgId } = useAuth();
+  const { organizationDataBySlug } = useOrganizationBySlug();
+  const isAuthorized = organizationDataBySlug?.organization_id == orgId;
 
   useEffect(() => {
     if (!projectListData) return;
-    if (projectListData.length === 0) {
+    if (projectListData.length === 0 && isAuthorized) {
       router.push(`${pathname}/projects/new`);
     }
-  }, [projectListData, pathname, router]);
+  }, [projectListData, pathname, isAuthorized, router]);
 
   return (
     <div className="w-full h-full max-w-6xl px-6">
@@ -39,13 +47,26 @@ export default function Page() {
                 className="text-neutral-content"
               />
             </Link>
-            <Link
-              href={`${pathname}/projects/new`}
+            <button
               className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
+              onClick={() => {
+                if (!isAuthorized) {
+                  toast.error("You are not authorized to edit this project.");
+                  return;
+                } else {
+                  router.push(`${pathname}/projects/new`);
+                }
+              }}
             >
               <Plus weight="bold" size={20} className="text-primary" />
               <p className="text-base-content">New Project</p>
-            </Link>
+            </button>
+            {/*<Link
+              href={`${pathname}/projects/new`}
+              className="flex flex-row gap-x-2 items-center btn btn-outline btn-sm normal-case font-normal h-10 border-[1px] border-neutral-content hover:bg-neutral-content/20"
+            >
+             
+            </Link>*/}
           </div>
         </div>
         {/* Projects view */}
