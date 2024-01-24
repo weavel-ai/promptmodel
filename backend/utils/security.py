@@ -170,18 +170,19 @@ async def get_jwt(
             public_key = os.environ.get("NEXTAUTH_SECRET")
             if not raw_jwt:
                 is_authorized = False
-            # strip Bearer
-            if raw_jwt.lower().startswith("bearer "):
-                token = raw_jwt[7:]
-            if not token:
-                is_authorized = False
-            try:
-                token = jwt.decode(token, public_key, algorithms=["HS512"])
-            except jwt.InvalidTokenError as err:
-                is_authorized = False
+            else:
+                # strip Bearer
+                if raw_jwt.lower().startswith("bearer "):
+                    token = raw_jwt[7:]
+                if not token:
+                    is_authorized = False
+                try:
+                    token = jwt.decode(token, public_key, algorithms=["HS512"])
+                except jwt.InvalidTokenError as err:
+                    is_authorized = False
 
-            if "sub" in token and "user_id" not in token:
-                token["user_id"] = token["sub"]
+                if "sub" in token and "user_id" not in token:
+                    token["user_id"] = token["sub"]
 
             return token
         async with httpx.AsyncClient() as client:
@@ -190,29 +191,29 @@ async def get_jwt(
 
         if not raw_jwt:
             is_authorized = False
+        else:
+            # strip Bearer
+            if raw_jwt.lower().startswith("bearer "):
+                token = raw_jwt[7:]
 
-        # strip Bearer
-        if raw_jwt.lower().startswith("bearer "):
-            token = raw_jwt[7:]
+            if not token:
+                is_authorized = False
 
-        if not token:
-            is_authorized = False
-
-        try:
-            token = jwt.decode(token, public_key, algorithms=["RS256"])
-            is_authorized = True
-        except jwt.InvalidTokenError as err:
-            print(err)
-            is_authorized = False
+            try:
+                token = jwt.decode(token, public_key, algorithms=["RS256"])
+                is_authorized = True
+            except jwt.InvalidTokenError as err:
+                print(err)
+                is_authorized = False
 
         if is_authorized:
             return token
         else:
             if not is_public_project:
                 raise HTTPException(
-                            status_code=status_code.HTTP_401_UNAUTHORIZED,
-                            detail="Could not validate credentials",
-                        )
+                    status_code=status_code.HTTP_401_UNAUTHORIZED,
+                    detail="Could not validate credentials",
+                )
             else:
                 return {}
     except HTTPException as exception:
