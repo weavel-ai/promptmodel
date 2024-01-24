@@ -7,7 +7,7 @@ export function registerCustomLanguage(monaco: Monaco) {
   monaco.languages.setMonarchTokensProvider("promptmodel", {
     tokenizer: {
       root: [
-        [/{[^}\s]+}/, "variable"],
+        [/{{[^}\s]+}}/, "variable"],
         [/\w+(?=\s*type=)/, "output-key"],
         [/\w+(?=\s*\])/, "output-key"],
         // [/\/(\w+)(?=\s*\])/, "output-key"],
