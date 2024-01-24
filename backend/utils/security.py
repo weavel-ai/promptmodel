@@ -151,6 +151,8 @@ async def get_jwt(
     raw_jwt: str = Security(api_key_header),
 ):
     """Authenticate and return API key."""
+    is_public_project = False
+    is_authorized = True
     project_uuid = request.headers.get("x-project-uuid")
     if project_uuid:
         async with get_session_context() as session:
@@ -160,35 +162,23 @@ async def get_jwt(
                 )
             ).scalar_one_or_none()
             if not project:
-                raise HTTPException(
-                    status_code=status_code.HTTP_401_UNAUTHORIZED,
-                    detail="Could not validate credentials",
-                )
+                is_authorized = False
             if project.is_public:
-                return {"user_id": "public"}
+                is_public_project = True
     try:
         if self_hosted:
             public_key = os.environ.get("NEXTAUTH_SECRET")
             if not raw_jwt:
-                raise HTTPException(
-                    status_code=status_code.HTTP_401_UNAUTHORIZED,
-                    detail="No token found in request header.",
-                )
+                is_authorized = False
             # strip Bearer
             if raw_jwt.lower().startswith("bearer "):
                 token = raw_jwt[7:]
             if not token:
-                raise HTTPException(
-                    status_code=status_code.HTTP_401_UNAUTHORIZED,
-                    detail="No token found in request.",
-                )
+                is_authorized = False
             try:
                 token = jwt.decode(token, public_key, algorithms=["HS512"])
             except jwt.InvalidTokenError as err:
-                raise HTTPException(
-                    status_code=status_code.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid token.",
-                ) from err
+                is_authorized = False
 
             if "sub" in token and "user_id" not in token:
                 token["user_id"] = token["sub"]
@@ -199,42 +189,32 @@ async def get_jwt(
             public_key = decode_jwk(res.json()["keys"][0])
 
         if not raw_jwt:
-            raise HTTPException(
-                status_code=status_code.HTTP_401_UNAUTHORIZED,
-                detail="No token found in request Header.",
-            )
+            is_authorized = False
+
         # strip Bearer
         if raw_jwt.lower().startswith("bearer "):
             token = raw_jwt[7:]
 
         if not token:
-            raise HTTPException(
-                status_code=status_code.HTTP_401_UNAUTHORIZED,
-                detail="No token found in request.",
-            )
+            is_authorized = False
+
         try:
             token = jwt.decode(token, public_key, algorithms=["RS256"])
+            is_authorized = True
         except jwt.InvalidTokenError as err:
             print(err)
-            raise HTTPException(
-                status_code=status_code.HTTP_401_UNAUTHORIZED, detail="Invalid token."
-            ) from err
+            is_authorized = False
 
-        # # check if token is expired
-        # current_time = time.time()
-        # if current_time > token["exp"]:
-        #     raise Exception("Token has expired")
-        # if current_time < token["nbf"]:
-        #     raise Exception("Token not yet valid")
-
-        # # Validate 'azp' claim
-        # if token["azp"] not in origins:
-        #     raise Exception("Invalid 'azp' claim")
-
-        # if "sub" in token and "user_id" not in token:
-        #     token["user_id"] = token["sub"]
-
-        return token
+        if is_authorized:
+            return token
+        else:
+            if not is_public_project:
+                raise HTTPException(
+                            status_code=status_code.HTTP_401_UNAUTHORIZED,
+                            detail="Could not validate credentials",
+                        )
+            else:
+                return {}
     except HTTPException as exception:
         raise exception
 

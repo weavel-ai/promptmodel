@@ -117,7 +117,7 @@ async def run_cloud_function_model(
             prompt_content = prompt_content.replace(pattern, f"__ESCAPED{i}__")
 
         # find f-string input variables
-        fstring_input_pattern = r"(?<!\\)\{([^}]+)\}(?<!\\})"
+        fstring_input_pattern = r"(?<!\\)\{\{([^}]+)\}\}(?<!\\})"
         prompt_variables_in_prompt = re.findall(fstring_input_pattern, prompt_content)
 
         # Replace back
