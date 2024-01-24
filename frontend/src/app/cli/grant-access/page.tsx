@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import Confetti from "react-confetti";
 import { updateCliAccess } from "@/apis/cli_access";
+import { redirectToSignIn } from "@/utils";
 
 export default function Page() {
   const searchParams = useSearchParams();
@@ -20,8 +21,8 @@ export default function Page() {
     setLoading(true);
     if (!isSignedIn) {
       toast.error("Please sign in first to grant access.");
-      router.push("/signin");
       setLoading(false);
+      redirectToSignIn();
     }
     const token = searchParams.get("token");
     if (!token) {

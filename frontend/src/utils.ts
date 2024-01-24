@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+import { ENV } from "./constants";
+
 export function firstLetterToUppercase(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
@@ -168,4 +171,14 @@ export function checkIfValidUUID(str: string): boolean {
   const regexExp =
     /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi;
   return regexExp.test(str);
+}
+
+export function redirectToSignIn() {
+  if (ENV.SELF_HOSTED) {
+    redirect("/signin");
+  } else {
+    redirect(
+      "https://weavel.ai/signin?redirect_url=https://promptmodel.weavel.ai/signin/redirect"
+    );
+  }
 }

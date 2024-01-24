@@ -12,6 +12,7 @@ import { z } from "zod";
 import { PromptmodelLogo } from "@/components/logos/PromptmodelLogo";
 import Link from "next/link";
 import { toast } from "react-toastify";
+import { Redirect } from "@/components/Redirect";
 
 let validationSchema = z
   .object({
@@ -40,12 +41,7 @@ export default function Page() {
   }
 
   return (
-    <div className="w-screen h-screen flex justify-center items-center bg-base-100">
-      <SignIn
-        signUpUrl={`/signup?${params.toString()}`}
-        redirectUrl={`/signin/redirect?${params.toString()}`}
-      />
-    </div>
+    <Redirect to="https://weavel.ai/signin?redirect_url=https://promptmodel.weavel.ai/signin/redirect" />
   );
 }
 

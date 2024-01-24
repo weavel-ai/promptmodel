@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useRouter } from "next/navigation";
+import { redirectToSignIn } from "@/utils";
 
 export default function Home() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function Home() {
     if (isSignedIn) {
       router.push("/org/redirect");
     } else {
-      router.push("/signin");
+      redirectToSignIn();
     }
   }, [isLoaded, isSignedIn, router]);
 
