@@ -93,13 +93,13 @@ export function RunLogUI({
     if (prompts == null || prompts.length == 0) {
       return [];
     }
-    // For each prompt.content, extract the string between {} and add it to the inputKeys array
+    // For each prompt.content, extract the string between {{}} and add it to the inputKeys array
     const extractedInputKeys: Array<string> = [];
     prompts.forEach((prompt) => {
-      const inputKey = prompt.content.match(/\{(.*?)\}/g);
+      const inputKey = prompt.content.match(/\{\{(.*?)\}\}/g);
       if (inputKey != null) {
         inputKey.forEach((key) => {
-          const newInputKey = key.slice(1, -1);
+          const newInputKey = key.slice(2, -2);
           if (extractedInputKeys.includes(newInputKey)) return;
           extractedInputKeys.push(newInputKey);
         });

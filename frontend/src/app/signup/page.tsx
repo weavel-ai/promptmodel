@@ -12,6 +12,7 @@ import { toast } from "react-toastify";
 import { createUser } from "@/apis/users";
 import { CreateUserRequest } from "@/types/User";
 import { useSession } from "next-auth/react";
+import { Redirect } from "@/components/Redirect";
 
 let validationSchema = z
   .object({
@@ -23,19 +24,12 @@ let validationSchema = z
   .required();
 
 export default function Page() {
-  const params = useSearchParams();
-
   if (ENV.SELF_HOSTED) {
     return <SelfHostedSignUp />;
   }
 
   return (
-    <div className="w-screen h-screen flex justify-center items-center bg-base-100">
-      <SignUp
-        signInUrl={`/signin?${params.toString()}`}
-        redirectUrl={`/signin/redirect?${params.toString()}`}
-      />
-    </div>
+    <Redirect to="https://weavel.ai/signup?redirect_url=https://promptmodel.weavel.ai/signin/redirect" />
   );
 }
 
