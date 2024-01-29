@@ -49,37 +49,35 @@ async def run_function_model(
     ).scalar_one_or_none()
 
     if not user_auth_check:
-        raise HTTPException(
-            status_code=status_code.HTTP_403_FORBIDDEN,
-            detail="User don't have access to this project",
-        )
-
-    provider_args = LLMProviderArgs()
-    llm_provider = litellm.get_llm_provider(run_config.model)[1]
-    provider_config = (
-        await session.execute(
-            select(OrganizationLLMProviderConfig)
-            .where(
-                OrganizationLLMProviderConfig.organization_id
-                == user_auth_check.organization_id
+        provider_args = LLMProviderArgs()
+    else:
+        provider_args = LLMProviderArgs()
+        llm_provider = litellm.get_llm_provider(run_config.model)[1]
+        provider_config = (
+            await session.execute(
+                select(OrganizationLLMProviderConfig)
+                .where(
+                    OrganizationLLMProviderConfig.organization_id
+                    == user_auth_check.organization_id
+                )
+                .where(OrganizationLLMProviderConfig.provider_name == llm_provider)
             )
-            .where(OrganizationLLMProviderConfig.provider_name == llm_provider)
-        )
-    ).scalar_one_or_none()
+        ).scalar_one_or_none()
 
-    if not provider_config:
-        raise HTTPException(
-            status_code=status_code.HTTP_428_PRECONDITION_REQUIRED,
-            detail=f"Organization doesn't have API keys set for {llm_provider}. Please set API keys in project settings.",
-        )
+        if not provider_config:
+            raise HTTPException(
+                status_code=status_code.HTTP_428_PRECONDITION_REQUIRED,
+                detail=f"Organization doesn't have API keys set for {llm_provider}. Please set API keys in project settings.",
+            )
 
-    for key, val in provider_config.env_vars.items():
-        if "api_key" in key.lower():
-            provider_args.api_key = val
-        elif "api_base" in key.lower():
-            provider_args.api_base = val
-        elif "api_version" in key.lower():
-            provider_args.api_version = val
+        for key, val in provider_config.env_vars.items():
+            if "api_key" in key.lower():
+                provider_args.api_key = val
+            elif "api_base" in key.lower():
+                provider_args.api_base = val
+            elif "api_version" in key.lower():
+                provider_args.api_version = val
+    
 
     async def stream_run():
         async for chunk in run_cloud_function_model(
