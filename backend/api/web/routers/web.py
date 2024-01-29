@@ -111,18 +111,10 @@ async def run_cloud_function_model(
     prompt_variables = []
     for prompt in run_config.prompts:
         prompt_content = prompt.content
-        # Replace
-        escaped_patterns = re.findall(r"\{\{.*?\}\}", prompt_content)
-        for i, pattern in enumerate(escaped_patterns):
-            prompt_content = prompt_content.replace(pattern, f"__ESCAPED{i}__")
-
+        
         # find f-string input variables
         fstring_input_pattern = r"(?<!\\)\{\{([^}]+)\}\}(?<!\\})"
         prompt_variables_in_prompt = re.findall(fstring_input_pattern, prompt_content)
-
-        # Replace back
-        for i, pattern in enumerate(escaped_patterns):
-            prompt_content = prompt_content.replace(f"__ESCAPED{i}__", pattern)
 
         prompt_variables_in_prompt = list(set(prompt_variables_in_prompt))
         prompt_variables += prompt_variables_in_prompt
@@ -149,6 +141,7 @@ async def run_cloud_function_model(
             }
             yield data
             return
+        
     # Start FunctionModel Running
     output = {"raw_output": "", "parsed_outputs": {}}
     model_res = litellm.ModelResponse(
@@ -175,8 +168,11 @@ async def run_cloud_function_model(
         model = run_config.model
         prompts = run_config.prompts
         parsing_type = run_config.parsing_type
+        
 
         if sample_input:
+            for prompt in prompts:
+                prompt.content = prompt.content.replace("{{", "{").replace("}}", "}")
             messages = [
                 {
                     "content": prompt.content.format(**sample_input),

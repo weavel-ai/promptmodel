@@ -3,6 +3,7 @@ import { fetchVersionBatchRuns } from "@/apis/function_model_versions/fetchVersi
 import { startFunctionModelVersionBatchRun } from "@/apis/function_model_versions/startBatchRun";
 import { fetchPrompts } from "@/apis/prompts";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 export const useFunctionModelVersionDetails = (versionUuid: string) => {
@@ -25,7 +26,10 @@ export const useFunctionModelVersionDetails = (versionUuid: string) => {
       await fetchVersionBatchRuns({
         uuid: versionUuid,
       }),
+    onSuccess: () => {},
     enabled: !!versionUuid,
+    refetchInterval: (data) =>
+      data?.some((item) => item.status === "running") ? 3000 : false,
   });
 
   const startBatchRunMutation = useMutation({

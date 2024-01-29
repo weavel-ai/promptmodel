@@ -61,7 +61,7 @@ class UpdateFunctionModelVersionTagsBody(PMObject):
 class FunctionModelVersionBatchRunInstance(PMObject):
     uuid: str
     created_at: str
-    finished_at: str
+    finished_at: Optional[str] = None
     dataset_uuid: str
     status: str
     score: Optional[float] = None

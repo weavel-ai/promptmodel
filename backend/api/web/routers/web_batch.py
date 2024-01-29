@@ -95,6 +95,8 @@ async def function_model_batch_run_background_task(
                 prompts: List[Dict[str, Any]],
                 router: Router,
             ) -> RunLog:
+                for prompt in prompts:
+                    prompt["content"] = prompt["content"].replace("{{", "{").replace("}}", "}")
                 messages = [
                     {
                         "content": prompt["content"].format(**sample_input_row.content),
