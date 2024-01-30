@@ -44,6 +44,10 @@ const SUPPORTED_MODELS: Model[] = [
     provider: "OpenAI",
   },
   {
+    name: "gpt-4-turbo-preview",
+    provider: "OpenAI",
+  },
+  {
     name: "gpt-4",
     provider: "OpenAI",
   },
