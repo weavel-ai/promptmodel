@@ -109,7 +109,11 @@ export function RunLogUI({
   }, [prompts]);
 
   useEffect(() => {
-    if (inputKeys.length == 0 || !inputs) return;
+    if (!inputs) return;
+    if (inputKeys.length == 0) {
+      setInputs([]);
+      return;
+    }
     if (arePrimitiveListsEqual(inputKeys, Object.keys(inputs))) return;
     const newInputs = inputKeys.map((key) => {
       if (inputs.some((input) => input?.key == key)) {
@@ -137,13 +141,8 @@ export function RunLogUI({
         if (isEqualToOriginal) return true;
       }
     }
-    if (inputKeys.length == 0) {
-      return false;
-    }
-    return inputs.some((input) => input.value.trim().length == 0);
+    return false;
   }, [
-    inputs,
-    inputKeys,
     isNewOrCachedVersion,
     isEqualToOriginal,
     isInitialVersion,

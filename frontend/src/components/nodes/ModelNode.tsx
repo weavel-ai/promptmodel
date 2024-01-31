@@ -19,8 +19,10 @@ export function ModelNode({ data }) {
         "transition-colors hover:bg-base-300"
       )}
     >
-      <div className="flex flex-col justify-start gap-y-2 items-start">
-        <p className="text-base-content font-bold text-lg">{data.name}</p>
+      <div className="w-full flex flex-col justify-start gap-y-2 items-start">
+        <p className="line-clamp-1 text-base-content font-bold text-lg ">
+          {data.name}
+        </p>
         <LocalConnectionStatus online={data?.online} statusType="usage" />
       </div>
       <p className="text-neutral-content text-sm">
