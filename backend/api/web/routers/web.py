@@ -170,7 +170,8 @@ async def run_cloud_function_model(
 
         if sample_input:
             for prompt in prompts:
-                prompt.content = prompt.content.replace("{{", "{").replace("}}", "}")
+                prompt.content = prompt.content.replace("{", "{{").replace("}", "}}")
+                prompt.content = prompt.content.replace("{{{{", "{").replace("}}}}", "}")
             messages = [
                 {
                     "content": prompt.content.format(**sample_input),
@@ -321,7 +322,7 @@ async def run_cloud_function_model(
             "log": str(error),
         }
         yield data
-        return
+        raise error
 
 
 @router.post("/run_chat_model")
@@ -653,4 +654,4 @@ async def run_cloud_chat_model(
             "log": str(exc),
         }
         yield data
-        return
+        raise exc
