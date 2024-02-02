@@ -43,16 +43,20 @@ const SUPPORTED_MODELS: Model[] = [
     name: "gpt-3.5-turbo-16k-0613",
     provider: "OpenAI",
   },
+  // {
+  //   name: "gpt-4-turbo-preview",
+  //   provider: "OpenAI",
+  // },
   {
-    name: "gpt-4-turbo-preview",
-    provider: "OpenAI",
-  },
-  {
-    name: "gpt-4",
+    name: "gpt-4-0125-preview",
     provider: "OpenAI",
   },
   {
     name: "gpt-4-1106-preview",
+    provider: "OpenAI",
+  },
+  {
+    name: "gpt-4",
     provider: "OpenAI",
   },
   {
