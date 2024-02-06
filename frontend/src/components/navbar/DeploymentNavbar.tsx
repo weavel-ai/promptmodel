@@ -309,7 +309,7 @@ function MenuDrawer({
           href={`https://analytics.weavel.ai/${params?.org_slug}/projects/${projectUuid}`}
           className={classNames(
             "flex flex-row justify-start items-center gap-x-2 w-full",
-            "p-2 rounded-md transition-colors hover:bg-base-content/10 group hover:!cursor-not-allowed",
+            "p-2 rounded-md transition-colors hover:bg-base-content/10 group",
             !projectUuid && "hidden"
           )}
           onClick={onClose}
