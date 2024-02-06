@@ -310,8 +310,7 @@ function MenuDrawer({
           className={classNames(
             "flex flex-row justify-start items-center gap-x-2 w-full",
             "p-2 rounded-md transition-colors hover:bg-base-content/10 group hover:!cursor-not-allowed",
-            !projectUuid && "hidden",
-            "hidden"
+            !projectUuid && "hidden"
           )}
           onClick={onClose}
         >
