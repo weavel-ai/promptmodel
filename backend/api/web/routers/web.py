@@ -86,6 +86,7 @@ async def run_function_model(
             run_config=run_config,
             provider_args=provider_args,
         ):
+            logger.debug(chunk)
             yield json.dumps(chunk)
         session.close()
 
@@ -267,7 +268,7 @@ async def run_cloud_function_model(
             if item.error and error_occurs is False:
                 error_occurs = item.error
                 error_log = item.error_log
-
+                
             yield data
 
         if (

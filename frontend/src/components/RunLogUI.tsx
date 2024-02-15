@@ -185,11 +185,9 @@ export function RunLogUI({
         }),
       ];
     }
-
     if (runLogs[versionUuid]) {
       updatedRunLogList.unshift(...Object.values(runLogs[versionUuid]));
     }
-
     setRunLogList(updatedRunLogList);
   }, [versionUuid, runLogData, runTasksCount, runLogs]);
 
