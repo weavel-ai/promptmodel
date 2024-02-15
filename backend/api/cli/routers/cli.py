@@ -968,6 +968,7 @@ async def save_run_log(
     project: dict = Depends(get_project),
     session: AsyncSession = Depends(get_session),
 ):
+    print(f"run log start : {run_log_request_body.uuid} ", datetime.now())
     api_response = run_log_request_body.api_response
     
     if not isinstance(api_response, dict):
@@ -995,8 +996,11 @@ async def save_run_log(
         run_log_metadata=run_log_request_body.metadata,
         project_uuid=project["uuid"],
     )
+    
     session.add(run_log_row)
     await session.commit()
+    
+    print(f"run log saved : {run_log_request_body.uuid} ", datetime.now())
 
     return Response(status_code=status_code.HTTP_200_OK)
 
