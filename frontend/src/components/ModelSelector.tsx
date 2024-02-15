@@ -24,6 +24,10 @@ const SUPPORTED_MODELS: Model[] = [
     provider: "OpenAI",
   },
   {
+    name: "gpt-3.5-turbo-0125",
+    provider: "OpenAI",
+  },
+  {
     name: "gpt-3.5-turbo-1106",
     provider: "OpenAI",
   },

@@ -30,7 +30,7 @@ export const SlashCommandOptions = ({
 
   useEffect(() => {
     if (open) {
-      if (!parsingType) {
+      if (!parsingType || parsingType === ParsingType.JSON) {
         toast("Please select a parsing type to insert an output format.");
         setOpen(false);
       }

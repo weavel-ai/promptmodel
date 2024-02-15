@@ -46,7 +46,7 @@ async def run_function_model(
             from_version: previous version number (Optional)
             version_uuid: current version uuid (Optional if from_version is provided)
             sample_name: Sample name (Optional)
-            parsing_type: ParsingType (colon, square_bracket, double_square_bracket, html)
+            parsing_type: ParsingType (colon, square_bracket, double_square_bracket, html, json)
             output_keys: List of output keys (Optional)
             functions: List of function schemas (Optional)
         </ul>
