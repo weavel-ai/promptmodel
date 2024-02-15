@@ -29,7 +29,7 @@ async def get_user_id(
             ._mapping
         )
 
-        logger.debug(f"User authorized: {user}")
+        # logger.debug(f"User authorized: {user}")
         if not user:  # You can further validate the token here if necessary
             raise HTTPException(status_code=400, detail="Token is required!")
         return user_id

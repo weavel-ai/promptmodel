@@ -74,8 +74,6 @@ async def get_project(
             status_code=status_code.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
         )
-    logger.debug(f"api key: {api_key}")
-    logger.debug(f"project: {project.name}")
 
     return project.model_dump()
 
@@ -103,8 +101,6 @@ async def get_project_cli_access_key(
             status_code=status_code.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
         )
-    logger.debug(f"api key: {api_key}")
-    logger.debug(f"project: {project.name}")
 
     return project.model_dump()
 
