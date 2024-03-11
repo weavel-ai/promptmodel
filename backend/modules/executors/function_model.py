@@ -1,92 +1,15 @@
-"""APIs for promptmodel webpage"""
-import json
-from typing import Annotated
-from modules.executors.function_model import run_cloud_function_model
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import StreamingResponse
-from starlette import status as status_code
+import re
+from typing import AsyncGenerator, Dict, Optional
 import litellm
-from api.web.models import LLMProviderArgs
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from promptmodel.llms.llm_dev import LLMDev
+from promptmodel.types.response import LLMStreamResponse
 
-from base.database import get_session
-from utils.security import get_jwt
-from api.common.models import FunctionModelRunConfig, ChatModelRunConfig
+from utils.logger import logger
+from api.common.models.models import FunctionModelRunConfig
+from api.web.models.organization import LLMProviderArgs
 from db_models import *
-from .web_batch import router as batch_router
-
-router = APIRouter()
-
-router.include_router(batch_router)
-
-
-@router.post("/run_function_model")
-async def run_function_model(
-    jwt: Annotated[str, Depends(get_jwt)],
-    project_uuid: str,
-    run_config: FunctionModelRunConfig,
-    session: AsyncSession = Depends(get_session),
-):
-    """Run FunctionModel for cloud development environment."""
-    user_auth_check: Project = (
-        await session.execute(
-            select(Project)
-            .join(
-                UsersOrganizations,
-                Project.organization_id == UsersOrganizations.organization_id,
-            )
-            .where(Project.uuid == project_uuid)
-            .where(UsersOrganizations.user_id == jwt["user_id"])
-        )
-    ).scalar_one_or_none()
-
-    if not user_auth_check:
-        provider_args = LLMProviderArgs()
-    else:
-        provider_args = LLMProviderArgs()
-        llm_provider = litellm.get_llm_provider(run_config.model)[1]
-        provider_config = (
-            await session.execute(
-                select(OrganizationLLMProviderConfig)
-                .where(
-                    OrganizationLLMProviderConfig.organization_id
-                    == user_auth_check.organization_id
-                )
-                .where(OrganizationLLMProviderConfig.provider_name == llm_provider)
-            )
-        ).scalar_one_or_none()
-
-        if not provider_config:
-            raise HTTPException(
-                status_code=status_code.HTTP_428_PRECONDITION_REQUIRED,
-                detail=f"Organization doesn't have API keys set for {llm_provider}. Please set API keys in project settings.",
-            )
-
-        for key, val in provider_config.env_vars.items():
-            if "api_key" in key.lower():
-                provider_args.api_key = val
-            elif "api_base" in key.lower():
-                provider_args.api_base = val
-            elif "api_version" in key.lower():
-                provider_args.api_version = val
-    
-
-    async def stream_run():
-        async for chunk in run_cloud_function_model(
-            session=session,
-            project_uuid=project_uuid,
-            run_config=run_config,
-            provider_args=provider_args,
-        ):
-            logger.debug(chunk)
-            yield json.dumps(chunk)
-        session.close()
-
-    return StreamingResponse(
-        stream_run(),
-    )
 
 
 async def run_cloud_function_model(
@@ -104,7 +27,7 @@ async def run_cloud_function_model(
     prompt_variables = []
     for prompt in run_config.prompts:
         prompt_content = prompt.content
-        
+
         # find f-string input variables
         fstring_input_pattern = r"(?<!\\)\{\{([^}]+)\}\}(?<!\\})"
         prompt_variables_in_prompt = re.findall(fstring_input_pattern, prompt_content)
@@ -134,7 +57,7 @@ async def run_cloud_function_model(
             }
             yield data
             return
-        
+
     # Start FunctionModel Running
     output = {"raw_output": "", "parsed_outputs": {}}
     model_res = litellm.ModelResponse(
@@ -161,12 +84,13 @@ async def run_cloud_function_model(
         model = run_config.model
         prompts = run_config.prompts
         parsing_type = run_config.parsing_type
-        
 
         if sample_input:
             for prompt in prompts:
                 prompt.content = prompt.content.replace("{", "{{").replace("}", "}}")
-                prompt.content = prompt.content.replace("{{{{", "{").replace("}}}}", "}")
+                prompt.content = prompt.content.replace("{{{{", "{").replace(
+                    "}}}}", "}"
+                )
             messages = [
                 {
                     "content": prompt.content.format(**sample_input),
@@ -240,9 +164,9 @@ async def run_cloud_function_model(
                 }
             if item.parsed_outputs:
                 if list(item.parsed_outputs.keys())[0] not in output["parsed_outputs"]:
-                    output["parsed_outputs"][
-                        list(item.parsed_outputs.keys())[0]
-                    ] = list(item.parsed_outputs.values())[0]
+                    output["parsed_outputs"][list(item.parsed_outputs.keys())[0]] = (
+                        list(item.parsed_outputs.values())[0]
+                    )
                 else:
                     output["parsed_outputs"][
                         list(item.parsed_outputs.keys())[0]
@@ -262,7 +186,7 @@ async def run_cloud_function_model(
             if item.error and error_occurs is False:
                 error_occurs = item.error
                 error_log = item.error_log
-                
+
             yield data
 
         if (
@@ -292,12 +216,14 @@ async def run_cloud_function_model(
                         "cost": litellm.completion_cost(model_res),
                         "latency": latency,
                         "function_call": function_call,
-                        "run_log_metadata": {
-                            "error_log": error_log,
-                            "error": True,
-                        }
-                        if error_occurs
-                        else None,
+                        "run_log_metadata": (
+                            {
+                                "error_log": error_log,
+                                "error": True,
+                            }
+                            if error_occurs
+                            else None
+                        ),
                         "run_from_deployment": False,
                         "sample_input_uuid": run_config.sample_input_uuid,
                     }
@@ -318,70 +244,3 @@ async def run_cloud_function_model(
         }
         yield data
         raise error
-
-
-@router.post("/run_chat_model")
-async def run_chat_model(
-    jwt: Annotated[str, Depends(get_jwt)],
-    project_uuid: str,
-    chat_config: ChatModelRunConfig,
-    session: AsyncSession = Depends(get_session),
-):
-    """Run ChatModel from web."""
-    user_auth_check: Project = (
-        await session.execute(
-            select(Project)
-            .join(
-                UsersOrganizations,
-                Project.organization_id == UsersOrganizations.organization_id,
-            )
-            .where(Project.uuid == project_uuid)
-            .where(UsersOrganizations.user_id == jwt["user_id"])
-        )
-    ).scalar_one_or_none()
-
-    if not user_auth_check:
-        raise HTTPException(
-            status_code=status_code.HTTP_403_FORBIDDEN,
-            detail="User don't have access to this project",
-        )
-
-    provider_args = LLMProviderArgs()
-    llm_provider = litellm.get_llm_provider(chat_config.model)[1]
-    provider_config = (
-        await session.execute(
-            select(OrganizationLLMProviderConfig)
-            .where(
-                OrganizationLLMProviderConfig.organization_id
-                == user_auth_check.organization_id
-            )
-            .where(OrganizationLLMProviderConfig.provider_name == llm_provider)
-        )
-    ).scalar_one_or_none()
-
-    if not provider_config:
-        raise HTTPException(
-            status_code=status_code.HTTP_428_PRECONDITION_REQUIRED,
-            detail=f"Organization doesn't have API keys set for {llm_provider}. Please set API keys in project settings.",
-        )
-
-    for key, val in provider_config.env_vars.items():
-        if "api_key" in key.lower():
-            provider_args.api_key = val
-        elif "api_base" in key.lower():
-            provider_args.api_base = val
-        elif "api_version" in key.lower():
-            provider_args.api_version = val
-
-    async def stream_run():
-        async for chunk in run_cloud_chat_model(
-            session=session,
-            project_uuid=project_uuid,
-            chat_config=chat_config,
-            provider_args=provider_args,
-        ):
-            yield json.dumps(chunk)
-
-    return StreamingResponse(
-        stream_run(),
-    )

@@ -66,7 +66,7 @@ async def get_project(
     if api_key.lower().startswith("bearer "):
         api_key = api_key[7:]  # Strip "Bearer " from the header value
     async with get_session_context() as session:
-        project = (
+        project: Union[Project, None] = (
             await session.execute(select(Project).where(Project.api_key == api_key))
         ).scalar_one_or_none()
     if not project:
