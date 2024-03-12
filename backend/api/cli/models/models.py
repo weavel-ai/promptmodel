@@ -101,7 +101,7 @@ class ChatMessageRequestBody(PMObject):
 
 class RunLogRequestBody(PMObject):
     uuid: str
-    api_response: Optional[ModelResponse] = None
+    api_response: ModelResponse
     inputs: Optional[Dict[str, Any]] = None
     parsed_outputs: Optional[Dict[str, Any]] = None
     metadata: Optional[Dict] = None

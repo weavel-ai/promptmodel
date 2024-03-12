@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from utils.logger import logger
-from api import cli, web, dev, web_auth, public
+from api import cli, web, dev, web_auth
 
 load_dotenv()
 
@@ -74,8 +74,6 @@ app.include_router(web_auth.router, prefix="/api/web/v1", tags=["web/v1"])
 app.include_router(cli.router, prefix="/api/cli", tags=["cli"])
 app.include_router(web.router, prefix="/api/web")
 app.include_router(dev.router, prefix="/api/dev", tags=["dev"])
-
-app.include_router(public.router, prefix="/api/public", tags=["public"])
 
 load_dotenv()
 
