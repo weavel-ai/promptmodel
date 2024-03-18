@@ -37,8 +37,8 @@ class ChatModel(Base):
     name: str = Column(Text, nullable=False)
     online: bool = Column(Boolean, nullable=False, default=False)
 
-    project_uuid: UUIDType = Column(
-        UUID(as_uuid=True),
+    project_uuid: str = Column(
+        Text,
         ForeignKey(
             "project.uuid",
             onupdate="CASCADE",
@@ -201,8 +201,8 @@ class ChatLog(Base):
         nullable=False,
     )
 
-    project_uuid: UUIDType = Column(
-        UUID(as_uuid=True),
+    project_uuid: str = Column(
+        Text,
         ForeignKey(
             "project.uuid",
             onupdate="CASCADE",

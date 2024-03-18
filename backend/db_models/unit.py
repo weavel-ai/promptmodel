@@ -39,8 +39,8 @@ class Unit(Base):
 
     name: str = Column(Text, nullable=False)
 
-    project_uuid: UUIDType = Column(
-        UUID(as_uuid=True),
+    project_uuid: str = Column(
+        Text,
         ForeignKey(
             "project.uuid",
             onupdate="CASCADE",

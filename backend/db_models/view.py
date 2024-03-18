@@ -31,7 +31,7 @@ class UserOrganizations(Base):
 class ChatLogView(Base):
     __tablename__ = "chat_log_view"
 
-    project_uuid: UUIDType = Column(UUID(as_uuid=True))
+    project_uuid: str = Column(Text)
 
     chat_model_uuid: UUIDType = Column(UUID(as_uuid=True))
     chat_model_name: str = Column(Text)
@@ -61,7 +61,7 @@ class ChatLogView(Base):
 class ChatLogsCount(Base):
     __tablename__ = "chat_logs_count"
 
-    project_uuid: UUIDType = Column(UUID(as_uuid=True), primary_key=True)
+    project_uuid: str = Column(Text, primary_key=True)
 
     chat_logs_count: int = Column(BigInteger)
 
@@ -69,7 +69,7 @@ class ChatLogsCount(Base):
 class RunLogsCount(Base):
     __tablename__ = "run_logs_count"
 
-    project_uuid: UUIDType = Column(UUID(as_uuid=True), primary_key=True)
+    project_uuid: str = Column(Text, primary_key=True)
 
     run_logs_count: int = Column(BigInteger)
 
@@ -108,7 +108,7 @@ class DailyRunLogMetric(Base):
 class ProjectDailyRunLogMetric(Base):
     __tablename__ = "project_daily_run_log_metric"
 
-    project_uuid: UUIDType = Column(UUID(as_uuid=True), primary_key=True)
+    project_uuid: str = Column(Text, primary_key=True)
 
     day: date = Column(Date, primary_key=True)
     total_cost: Optional[float] = Column(Float)
@@ -161,7 +161,7 @@ class DeploymentRunLogView(Base):
     __tablename__ = "deployment_run_log_view"
 
     run_log_uuid: UUIDType = Column(UUID(as_uuid=True), primary_key=True)
-    project_uuid: UUIDType = Column(UUID(as_uuid=True))
+    project_uuid: str = Column(Text)
 
     function_model_uuid: UUIDType = Column(UUID(as_uuid=True))
     function_model_name: str = Column(Text)

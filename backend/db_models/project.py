@@ -126,8 +126,8 @@ class Project(Base):
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
 
-    uuid: UUIDType = Column(
-        UUID(as_uuid=True),
+    uuid: str = Column(
+        Text,
         server_default=text("gen_random_uuid()"),
         primary_key=True,
     )
@@ -167,8 +167,8 @@ class ProjectChangelog(Base):
         ARRAY(JSONB), nullable=False, server_default=text("'{}'::jsonb[]")
     )
 
-    project_uuid: UUIDType = Column(
-        UUID(as_uuid=True),
+    project_uuid: str = Column(
+        Text,
         ForeignKey(
             "project.uuid",
             onupdate="CASCADE",
@@ -223,8 +223,8 @@ class Tag(Base):
     name: str = Column(Text)
     color: str = Column(Text)
 
-    project_uuid: UUIDType = Column(
-        UUID(as_uuid=True),
+    project_uuid: str = Column(
+        Text,
         ForeignKey("project.uuid", onupdate="CASCADE", ondelete="CASCADE"),
         nullable=True,
     )
@@ -243,8 +243,8 @@ class LLM(Base):
     name: str = Column(Text)
     api_base: str = Column(Text)
 
-    project_uuid: UUIDType = Column(
-        UUID(as_uuid=True),
+    project_uuid: str = Column(
+        Text,
         ForeignKey("project.uuid", onupdate="CASCADE", ondelete="CASCADE"),
         nullable=True,
     )
